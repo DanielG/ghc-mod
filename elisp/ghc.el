@@ -27,6 +27,7 @@
 
 (defvar ghc-completion-key "\e\t")
 (defvar ghc-document-key   "\e\C-d")
+(defvar ghc-import-key     "\e\C-e")
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -39,6 +40,7 @@
   (unless ghc-initialized
     (define-key haskell-mode-map ghc-completion-key 'ghc-complete)
     (define-key haskell-mode-map ghc-document-key   'ghc-browse-document)
+    (define-key haskell-mode-map ghc-import-key     'ghc-import-module)
     (ghc-comp-init)
     (setq ghc-initialized t)))
 

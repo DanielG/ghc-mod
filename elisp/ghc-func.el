@@ -38,4 +38,14 @@
 	(read (current-buffer))
       (error ()))))
 
+(defun ghc-extract-module ()
+  (interactive)
+  (save-excursion
+    (beginning-of-line)
+    (if (looking-at "^import +\\(qualified +\\)?\\([^ (\n]+\\)")
+	(match-string-no-properties 2))))
+
+(defun ghc-read-module-name (def)
+  (read-from-minibuffer "Module name: " def ghc-input-map))
+
 (provide 'ghc-func)

@@ -131,9 +131,34 @@
 (defun ghc-completion-start-point ()
   (save-excursion
     (let ((beg (save-excursion (beginning-of-line) (point))))
-      (if (search-backward " " beg t)
+      (if (re-search-backward "[ (,`]" beg t)
 	  (1+ (point))
 	beg))))
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;
+;;; Loading keywords
+;;;
+
+(defun ghc-load-module (mod)
+  (when (and (member mod ghc-module-names)
+	     (not (member mod ghc-loaded-module)))
+    (let ((keywords (ghc-load-keyword "browse" mod)))
+      (when (or (consp keywords) (null keywords))
+	(set (intern (concat ghc-keyword-prefix mod)) keywords)
+	(setq ghc-loaded-module (cons mod ghc-loaded-module))))))
+
+(defun ghc-merge-keywords ()
+  (let* ((modkeys (mapcar 'ghc-module-keyword ghc-loaded-module))
+	 (keywords (cons ghc-reserved-keyword modkeys))
+	 (uniq-sorted (sort (ghc-uniq-lol keywords) 'string<)))
+    (setq ghc-merged-keyword uniq-sorted)))
+
+(defun ghc-import-module ()
+  (interactive)
+  (ghc-load-module (ghc-read-module-name (ghc-extract-module)))
+  (ghc-merge-keywords))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -141,16 +166,9 @@
 ;;;
 
 (defun ghc-idle-timer ()
-  (let ((mods (ghc-gather-import-modules))
-	keywords)
-    (dolist (mod mods)
-      (when (and (member mod ghc-module-names)
-		 (not (member mod ghc-loaded-module)))
-	(setq keywords (ghc-load-keyword "browse" mod))
-	(when (or (consp keywords) (null keywords))
-	  (set (intern (concat ghc-keyword-prefix mod)) keywords)
-	  (setq ghc-loaded-module (cons mod ghc-loaded-module)))))
-    (ghc-merge-keywords)))
+  (dolist (mod (ghc-gather-import-modules))
+    (ghc-load-module mod))
+  (ghc-merge-keywords))
 
 (defun ghc-gather-import-modules ()
   (let ((bufs (mapcar 'buffer-name (buffer-list)))
@@ -170,12 +188,6 @@
 	(setq ret (cons (match-string-no-properties 1) ret))
 	(forward-line)))
     ret))
-
-(defun ghc-merge-keywords ()
-  (let* ((modkeys (mapcar 'ghc-module-keyword ghc-loaded-module))
-	 (keywords (cons ghc-reserved-keyword modkeys))
-	 (uniq-sorted (sort (ghc-uniq-lol keywords) 'string<)))
-    (setq ghc-merged-keyword uniq-sorted)))
 
 (defun ghc-module-keyword (mod)
   (symbol-value (intern (concat ghc-keyword-prefix mod))))

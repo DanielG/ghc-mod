@@ -18,13 +18,6 @@
 	 (pkg (ghc-resolve-package-name mod)))
     (ghc-display-document pkg mod)))
 
-(defun ghc-extract-module ()
-  (interactive)
-  (save-excursion
-    (beginning-of-line)
-    (when (looking-at "^import +\\([^ \n]+\\)")
-      (match-string-no-properties 1))))
-
 (defun ghc-resolve-package-name (mod)
   (with-temp-buffer
     (call-process "ghc-pkg" nil t nil "find-module" "--simple-output" mod)
@@ -56,9 +49,6 @@
 	    (copy-keymap minibuffer-local-map)
 	  (make-sparse-keymap)))
   (define-key ghc-input-map "\t" 'ghc-complete))
-
-(defun ghc-read-module-name (def)
-  (read-from-minibuffer "Module name: " def ghc-input-map))
 
 
 (provide 'ghc-doc)
