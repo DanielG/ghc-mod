@@ -1,0 +1,25 @@
+-- -*- mode: Text; indent-tabs-mode: nil; -*-
+Name:                   ghc-mod
+Version:                0.1
+Author:                 Kazu Yamamoto <kazu@Mew.org>
+Maintainer:             Kazu Yamamoto <kazu@Mew.org>
+License:                BSD3
+Homepage:               http://www.mew.org/~kazu/
+Synopsis:               Extracting names from modules
+Description:            "ghc-mod" lists up all installed modules
+                        or extracts names of functions, classes, 
+                        and data declarations. "ghc-mod" is a
+                        backend for completion on Emacs.
+Category:               Development
+Cabal-Version:          >= 1.2
+Build-Type:             Simple 
+Data-Dir:               elisp
+Data-Files:             Makefile ghc.el ghc-func.el ghc-doc.el ghc-comp.el
+Executable ghc-mod
+    Main-Is:            GHCMod.hs
+    GHC-Options:        -Wall
+    Build-Depends:      base >= 4.0,
+                        parsec >= 2.0.0.0,
+                        process >= 1.0,
+                        haskell-src-exts >= 1.0
+
