@@ -1,9 +1,11 @@
 SRCS = ghc.el ghc-func.el ghc-doc.el ghc-comp.el
+EMACS = emacs
+
 
 TEMPFILE  = temp.el
 
 all: $(TEMPFILE) ghc.el
-	emacs -batch -q -no-site-file -l ./$(TEMPFILE) -f ghc-compile
+	$(EMACS) -batch -q -no-site-file -l ./$(TEMPFILE) -f ghc-compile
 
 $(TEMPFILE):
 	@echo '(setq load-path (cons "." load-path))' >> $(TEMPFILE)
