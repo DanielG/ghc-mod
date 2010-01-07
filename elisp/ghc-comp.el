@@ -50,7 +50,8 @@
 ;;;
 
 (defun ghc-load-keyword (&rest args)
-  (when (ghc-which ghc-module-command)
+  (if (not (ghc-which ghc-module-command))
+      (message "%s not found" ghc-module-command)
     (ghc-read-lisp
      (lambda ()
        (let ((msg (mapconcat 'identity (cons ghc-module-command args) " ")))
