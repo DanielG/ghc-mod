@@ -7,12 +7,12 @@ License:                BSD3
 Homepage:               http://www.mew.org/~kazu/
 Synopsis:               Extracting names from modules
 Description:            "ghc-mod" lists up all installed modules
-                        or extracts names of functions, classes, 
+                        or extracts names of functions, classes,
                         and data declarations. "ghc-mod" is a
                         backend for completion on Emacs.
 Category:               Development
 Cabal-Version:          >= 1.2
-Build-Type:             Simple 
+Build-Type:             Simple
 Data-Dir:               elisp
 Data-Files:             Makefile ghc.el ghc-func.el ghc-doc.el ghc-comp.el
 Executable ghc-mod
@@ -22,4 +22,3 @@ Executable ghc-mod
                         parsec >= 2.0.0.0,
                         process >= 1.0,
                         haskell-src-exts >= 1.0
-

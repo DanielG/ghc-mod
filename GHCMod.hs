@@ -205,7 +205,7 @@ nonGhcName = do c <- anyChar  -- making this func non-empty
 remove :: Parser String
 remove = do l1 <- try ghcName <|> return ""
             l2 <- nonGhcName
-            ll <- many (do x <- ghcName 
+            ll <- many (do x <- ghcName
                            y <- nonGhcName
                            return $ x ++ y)
             return $ concat $ l1 : l2 : ll

@@ -5,7 +5,7 @@
 
 ;; Author:  Kazu Yamamoto <Kazu@Mew.org>
 ;; Created: Sep 25, 2009
-;; Revised: 
+;; Revised:
 
 ;; Put the following code to your "~/.emacs".
 ;;
