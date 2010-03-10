@@ -16,7 +16,7 @@ import Text.ParserCombinators.Parsec
 ----------------------------------------------------------------
 
 usage :: String
-usage =    "ghc-mod putStrLn version 0.1.0\n"
+usage =    "ghc-mod version 0.1.0\n"
         ++ "Usage:\n"
         ++ "\t ghc-mod list\n"
         ++ "\t ghc-mod browse <module>\n"
@@ -57,8 +57,7 @@ main = flip catch handler $ do
     putStr $ transform $ nub $ sort $ ll
   where
     handler :: ErrorCall -> IO ()
---    handler _ = print usage
-    handler e = print e
+    handler _ = putStrLn usage
 
 ----------------------------------------------------------------
 
