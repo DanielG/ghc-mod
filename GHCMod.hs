@@ -16,7 +16,7 @@ import Text.ParserCombinators.Parsec
 ----------------------------------------------------------------
 
 usage :: String
-usage =    "ghc-mod putStrLn version 0.1\n"
+usage =    "ghc-mod putStrLn version 0.1.0\n"
         ++ "Usage:\n"
         ++ "\t ghc-mod list\n"
         ++ "\t ghc-mod browse <module>\n"
