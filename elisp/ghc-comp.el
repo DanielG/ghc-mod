@@ -27,6 +27,16 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
+;;; Local Variables
+;;;
+
+(defvar ghc-window-configuration nil)
+
+(mapc 'make-variable-buffer-local
+      '(ghc-window-configuration))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;
 ;;; Initializer
 ;;;
 
@@ -105,14 +115,24 @@
      ((not (string= pattern completion)) ;; ???
       (delete-region beg end)
       (insert completion)
-      (delete-other-windows))
+      (ghc-reset-window-configuration))
      (t ;; multiple completions
       (let* ((list0 (all-completions pattern symbols))
 	     (list (sort list0 'string<)))
-	(if (> (length list) 1)
-	    (with-output-to-temp-buffer ghc-completion-buffer-name
-	      (display-completion-list list pattern))
-	  (delete-other-windows)))))))
+	(if (= (length list) 1)
+	    (ghc-reset-window-configuration)
+	  (ghc-save-window-configuration)
+	  (with-output-to-temp-buffer ghc-completion-buffer-name
+	    (display-completion-list list pattern))))))))
+
+(defun ghc-save-window-configuration ()
+  (unless (get-buffer-window ghc-completion-buffer-name)
+    (setq ghc-window-configuration (current-window-configuration))))
+
+(defun ghc-reset-window-configuration ()
+  (when ghc-window-configuration
+    (set-window-configuration ghc-window-configuration)
+    (setq ghc-window-configuration nil)))
 
 (defun ghc-select-completion-symbol ()
   (cond
