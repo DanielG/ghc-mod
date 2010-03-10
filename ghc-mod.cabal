@@ -1,14 +1,18 @@
 Name:                   ghc-mod
-Version:                0.1
+Version:                0.1.0
 Author:                 Kazu Yamamoto <kazu@iij.ad.jp>
 Maintainer:             Kazu Yamamoto <kazu@iij.ad.jp>
 License:                BSD3
 License-File:           LICENSE
-Synopsis:               Extracting names from modules
-Description:            "ghc-mod" lists up all installed modules
+Synopsis:               Happy Haskell completion on Emacs
+Description:            This packages includes Elisp files
+			and a Haskell command, "ghc-mod".
+			"ghc.el" enables completion of
+			Haskell symbols on Emacs.
+			"ghc-mod" is a backend of "ghc.el".
+			It lists up all installed modules
                         or extracts names of functions, classes,
-                        and data declarations. "ghc-mod" is a
-                        backend for Haskell completion on Emacs.
+                        and data declarations.
 Category:               Development
 Cabal-Version:          >= 1.6
 Build-Type:             Simple
