@@ -57,7 +57,7 @@ main = flip catch handler $ do
     putStr $ transform $ nub $ sort $ ll
   where
     handler :: ErrorCall -> IO ()
-    handler _ = putStrLn usage
+    handler _ = putStr usage
 
 ----------------------------------------------------------------
 
