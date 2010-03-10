@@ -42,8 +42,8 @@
   (interactive)
   (save-excursion
     (beginning-of-line)
-    (if (looking-at "^import +\\(qualified +\\)?\\([^ (\n]+\\)")
-	(match-string-no-properties 2))))
+    (if (looking-at "^\\(import\\|module\\) +\\(qualified +\\)?\\([^ (\n]+\\)")
+	(match-string-no-properties 3))))
 
 (defun ghc-read-module-name (def)
   (read-from-minibuffer "Module name: " def ghc-input-map))

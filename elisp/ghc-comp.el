@@ -162,6 +162,13 @@
 ;;; Loading keywords
 ;;;
 
+(add-hook 'find-file-hook 'ghc-load-module-buffer)
+
+(defun ghc-load-module-buffer ()
+  (interactive)
+  (when (eq major-mode 'haskell-mode)
+    (mapc 'ghc-load-module (ghc-gather-import-modules-buffer))))
+
 (defun ghc-load-module (mod)
   (when (and (member mod ghc-module-names)
 	     (not (member mod ghc-loaded-module)))
@@ -175,11 +182,6 @@
 	 (keywords (cons ghc-reserved-keyword modkeys))
 	 (uniq-sorted (sort (ghc-uniq-lol keywords) 'string<)))
     (setq ghc-merged-keyword uniq-sorted)))
-
-(defun ghc-import-module ()
-  (interactive)
-  (ghc-load-module (ghc-read-module-name (ghc-extract-module)))
-  (ghc-merge-keywords))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
