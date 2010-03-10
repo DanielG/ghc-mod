@@ -10,9 +10,10 @@
 
 (defun ghc-replace-character (string from to)
   "Replace characters equal to FROM to TO in STRING."
-  (dotimes (cnt (length string) string)
-    (if (char-equal (aref string cnt) from)
-        (aset string cnt to))))
+  (let ((ret (copy-sequence string)))
+    (dotimes (cnt (length ret) ret)
+      (if (char-equal (aref ret cnt) from)
+	  (aset ret cnt to)))))
 
 (defun ghc-which (cmd)
   (catch 'loop

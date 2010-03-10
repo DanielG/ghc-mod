@@ -11,12 +11,12 @@
 
 ;;; Code:
 
-(defun ghc-browse-document ()
-  (interactive)
+(defun ghc-browse-document (&optional haskell-org)
+  (interactive "P")
   (let* ((mod0 (ghc-extract-module))
 	 (mod (ghc-read-module-name mod0))
 	 (pkg (ghc-resolve-package-name mod)))
-    (ghc-display-document pkg mod)))
+    (ghc-display-document pkg mod haskell-org)))
 
 (defun ghc-resolve-package-name (mod)
   (with-temp-buffer
@@ -32,11 +32,17 @@
     (when (looking-at "^haddock-html: \\([^ \n]+\\)$")
       (match-string-no-properties 1))))
 
-(defun ghc-display-document (pkg mod)
+(defvar ghc-doc-local-format "file://%s/%s.html")
+(defvar ghc-doc-hackage-format
+  "http://hackage.haskell.org/packages/archive/%s/latest/doc/html/%s.html")
+
+(defun ghc-display-document (pkg mod haskell-org)
   (when (and pkg mod)
     (let* ((mod- (ghc-replace-character mod ?. ?-))
-	   (path (ghc-resolve-document-path pkg))
-	   (url (format "file://%s/%s.html" path mod-)))
+	   (url (if haskell-org
+		    (format ghc-doc-hackage-format pkg mod-)
+		  (format ghc-doc-local-format
+			  (ghc-resolve-document-path pkg) mod-))))
       (browse-url url))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -49,6 +55,5 @@
 	    (copy-keymap minibuffer-local-map)
 	  (make-sparse-keymap)))
   (define-key ghc-input-map "\t" 'ghc-complete))
-
 
 (provide 'ghc-doc)
