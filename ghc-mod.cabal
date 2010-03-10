@@ -22,7 +22,7 @@ Data-Files:             Makefile ghc.el ghc-func.el ghc-doc.el ghc-comp.el
 Executable ghc-mod
   Main-Is:              GHCMod.hs
   GHC-Options:          -Wall
-  Build-Depends:        base >= 4.0,
+  Build-Depends:        base >= 4.0 && < 10,
                         parsec, process, haskell-src-exts
 Source-Repository head
   Type:                 git
