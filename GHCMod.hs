@@ -13,12 +13,6 @@ import System.IO
 import System.Process
 import Text.ParserCombinators.Parsec
 
-import Debug.Trace
-infixr 0 .$.
-(.$.) :: Show a => (a -> b) -> a -> b
-f .$. x = trace (show x) f x
-
-
 ----------------------------------------------------------------
 
 usage :: String

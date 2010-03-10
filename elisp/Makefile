@@ -15,4 +15,3 @@ $(TEMPFILE):
 
 clean:
 	rm -f *.elc $(TEMPFILE)
-

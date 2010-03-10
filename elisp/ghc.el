@@ -43,6 +43,3 @@
     (define-key haskell-mode-map ghc-import-key     'ghc-import-module)
     (ghc-comp-init)
     (setq ghc-initialized t)))
-
-
-
