@@ -5,7 +5,7 @@ Maintainer:             Kazu Yamamoto <kazu@iij.ad.jp>
 License:                BSD3
 License-File:           LICENSE
 Homepage:               http://www.mew.org/~kazu/proj/ghc-mod/
-Synopsis:               Happy Haskell completion on Emacs
+Synopsis:               Happy Haskell programming on Emacs
 Description:            This packages includes Elisp files
 			and a Haskell command, "ghc-mod".
 			"ghc*.el" enable completion of
