@@ -28,7 +28,9 @@
 (defun ghc-resolve-document-path (pkg)
   (with-temp-buffer
     (call-process "ghc-pkg" nil t nil "field" pkg "haddock-html")
-    (goto-char (point-min))
+    (goto-char (point-max))
+    (forward-line -1)
+    (beginning-of-line)
     (when (looking-at "^haddock-html: \\([^ \n]+\\)$")
       (match-string-no-properties 1))))
 
