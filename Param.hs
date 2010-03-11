@@ -4,5 +4,6 @@ data Options   = Options { convert :: [String] -> String
                          , ghc     :: FilePath
                          , ghci    :: FilePath
                          , ghcPkg  :: FilePath
+                         , outDir  :: FilePath
                          }
 

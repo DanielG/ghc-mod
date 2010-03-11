@@ -27,6 +27,7 @@ defaultOptions = Options { convert = toPlain
                          , ghc     = "ghc"
                          , ghci    = "ghci"
                          , ghcPkg  = "ghc-pkg"
+                         , outDir  = "dist/flymake"
                          }
 
 argspec :: [OptDescr (Options -> Options)]
@@ -42,6 +43,9 @@ argspec = [ Option ['l'] ["tolisp"]
           , Option ['p'] ["ghc-pkg"]
             (ReqArg (\str opts -> opts { ghcPkg = str }) "ghc-pkg")
             "ghc-pkg path"
+          , Option ['o'] ["output-dir"]
+            (ReqArg (\str opts -> opts { outDir = str }) "dist/flymake")
+            "output directory"
           ]
 
 parseArgs :: [OptDescr (Options -> Options)] -> [String] -> (Options, [String])
