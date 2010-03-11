@@ -3,17 +3,18 @@ module List (listModules) where
 import Control.Applicative
 import Data.Char
 import Data.List
+import Param
 import System.IO
 import System.Process
 
 ----------------------------------------------------------------
 
-listModules :: IO [String]
-listModules = exposedModules <$> getDump
+listModules :: Options -> IO String
+listModules opt = convert opt . nub . sort . exposedModules <$> getDump opt
 
-getDump :: IO String
-getDump = do
-  (_,hout,_,_) <- runInteractiveProcess "ghc-pkg" ["dump"] Nothing Nothing
+getDump :: Options -> IO String
+getDump opt = do
+  (_,hout,_,_) <- runInteractiveProcess (ghcPkg opt) ["dump"] Nothing Nothing
   hGetContents hout
 
 exposedModules :: String -> [String]

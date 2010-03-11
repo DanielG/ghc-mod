@@ -3,21 +3,23 @@ module Check (checkSyntax) where
 import Control.Applicative
 import Data.Char
 import Data.List
+import Param
 import System.IO
 import System.Process
 
 ----------------------------------------------------------------
 
-checkSyntax :: String -> IO String
-checkSyntax file = do
-    (_,_,herr,_) <- runInteractiveProcess "ghc" ["--make","-Wall",file] Nothing Nothing
+checkSyntax :: Options -> String -> IO String
+checkSyntax opt file = do
+    (_,_,herr,_) <- runInteractiveProcess (ghc opt) ["--make","-Wall",file] Nothing Nothing
     refine <$> hGetContents herr
   where
    refine = unfoldLines start . map (dropWhile isSpace) . filter (/="") . lines
    start = (file `isPrefixOf`)
 
 unfoldLines :: (String -> Bool) -> [String] -> String
-unfoldLines p = drop 1 . unfold
+unfoldLines _ [] = ""
+unfoldLines p (x:xs) = x ++ unfold xs
   where
     unfold [] = "\n"
     unfold (l:ls)

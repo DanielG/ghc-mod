@@ -1,5 +1,6 @@
 module Browse (browseModule) where
 
+import Control.Applicative hiding ((<|>), many)
 import Data.Char
 import Data.List
 import Language.Haskell.Exts.Extension
@@ -7,19 +8,18 @@ import Language.Haskell.Exts.Parser hiding (parse)
 import Language.Haskell.Exts.Syntax
 import System.IO
 import System.Process
-import Text.ParserCombinators.Parsec
+import Text.Parsec
+import Text.Parsec.String
+import Param
 
 ----------------------------------------------------------------
 
-browseModule :: String -> IO [String]
-browseModule mname = do
-    xs <- getSyntax mname
-    let ys = preprocess xs
-    return $ parseSyntax ys
+browseModule :: Options -> String -> IO String
+browseModule opt mname = convert opt . nub . sort . parseSyntax . preprocess <$> getSyntax opt mname
 
-getSyntax :: String -> IO String
-getSyntax mname  = do
-    (inp,out,_,_) <- runInteractiveProcess "ghci" [] Nothing Nothing
+getSyntax :: Options -> String -> IO String
+getSyntax opt mname  = do
+    (inp,out,_,_) <- runInteractiveProcess (ghci opt) [] Nothing Nothing
     mapM_ setFD [inp,out]
     hPutStrLn inp ":set prompt \"\""
     hPutStrLn inp "1"
@@ -42,7 +42,6 @@ parseSyntax xs = do
         res = parseModuleWithMode mode xs
     case res of
       ParseOk x       -> identifiers x
---      e               -> error $ show e
       _               -> []
 
 
@@ -54,51 +53,45 @@ preprocess cs = case parse remove "remove" cs of
                   Left  e -> error $ show e
 
 modName :: Parser String
-modName = do c <- oneOf ['A'..'Z']
-             cs <- many1 $ oneOf $ ['A'..'Z'] ++ ['a'..'z'] ++ ['0'..'9'] ++ "_'#"
-             return $ c:cs
+modName = (:) <$> (oneOf ['A'..'Z'])
+              <*> (many . oneOf $ ['A'..'Z'] ++ ['a'..'z'] ++ ['0'..'9'] ++ "_'#")
 
 anyName :: Parser String
-anyName = many1 $ oneOf $ ['A'..'Z'] ++ ['a'..'z'] ++ ['0'..'9'] ++ "_'#"
+anyName = many1 . oneOf $ ['A'..'Z'] ++ ['a'..'z'] ++ ['0'..'9'] ++ "_'#"
 
 manyBefore :: Show tok => GenParser tok st a -> GenParser tok st [tok] -> GenParser tok st [a]
 manyBefore p anchor = manyTill p (eof <|> try anc)
     where
-      anc = do pos <- getPosition
-               s <- anchor
-               ss <- getInput
-               setInput $ s ++ ss
-               setPosition pos
-               return ()
+      anc = do
+          pos <- getPosition
+          s <- anchor
+          ss <- getInput
+          setInput $ s ++ ss
+          setPosition pos
+          return ()
 
 keyword :: Parser String
-keyword = do ms <- modName
-             char '.'
-             return $ ms ++ ['.']
+keyword = (++) <$> modName <*> string "."
 
 ghcName :: Parser String
-ghcName = do keyword
-             try sep <|> end
+ghcName = do 
+    keyword
+    try sep <|> end
   where
-   sep = do
-       ws <- sepBy1 anyName (char '.')
-       return $ last ws
-   end = do
-       endBy1 anyName (char '.')
-       return ""
+   sep = last <$> sepBy1 anyName (char '.')
+   end = "" <$ endBy1 anyName (char '.')
 
 nonGhcName :: Parser String
-nonGhcName = do c <- anyChar  -- making this func non-empty
-                cs <- manyBefore anyChar keyword
-                return $ c:cs
+nonGhcName = (:) <$> anyChar <*> manyBefore anyChar keyword
 
 remove :: Parser String
-remove = do l1 <- try ghcName <|> return ""
-            l2 <- nonGhcName
-            ll <- many (do x <- ghcName
-                           y <- nonGhcName
-                           return $ x ++ y)
-            return $ concat $ l1 : l2 : ll
+remove = do
+    l1 <- try ghcName <|> return ""
+    l2 <- nonGhcName
+    ll <- many (do x <- ghcName
+                   y <- nonGhcName
+                   return $ x ++ y)
+    return $ concat $ l1 : l2 : ll
 
 ----------------------------------------------------------------
 

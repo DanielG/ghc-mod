@@ -15,8 +15,6 @@
 ;;; Customize Variables
 ;;;
 
-(defvar ghc-module-command "ghc-mod")
-
 (defvar ghc-idle-timer-interval 30)
 
 ;; must be sorted
@@ -66,7 +64,8 @@
      (lambda ()
        (let ((msg (mapconcat 'identity (cons ghc-module-command args) " ")))
 	 (message "Executing \"%s\"..." msg)
-	 (apply 'call-process ghc-module-command nil t nil (cons "-l" args))
+	 (apply 'call-process ghc-module-command nil t nil
+		(append '("-l") (ghc-module-command-args) args))
 	 (message "Executing \"%s\"...done" msg))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

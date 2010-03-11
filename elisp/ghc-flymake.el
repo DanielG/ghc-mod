@@ -18,6 +18,7 @@
          (local-file (file-relative-name
                       temp-file
                       (file-name-directory buffer-file-name))))
-    (list "ghc-mod" (list "check" local-file))))
+    (list "ghc-mod" (append (ghc-module-command-args)
+			    (list "check" local-file)))))
 
 (provide 'ghc-flymake)

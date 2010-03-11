@@ -24,7 +24,7 @@ Executable ghc-mod
   Other-Modules:        List Browse
   GHC-Options:          -Wall
   Build-Depends:        base >= 4.0 && < 10,
-                        parsec, process, haskell-src-exts,
+                        parsec >= 3, process, haskell-src-exts,
                         unix, directory, filepath
 Source-Repository head
   Type:                 git

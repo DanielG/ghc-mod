@@ -2,17 +2,13 @@ module Main where
 
 import Browse
 import Check
-import Control.Applicative
 import Control.Exception hiding (try)
-import Data.List
 import List
+import Param
 import Prelude hiding (catch)
 import System.Console.GetOpt
-import System.Directory
 import System.Environment (getArgs)
-import System.FilePath
 import System.IO
-import System.Posix.Env
 
 ----------------------------------------------------------------
 
@@ -26,17 +22,26 @@ usage =    "ghc-mod version 0.2.0\n"
 
 ----------------------------------------------------------------
 
-data Options   = Options { optToLisp :: Bool
-                         } deriving Show
-
 defaultOptions :: Options
-defaultOptions = Options { optToLisp = False
+defaultOptions = Options { convert = toPlain
+                         , ghc     = "ghc"
+                         , ghci    = "ghci"
+                         , ghcPkg  = "ghc-pkg"
                          }
 
 argspec :: [OptDescr (Options -> Options)]
 argspec = [ Option ['l'] ["tolisp"]
-            (NoArg (\opts -> opts { optToLisp = True }))
+            (NoArg (\opts -> opts { convert = toLisp }))
             "print as a list of Lisp"
+          , Option ['g'] ["ghc"]
+            (ReqArg (\str opts -> opts { ghc = str }) "ghc")
+            "GHC path"
+          , Option ['i'] ["ghci"]
+            (ReqArg (\str opts -> opts { ghci = str }) "ghci")
+            "ghci path"
+          , Option ['p'] ["ghc-pkg"]
+            (ReqArg (\str opts -> opts { ghcPkg = str }) "ghc-pkg")
+            "ghc-pkg path"
           ]
 
 parseArgs :: [OptDescr (Options -> Options)] -> [String] -> (Options, [String])
@@ -50,30 +55,16 @@ parseArgs spec argv
 main :: IO ()
 main = flip catch handler $ do
     args <- getArgs
-    setPath
     let (opt,cmdArg) = parseArgs argspec args
-        transform = if optToLisp opt then toLisp else toPlain
-        refine = transform . nub . sort
-    case cmdArg !! 0 of
-      cmd | cmd == "browse" -> refine <$> browseModule (cmdArg !! 1) >>= putStr
-          | cmd == "list"   -> refine <$> listModules >>= putStr
-          | cmd == "check"  -> checkSyntax (cmdArg !! 1) >>= putStr
-      _                     -> error usage
-    hFlush stdout
+    res <- case cmdArg !! 0 of
+      "browse" -> browseModule opt (cmdArg !! 1)
+      "list"   -> listModules opt
+      "check"  -> checkSyntax opt (cmdArg !! 1)
+      _        -> error usage
+    putStr res
   where
     handler :: ErrorCall -> IO ()
     handler _ = putStr usage
-
-setPath :: IO ()
-setPath = do
-  home <- getHomeDirectory
-  mpath <- getEnv "PATH"
-  let path = maybe "/usr/bin:/bin" id mpath
-      newpath = "/usr/local/bin:/opt/local/bin:"
-             ++ (home </> ".cabal/bin") ++ ":"
-             ++ (home </> "bin") ++ ":"
-             ++ path
-  setEnv "PATH" newpath True
 
 ----------------------------------------------------------------
 toLisp :: [String] -> String
