@@ -21,9 +21,11 @@ Data-Dir:               elisp
 Data-Files:             Makefile ghc.el ghc-func.el ghc-doc.el ghc-comp.el
 Executable ghc-mod
   Main-Is:              GHCMod.hs
+  Other-Modules:        List Browse
   GHC-Options:          -Wall
   Build-Depends:        base >= 4.0 && < 10,
-                        parsec, process, haskell-src-exts
+                        parsec, process, haskell-src-exts,
+                        unix, directory, filepath
 Source-Repository head
   Type:                 git
   Location:             git://github.com/kazu-yamamoto/ghc-mod.git
