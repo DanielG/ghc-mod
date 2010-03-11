@@ -22,4 +22,4 @@ unfoldLines p = drop 1 . unfold
     unfold [] = "\n"
     unfold (l:ls)
       | p l       = ('\n':l) ++ unfold ls
-      | otherwise = l ++ " " ++ unfold ls
+      | otherwise = (' ' :l) ++ unfold ls
