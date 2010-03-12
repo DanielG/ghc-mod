@@ -27,7 +27,7 @@ Executable ghc-mod
   GHC-Options:          -Wall
   Build-Depends:        base >= 4.0 && < 10,
                         parsec >= 3, process, haskell-src-exts,
-                        unix, directory, filepath
+                        directory, filepath
 Source-Repository head
   Type:                 git
   Location:             git://github.com/kazu-yamamoto/ghc-mod.git
