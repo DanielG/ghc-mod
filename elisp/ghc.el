@@ -33,9 +33,8 @@
 (defvar ghc-completion-key "\e\t")
 (defvar ghc-document-key   "\e\C-d")
 (defvar ghc-import-key     "\e\C-m")
-(defvar ghc-check-key      "\e\C-c")
-(defvar ghc-previous-key   "\e\C-p")
-(defvar ghc-next-key       "\e\C-n")
+(defvar ghc-previous-key   "\ep")
+(defvar ghc-next-key       "\en")
 (defvar ghc-help-key       "\e?")
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -50,7 +49,6 @@
     (define-key haskell-mode-map ghc-completion-key 'ghc-complete)
     (define-key haskell-mode-map ghc-document-key   'ghc-browse-document)
     (define-key haskell-mode-map ghc-import-key     'ghc-load-module-buffer)
-    (define-key haskell-mode-map ghc-check-key      'flymake-start-syntax-check)
     (define-key haskell-mode-map ghc-previous-key   'flymake-goto-prev-error)
     (define-key haskell-mode-map ghc-next-key       'flymake-goto-next-error)
     (define-key haskell-mode-map ghc-help-key       'flymake-display-err-menu-for-current-line)
