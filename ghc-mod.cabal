@@ -19,9 +19,10 @@ Cabal-Version:          >= 1.6
 Build-Type:             Simple
 Data-Dir:               elisp
 Data-Files:             Makefile ghc.el ghc-func.el ghc-doc.el ghc-comp.el
+                        ghc-flymake.el
 Executable ghc-mod
   Main-Is:              GHCMod.hs
-  Other-Modules:        List Browse
+  Other-Modules:        List Browse Check Param
   GHC-Options:          -Wall
   Build-Depends:        base >= 4.0 && < 10,
                         parsec >= 3, process, haskell-src-exts,
