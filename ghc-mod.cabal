@@ -10,6 +10,7 @@ Description:            This packages includes Elisp files
 			and a Haskell command, "ghc-mod".
 			"ghc*.el" enable completion of
 			Haskell symbols on Emacs.
+                        Flymake is also integrated.
 			"ghc-mod" is a backend of "ghc*.el".
 			It lists up all installed modules
                         or extracts names of functions, classes,
