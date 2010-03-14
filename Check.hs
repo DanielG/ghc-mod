@@ -18,17 +18,23 @@ checkSyntax opt file = do
     (_,_,herr,_) <- runInteractiveProcess (ghc opt) ["--make","-Wall",file,"-outputdir","dist/flymake","-o","dist/flymake/a.out"] Nothing Nothing
     refine <$> hGetContents herr
   where
-   refine = unfoldLines start . map (dropWhile isSpace) . filter (/="") . lines
-   start = (file `isPrefixOf`)
+    refine = unfoldLines . map shrinkSpaces . remove . lines
+    remove = filter (\x -> not ("Linking" `isPrefixOf` x))
+           . filter (\x -> not ("[" `isPrefixOf` x))
+           . filter (/="")
+    shrinkSpaces x
+      | isSpace (head x) = ' ' : dropWhile isSpace x
+      | otherwise        = x
 
-unfoldLines :: (String -> Bool) -> [String] -> String
-unfoldLines _ [] = ""
-unfoldLines p (x:xs) = x ++ unfold xs
+unfoldLines :: [String] -> String
+unfoldLines [] = ""
+unfoldLines (x:xs) = x ++ unfold xs
   where
     unfold [] = "\n"
     unfold (l:ls)
-      | p l       = ('\n':l) ++ unfold ls
-      | otherwise = (' ' :l) ++ unfold ls
+      | isAlpha (head l)           = ('\n':l) ++ unfold ls
+      | " Inferred" `isPrefixOf` l = "." ++ l ++ unfold ls
+      | otherwise                  = l ++ unfold ls
 
 ----------------------------------------------------------------
 

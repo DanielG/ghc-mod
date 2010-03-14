@@ -30,12 +30,13 @@
 ;;; Customize Variables
 ;;;
 
-(defvar ghc-completion-key "\e\t")
-(defvar ghc-document-key   "\e\C-d")
-(defvar ghc-import-key     "\e\C-m")
-(defvar ghc-previous-key   "\ep")
-(defvar ghc-next-key       "\en")
-(defvar ghc-help-key       "\e?")
+(defvar ghc-completion-key  "\e\t")
+(defvar ghc-document-key    "\e\C-d")
+(defvar ghc-import-key      "\e\C-m")
+(defvar ghc-previous-key    "\ep")
+(defvar ghc-next-key        "\en")
+(defvar ghc-help-key        "\e?")
+(defvar ghc-insert-type-key "\et")
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -46,12 +47,13 @@
 
 (defun ghc-init ()
   (unless ghc-initialized
-    (define-key haskell-mode-map ghc-completion-key 'ghc-complete)
-    (define-key haskell-mode-map ghc-document-key   'ghc-browse-document)
-    (define-key haskell-mode-map ghc-import-key     'ghc-load-module-buffer)
-    (define-key haskell-mode-map ghc-previous-key   'flymake-goto-prev-error)
-    (define-key haskell-mode-map ghc-next-key       'flymake-goto-next-error)
-    (define-key haskell-mode-map ghc-help-key       'flymake-display-err-menu-for-current-line)
+    (define-key haskell-mode-map ghc-completion-key  'ghc-complete)
+    (define-key haskell-mode-map ghc-document-key    'ghc-browse-document)
+    (define-key haskell-mode-map ghc-import-key      'ghc-load-module-buffer)
+    (define-key haskell-mode-map ghc-previous-key    'flymake-goto-prev-error)
+    (define-key haskell-mode-map ghc-next-key        'flymake-goto-next-error)
+    (define-key haskell-mode-map ghc-help-key        'flymake-display-err-menu-for-current-line)
+    (define-key haskell-mode-map ghc-insert-type-key 'ghc-flymake-insert-type)
     (ghc-comp-init)
     (setq ghc-initialized t)))
 

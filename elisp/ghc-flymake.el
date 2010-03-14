@@ -29,4 +29,20 @@
     (list ghc-module-command (append (ghc-module-command-args)
 				     (list "check" file)))))
 
+(defun ghc-flymake-insert-type ()
+  (interactive)
+  (let ((data (ghc-flymake-data)))
+    (if (and data
+	     (string-match "Inferred type: \\([^:]+ :: \\)\\(forall [^.]+\\. \\)?\\(.*\\)" data))
+      (progn
+	(beginning-of-line)
+	(insert (match-string 1 data) (match-string 3 data) "\n"))
+      (message "No inferred type"))))
+
+(defun ghc-flymake-data ()
+  (let* ((line-no (flymake-current-line-no))
+         (line-err-info-list (nth 0 (flymake-find-err-info flymake-err-info line-no)))
+         (menu-data (flymake-make-err-menu-data line-no line-err-info-list)))
+    (nth 0 (nth 0 (nth 1 menu-data)))))
+
 (provide 'ghc-flymake)
