@@ -46,7 +46,7 @@
 (defvar ghc-loaded-module nil)
 
 (defun ghc-comp-init ()
-  (setq ghc-module-names (ghc-load-keyword "list"))
+  (setq ghc-module-names (cons "hiding" (cons "qualified" (ghc-load-keyword "list"))))
   (setq ghc-keyword-Prelude (ghc-load-keyword "browse" "Prelude"))
   (setq ghc-loaded-module '("Prelude"))
   (ghc-merge-keywords)
