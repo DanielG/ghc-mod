@@ -15,7 +15,7 @@ import System.Process
 checkSyntax :: Options -> String -> IO String
 checkSyntax opt file = do
     makeDirectory (outDir opt)
-    (_,_,herr,_) <- runInteractiveProcess (ghc opt) ["--make","-Wall",file,"-outputdir","dist/flymake","-o","dist/flymake/a.out"] Nothing Nothing
+    (_,_,herr,_) <- runInteractiveProcess (ghc opt) ["--make","-Wall",file,"-outputdir","dist/flymake","-o","dist/flymake/a.out","-i..","-i../..","-i../../..","-i../../../..","-i../../../../.."] Nothing Nothing
     refine <$> hGetContents herr
   where
     refine = unfoldLines . map shrinkSpaces . remove . lines
