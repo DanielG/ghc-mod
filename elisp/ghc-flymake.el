@@ -14,7 +14,7 @@
   '("\\.l?hs$" ghc-flymake-init flymake-simple-cleanup flymake-get-real-file-name))
 
 (defvar ghc-flymake-err-line-patterns
-  '("^\\(.*\\.l?hs\\):\\([0-9]+\\):\\([0-9]+\\):\\(.+\\)" 1 2 3 4))
+  '("^\\(.*\\.l?hs\\):\\([0-9]+\\):\\([0-9]+\\): \\(.+\\)" 1 2 3 4))
 
 (add-to-list 'flymake-allowed-file-name-masks
 	     ghc-flymake-allowed-file-name-masks)
