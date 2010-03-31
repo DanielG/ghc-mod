@@ -8,7 +8,6 @@ import Param
 import Prelude hiding (catch)
 import System.Console.GetOpt
 import System.Environment (getArgs)
-import System.IO
 
 ----------------------------------------------------------------
 
