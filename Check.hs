@@ -19,13 +19,10 @@ checkSyntax opt file = do
     hSetBinaryMode herr False
     refine <$> hGetContents herr
   where
-    refine = unfoldLines . map shrinkSpaces . remove . lines
+    refine = unfoldLines . remove . lines
     remove = filter (\x -> not ("Linking" `isPrefixOf` x))
            . filter (\x -> not ("[" `isPrefixOf` x))
            . filter (/="")
-    shrinkSpaces x
-      | isSpace (head x) = ' ' : dropWhile isSpace x
-      | otherwise        = x
 
 unfoldLines :: [String] -> String
 unfoldLines [] = ""
@@ -34,8 +31,7 @@ unfoldLines (x:xs) = x ++ unfold xs
     unfold [] = "\n"
     unfold (l:ls)
       | isAlpha (head l)           = ('\n':l) ++ unfold ls
-      | " Inferred" `isPrefixOf` l = "." ++ l ++ unfold ls
-      | otherwise                  = l ++ unfold ls
+      | otherwise                  = (drop 4 l) ++ "\0" ++ unfold ls
 
 ----------------------------------------------------------------
 

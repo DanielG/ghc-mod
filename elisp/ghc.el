@@ -52,7 +52,7 @@
     (define-key haskell-mode-map ghc-import-key      'ghc-load-module-buffer)
     (define-key haskell-mode-map ghc-previous-key    'flymake-goto-prev-error)
     (define-key haskell-mode-map ghc-next-key        'flymake-goto-next-error)
-    (define-key haskell-mode-map ghc-help-key        'flymake-display-err-menu-for-current-line)
+    (define-key haskell-mode-map ghc-help-key        'ghc-display-errors)
     (define-key haskell-mode-map ghc-insert-type-key 'ghc-flymake-insert-type)
     (ghc-comp-init)
     (setq ghc-initialized t)))
