@@ -5,6 +5,7 @@ import Check
 import Control.Exception hiding (try)
 import List
 import Param
+import Lang
 import Prelude hiding (catch)
 import System.Console.GetOpt
 import System.Environment (getArgs)
@@ -63,6 +64,7 @@ main = flip catch handler $ do
       "browse" -> browseModule opt (cmdArg !! 1)
       "list"   -> listModules opt
       "check"  -> checkSyntax opt (cmdArg !! 1)
+      "lang"   -> listLanguages opt
       _        -> error usage
     putStr res
   where
