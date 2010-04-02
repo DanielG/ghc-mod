@@ -1,7 +1,6 @@
 module List (listModules) where
 
 import Control.Applicative
-import Data.Char
 import Data.List
 import Param
 import System.IO

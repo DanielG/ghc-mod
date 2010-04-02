@@ -23,8 +23,8 @@ Data-Files:             Makefile ghc.el ghc-func.el ghc-doc.el ghc-comp.el
                         ghc-flymake.el
 Executable ghc-mod
   Main-Is:              GHCMod.hs
-  Other-Modules:        List Browse Check Param
-  GHC-Options:          -Wall
+  Other-Modules:        List Browse Check Param Lang
+  GHC-Options:          -Wall -fno-warn-unused-do-bind
   Build-Depends:        base >= 4.0 && < 10,
                         parsec >= 3, process, haskell-src-exts,
                         directory, filepath
