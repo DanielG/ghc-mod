@@ -49,7 +49,8 @@
 	(errs (nth 1 data)))
     (insert title "\n")
     (dolist (err errs)
-      (insert (ghc-replace-character (car err) 0 10) "\n"))))
+      (insert (ghc-replace-character (car err) 0 10) "\n"))
+    (goto-char (point-min))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
