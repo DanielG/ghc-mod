@@ -40,6 +40,7 @@
 
 (defvar ghc-module-names nil)   ;; completion for "import"
 (defvar ghc-merged-keyword nil) ;; completion for type/func/...
+(defvar ghc-language-extensions nil)
 
 (defvar ghc-keyword-prefix "ghc-keyword-")
 (defvar ghc-keyword-Prelude nil)
@@ -47,6 +48,7 @@
 
 (defun ghc-comp-init ()
   (setq ghc-module-names (cons "hiding" (cons "qualified" (ghc-load-keyword "list"))))
+  (setq ghc-language-extensions (cons "LANGUAGE" (ghc-load-keyword "lang")))
   (setq ghc-keyword-Prelude (ghc-load-keyword "browse" "Prelude"))
   (setq ghc-loaded-module '("Prelude"))
   (ghc-merge-keywords)
@@ -139,6 +141,10 @@
 	  (beginning-of-line)
 	  (looking-at "import ")))
     ghc-module-names)
+   ((save-excursion
+      (beginning-of-line)
+      (looking-at "{-#"))
+    ghc-language-extensions)
    ((or (bolp)
 	(let ((end (point)))
 	  (save-excursion
