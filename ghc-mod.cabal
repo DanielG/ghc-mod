@@ -24,8 +24,11 @@ Data-Files:             Makefile ghc.el ghc-func.el ghc-doc.el ghc-comp.el
 Executable ghc-mod
   Main-Is:              GHCMod.hs
   Other-Modules:        List Browse Check Param Lang
-  GHC-Options:          -Wall -fno-warn-unused-do-bind
-  Build-Depends:        base >= 4.0 && < 10,
+  if impl(ghc >= 6.12)
+    GHC-Options:        -Wall -O2 -fno-warn-unused-do-bind
+  else
+    GHC-Options:        -Wall -O2
+  Build-Depends:        base >= 4.0 && < 5,
                         parsec >= 3, process, haskell-src-exts,
                         directory, filepath
 Source-Repository head
