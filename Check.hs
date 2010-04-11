@@ -17,7 +17,7 @@ import System.Process
 checkSyntax :: Options -> String -> IO String
 checkSyntax opt file = do
     makeDirectory (outDir opt)
-#if __GLASGOW_HASKELL__ == 612
+#if __GLASGOW_HASKELL__ >= 611
     (_,_,herr,_) <- runInteractiveProcess (ghc opt) ["--make","-Wall","-fno-warn-unused-do-bind",file,"-outputdir","dist/flymake","-o","dist/flymake/a.out","-i..","-i../..","-i../../..","-i../../../..","-i../../../../.."] Nothing Nothing
 #else
     (_,_,herr,_) <- runInteractiveProcess (ghc opt) ["--make","-Wall",file,"-outputdir","dist/flymake","-o","dist/flymake/a.out","-i..","-i../..","-i../../..","-i../../../..","-i../../../../.."] Nothing Nothing
