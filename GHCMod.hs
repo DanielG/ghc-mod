@@ -13,9 +13,10 @@ import System.Environment (getArgs)
 ----------------------------------------------------------------
 
 usage :: String
-usage =    "ghc-mod version 0.2.0\n"
+usage =    "ghc-mod version 0.3.0\n"
         ++ "Usage:\n"
         ++ "\t ghc-mod list\n"
+        ++ "\t ghc-mod lang\n"
         ++ "\t ghc-mod browse <module>\n"
         ++ "\t ghc-mod check <HaskellFile>\n"
         ++ "\t ghc-mod help\n"
