@@ -24,6 +24,7 @@
 (require 'ghc-comp)
 (require 'ghc-doc)
 (require 'ghc-flymake)
+(require 'ghc-command)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -36,7 +37,8 @@
 (defvar ghc-previous-key    "\ep")
 (defvar ghc-next-key        "\en")
 (defvar ghc-help-key        "\e?")
-(defvar ghc-insert-type-key "\et")
+(defvar ghc-insert-key      "\et")
+(defvar ghc-sort-key        "\es")
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -53,7 +55,8 @@
     (define-key haskell-mode-map ghc-previous-key    'flymake-goto-prev-error)
     (define-key haskell-mode-map ghc-next-key        'flymake-goto-next-error)
     (define-key haskell-mode-map ghc-help-key        'ghc-display-errors)
-    (define-key haskell-mode-map ghc-insert-type-key 'ghc-flymake-insert-type)
+    (define-key haskell-mode-map ghc-insert-key      'ghc-insert-template)
+    (define-key haskell-mode-map ghc-sort-key        'ghc-sort-lines)
     (ghc-comp-init)
     (setq ghc-initialized t)))
 
