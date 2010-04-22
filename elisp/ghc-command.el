@@ -31,7 +31,9 @@
   (save-excursion
     (beginning-of-line)
     (when (looking-at "^\\([^ ]+\\) *::")
-      (forward-line)
+      (save-match-data
+	(forward-line)
+	(if (eobp) (insert "\n")))
       (insert (match-string 1) " = undefined\n"))))
 
 (defun ghc-sort-lines (beg end)
