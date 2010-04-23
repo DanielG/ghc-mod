@@ -25,6 +25,7 @@
 (require 'ghc-doc)
 (require 'ghc-flymake)
 (require 'ghc-command)
+(require 'dabbrev)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
