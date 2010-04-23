@@ -49,4 +49,10 @@
 		     nil)
 		   'end-of-line)))))
 
+(defun ghc-save-buffer ()
+  (interactive)
+  (if (buffer-modified-p)
+      (save-buffer)
+    (flymake-start-syntax-check)))
+
 (provide 'ghc-command)
