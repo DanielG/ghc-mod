@@ -48,6 +48,7 @@
 (defvar ghc-initialized nil)
 
 (defun ghc-init ()
+  (ghc-abbrev-init)
   (unless ghc-initialized
     (define-key haskell-mode-map ghc-completion-key  'ghc-complete)
     (define-key haskell-mode-map ghc-document-key    'ghc-browse-document)
@@ -59,5 +60,9 @@
     (define-key haskell-mode-map ghc-sort-key        'ghc-sort-lines)
     (ghc-comp-init)
     (setq ghc-initialized t)))
+
+(defun ghc-abbrev-init ()
+  (make-local-variable 'dabbrev-case-fold-search)
+  (setq dabbrev-case-fold-search nil))
 
 (provide 'ghc)
