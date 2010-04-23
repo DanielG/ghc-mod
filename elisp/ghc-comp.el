@@ -171,7 +171,12 @@
 (defun ghc-load-module-buffer ()
   (interactive)
   (when (eq major-mode 'haskell-mode)
-    (mapc 'ghc-load-module (ghc-gather-import-modules-buffer))))
+    (ghc-load-module-this-buffer)))
+
+(defun ghc-load-module-this-buffer ()
+  (dolist (mod (ghc-gather-import-modules))
+    (ghc-load-module mod))
+  (ghc-merge-keywords))
 
 (defun ghc-load-module (mod)
   (when (and (member mod ghc-module-names)
@@ -192,10 +197,7 @@
 ;;; Background Idle Timer
 ;;;
 
-(defun ghc-idle-timer ()
-  (dolist (mod (ghc-gather-import-modules))
-    (ghc-load-module mod))
-  (ghc-merge-keywords))
+(defalias 'ghc-idle-timer 'ghc-load-module-this-buffer)
 
 (defun ghc-gather-import-modules ()
   (let ((bufs (mapcar 'buffer-name (buffer-list)))
