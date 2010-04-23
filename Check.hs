@@ -37,7 +37,7 @@ unfoldLines (x:xs) = x ++ unfold xs
     unfold [] = "\n"
     unfold (l:ls)
       | isAlpha (head l)           = ('\n':l) ++ unfold ls
-      | otherwise                  = (drop 4 l) ++ "\0" ++ unfold ls
+      | otherwise                  = drop 4 l ++ "\0" ++ unfold ls
 
 ----------------------------------------------------------------
 

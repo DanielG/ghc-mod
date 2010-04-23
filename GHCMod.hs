@@ -32,19 +32,19 @@ defaultOptions = Options { convert = toPlain
                          }
 
 argspec :: [OptDescr (Options -> Options)]
-argspec = [ Option ['l'] ["tolisp"]
+argspec = [ Option "l" ["tolisp"]
             (NoArg (\opts -> opts { convert = toLisp }))
             "print as a list of Lisp"
-          , Option ['g'] ["ghc"]
+          , Option "g" ["ghc"]
             (ReqArg (\str opts -> opts { ghc = str }) "ghc")
             "GHC path"
-          , Option ['i'] ["ghci"]
+          , Option "i" ["ghci"]
             (ReqArg (\str opts -> opts { ghci = str }) "ghci")
             "ghci path"
-          , Option ['p'] ["ghc-pkg"]
+          , Option "p" ["ghc-pkg"]
             (ReqArg (\str opts -> opts { ghcPkg = str }) "ghc-pkg")
             "ghc-pkg path"
-          , Option ['o'] ["output-dir"]
+          , Option "o" ["output-dir"]
             (ReqArg (\str opts -> opts { outDir = str }) "dist/flymake")
             "output directory"
           ]
@@ -61,7 +61,7 @@ main :: IO ()
 main = flip catch handler $ do
     args <- getArgs
     let (opt,cmdArg) = parseArgs argspec args
-    res <- case cmdArg !! 0 of
+    res <- case head cmdArg of
       "browse" -> browseModule opt (cmdArg !! 1)
       "list"   -> listModules opt
       "check"  -> checkSyntax opt (cmdArg !! 1)

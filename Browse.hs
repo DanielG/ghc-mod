@@ -27,7 +27,7 @@ getSyntax opt mname  = do
     hPutStrLn inp ":set prompt \"Prelude>\""
     hPutStrLn inp ":quit"
     cs <- hGetContents out
-    return $ unlines $ dropTailer $ dropHeader $ lines $ cs
+    return . unlines . dropTailer . dropHeader . lines $ cs
   where
     isNotPrefixOf x y = not (x `isPrefixOf` y)
     dropHeader xs = tail $ dropWhile (isNotPrefixOf "Prelude>") xs
@@ -53,7 +53,7 @@ preprocess cs = case parse remove "remove" cs of
                   Left  e -> error $ show e
 
 modName :: Parser String
-modName = (:) <$> (oneOf ['A'..'Z'])
+modName = (:) <$> oneOf ['A'..'Z']
               <*> (many . oneOf $ ['A'..'Z'] ++ ['a'..'z'] ++ ['0'..'9'] ++ "_'#")
 
 anyName :: Parser String
@@ -102,8 +102,8 @@ identifiers (Module _ _ _ _ _ _ x) = filter hid $ concatMap decl x
 
 decl :: Decl -> [String]
 decl (TypeSig _ [x] _) = [name x]
-decl (DataDecl _ _ _ x _ y _) = name x : (map qualConDecl y)
-decl (ClassDecl _ _ x _ _ y) = name x : (map classDecl y)
+decl (DataDecl _ _ _ x _ y _) = name x : map qualConDecl y
+decl (ClassDecl _ _ x _ _ y)  = name x : map classDecl y
 decl (TypeDecl _ x _ _) = [name x]
 decl x = [show x]
 
