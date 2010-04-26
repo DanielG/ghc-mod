@@ -53,6 +53,11 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+(defconst ghc-null 0)
+(defconst ghc-newline 10)
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
 (defvar ghc-module-command "ghc-mod")
 (defvar ghc-ghc-command     (ghc-which "ghc"))
 (defvar ghc-ghci-command    (ghc-which "ghci"))
