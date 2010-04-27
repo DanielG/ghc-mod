@@ -61,14 +61,14 @@ anyName = many1 . oneOf $ ['A'..'Z'] ++ ['a'..'z'] ++ ['0'..'9'] ++ "_'#"
 
 manyBefore :: Show tok => GenParser tok st a -> GenParser tok st [tok] -> GenParser tok st [a]
 manyBefore p anchor = manyTill p (eof <|> try anc)
-    where
-      anc = do
-          pos <- getPosition
-          s <- anchor
-          ss <- getInput
-          setInput $ s ++ ss
-          setPosition pos
-          return ()
+  where
+    anc = do
+        pos <- getPosition
+        s <- anchor
+        ss <- getInput
+        setInput $ s ++ ss
+        setPosition pos
+        return ()
 
 keyword :: Parser String
 keyword = (++) <$> modName <*> string "."
@@ -78,8 +78,8 @@ ghcName = do
     keyword
     try sep <|> end
   where
-   sep = last <$> sepBy1 anyName (char '.')
-   end = "" <$ endBy1 anyName (char '.')
+    sep = last <$> sepBy1 anyName (char '.')
+    end = "" <$ endBy1 anyName (char '.')
 
 nonGhcName :: Parser String
 nonGhcName = (:) <$> anyChar <*> manyBefore anyChar keyword
