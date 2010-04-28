@@ -20,7 +20,7 @@ browse :: String -> IO [String]
 browse mdlName = withGHCAPI (maybeNamesToStrings <$> lookupModuleInfo)
 
   where
-    lookupModuleInfo = lookupModule (mkModuleName mdlName) Nothing >>= getModuleInfo
+    lookupModuleInfo = findModule (mkModuleName mdlName) Nothing >>= getModuleInfo
     maybeNamesToStrings = maybe [] (map getOccString . modInfoExports)
 
 withGHCAPI :: Ghc a -> IO a
