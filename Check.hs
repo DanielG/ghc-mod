@@ -1,48 +1,94 @@
-{-# LANGUAGE CPP #-}
-
 module Check (checkSyntax) where
 
+import Bag
 import Control.Applicative
 import Control.Monad
-import Data.Char
-import Data.List
+import Data.IORef
+import DynFlags
+import ErrUtils
+import FastString
+import GHC
+import GHC.Paths (libdir)
+import HscTypes
+import Outputable hiding (showSDoc)
 import Param
+import Pretty
 import System.Directory
 import System.FilePath
-import System.IO
-import System.Process
 
 ----------------------------------------------------------------
 
 checkSyntax :: Options -> String -> IO String
 checkSyntax opt file = do
     let outdir = outDir opt
-        outfile = outFile opt
         objfile = objectFile outdir file
     makeDirectory outdir
-    exist <- doesFileExist objfile
-    when exist $ removeFile objfile
-#if __GLASGOW_HASKELL__ >= 611
-    (_,_,herr,_) <- runInteractiveProcess (ghc opt) ["--make","-Wall","-fno-warn-unused-do-bind",file,"-outputdir",outdir,"-o",outfile,"-i..","-i../..","-i../../..","-i../../../..","-i../../../../.."] Nothing Nothing
-#else
-    (_,_,herr,_) <- runInteractiveProcess (ghc opt) ["--make","-Wall",file,"-outputdir",outdir,"-o",outfile,"-i..","-i../..","-i../../..","-i../../../..","-i../../../../.."] Nothing Nothing
-#endif
-    hSetBinaryMode herr False
-    refine <$> hGetContents herr
-  where
-    refine = unfoldLines . remove . lines
-    remove = filter (\x -> not ("Linking" `isPrefixOf` x))
-           . filter (\x -> not ("[" `isPrefixOf` x))
-           . filter (/="")
+    removeObjFile objfile
+    unlines <$> check file outdir
 
-unfoldLines :: [String] -> String
-unfoldLines [] = ""
-unfoldLines (x:xs) = x ++ unfold xs
+----------------------------------------------------------------
+
+cmdOptions :: [Located String]
+cmdOptions = map noLoc ["-Wall","-fno-warn-unused-do-bind"]
+
+check :: String -> String -> IO [String]
+check fileName dir = defaultErrorHandler defaultDynFlags $ runGhc (Just libdir) $ do  
+    ref <- liftIO $ newIORef []
+    initSession
+    setTargetFile fileName
+    loadWithLogger (refLogger ref) LoadAllTargets
+    liftIO $ readIORef ref
   where
-    unfold [] = "\n"
-    unfold (l:ls)
-      | isAlpha (head l)           = ('\n':l) ++ unfold ls
-      | otherwise                  = drop 4 l ++ "\0" ++ unfold ls
+    initSession = do
+        dflags <- getSessionDynFlags
+        (dflags',_,_) <- parseDynamicFlags dflags cmdOptions
+        setSessionDynFlags $ setImportPath $ setOutputDir dir dflags'
+    setTargetFile file = do
+        target <- guessTarget file Nothing
+        setTargets [target]
+
+----------------------------------------------------------------
+
+refLogger :: IORef [String] -> WarnErrLogger
+refLogger ref Nothing = do
+    warns <- map showErrMsg . bagToList <$> getWarnings
+    liftIO $ writeIORef ref warns
+    clearWarnings
+refLogger ref (Just e) = do
+    let errs = map showErrMsg . bagToList . srcErrorMessages $ e
+    liftIO $ writeIORef ref errs
+    clearWarnings
+
+----------------------------------------------------------------
+
+setOutputDir :: String -> DynFlags -> DynFlags
+setOutputDir f d = d {
+    objectDir  = Just f
+  , hiDir      = Just f
+  , stubDir    = Just f, includePaths = f : includePaths d
+  }
+
+setImportPath :: DynFlags -> DynFlags
+setImportPath d = d {
+    importPaths = importPaths d ++ ["..","../..","../../..","../../../../.."]
+  }
+
+----------------------------------------------------------------
+
+showErrMsg :: ErrMsg -> String
+showErrMsg err = file ++ ":" ++ line ++ ":" ++ col ++ ":" ++ msg
+   where
+     spn = head (errMsgSpans err)
+     file = unpackFS (srcSpanFile spn)
+     line = show (srcSpanStartLine spn)
+     col  = show (srcSpanStartCol spn)
+     msg = showSDoc (errMsgShortDoc err)
+
+style :: PprStyle
+style = mkUserStyle neverQualify AllTheWay
+
+showSDoc :: SDoc -> String
+showSDoc d = Pretty.showDocWith OneLineMode (d style)
 
 ----------------------------------------------------------------
 
@@ -59,3 +105,8 @@ makeDirectory dir = makeDirectoryRecur $ normalise dir
 
 objectFile :: FilePath -> FilePath -> FilePath
 objectFile dir hsfile = dir </> replaceExtension hsfile ".o"
+
+removeObjFile :: FilePath -> IO ()
+removeObjFile objfile = do
+    exist <- doesFileExist objfile
+    when exist $ removeFile objfile
