@@ -76,6 +76,13 @@ setImportPath d = d {
     importPaths = importPaths d ++ ["..","../..","../../..","../../../../.."]
   }
 
+{-
+setGhcPackage :: DynFlags -> DynFlags
+setGhcPackage d = d {
+    packageFlags = ExposePackage "ghc" : packageFlags d
+  }
+-}
+
 ----------------------------------------------------------------
 
 showErrMsg :: ErrMsg -> String
