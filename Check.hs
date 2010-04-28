@@ -6,6 +6,7 @@ import Control.Monad
 import Data.IORef
 import DynFlags
 import ErrUtils
+import Exception
 import FastString
 import GHC
 import GHC.Paths (libdir)
@@ -32,7 +33,7 @@ cmdOptions :: [Located String]
 cmdOptions = map noLoc ["-Wall","-fno-warn-unused-do-bind"]
 
 check :: String -> String -> IO [String]
-check fileName dir = defaultErrorHandler defaultDynFlags $ runGhc (Just libdir) $ do  
+check fileName dir = ghandle ignore $ runGhc (Just libdir) $ do
     ref <- liftIO $ newIORef []
     initSession
     setTargetFile fileName
@@ -46,6 +47,8 @@ check fileName dir = defaultErrorHandler defaultDynFlags $ runGhc (Just libdir) 
     setTargetFile file = do
         target <- guessTarget file Nothing
         setTargets [target]
+    ignore :: SomeException -> IO [String]
+    ignore _ = return []
 
 ----------------------------------------------------------------
 
