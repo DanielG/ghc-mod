@@ -16,11 +16,16 @@ import System.Process
 
 checkSyntax :: Options -> String -> IO String
 checkSyntax opt file = do
-    makeDirectory (outDir opt)
+    let outdir = outDir opt
+        outfile = outFile opt
+        objfile = objectFile outdir file
+    makeDirectory outdir
+    exist <- doesFileExist objfile
+    when exist $ removeFile objfile
 #if __GLASGOW_HASKELL__ >= 611
-    (_,_,herr,_) <- runInteractiveProcess (ghc opt) ["--make","-Wall","-fno-warn-unused-do-bind",file,"-outputdir","dist/flymake","-o","dist/flymake/a.out","-i..","-i../..","-i../../..","-i../../../..","-i../../../../.."] Nothing Nothing
+    (_,_,herr,_) <- runInteractiveProcess (ghc opt) ["--make","-Wall","-fno-warn-unused-do-bind",file,"-outputdir",outdir,"-o",outfile,"-i..","-i../..","-i../../..","-i../../../..","-i../../../../.."] Nothing Nothing
 #else
-    (_,_,herr,_) <- runInteractiveProcess (ghc opt) ["--make","-Wall",file,"-outputdir","dist/flymake","-o","dist/flymake/a.out","-i..","-i../..","-i../../..","-i../../../..","-i../../../../.."] Nothing Nothing
+    (_,_,herr,_) <- runInteractiveProcess (ghc opt) ["--make","-Wall",file,"-outputdir",outdir,"-o",outfile,"-i..","-i../..","-i../../..","-i../../../..","-i../../../../.."] Nothing Nothing
 #endif
     hSetBinaryMode herr False
     refine <$> hGetContents herr
@@ -51,3 +56,6 @@ makeDirectory dir = makeDirectoryRecur $ normalise dir
       unless exist $ do
           makeDirectoryRecur par
           createDirectory cur
+
+objectFile :: FilePath -> FilePath -> FilePath
+objectFile dir hsfile = dir </> replaceExtension hsfile ".o"

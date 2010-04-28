@@ -28,7 +28,8 @@ defaultOptions = Options { convert = toPlain
                          , ghc     = "ghc"
                          , ghci    = "ghci"
                          , ghcPkg  = "ghc-pkg"
-                         , outDir  = "dist/flymake"
+                         , outDir  = outputDir
+                         , outFile = outputFile
                          }
 
 argspec :: [OptDescr (Options -> Options)]
