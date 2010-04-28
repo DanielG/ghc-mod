@@ -25,23 +25,14 @@ usage =    "ghc-mod version 0.4.0\n"
 
 defaultOptions :: Options
 defaultOptions = Options { convert = toPlain
-                         , ghc     = "ghc"
-                         , ghci    = "ghci"
                          , ghcPkg  = "ghc-pkg"
                          , outDir  = outputDir
-                         , outFile = outputFile
                          }
 
 argspec :: [OptDescr (Options -> Options)]
 argspec = [ Option "l" ["tolisp"]
             (NoArg (\opts -> opts { convert = toLisp }))
             "print as a list of Lisp"
-          , Option "g" ["ghc"]
-            (ReqArg (\str opts -> opts { ghc = str }) "ghc")
-            "GHC path"
-          , Option "i" ["ghci"]
-            (ReqArg (\str opts -> opts { ghci = str }) "ghci")
-            "ghci path"
           , Option "p" ["ghc-pkg"]
             (ReqArg (\str opts -> opts { ghcPkg = str }) "ghc-pkg")
             "ghc-pkg path"
