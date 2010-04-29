@@ -43,7 +43,7 @@ check fileName dir = ghandle ignore $ runGhc (Just libdir) $ do
     initSession = do
         dflags <- getSessionDynFlags
         (dflags',_,_) <- parseDynamicFlags dflags cmdOptions
-        setSessionDynFlags $ setImportPath $ setOutputDir dir dflags'
+        setSessionDynFlags $ setGhcPackage $ setImportPath $ setOutputDir dir dflags'
     setTargetFile file = do
         target <- guessTarget file Nothing
         setTargets [target]
@@ -76,13 +76,18 @@ setImportPath d = d {
     importPaths = importPaths d ++ ["..","../..","../../..","../../../../.."]
   }
 
-{-
 setGhcPackage :: DynFlags -> DynFlags
 setGhcPackage d = d {
     packageFlags = ExposePackage "ghc" : packageFlags d
+  , ghcLink = NoLink
+  }
+
+{-
+setTarget :: DynFlags -> DynFlags
+setTarget d = d {
+    hscTarget = HscNothing
   }
 -}
-
 ----------------------------------------------------------------
 
 showErrMsg :: ErrMsg -> String
