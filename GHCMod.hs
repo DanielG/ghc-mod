@@ -25,17 +25,12 @@ usage =    "ghc-mod version 0.4.0\n"
 ----------------------------------------------------------------
 
 defaultOptions :: Options
-defaultOptions = Options { convert = toPlain
-                         , ghcPkg  = "ghc-pkg"
-                         }
+defaultOptions = Options { convert = toPlain }
 
 argspec :: [OptDescr (Options -> Options)]
 argspec = [ Option "l" ["tolisp"]
             (NoArg (\opts -> opts { convert = toLisp }))
             "print as a list of Lisp"
-          , Option "p" ["ghc-pkg"]
-            (ReqArg (\str opts -> opts { ghcPkg = str }) "ghc-pkg")
-            "ghc-pkg path"
           ]
 
 parseArgs :: [OptDescr (Options -> Options)] -> [String] -> (Options, [String])
