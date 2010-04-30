@@ -21,10 +21,6 @@ checkSyntax _ file = unlines <$> check file
 
 ----------------------------------------------------------------
 
--- I don't know why, but parseDynamicFlags must be used.
-cmdOptions :: [Located String]
-cmdOptions = map noLoc ["-Wall","-fno-warn-unused-do-bind"]
-
 check :: String -> IO [String]
 check fileName = ghandle ignore $ runGhc (Just libdir) $ do
     ref <- liftIO $ newIORef []
@@ -43,6 +39,10 @@ check fileName = ghandle ignore $ runGhc (Just libdir) $ do
         setTargets [target]
     ignore :: SomeException -> IO [String]
     ignore _ = return []
+
+-- I don't know why, but parseDynamicFlags must be used.
+cmdOptions :: [Located String]
+cmdOptions = map noLoc ["-Wall","-fno-warn-unused-do-bind"]
 
 ----------------------------------------------------------------
 
