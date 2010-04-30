@@ -61,7 +61,9 @@ setFlags d = d {
     importPaths = importPaths d ++ ["..","../..","../../..","../../../../.."]
   , packageFlags = ExposePackage "ghc" : packageFlags d
   , ghcLink = NoLink
-  , hscTarget = HscNothing
+-- GHC.desugarModule does not produces the pattern warnings, why?
+--  , hscTarget = HscNothing
+  , hscTarget = HscInterpreted
   }
 
 ----------------------------------------------------------------
