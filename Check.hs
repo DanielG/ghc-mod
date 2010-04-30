@@ -21,6 +21,7 @@ checkSyntax _ file = unlines <$> check file
 
 ----------------------------------------------------------------
 
+-- I don't know why, but parseDynamicFlags must be used.
 cmdOptions :: [Located String]
 cmdOptions = map noLoc ["-Wall","-fno-warn-unused-do-bind"]
 
@@ -32,6 +33,7 @@ check fileName = ghandle ignore $ runGhc (Just libdir) $ do
     loadWithLogger (refLogger ref) LoadAllTargets
     liftIO $ readIORef ref
   where
+    -- I don't know why, but parseDynamicFlags must be used.
     initSession = do
         dflags <- getSessionDynFlags
         (dflags',_,_) <- parseDynamicFlags dflags cmdOptions
@@ -58,13 +60,19 @@ refLogger ref (Just e) = do
 
 setFlags :: DynFlags -> DynFlags
 setFlags d = d {
-    importPaths = importPaths d ++ ["..","../..","../../..","../../../../.."]
-  , packageFlags = ExposePackage "ghc" : packageFlags d
+    importPaths = importPaths d ++ importDirs
+  , packageFlags = ghcPackage : packageFlags d
   , ghcLink = NoLink
 -- GHC.desugarModule does not produces the pattern warnings, why?
 --  , hscTarget = HscNothing
   , hscTarget = HscInterpreted
   }
+
+importDirs :: [String]
+importDirs = ["..","../..","../../..","../../../../.."]
+
+ghcPackage :: PackageFlag
+ghcPackage = ExposePackage "ghc"
 
 ----------------------------------------------------------------
 
