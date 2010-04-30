@@ -35,7 +35,7 @@ check fileName = ghandle ignore $ runGhc (Just libdir) $ do
     initSession = do
         dflags <- getSessionDynFlags
         (dflags',_,_) <- parseDynamicFlags dflags cmdOptions
-        setSessionDynFlags $ setTarget $ setGhcPackage $ setImportPath dflags'
+        setSessionDynFlags $ setFlags dflags'
     setTargetFile file = do
         target <- guessTarget file Nothing
         setTargets [target]
@@ -46,30 +46,22 @@ check fileName = ghandle ignore $ runGhc (Just libdir) $ do
 
 refLogger :: IORef [String] -> WarnErrLogger
 refLogger ref Nothing = do
-    warns <- map showErrMsg . bagToList <$> getWarnings
+    warns <- map showErrMsg . reverse . bagToList <$> getWarnings
     liftIO $ writeIORef ref warns
     clearWarnings
 refLogger ref (Just e) = do
-    let errs = map showErrMsg . bagToList . srcErrorMessages $ e
+    let errs = map showErrMsg . reverse . bagToList . srcErrorMessages $ e
     liftIO $ writeIORef ref errs
     clearWarnings
 
 ----------------------------------------------------------------
 
-setImportPath :: DynFlags -> DynFlags
-setImportPath d = d {
+setFlags :: DynFlags -> DynFlags
+setFlags d = d {
     importPaths = importPaths d ++ ["..","../..","../../..","../../../../.."]
-  }
-
-setGhcPackage :: DynFlags -> DynFlags
-setGhcPackage d = d {
-    packageFlags = ExposePackage "ghc" : packageFlags d
+  , packageFlags = ExposePackage "ghc" : packageFlags d
   , ghcLink = NoLink
-  }
-
-setTarget :: DynFlags -> DynFlags
-setTarget d = d {
-    hscTarget = HscNothing
+  , hscTarget = HscNothing
   }
 
 ----------------------------------------------------------------
