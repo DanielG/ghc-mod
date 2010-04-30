@@ -17,15 +17,10 @@ getDump opt = do
   hGetContents hout
 
 exposedModules :: String -> [String]
-exposedModules cs = results
+exposedModules cs = concatMap words ms
   where
     ls = unfoldLines cs
-    ns = values "name: " ls
     ms = values "exposed-modules: " ls
-    zs = zip ns ms
-    xs = filter (\(nm,_) -> nm `notElem` ["ghc", "ghc-prim", "rts", "integer"]) zs
-    ss = map snd xs
-    results = filter (\x -> not ("GHC" `isPrefixOf` x)) $ concatMap words ss
 
 values :: String -> [String] -> [String]
 values tag ls = value
