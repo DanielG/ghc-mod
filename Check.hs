@@ -5,14 +5,12 @@ import Control.Applicative
 import Data.IORef
 import DynFlags
 import ErrUtils
-import Exception
 import FastString
 import GHC
-import GHC.Paths (libdir)
 import HscTypes
 import Outputable hiding (showSDoc)
-import Param
 import Pretty
+import Types
 
 ----------------------------------------------------------------
 
@@ -22,7 +20,7 @@ checkSyntax _ file = unlines <$> check file
 ----------------------------------------------------------------
 
 check :: String -> IO [String]
-check fileName = ghandle ignore $ runGhc (Just libdir) $ do
+check fileName = withGHC $ do
     ref <- liftIO $ newIORef []
     initSession
     setTargetFile fileName
@@ -37,8 +35,6 @@ check fileName = ghandle ignore $ runGhc (Just libdir) $ do
     setTargetFile file = do
         target <- guessTarget file Nothing
         setTargets [target]
-    ignore :: SomeException -> IO [String]
-    ignore _ = return []
 
 -- I don't know why, but parseDynamicFlags must be used.
 cmdOptions :: [Located String]

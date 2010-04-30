@@ -6,10 +6,10 @@ import Control.Applicative
 import Control.Exception hiding (try)
 import Lang
 import List
-import Param
 import Prelude hiding (catch)
 import System.Console.GetOpt
 import System.Environment (getArgs)
+import Types
 
 ----------------------------------------------------------------
 

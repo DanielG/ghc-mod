@@ -30,8 +30,7 @@
   (let ((after-save-hook nil))
     (save-buffer))
   (let ((file (file-name-nondirectory (buffer-file-name))))
-    (list ghc-module-command (append (ghc-module-command-args)
-				     (list "check" file)))))
+    (list ghc-module-command (list "check" file))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 

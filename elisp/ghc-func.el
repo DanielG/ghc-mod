@@ -59,9 +59,5 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defvar ghc-module-command "ghc-mod")
-(defvar ghc-ghc-pkg-command (ghc-which "ghc-pkg"))
-
-(defun ghc-module-command-args ()
-  (list "-p" ghc-ghc-pkg-command))
 
 (provide 'ghc-func)
