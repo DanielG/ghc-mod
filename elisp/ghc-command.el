@@ -19,8 +19,10 @@
       (beginning-of-line)
       (looking-at "^[^ ]+ *::"))
     (ghc-insert-function-template))
+   ((ghc-flymake-have-errs-p)
+    (ghc-flymake-insert-from-warning))
    (t
-    (ghc-flymake-insert-type))))
+    (message "Nothing to be done"))))
 
 (defun ghc-insert-module-template ()
   ;; xxx mod from filename...

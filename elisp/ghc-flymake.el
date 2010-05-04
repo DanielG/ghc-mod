@@ -34,43 +34,57 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defun ghc-display-errors ()
+(defun ghc-flymake-display-errors ()
   (interactive)
-  (let* ((data (ghc-flymake-data))
-	 (buf (get-buffer-create ghc-error-buffer-name)))
-    (with-current-buffer buf
-      (erase-buffer)
-      (ghc-insert-errors data))
-    (display-buffer buf)))
+  (if (not (ghc-flymake-have-errs-p))
+      (message "No errors or warnings")
+    (let ((buf (get-buffer-create ghc-error-buffer-name))
+	  (title (ghc-flymake-err-title))
+	  (errs (ghc-flymake-err-list)))
+      (with-current-buffer buf
+	(erase-buffer)
+	(ghc-flymake-insert-errors title errs))
+      (display-buffer buf))))
 
-(defun ghc-insert-errors (data)
-  (let ((title (nth 0 data))
-	(errs (nth 1 data)))
+(defun ghc-flymake-insert-errors (title errs)
+  (save-excursion
     (insert title "\n")
-    (dolist (err errs)
-      (insert (ghc-replace-character (car err) ghc-null ghc-newline) "\n"))
-    (goto-char (point-min))))
+    (mapc (lambda (x) (insert x "\n")) errs)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defun ghc-flymake-insert-type ()
+(defun ghc-flymake-insert-from-warning ()
   (interactive)
-  (let ((data (ghc-flymake-first-data)))
-    (if (and data
-	     (string-match "Inferred type: \\([^:]+ :: \\)\\(forall [^.]+\\. \\)?\\([^\0]*\\)" data))
-      (progn
+  (dolist (data (ghc-flymake-err-list))
+    (save-excursion
+      (cond
+       ((string-match "Inferred type: \\([^:]+ :: \\)\\(forall [^.]+\\. \\)?\\([^\0]*\\)" data)
 	(beginning-of-line)
 	(insert (match-string 1 data) (match-string 3 data) "\n"))
-      (message "No inferred type"))))
+       ((string-match "Not in scope: `\\([^']+\\)'" data)
+	(save-match-data
+	  (unless (re-search-forward "^$" nil t)
+	    (goto-char (point-max))
+	    (insert "\n")))
+	(insert "\n" (match-string 1 data) " = undefined\n"))))))
+	
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defun ghc-flymake-err-get-title (x) (nth 0 x))
+(defun ghc-flymake-err-get-errs (x) (nth 1 x))
+
+(defalias 'ghc-flymake-have-errs-p 'ghc-flymake-data)
 
 (defun ghc-flymake-data ()
   (let* ((line-no (flymake-current-line-no))
          (info (nth 0 (flymake-find-err-info flymake-err-info line-no))))
     (flymake-make-err-menu-data line-no info)))
 
-(defun ghc-flymake-first-data ()
-  (nth 0 (nth 0 (nth 1 (ghc-flymake-data)))))
+(defun ghc-flymake-err-title ()
+  (ghc-flymake-err-get-title (ghc-flymake-data)))
+
+(defun ghc-flymake-err-list ()
+  (mapcar 'car (ghc-flymake-err-get-errs (ghc-flymake-data))))
 
 (provide 'ghc-flymake)
