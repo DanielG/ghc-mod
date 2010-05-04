@@ -18,8 +18,9 @@ usage =    "ghc-mod version 0.4.0\n"
         ++ "Usage:\n"
         ++ "\t ghc-mod list\n"
         ++ "\t ghc-mod lang\n"
-        ++ "\t ghc-mod browse <module>\n"
+        ++ "\t ghc-mod browse <module> [<module> ...]\n"
         ++ "\t ghc-mod check <HaskellFile>\n"
+        ++ "\t ghc-mod boot\n"
         ++ "\t ghc-mod help\n"
 
 ----------------------------------------------------------------
@@ -50,6 +51,11 @@ main = flip catch handler $ do
       "list"   -> listModules opt
       "check"  -> checkSyntax opt (cmdArg !! 1)
       "lang"   -> listLanguages opt
+      "boot"   -> do
+         mods  <- listModules opt
+         langs <- listLanguages opt
+         pre   <- browseModule opt "Prelude"
+         return $ mods ++ langs ++ pre
       _        -> error usage
     putStr res
   where
