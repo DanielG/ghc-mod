@@ -50,15 +50,12 @@
   (let* ((syms '(ghc-module-names
 		ghc-language-extensions
 		ghc-keyword-Prelude))
-	 (vals (ghc-read-lisp-list
-		(lambda () (call-process ghc-module-command nil t nil "-l" "boot"))
-		(length syms))))
+	 (vals (ghc-boot (length syms))))
     (ghc-set syms vals))
   (ghc-add ghc-module-names "qualified")
   (ghc-add ghc-module-names "hiding")
   (ghc-add ghc-language-extensions "LANGUAGE")
-  (setq ghc-loaded-module '("Prelude"))
-  (ghc-merge-keywords)
+  (ghc-merge-keywords '("Prelude"))
   (run-with-idle-timer ghc-idle-timer-interval 'repeat 'ghc-idle-timer))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -66,15 +63,26 @@
 ;;; Executing command
 ;;;
 
-(defun ghc-load-keyword (&rest args)
+(defun ghc-boot (n)
   (if (not (ghc-which ghc-module-command))
       (message "%s not found" ghc-module-command)
-    (ghc-read-lisp
+    (ghc-read-lisp-list
      (lambda ()
-       (let ((msg (mapconcat 'identity (cons ghc-module-command args) " ")))
-	 (message "Executing \"%s\"..." msg)
-	 (apply 'call-process ghc-module-command nil t nil (cons "-l" args))
-	 (message "Executing \"%s\"...done" msg))))))
+       (message "Initializing...")
+       (call-process ghc-module-command nil t nil "-l" "boot")
+       (message "Initializing...done"))
+     n)))
+
+(defun ghc-load-modules (mods)
+  (if (not (ghc-which ghc-module-command))
+      (message "%s not found" ghc-module-command)
+    (ghc-read-lisp-list
+     (lambda ()
+       (message "Loading names...")
+       (apply 'call-process ghc-module-command nil t nil
+	      (cons "-l" (cons "browse" mods)))
+       (message "Loading names...done"))
+     (length mods))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -172,59 +180,73 @@
 ;;; Loading keywords
 ;;;
 
-(add-hook 'find-file-hook 'ghc-load-module-buffer)
+(add-hook 'find-file-hook 'ghc-import-module)
 
-(defun ghc-load-module-buffer ()
+(defun ghc-import-module ()
   (interactive)
   (when (eq major-mode 'haskell-mode)
-    (ghc-load-module-this-buffer)))
+    (ghc-load-module-buffer)))
 
-(defun ghc-load-module-this-buffer ()
-  (dolist (mod (ghc-gather-import-modules))
-    (ghc-load-module mod))
-  (ghc-merge-keywords))
+(defun ghc-unloaded-modules (mods)
+  (ghc-filter (lambda (mod)
+		(and (member mod ghc-module-names)
+		     (not (member mod ghc-loaded-module))))
+	      mods))
 
-(defun ghc-load-module (mod)
-  (when (and (member mod ghc-module-names)
-	     (not (member mod ghc-loaded-module)))
-    (let ((keywords (ghc-load-keyword "browse" mod)))
-      (when (or (consp keywords) (null keywords))
-	(set (intern (concat ghc-keyword-prefix mod)) keywords)
-	(ghc-add ghc-loaded-module mod)))))
+(defun ghc-load-module-all-buffers ()
+  (ghc-load-merge-modules (ghc-gather-import-modules-all-buffers)))
 
-(defun ghc-merge-keywords ()
+(defun ghc-load-module-buffer ()
+  (ghc-load-merge-modules (ghc-gather-import-modules-buffer)))
+
+(defun ghc-load-merge-modules (mods)
+  (let* ((umods (ghc-unloaded-modules mods))
+	 (syms (mapcar 'ghc-module-symbol umods))
+	 (names (ghc-load-modules umods)))
+    (ghc-set syms names)
+    (ghc-merge-keywords umods)))
+
+(defun ghc-merge-keywords (mods)
+  (setq ghc-loaded-module (append mods ghc-loaded-module))
   (let* ((modkeys (mapcar 'ghc-module-keyword ghc-loaded-module))
 	 (keywords (cons ghc-reserved-keyword modkeys))
 	 (uniq-sorted (sort (ghc-uniq-lol keywords) 'string<)))
     (setq ghc-merged-keyword uniq-sorted)))
+
+(defun ghc-module-symbol (mod)
+  (intern (concat ghc-keyword-prefix mod)))
+
+(defun ghc-module-keyword (mod)
+  (symbol-value (ghc-module-symbol mod)))
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defun ghc-gather-import-modules-all-buffers ()
+  (let ((bufs (mapcar 'buffer-name (buffer-list)))
+	ret)
+    (save-excursion
+      (dolist (buf bufs (ghc-uniq-lol ret))
+	(when (string-match "\\.hs$" buf)
+	  (set-buffer buf)
+	  (ghc-add ret (ghc-gather-import-modules-buffer)))))))
+
+(defun ghc-gather-import-modules-buffer ()
+  (let (ret)
+    (save-excursion
+      (goto-char (point-min))
+      (while (re-search-forward "^import\\( *qualified\\)? +\\([^\n ]+\\)" nil t)
+	(ghc-add ret (match-string-no-properties 2))
+	(forward-line)))
+    ret))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
 ;;; Background Idle Timer
 ;;;
 
-(defalias 'ghc-idle-timer 'ghc-load-module-this-buffer)
+(defalias 'ghc-idle-timer 'ghc-load-module-all-buffer)
 
-(defun ghc-gather-import-modules ()
-  (let ((bufs (mapcar 'buffer-name (buffer-list)))
-	ret)
-    (save-excursion
-      (dolist (buf bufs)
-	(when (string-match "\\.hs$" buf)
-	  (set-buffer buf)
-	  (ghc-add ret (ghc-gather-import-modules-buffer)))))
-    (ghc-uniq-lol ret)))
-
-(defun ghc-gather-import-modules-buffer ()
-  (let (ret)
-    (save-excursion
-      (goto-char (point-min))
-      (while (re-search-forward "^import *\\([^\n ]+\\)" nil t)
-	(ghc-add ret (match-string-no-properties 1))
-	(forward-line)))
-    ret))
-
-(defun ghc-module-keyword (mod)
-  (symbol-value (intern (concat ghc-keyword-prefix mod))))
+(defun ghc-load-module-all-buffer () nil)
 
 (provide 'ghc-comp)

@@ -31,6 +31,13 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+(defun ghc-filter (pred lst)
+  (let (ret)
+    (dolist (x lst (reverse ret))
+      (if (funcall pred x) (ghc-add ret x)))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
 (defun ghc-which (cmd)
   (catch 'loop
     (dolist (suffix '("" ".exe"))
@@ -68,9 +75,8 @@
     (condition-case nil
 	(let ((m (set-marker (make-marker) 1 (current-buffer)))
 	      ret)
-	  (dotimes (i n)
-	    (ghc-add ret (read m)))
-	  (nreverse ret))
+	  (dotimes (i n (nreverse ret))
+	    (ghc-add ret (read m))))
       (error ()))))
 
 (provide 'ghc-func)

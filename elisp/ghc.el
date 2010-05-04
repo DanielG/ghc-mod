@@ -54,7 +54,7 @@
   (unless ghc-initialized
     (define-key haskell-mode-map ghc-completion-key  'ghc-complete)
     (define-key haskell-mode-map ghc-document-key    'ghc-browse-document)
-    (define-key haskell-mode-map ghc-import-key      'ghc-load-module-buffer)
+    (define-key haskell-mode-map ghc-import-key      'ghc-import-module)
     (define-key haskell-mode-map ghc-previous-key    'flymake-goto-prev-error)
     (define-key haskell-mode-map ghc-next-key        'flymake-goto-next-error)
     (define-key haskell-mode-map ghc-help-key        'ghc-flymake-display-errors)
