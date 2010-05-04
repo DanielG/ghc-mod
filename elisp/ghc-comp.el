@@ -47,9 +47,16 @@
 (defvar ghc-loaded-module nil)
 
 (defun ghc-comp-init ()
-  (setq ghc-module-names (cons "hiding" (cons "qualified" (ghc-load-keyword "list"))))
-  (setq ghc-language-extensions (cons "LANGUAGE" (ghc-load-keyword "lang")))
-  (setq ghc-keyword-Prelude (ghc-load-keyword "browse" "Prelude"))
+  (let* ((syms '(ghc-module-names
+		ghc-language-extensions
+		ghc-keyword-Prelude))
+	 (vals (ghc-read-lisp-list
+		(lambda () (call-process ghc-module-command nil t nil "-l" "boot"))
+		(length syms))))
+    (ghc-set syms vals))
+  (add-to-list 'ghc-module-names "qualified")
+  (add-to-list 'ghc-module-names "hiding")
+  (add-to-list 'ghc-language-extensions "LANGUAGE")
   (setq ghc-loaded-module '("Prelude"))
   (ghc-merge-keywords)
   (run-with-idle-timer ghc-idle-timer-interval 'repeat 'ghc-idle-timer))

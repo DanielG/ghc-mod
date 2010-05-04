@@ -41,6 +41,18 @@
 	(read (current-buffer))
       (error ()))))
 
+(defun ghc-read-lisp-list (func n)
+  (with-temp-buffer
+    (funcall func)
+    (goto-char (point-min))
+    (condition-case nil
+	(let ((m (set-marker (make-marker) 1 (current-buffer)))
+	      ret)
+	  (dotimes (i n)
+	    (setq ret (cons (read m) ret)))
+	  (nreverse ret))
+      (error ()))))
+
 (defun ghc-extract-module ()
   (interactive)
   (save-excursion
@@ -51,10 +63,10 @@
 (defun ghc-read-module-name (def)
   (read-from-minibuffer "Module name: " def ghc-input-map))
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-(defconst ghc-null 0)
-(defconst ghc-newline 10)
+(defun ghc-set (vars vals)
+  (dolist (var vars)
+    (if var (set var (car vals))) ;; var can be nil to skip
+    (setq vals (cdr vals))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
