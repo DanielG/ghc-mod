@@ -54,9 +54,9 @@
 		(lambda () (call-process ghc-module-command nil t nil "-l" "boot"))
 		(length syms))))
     (ghc-set syms vals))
-  (add-to-list 'ghc-module-names "qualified")
-  (add-to-list 'ghc-module-names "hiding")
-  (add-to-list 'ghc-language-extensions "LANGUAGE")
+  (ghc-add ghc-module-names "qualified")
+  (ghc-add ghc-module-names "hiding")
+  (ghc-add ghc-language-extensions "LANGUAGE")
   (setq ghc-loaded-module '("Prelude"))
   (ghc-merge-keywords)
   (run-with-idle-timer ghc-idle-timer-interval 'repeat 'ghc-idle-timer))
@@ -190,7 +190,7 @@
     (let ((keywords (ghc-load-keyword "browse" mod)))
       (when (or (consp keywords) (null keywords))
 	(set (intern (concat ghc-keyword-prefix mod)) keywords)
-	(setq ghc-loaded-module (cons mod ghc-loaded-module))))))
+	(ghc-add ghc-loaded-module mod)))))
 
 (defun ghc-merge-keywords ()
   (let* ((modkeys (mapcar 'ghc-module-keyword ghc-loaded-module))
@@ -212,7 +212,7 @@
       (dolist (buf bufs)
 	(when (string-match "\\.hs$" buf)
 	  (set-buffer buf)
-	  (setq ret (cons (ghc-gather-import-modules-buffer) ret)))))
+	  (ghc-add ret (ghc-gather-import-modules-buffer)))))
     (ghc-uniq-lol ret)))
 
 (defun ghc-gather-import-modules-buffer ()
@@ -220,7 +220,7 @@
     (save-excursion
       (goto-char (point-min))
       (while (re-search-forward "^import *\\([^\n ]+\\)" nil t)
-	(setq ret (cons (match-string-no-properties 1) ret))
+	(ghc-add ret (match-string-no-properties 1))
 	(forward-line)))
     ret))
 

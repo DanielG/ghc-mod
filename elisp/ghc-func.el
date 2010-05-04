@@ -8,12 +8,28 @@
 
 ;;; Code:
 
+(defvar ghc-module-command "ghc-mod")
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
 (defun ghc-replace-character (string from to)
   "Replace characters equal to FROM to TO in STRING."
   (let ((ret (copy-sequence string)))
     (dotimes (cnt (length ret) ret)
       (if (char-equal (aref ret cnt) from)
 	  (aset ret cnt to)))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defmacro ghc-add (sym val)
+  `(setq ,sym (cons ,val ,sym)))
+
+(defun ghc-set (vars vals)
+  (dolist (var vars)
+    (if var (set var (car vals))) ;; var can be nil to skip
+    (setq vals (cdr vals))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defun ghc-which (cmd)
   (catch 'loop
@@ -24,14 +40,18 @@
 	    (if (file-exists-p path)
 		(throw 'loop path))))))))
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
 (defun ghc-uniq-lol (lol)
   (let ((hash (make-hash-table :test 'equal))
 	ret)
     (dolist (lst lol)
       (dolist (key lst)
 	(puthash key key hash)))
-    (maphash (lambda (key val) (setq ret (cons key ret))) hash)
+    (maphash (lambda (key val) (ghc-add ret key)) hash)
     ret))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defun ghc-read-lisp (func)
   (with-temp-buffer
@@ -49,27 +69,8 @@
 	(let ((m (set-marker (make-marker) 1 (current-buffer)))
 	      ret)
 	  (dotimes (i n)
-	    (setq ret (cons (read m) ret)))
+	    (ghc-add ret (read m)))
 	  (nreverse ret))
       (error ()))))
-
-(defun ghc-extract-module ()
-  (interactive)
-  (save-excursion
-    (beginning-of-line)
-    (if (looking-at "^\\(import\\|module\\) +\\(qualified +\\)?\\([^ (\n]+\\)")
-	(match-string-no-properties 3))))
-
-(defun ghc-read-module-name (def)
-  (read-from-minibuffer "Module name: " def ghc-input-map))
-
-(defun ghc-set (vars vals)
-  (dolist (var vars)
-    (if var (set var (car vals))) ;; var can be nil to skip
-    (setq vals (cdr vals))))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-(defvar ghc-module-command "ghc-mod")
 
 (provide 'ghc-func)

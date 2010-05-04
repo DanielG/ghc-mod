@@ -58,4 +58,16 @@
 	  (make-sparse-keymap)))
   (define-key ghc-input-map "\t" 'ghc-complete))
 
+(defun ghc-read-module-name (def)
+  (read-from-minibuffer "Module name: " def ghc-input-map))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defun ghc-extract-module ()
+  (interactive)
+  (save-excursion
+    (beginning-of-line)
+    (if (looking-at "^\\(import\\|module\\) +\\(qualified +\\)?\\([^ (\n]+\\)")
+	(match-string-no-properties 3))))
+
 (provide 'ghc-doc)
