@@ -5,12 +5,14 @@ import Control.Applicative
 import Data.IORef
 import DynFlags
 import ErrUtils
+import Exception
 import FastString
 import GHC
 import HscTypes
 import Outputable hiding (showSDoc)
 import Pretty
 import Types
+import Prelude hiding (catch)
 
 ----------------------------------------------------------------
 
@@ -24,7 +26,8 @@ check fileName = withGHC $ do
     ref <- liftIO $ newIORef []
     initSession
     setTargetFile fileName
-    loadWithLogger (refLogger ref) LoadAllTargets
+    loadWithLogger (refLogger ref) LoadAllTargets `gcatch` handleParseError ref
+    clearWarnings
     liftIO $ readIORef ref
   where
     -- I don't know why, but parseDynamicFlags must be used.
@@ -35,6 +38,9 @@ check fileName = withGHC $ do
     setTargetFile file = do
         target <- guessTarget file Nothing
         setTargets [target]
+    handleParseError ref e = do
+        liftIO . writeIORef ref $ errBagToStrList . srcErrorMessages $ e
+        return Succeeded
 
 -- I don't know why, but parseDynamicFlags must be used.
 cmdOptions :: [Located String]
@@ -43,14 +49,13 @@ cmdOptions = map noLoc ["-Wall","-fno-warn-unused-do-bind"]
 ----------------------------------------------------------------
 
 refLogger :: IORef [String] -> WarnErrLogger
-refLogger ref Nothing = do
-    warns <- map showErrMsg . reverse . bagToList <$> getWarnings
-    liftIO $ writeIORef ref warns
-    clearWarnings
-refLogger ref (Just e) = do
-    let errs = map showErrMsg . reverse . bagToList . srcErrorMessages $ e
-    liftIO $ writeIORef ref errs
-    clearWarnings
+refLogger ref Nothing =
+    (errBagToStrList <$> getWarnings) >>= liftIO . writeIORef ref
+refLogger ref (Just e) =
+    liftIO . writeIORef ref $ errBagToStrList . srcErrorMessages $ e
+
+errBagToStrList :: Bag ErrMsg -> [String]
+errBagToStrList = map showErrMsg . reverse . bagToList
 
 ----------------------------------------------------------------
 
