@@ -8,6 +8,7 @@ import Lang
 import List
 import Prelude hiding (catch)
 import System.Console.GetOpt
+import System.Directory
 import System.Environment (getArgs)
 import Types
 
@@ -49,7 +50,12 @@ main = flip catch handler $ do
     res <- case head cmdArg of
       "browse" -> concat <$> mapM (browseModule opt) (tail cmdArg)
       "list"   -> listModules opt
-      "check"  -> checkSyntax opt (cmdArg !! 1)
+      "check"  -> do
+          let file = cmdArg !! 1
+          exist <- doesFileExist file
+          if exist
+             then checkSyntax opt file
+             else return ""
       "lang"   -> listLanguages opt
       "boot"   -> do
          mods  <- listModules opt
