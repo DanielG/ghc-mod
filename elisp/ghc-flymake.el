@@ -30,7 +30,23 @@
   (let ((after-save-hook nil))
     (save-buffer))
   (let ((file (file-name-nondirectory (buffer-file-name))))
-    (list ghc-module-command (list "check" file))))
+    (list ghc-module-command (ghc-flymake-command file))))
+
+(defvar ghc-hlint (ghc-which "hlint"))
+
+(defvar ghc-flymake-command nil) ;; nil: check, t: lint
+
+(defun ghc-flymake-command (file)
+   (if ghc-flymake-command
+       (list "-f" ghc-hlint "lint" file)
+     (list "check" file)))
+
+(defun ghc-flymake-toggle-command ()
+  (interactive)
+  (setq ghc-flymake-command (not ghc-flymake-command))
+  (if ghc-flymake-command
+      (message "Syntax check with hlint")
+    (message "Syntax check with GHC")))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -49,7 +65,7 @@
 (defun ghc-flymake-insert-errors (title errs)
   (save-excursion
     (insert title "\n")
-    (mapc (lambda (x) (insert x "\n")) errs)))
+    (mapc (lambda (x) (insert (ghc-replace-character x ghc-null ghc-newline) "\n")) errs)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 

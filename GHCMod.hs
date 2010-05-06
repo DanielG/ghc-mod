@@ -5,6 +5,7 @@ import Check
 import Control.Applicative
 import Control.Exception hiding (try)
 import Lang
+import Lint
 import List
 import Prelude hiding (catch)
 import System.Console.GetOpt
@@ -21,18 +22,25 @@ usage =    "ghc-mod version 0.4.0\n"
         ++ "\t ghc-mod lang\n"
         ++ "\t ghc-mod browse <module> [<module> ...]\n"
         ++ "\t ghc-mod check <HaskellFile>\n"
+        ++ "\t ghc-mod lint <HaskellFile>\n"
         ++ "\t ghc-mod boot\n"
         ++ "\t ghc-mod help\n"
 
 ----------------------------------------------------------------
 
 defaultOptions :: Options
-defaultOptions = Options { convert = toPlain }
+defaultOptions = Options {
+    convert = toPlain
+  , hlint = "hlint"
+  }
 
 argspec :: [OptDescr (Options -> Options)]
 argspec = [ Option "l" ["tolisp"]
             (NoArg (\opts -> opts { convert = toLisp }))
             "print as a list of Lisp"
+          , Option "f" ["hlint"]
+            (ReqArg (\str opts -> opts { hlint = str }) "hlint")
+            "path to hlint"
           ]
 
 parseArgs :: [OptDescr (Options -> Options)] -> [String] -> (Options, [String])
@@ -50,12 +58,8 @@ main = flip catch handler $ do
     res <- case head cmdArg of
       "browse" -> concat <$> mapM (browseModule opt) (tail cmdArg)
       "list"   -> listModules opt
-      "check"  -> do
-          let file = cmdArg !! 1
-          exist <- doesFileExist file
-          if exist
-             then checkSyntax opt file
-             else return ""
+      "check"  -> withFile (checkSyntax opt) (cmdArg !! 1)
+      "lint"   -> withFile (lintSyntax opt) (cmdArg !! 1)
       "lang"   -> listLanguages opt
       "boot"   -> do
          mods  <- listModules opt
@@ -67,6 +71,11 @@ main = flip catch handler $ do
   where
     handler :: ErrorCall -> IO ()
     handler _ = putStr usage
+    withFile cmd file = do
+        exist <- doesFileExist file
+        if exist
+            then cmd file
+            else return ""
 
 ----------------------------------------------------------------
 toLisp :: [String] -> String

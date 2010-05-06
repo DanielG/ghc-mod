@@ -41,6 +41,7 @@
 (defvar ghc-insert-key      "\et")
 (defvar ghc-sort-key        "\es")
 (defvar ghc-check-key       "\C-x\C-s")
+(defvar ghc-toggle-key      "\C-c\C-c")
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -61,6 +62,7 @@
     (define-key haskell-mode-map ghc-insert-key      'ghc-insert-template)
     (define-key haskell-mode-map ghc-sort-key        'ghc-sort-lines)
     (define-key haskell-mode-map ghc-check-key       'ghc-save-buffer)
+    (define-key haskell-mode-map ghc-toggle-key      'ghc-flymake-toggle-command)
     (ghc-comp-init)
     (setq ghc-initialized t)))
 

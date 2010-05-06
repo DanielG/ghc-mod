@@ -79,4 +79,9 @@
 	    (ghc-add ret (read m))))
       (error ()))))
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defconst ghc-null 0)
+(defconst ghc-newline 10)
+
 (provide 'ghc-func)
