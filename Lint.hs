@@ -16,5 +16,5 @@ lintSyntax cmd file = pretty <$> lint cmd file
 
 lint :: Options -> String -> IO String
 lint cmd file = do
-  (_,hout,_,_) <- runInteractiveProcess (hlint cmd) [file] Nothing Nothing
+  (_,hout,_,_) <- runInteractiveProcess (hlint cmd) ["-i","Use camelCase",file] Nothing Nothing
   hGetContents hout
