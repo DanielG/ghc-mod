@@ -8,7 +8,7 @@
 
 ;;; Code:
 
-(provide 'ghc-flymake)
+(require 'ghc-flymake)
 
 (defun ghc-insert-template ()
   (interactive)
