@@ -76,14 +76,15 @@
       (cond
        ((string-match "Inferred type: \\([^:]+ :: \\)\\(forall [^.]+\\. \\)?\\([^\0]*\\)" data)
 	(beginning-of-line)
-	(insert (match-string 1 data) (match-string 3 data) "\n"))
+	(insert (match-string 1 data)
+		(replace-regexp-in-string "\\[Char\\]" "String" (match-string 3 data))
+		"\n"))
        ((string-match "Not in scope: `\\([^']+\\)'" data)
 	(save-match-data
 	  (unless (re-search-forward "^$" nil t)
 	    (goto-char (point-max))
 	    (insert "\n")))
 	(insert "\n" (match-string 1 data) " = undefined\n"))))))
-	
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
