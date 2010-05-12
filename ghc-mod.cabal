@@ -1,5 +1,5 @@
 Name:                   ghc-mod
-Version:                0.4.0
+Version:                0.4.1
 Author:                 Kazu Yamamoto <kazu@iij.ad.jp>
 Maintainer:             Kazu Yamamoto <kazu@iij.ad.jp>
 License:                BSD3
@@ -20,7 +20,7 @@ Cabal-Version:          >= 1.6
 Build-Type:             Simple
 Data-Dir:               elisp
 Data-Files:             Makefile ghc.el ghc-func.el ghc-doc.el ghc-comp.el
-                        ghc-flymake.el
+                        ghc-flymake.el ghc-command.el
 Executable ghc-mod
   Main-Is:              GHCMod.hs
   Other-Modules:        List Browse Check Lang Lint Types

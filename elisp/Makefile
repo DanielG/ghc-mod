@@ -1,10 +1,11 @@
-SRCS = ghc.el ghc-func.el ghc-doc.el ghc-comp.el ghc-flymake.el
+SRCS = ghc.el ghc-func.el ghc-doc.el ghc-comp.el ghc-flymake.el ghc-command.el
 EMACS = emacs
 
 TEMPFILE  = temp.el
 
 all: $(TEMPFILE) ghc.el
 	$(EMACS) -batch -q -no-site-file -l ./$(TEMPFILE) -f ghc-compile
+	rm -f $(TEMPFILE)
 
 $(TEMPFILE):
 	@echo '(setq load-path (cons "." load-path))' >> $(TEMPFILE)
