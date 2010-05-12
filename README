@@ -1,10 +1,14 @@
-		     Haskell Completion on Emacs
+		  Happy Haskell programming on Emacs
 
-This package enables many completions for Haskell programming in Haskell.
-Flymake is also integrated.
+Features:
+
+1) Completions of keyword, module, class, function, types,
+   language extensions, etc.
+2) Flymake with GHC and hlint
+3) Inserting code template
 
 The "ghc-mod" program written in Haskell is a backend to gather
-information from GHC.
+information from GHC and hlint.
 
 Elisp libraries including ghc-mod is an extension to haskell-mode.
 You should put the followings in your "~/.emacs.el":
