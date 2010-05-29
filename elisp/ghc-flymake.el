@@ -43,10 +43,13 @@
 
 (defun ghc-flymake-toggle-command ()
   (interactive)
-  (setq ghc-flymake-command (not ghc-flymake-command))
-  (if ghc-flymake-command
-      (message "Syntax check with hlint")
-    (message "Syntax check with GHC")))
+  (if (and (null ghc-flymake-command)
+	   (not ghc-hlint))
+      (message "\"hlint\" not found")
+    (setq ghc-flymake-command (not ghc-flymake-command))
+    (if ghc-flymake-command
+	(message "Syntax check with hlint")
+      (message "Syntax check with GHC"))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
