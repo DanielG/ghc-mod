@@ -8,11 +8,7 @@ import Types
 lintSyntax :: Options -> String -> IO String
 lintSyntax _ file = pretty <$> lint file
   where
-    pretty = unlines . map (concat . intersperse "\0")
-           . filter (\x -> length x > 1)
-           . groupBy (\a b -> a /= "" && b /= "") . lines
+    pretty = unlines . map (concat . intersperse "\0" . lines)
 
-lint :: String -> IO String
-lint file = toString <$> hlint [file, "--quiet", "--ignore=Use camelCase"]
-  where
-    toString = concat . map show
+lint :: String -> IO [String]
+lint file = map show <$> hlint [file, "--quiet", "--ignore=Use camelCase"]
