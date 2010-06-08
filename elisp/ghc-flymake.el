@@ -32,24 +32,19 @@
   (let ((file (file-name-nondirectory (buffer-file-name))))
     (list ghc-module-command (ghc-flymake-command file))))
 
-(defvar ghc-hlint (ghc-which "hlint"))
-
 (defvar ghc-flymake-command nil) ;; nil: check, t: lint
 
 (defun ghc-flymake-command (file)
    (if ghc-flymake-command
-       (list "-f" ghc-hlint "lint" file)
+       (list "lint" file)
      (list "check" file)))
 
 (defun ghc-flymake-toggle-command ()
   (interactive)
-  (if (and (null ghc-flymake-command)
-	   (not ghc-hlint))
-      (message "\"hlint\" not found")
-    (setq ghc-flymake-command (not ghc-flymake-command))
-    (if ghc-flymake-command
-	(message "Syntax check with hlint")
-      (message "Syntax check with GHC"))))
+  (setq ghc-flymake-command (not ghc-flymake-command))
+  (if ghc-flymake-command
+      (message "Syntax check with hlint")
+    (message "Syntax check with GHC")))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
