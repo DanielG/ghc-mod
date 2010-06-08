@@ -29,7 +29,7 @@ Executable ghc-mod
   else
     GHC-Options:        -Wall
   Build-Depends:        base >= 4.0 && < 5, ghc, ghc-paths,
-                        process, directory, filepath
+                        process, directory, filepath, hlint
 Source-Repository head
   Type:                 git
   Location:             git://github.com/kazu-yamamoto/ghc-mod.git

@@ -31,16 +31,12 @@ usage =    "ghc-mod version 0.4.1\n"
 defaultOptions :: Options
 defaultOptions = Options {
     convert = toPlain
-  , hlint = "hlint"
   }
 
 argspec :: [OptDescr (Options -> Options)]
 argspec = [ Option "l" ["tolisp"]
             (NoArg (\opts -> opts { convert = toLisp }))
             "print as a list of Lisp"
-          , Option "f" ["hlint"]
-            (ReqArg (\str opts -> opts { hlint = str }) "hlint")
-            "path to hlint"
           ]
 
 parseArgs :: [OptDescr (Options -> Options)] -> [String] -> (Options, [String])
