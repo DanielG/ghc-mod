@@ -6,7 +6,7 @@ import Control.Applicative
 import Control.Exception hiding (try)
 import Lang
 import Lint
-import Data.List
+import List
 import Prelude hiding (catch)
 import System.Console.GetOpt
 import System.Directory
@@ -52,7 +52,7 @@ parseArgs spec argv
 ----------------------------------------------------------------
 
 main :: IO ()
-main = flip catch handler $ do
+main = flip catches handlers $ do
     args <- getArgs
     let (opt,cmdArg) = parseArgs argspec args
     res <- case head cmdArg of
@@ -69,13 +69,14 @@ main = flip catch handler $ do
       _        -> error usage
     putStr res
   where
+    handlers = [handler]
     handler :: ErrorCall -> IO ()
     handler _ = putStr usage
     withFile cmd file = do
         exist <- doesFileExist file
         if exist
             then cmd file
-            else return ""
+            else error $ file ++ " not found"
 
 ----------------------------------------------------------------
 toLisp :: [String] -> String
