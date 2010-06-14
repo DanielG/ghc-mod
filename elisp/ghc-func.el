@@ -8,7 +8,8 @@
 
 ;;; Code:
 
-(defvar ghc-module-command "ghc-mod")
+(defvar ghc-module-command "ghc-mod"
+"*The command name of \"ghc-mod\"")
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 

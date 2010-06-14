@@ -16,12 +16,12 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defvar ghc-error-buffer-name "*GHC Errors*")
+(defconst ghc-error-buffer-name "*GHC Errors*")
 
-(defvar ghc-flymake-allowed-file-name-masks
+(defconst ghc-flymake-allowed-file-name-masks
   '("\\.l?hs$" ghc-flymake-init flymake-simple-cleanup flymake-get-real-file-name))
 
-(defvar ghc-flymake-err-line-patterns
+(defconst ghc-flymake-err-line-patterns
   '("^\\(.*\\.l?hs\\):\\([0-9]+\\):\\([0-9]+\\):[ ]*\\(.+\\)" 1 2 3 4))
 
 (add-to-list 'flymake-allowed-file-name-masks

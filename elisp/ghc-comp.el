@@ -15,13 +15,20 @@
 ;;; Customize Variables
 ;;;
 
-(defvar ghc-idle-timer-interval 30)
+(defvar ghc-idle-timer-interval 30
+ "*Period of idele timer in second. When timeout, the names of
+unloaded modules are loaded")
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;
+;;; Constants
+;;;
 
 ;; must be sorted
-(defvar ghc-reserved-keyword-for-bol '("class" "data" "default" "import" "infix" "infixl" "infixr" "instance" "main" "module" "newtype" "type"))
+(defconst ghc-reserved-keyword-for-bol '("class" "data" "default" "import" "infix" "infixl" "infixr" "instance" "main" "module" "newtype" "type"))
 
 ;; must be sorted
-(defvar ghc-reserved-keyword '("case" "deriving" "do" "else" "if" "in" "let" "module" "of" "then" "where"))
+(defconst ghc-reserved-keyword '("case" "deriving" "do" "else" "if" "in" "let" "module" "of" "then" "where"))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -42,7 +49,7 @@
 (defvar ghc-merged-keyword nil) ;; completion for type/func/...
 (defvar ghc-language-extensions nil)
 
-(defvar ghc-keyword-prefix "ghc-keyword-")
+(defconst ghc-keyword-prefix "ghc-keyword-")
 (defvar ghc-keyword-Prelude nil)
 (defvar ghc-loaded-module nil)
 

@@ -34,8 +34,8 @@
     (when (looking-at "^haddock-html: \\([^ \n]+\\)$")
       (match-string-no-properties 1))))
 
-(defvar ghc-doc-local-format "file://%s/%s.html")
-(defvar ghc-doc-hackage-format
+(defconst ghc-doc-local-format "file://%s/%s.html")
+(defconst ghc-doc-hackage-format
   "http://hackage.haskell.org/packages/archive/%s/latest/doc/html/%s.html")
 
 (defun ghc-display-document (pkg mod haskell-org)
