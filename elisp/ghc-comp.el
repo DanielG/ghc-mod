@@ -170,7 +170,7 @@
 (defun ghc-completion-start-point ()
   (save-excursion
     (let ((beg (save-excursion (beginning-of-line) (point))))
-      (if (re-search-backward "[ (,`]" beg t)
+      (if (re-search-backward "[ (.,`]" beg t)
 	  (1+ (point))
 	beg))))
 
