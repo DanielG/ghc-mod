@@ -78,13 +78,14 @@ ghcPackage = ExposePackage "ghc"
 ----------------------------------------------------------------
 
 showErrMsg :: ErrMsg -> String
-showErrMsg err = file ++ ":" ++ line ++ ":" ++ col ++ ":" ++ msg
+showErrMsg err = file ++ ":" ++ line ++ ":" ++ col ++ ":" ++ msg ++ "\0" ++ ext
    where
      spn = head (errMsgSpans err)
      file = unpackFS (srcSpanFile spn)
      line = show (srcSpanStartLine spn)
      col  = show (srcSpanStartCol spn)
      msg = showSDoc (errMsgShortDoc err)
+     ext = showSDoc (errMsgExtraInfo err)
 
 style :: PprStyle
 style = mkUserStyle neverQualify AllTheWay

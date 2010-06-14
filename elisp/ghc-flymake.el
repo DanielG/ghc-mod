@@ -70,7 +70,11 @@
 (defun ghc-flymake-insert-errors (title errs)
   (save-excursion
     (insert title "\n")
-    (mapc (lambda (x) (insert (ghc-replace-character x ghc-null ghc-newline) "\n")) errs)))
+    (mapc (lambda (x) (insert (ghc-replace-character x ghc-null ghc-newline) "\n")) errs)
+    (goto-char (point-min))
+    (while (re-search-forward "In the [^:\n]+: " nil t)
+      (replace-match (concat "\n" (match-string 0) "\n    ")))))
+
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
