@@ -6,7 +6,7 @@ import Control.Applicative
 import Control.Exception hiding (try)
 import Lang
 import Lint
-import List
+import Data.List
 import Prelude hiding (catch)
 import System.Console.GetOpt
 import System.Directory
