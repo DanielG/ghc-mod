@@ -10,6 +10,12 @@
 
 (require 'flymake)
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defvar ghc-hlint-options nil "*Hlint options")
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
 (defvar ghc-error-buffer-name "*GHC Errors*")
 
 (defvar ghc-flymake-allowed-file-name-masks
@@ -30,13 +36,14 @@
   (let ((after-save-hook nil))
     (save-buffer))
   (let ((file (file-name-nondirectory (buffer-file-name))))
-    (list ghc-module-command (ghc-flymake-command file))))
+    (list ghc-module-command (ghc-flymake-command file ghc-hlint-options))))
 
 (defvar ghc-flymake-command nil) ;; nil: check, t: lint
 
-(defun ghc-flymake-command (file)
+(defun ghc-flymake-command (file opts)
    (if ghc-flymake-command
-       (list "lint" file)
+       (let ((hopts (ghc-mapconcat (lambda (x) (list "-h" x)) opts)))
+	 `(,@hopts "lint" ,file))
      (list "check" file)))
 
 (defun ghc-flymake-toggle-command ()

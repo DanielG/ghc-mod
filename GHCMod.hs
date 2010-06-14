@@ -22,7 +22,7 @@ usage =    "ghc-mod version 0.4.2\n"
         ++ "\t ghc-mod lang\n"
         ++ "\t ghc-mod browse <module> [<module> ...]\n"
         ++ "\t ghc-mod check <HaskellFile>\n"
-        ++ "\t ghc-mod lint <HaskellFile>\n"
+        ++ "\t ghc-mod [-h opt] lint <HaskellFile>\n"
         ++ "\t ghc-mod boot\n"
         ++ "\t ghc-mod help\n"
 
@@ -31,12 +31,16 @@ usage =    "ghc-mod version 0.4.2\n"
 defaultOptions :: Options
 defaultOptions = Options {
     convert = toPlain
+  , hlintOpts = []
   }
 
 argspec :: [OptDescr (Options -> Options)]
 argspec = [ Option "l" ["tolisp"]
             (NoArg (\opts -> opts { convert = toLisp }))
             "print as a list of Lisp"
+          , Option "h" ["hlintOpt"]
+            (ReqArg (\h opts -> opts { hlintOpts = h : hlintOpts opts }) "hlintOpt")
+            "hint to be ignored"
           ]
 
 parseArgs :: [OptDescr (Options -> Options)] -> [String] -> (Options, [String])
