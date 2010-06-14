@@ -89,7 +89,16 @@
 	  (unless (re-search-forward "^$" nil t)
 	    (goto-char (point-max))
 	    (insert "\n")))
-	(insert "\n" (match-string 1 data) " = undefined\n"))))))
+	(insert "\n" (match-string 1 data) " = undefined\n"))
+       ((string-match "Found:\0[ ]*\\([^\0]+\\)\0Why not:\0[ ]*\\([^\0]+\\)" data)
+	(let ((old (match-string 1 data))
+	      (new (match-string 2 data)))
+	  (beginning-of-line)
+	  (when (search-forward old nil t)
+	    (let ((end (point)))
+	      (search-backward old nil t)
+	      (delete-region (point) end))
+	    (insert new))))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
