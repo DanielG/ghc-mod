@@ -17,10 +17,6 @@
     (ghc-insert-module-template))
    ((ghc-flymake-have-errs-p)
     (ghc-flymake-insert-from-warning))
-   ((save-excursion
-      (beginning-of-line)
-      (looking-at "^[^ ]+ *::"))
-    (ghc-insert-function-template))
    (t
     (message "Nothing to be done"))))
 
@@ -28,15 +24,6 @@
   ;; xxx mod from filename...
   (let ((mod (file-name-sans-extension (buffer-name))))
     (insert "module " mod " where\n")))
-
-(defun ghc-insert-function-template ()
-  (save-excursion
-    (beginning-of-line)
-    (when (looking-at "^\\([^ ]+\\) *::")
-      (save-match-data
-	(forward-line)
-	(if (eobp) (insert "\n")))
-      (insert (match-string 1) " = undefined\n"))))
 
 (defun ghc-sort-lines (beg end)
   (interactive "r")

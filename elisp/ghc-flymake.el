@@ -72,7 +72,7 @@
     (insert title "\n\n")
     (mapc (lambda (x) (insert (ghc-replace-character x ghc-null ghc-newline) "\n")) errs)
     (goto-char (point-min))
-    (while (re-search-forward "In the [^:\n ]+: \\|Expected type: \\|Inferred type: \\|Possible fix: " nil t)
+    (while (re-search-forward "In the definition of [^:\n ]+: \\|In the [^:\n ]+: \\|Expected type: \\|Inferred type: \\|Possible fix: " nil t)
       (replace-match (concat "\n" (match-string 0) "\n    ")))
     (goto-char (point-max))
     (while (re-search-backward "In the [a-z]+ argument\\|In the `" nil t)
@@ -90,6 +90,13 @@
 	(insert (match-string 1 data)
 		(replace-regexp-in-string "\\[Char\\]" "String" (match-string 3 data))
 		"\n"))
+       ((string-match "lacks an accompanying binding" data)
+	(beginning-of-line)
+	(when (looking-at "^\\([^ ]+\\) *::")
+	  (save-match-data
+	    (forward-line)
+	    (if (eobp) (insert "\n")))
+	  (insert (match-string 1) " = undefined\n")))
        ((string-match "Not in scope: `\\([^']+\\)'" data)
 	(save-match-data
 	  (unless (re-search-forward "^$" nil t)
