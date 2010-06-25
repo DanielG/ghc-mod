@@ -70,13 +70,7 @@
 (defun ghc-flymake-insert-errors (title errs)
   (save-excursion
     (insert title "\n\n")
-    (mapc (lambda (x) (insert (ghc-replace-character x ghc-null ghc-newline) "\n")) errs)
-    (goto-char (point-min))
-    (while (re-search-forward "In the definition of [^:\n ]+: \\|In the [^:\n ]+: \\|Expected type: \\|Inferred type: \\|Possible fix: " nil t)
-      (replace-match (concat "\n" (match-string 0) "\n    ")))
-    (goto-char (point-max))
-    (while (re-search-backward "In the [a-z]+ argument\\|In the `" nil t)
-      (insert "\n"))))
+    (mapc (lambda (x) (insert (ghc-replace-character x ghc-null ghc-newline) "\n")) errs)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 

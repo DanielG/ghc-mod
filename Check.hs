@@ -91,4 +91,7 @@ style :: PprStyle
 style = mkUserStyle neverQualify AllTheWay
 
 showSDoc :: SDoc -> String
-showSDoc d = Pretty.showDocWith OneLineMode (d style)
+showSDoc d = map toNull . Pretty.showDocWith ZigZagMode $ d style
+  where
+    toNull '\n' = '\0'
+    toNull x = x
