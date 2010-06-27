@@ -176,11 +176,13 @@ unloaded modules are loaded")
 
 (defun ghc-completion-start-point ()
   (save-excursion
-    (let ((beg (save-excursion (beginning-of-line) (point))))
-      (if (re-search-backward "[ (,`]" beg t) ;; xxx "."
+    (let ((beg (save-excursion (beginning-of-line) (point)))
+	  (regex (save-excursion
+		   (beginning-of-line)
+		   (if (looking-at "import") "[ (,`]" "[ (,`.]"))))
+      (if (re-search-backward regex beg t)
 	  (1+ (point))
 	beg))))
-
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
