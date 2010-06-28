@@ -179,7 +179,7 @@ unloaded modules are loaded")
     (let ((beg (save-excursion (beginning-of-line) (point)))
 	  (regex (save-excursion
 		   (beginning-of-line)
-		   (if (looking-at "import") "[ (,`]" "[ (,`.]"))))
+		   (if (looking-at "^import ") "[ (,`]" "[ (,`.]"))))
       (if (re-search-backward regex beg t)
 	  (1+ (point))
 	beg))))
