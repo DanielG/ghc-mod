@@ -155,12 +155,15 @@ unloaded modules are loaded")
     (set-window-configuration ghc-window-configuration)
     (setq ghc-window-configuration nil)))
 
+(defun ghc-module-completion-p ()
+  (or (minibufferp)
+      (save-excursion
+	(beginning-of-line)
+	(looking-at "import "))))
+
 (defun ghc-select-completion-symbol ()
   (cond
-   ((or (minibufferp)
-	(save-excursion
-	  (beginning-of-line)
-	  (looking-at "import ")))
+   ((ghc-module-completion-p)
     ghc-module-names)
    ((save-excursion
       (beginning-of-line)
@@ -177,9 +180,7 @@ unloaded modules are loaded")
 (defun ghc-completion-start-point ()
   (save-excursion
     (let ((beg (save-excursion (beginning-of-line) (point)))
-	  (regex (save-excursion
-		   (beginning-of-line)
-		   (if (looking-at "^import ") "[ (,`]" "[ (,`.]"))))
+	  (regex (if (ghc-module-completion-p) "[ (,`]" "[ (,`.]")))
       (if (re-search-backward regex beg t)
 	  (1+ (point))
 	beg))))
