@@ -157,9 +157,14 @@ unloaded modules are loaded")
 
 (defun ghc-module-completion-p ()
   (or (minibufferp)
+      (let ((end (point)))
+	(save-excursion
+	  (beginning-of-line)
+	  (and (looking-at "import ")
+	       (not (search-forward "(" end t)))))
       (save-excursion
 	(beginning-of-line)
-	(looking-at "import "))))
+	(looking-at " +module "))))
 
 (defun ghc-select-completion-symbol ()
   (cond
