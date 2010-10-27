@@ -22,8 +22,9 @@
   (with-temp-buffer
     (call-process "ghc-pkg" nil t nil "find-module" "--simple-output" mod)
     (goto-char (point-min))
-    (when (re-search-forward "[^ ]+-[0-9]*\\(\\.[0-9]+\\)*$")
-      (match-string-no-properties 0))))
+    (when (re-search-forward "\\([^ ]+\\)-\\([0-9]*\\(\\.[0-9]+\\)*\\)$")
+      (cons (match-string-no-properties 1)
+            (match-string-no-properties 2)))))
 
 (defun ghc-resolve-document-path (pkg)
   (with-temp-buffer
@@ -36,16 +37,22 @@
 
 (defconst ghc-doc-local-format "file://%s/%s.html")
 (defconst ghc-doc-hackage-format
-  "http://hackage.haskell.org/packages/archive/%s/latest/doc/html/%s.html")
+  "http://hackage.haskell.org/packages/archive/%s/%s/doc/html/%s.html")
 
 (defun ghc-display-document (pkg mod haskell-org)
   (when (and pkg mod)
     (let* ((mod- (ghc-replace-character mod ?. ?-))
-	   (url (if haskell-org
-		    (format ghc-doc-hackage-format pkg mod-)
-		  (format ghc-doc-local-format
-			  (ghc-resolve-document-path pkg) mod-))))
+           (url (if haskell-org
+                    (format ghc-doc-hackage-format (car pkg) (cdr pkg) mod-)
+                  (let* ((pkg-with-ver (format "%s-%s" (car pkg) (cdr pkg)))
+                         (path (ghc-resolve-document-path pkg-with-ver)))
+                    (if (file-exists-p (format "%s/%s.html" path mod-))
+                        (format ghc-doc-local-format path mod-)
+                      ;; fall back to online version if local file
+                      ;; doesn't exist:
+                      (format ghc-doc-hackage-format (car pkg) (cdr pkg) mod-))))))
       (browse-url url))))
+
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
