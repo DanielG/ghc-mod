@@ -22,8 +22,8 @@
   (with-temp-buffer
     (call-process "ghc-pkg" nil t nil "find-module" "--simple-output" mod)
     (goto-char (point-min))
-    (when (looking-at "^\\([^ ]+\\)-[0-9]")
-      (match-string-no-properties 1))))
+    (when (re-search-forward "[^ ]+-[0-9]*\\(\\.[0-9]*\\)*$")
+      (match-string-no-properties 0))))
 
 (defun ghc-resolve-document-path (pkg)
   (with-temp-buffer
