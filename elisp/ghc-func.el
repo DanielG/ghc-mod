@@ -90,4 +90,49 @@
 (defconst ghc-null 0)
 (defconst ghc-newline 10)
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defun ghc-keyword-number-pair (spec)
+  (let ((len (length spec)) key ret)
+    (dotimes (i len (nreverse ret))
+      (setq key (intern (concat ":" (symbol-name (car spec)))))
+      (setq ret (cons (cons key i) ret))
+      (setq spec (cdr spec)))))
+
+(defmacro ghc-defstruct (type &rest spec)
+  `(progn
+     (ghc-defstruct-constructor ,type ,@spec)
+     (ghc-defstruct-s/getter ,type ,@spec)))
+
+(defmacro ghc-defstruct-constructor (type &rest spec)
+  `(defun ,(intern (concat "ghc-make-" (symbol-name type))) (&rest args)
+     (let* ((alist (quote ,(ghc-keyword-number-pair spec)))
+	    (struct (make-list (length alist) nil))
+	    key val key-num)
+       (while args ;; cannot use dolist
+	 (setq key  (car args))
+	 (setq args (cdr args))
+	 (setq val  (car args))
+	 (setq args (cdr args))
+	 (unless (keywordp key)
+	   (error "'%s' is not a keyword" key))
+	 (setq key-num (assoc key alist))
+	 (if key-num
+	     (setcar (nthcdr (cdr key-num) struct) val)
+	   (error "'%s' is unknown" key)))
+       struct)))
+
+(defmacro ghc-defstruct-s/getter (type &rest spec)
+  `(let* ((type-name (symbol-name ',type))
+	  (keys ',spec)
+	  (len (length keys))
+	  member-name setter getter)
+     (dotimes (i len)
+       (setq member-name (symbol-name (car keys)))
+       (setq setter (intern (format "ghc-%s-set-%s" type-name member-name)))
+       (fset setter (list 'lambda '(struct value) (list 'setcar (list 'nthcdr i 'struct) 'value) 'struct))
+       (setq getter (intern (format "ghc-%s-get-%s" type-name member-name)))
+       (fset getter (list 'lambda '(struct) (list 'nth i 'struct)))
+       (setq keys (cdr keys)))))
+
 (provide 'ghc-func)
