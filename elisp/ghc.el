@@ -67,7 +67,6 @@
     (setq ghc-initialized t)))
 
 (defun ghc-abbrev-init ()
-  (make-local-variable 'dabbrev-case-fold-search)
-  (setq dabbrev-case-fold-search nil))
+  (set (make-local-variable 'dabbrev-case-fold-search) nil))
 
 (provide 'ghc)
