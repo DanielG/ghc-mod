@@ -32,6 +32,16 @@ unloaded modules are loaded")
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
+;;; Structs
+;;;
+
+;; qualified contains a list of possible qualifications
+;; for the module's content. nil as an element of the list
+;; denotes no qualification.
+(ghc-defstruct module name qualified)
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;
 ;;; Local Variables
 ;;;
 
@@ -62,7 +72,8 @@ unloaded modules are loaded")
   (ghc-add ghc-module-names "qualified")
   (ghc-add ghc-module-names "hiding")
   (ghc-add ghc-language-extensions "LANGUAGE")
-  (ghc-merge-keywords '("Prelude"))
+  (ghc-merge-keywords (list (ghc-make-module :name "Prelude"
+                                             :qualified '(nil))))
   (run-with-idle-timer ghc-idle-timer-interval 'repeat 'ghc-idle-timer))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -87,7 +98,7 @@ unloaded modules are loaded")
      (lambda ()
        (message "Loading names...")
        (apply 'call-process ghc-module-command nil t nil
-	      (cons "-l" (cons "browse" mods)))
+	      (cons "-l" (cons "browse" (mapcar 'ghc-module-get-name mods))))
        (message "Loading names...done"))
      (length mods))))
 
@@ -204,7 +215,7 @@ unloaded modules are loaded")
 
 (defun ghc-unloaded-modules (mods)
   (ghc-filter (lambda (mod)
-		(and (member mod ghc-module-names)
+		(and (member (ghc-module-get-name mod) ghc-module-names)
 		     (not (member mod ghc-loaded-module))))
 	      mods))
 
@@ -216,44 +227,70 @@ unloaded modules are loaded")
 
 (defun ghc-load-merge-modules (mods)
   (let* ((umods (ghc-unloaded-modules mods))
-	 (syms (mapcar 'ghc-module-symbol umods))
-	 (names (ghc-load-modules umods)))
+         (syms (mapcar 'ghc-module-symbol umods))
+         (names (ghc-load-modules umods)))
     (ghc-set syms names)
     (ghc-merge-keywords umods)))
 
 (defun ghc-merge-keywords (mods)
   (setq ghc-loaded-module (append mods ghc-loaded-module))
   (let* ((modkeys (mapcar 'ghc-module-keyword ghc-loaded-module))
-	 (keywords (cons ghc-reserved-keyword modkeys))
-	 (uniq-sorted (sort (ghc-uniq-lol keywords) 'string<)))
+         (keywords (cons ghc-reserved-keyword modkeys))
+         (uniq-sorted (sort (ghc-uniq-lol keywords) 'string<)))
     (setq ghc-merged-keyword uniq-sorted)))
 
 (defun ghc-module-symbol (mod)
-  (intern (concat ghc-keyword-prefix mod)))
+  (intern (concat ghc-keyword-prefix (ghc-module-get-name mod))))
 
 (defun ghc-module-keyword (mod)
-  (symbol-value (ghc-module-symbol mod)))
+  (let ((syms (symbol-value (ghc-module-symbol mod))))
+    (apply 'append (mapcar (lambda (qualified-name)
+                             (if qualified-name
+                                 (mapcar (lambda (sym)
+                                           (concat qualified-name "." sym))
+                                         syms)
+                               syms))
+                           (ghc-module-get-qualified mod)))))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defun ghc-gather-import-modules-all-buffers ()
   (let ((bufs (mapcar 'buffer-name (buffer-list)))
-	ret)
+        ret)
     (save-excursion
       (dolist (buf bufs (ghc-uniq-lol ret))
-	(when (string-match "\\.hs$" buf)
-	  (set-buffer buf)
-	  (ghc-add ret (ghc-gather-import-modules-buffer)))))))
+        (when (string-match "\\.hs$" buf)
+          (set-buffer buf)
+          (ghc-add ret (ghc-gather-import-modules-buffer)))))))
 
 (defun ghc-gather-import-modules-buffer ()
   (let (ret)
     (save-excursion
       (goto-char (point-min))
-      (while (re-search-forward "^import\\( *qualified\\)? +\\([^\n ]+\\)" nil t)
-	(ghc-add ret (match-string-no-properties 2))
-	(forward-line)))
-    ret))
+      (while (re-search-forward
+              (concat "^import\\( *qualified\\)? +\\([^\n ]+\\)"
+                      "\\(?: +as +\\([^\n ]+\\)\\)?")
+              nil t)
+        (let* ((is-qualified (match-string-no-properties 1))
+               (mod-name (match-string-no-properties 2))
+               (qualified-name (match-string-no-properties 3))
+               (qualified-names
+                (if is-qualified
+                    ;; imported with "qualified":
+                    (if qualified-name
+                        (list qualified-name)
+                      ;; imported with "qualified", but no name specified
+                      (list mod-name))
+                  (if qualified-name
+                      ;; not "qualified", but imported with "as":
+                      (list nil qualified-name)
+                    ;; no qualification:
+                    (list nil)))))
+          (ghc-add ret (ghc-make-module :name mod-name
+                                        :qualified qualified-names))
+          (forward-line)))
+    ret)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
