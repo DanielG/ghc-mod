@@ -43,7 +43,7 @@
 (defun ghc-flymake-command (file opts)
    (if ghc-flymake-command
        (let ((hopts (ghc-mapconcat (lambda (x) (list "-h" x)) opts)))
-	 `(,@hopts "lint" ,file))
+         `(,@hopts "lint" ,file))
      (list "check" file)))
 
 (defun ghc-flymake-toggle-command ()

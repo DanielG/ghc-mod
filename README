@@ -6,6 +6,7 @@ Features:
    language extensions, etc.
 2) Flymake with GHC and hlint
 3) Inserting code template
+4) Determining and displaying the type of an identifier
 
 The "ghc-mod" program written in Haskell is a backend to gather
 information from GHC and hlint.
@@ -19,6 +20,12 @@ You should put the followings in your "~/.emacs.el":
 or
 
     (add-hook 'haskell-mode-hook (lambda () (ghc-init) (flymake-mode)))
+
+If you want the type of an identifier under the point to be shown
+automatically, also call (ghc-turn-on-show-type) in your mode-hook.
+The delay after which the type is shown can be controlled via
+the `ghc-show-type-delay' variable.
+This feature does not yet work for things defined in the current file.
 
 For more information, see:
 	http://www.mew.org/~kazu/proj/ghc-mod/

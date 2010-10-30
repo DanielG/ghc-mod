@@ -5,11 +5,12 @@ module Main where
 import Browse
 import Check
 import Control.Applicative
-import Control.Exception
+import Control.Exception as E
 import Data.Typeable
 import Lang
 import Lint
 import List
+import GetType
 import Prelude
 import System.Console.GetOpt
 import System.Directory
@@ -27,6 +28,7 @@ usage =    "ghc-mod version 0.4.4\n"
         ++ "\t ghc-mod [-l] browse <module> [<module> ...]\n"
         ++ "\t ghc-mod check <HaskellFile>\n"
         ++ "\t ghc-mod [-h opt] lint <HaskellFile>\n"
+        ++ "\t ghc-mod type <expression> <imports>"
         ++ "\t ghc-mod boot\n"
         ++ "\t ghc-mod help\n"
 
@@ -72,8 +74,9 @@ main = flip catches handlers $ do
       "browse" -> concat <$> mapM (browseModule opt) (tail cmdArg)
       "list"   -> listModules opt
       "check"  -> withFile (checkSyntax opt) (safelist cmdArg 1)
-      "lint"   -> withFile (lintSyntax opt)  (safelist cmdArg 1)
+      "lint"   -> withFile (lintSyntax opt) (safelist cmdArg 1)
       "lang"   -> listLanguages opt
+      "type"   -> getType (safelist cmdArg 1) (safelist cmdArg 2)
       "boot"   -> do
          mods  <- listModules opt
          langs <- listLanguages opt
@@ -84,7 +87,7 @@ main = flip catches handlers $ do
   where
     handlers = [Handler handler1, Handler handler2]
     handler1 :: ErrorCall -> IO ()
-    handler1 e = print e -- for debug
+    handler1 = print -- for debug
     handler2 :: GHCModError -> IO ()
     handler2 SafeList = printUsage
     handler2 (NoSuchCommand cmd) = do
@@ -96,7 +99,7 @@ main = flip catches handlers $ do
     handler2 (FileNotExist file) = do
         hPutStrLn stderr $ "\"" ++ file ++ "\" not found"
         printUsage
-    printUsage = hPutStrLn stderr $ "\n" ++ usageInfo usage argspec
+    printUsage = hPutStrLn stderr $ '\n' : usageInfo usage argspec
     withFile cmd file = do
         exist <- doesFileExist file
         if exist
