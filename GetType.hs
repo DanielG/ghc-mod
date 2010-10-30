@@ -1,5 +1,5 @@
 {-# LANGUAGE FlexibleContexts #-}
-module GetType where
+module GetType (getType) where
 
 import Control.Applicative hiding (many, (<|>))
 import Control.Monad.Identity (Identity)
