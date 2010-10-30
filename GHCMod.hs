@@ -5,7 +5,7 @@ module Main where
 import Browse
 import Check
 import Control.Applicative
-import Control.Exception as E
+import Control.Exception
 import Data.Typeable
 import Lang
 import Lint
