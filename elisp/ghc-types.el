@@ -68,14 +68,14 @@
   (if (timerp ghc-type-timer) (cancel-timer ghc-type-timer))
   (setq ghc-type-timer (run-with-idle-timer ghc-show-type-delay t
                                             'ghc-show-timer-func))
-  (message "Type timer turned on"))
+  (message "Automatic type display on"
 
 (defun ghc-turn-off-show-type ()
   "Turn off displaying the type of the word under the point"
   (interactive)
   (cancel-timer ghc-type-timer)
   (setq ghc-type-timer nil)
-  (message "Type timer turned off"))
+  (message "Automatic type display off"))
 
 (defun ghc-toggle-show-type ()
   "Toggles whether or not to show the type of the symbol under the point"
