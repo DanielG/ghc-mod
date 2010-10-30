@@ -68,7 +68,7 @@
   (if (timerp ghc-type-timer) (cancel-timer ghc-type-timer))
   (setq ghc-type-timer (run-with-idle-timer ghc-show-type-delay t
                                             'ghc-show-timer-func))
-  (message "Automatic type display on"
+  (message "Automatic type display on"))
 
 (defun ghc-turn-off-show-type ()
   "Turn off displaying the type of the word under the point"
