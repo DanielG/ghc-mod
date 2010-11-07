@@ -16,9 +16,9 @@
   "Time (in seconds) until type for symbol under point is shown")
 (defvar ghc-show-type-timer nil "Store the timer for automatic type display, if enabled")
 
-;; Caching can cause problems when the same word has a different type
-;; in separate buffer the other hand, making this buffer-local would
-;; counteract most of the benefits of caching types at all.
+;; Caching can cause problems when the same word has different types
+;; in separate buffers; on the other hand, making this buffer-local would
+;; counteract most of the benefits of caching type information.
 (defvar ghc-cached-types (make-hash-table :test 'equal) "Cache for already retrieved types.")
 
 (defun ghc-get-type (str)
