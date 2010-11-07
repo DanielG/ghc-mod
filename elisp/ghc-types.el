@@ -14,16 +14,25 @@
 (defvar ghc-last-point-pos 0 "Position of point during last idle-timer run")
 (defvar ghc-show-type-delay 1
   "Time (in seconds) until type for symbol under point is shown")
-(defvar ghc-show-type-timer nil)
+(defvar ghc-show-type-timer nil "Store the timer for automatic type display, if enabled")
+
+;; Caching can cause problems when the same word has a different type
+;; in separate buffer the other hand, making this buffer-local would
+;; counteract most of the benefits of caching types at all.
+(defvar ghc-cached-types (make-hash-table :test 'equal) "Cache for already retrieved types.")
 
 (defun ghc-get-type (str)
-  (let* ((mods (ghc-gather-import-modules-buffer))
-         (response (with-temp-buffer
-                     (call-process ghc-module-command nil t nil "type" str
-                                   (prin1-to-string mods))
-                     (buffer-substring-no-properties (point-min) (point-max)))))
-    (if (and response (not (string= response "")))
-        response)))
+  (or (gethash str ghc-cached-types)
+      (let* ((mods (ghc-gather-import-modules-buffer))
+             (response (with-temp-buffer
+                         (call-process ghc-module-command nil t nil "type" str
+                                       (prin1-to-string mods))
+                         (buffer-substring-no-properties (point-min)
+                                                         (point-max)))))
+        (if (and response (not (string= response "")))
+            (progn
+              (puthash str response ghc-cached-types)
+              response)))))
 
 (defun ghc-get-qualification ()
   (let ((prefix nil))
