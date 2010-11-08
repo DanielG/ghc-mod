@@ -42,6 +42,12 @@
         (goto-char (match-beginning 1)))
       prefix)))
 
+(defun ghc-show-type (str)
+  (interactive "sExpression: ")
+  (let ((result (ghc-get-type str)))
+    (if result
+        (message (propertize result 'face 'bold)))))
+
 (defun ghc-get-type-under-point ()
   "Tries to determine the type of the symbol under the point"
   (let ((mods (ghc-gather-import-modules-buffer))
@@ -60,6 +66,7 @@
 
 (defun ghc-show-type-under-point ()
   "Displays type under point in the echo area"
+  (interactive)
   (let ((type (ghc-get-type-under-point)))
     (if type
         (message (propertize type 'face 'bold)))))
