@@ -3,24 +3,25 @@ module GetType (getType) where
 
 import Control.Applicative hiding (many, (<|>))
 import Language.Haskell.Interpreter (runInterpreter, typeOf, setImportsQ)
-import Text.Parsec
+import Text.ParserCombinators.Parsec
 
 type ImportList = [(String, [Maybe String])]
 
-imports, importList :: (Stream s m Char) => ParsecT s u m ImportList
-imports = char '(' *> importList <* char ')'
+imports :: GenParser Char st ImportList
+imports = between (char '(') (char ')') importList
 
+importList :: GenParser Char st ImportList
 importList = sepBy importModule spaces
 
-qualifiedName :: (Stream s m Char) => ParsecT s u m (Maybe String)
-qualifiedName = (Just <$> elispString) <|> (string "nil" *> return Nothing)
+qualifiedName :: GenParser Char st (Maybe String)
+qualifiedName = (Just <$> elispString) <|> (string "nil" >> return Nothing)
 
-elispString :: (Stream s m Char) => ParsecT s u m String
+elispString :: GenParser Char st String
 elispString = between (char '\"') (char '\"') (many1 (alphaNum <|> char '.'))
 
-importModule :: (Stream s m Char) => ParsecT s u m (String, [Maybe String])
+importModule :: GenParser Char st (String, [Maybe String])
 importModule = do
-  mod' <- char '(' *> elispString
+  mod' <- char '(' >> elispString
   many1 space
   qualifiedNames <- between (char '(') (char ')') stringList
   char ')'
