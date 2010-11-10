@@ -79,10 +79,10 @@
   (dolist (data (ghc-flymake-err-list))
     (save-excursion
       (cond
-       ((string-match "Inferred type: \\([^:]+ :: \\)\\(forall [^.]+\\. \\)?\\([^\0]*\\)" data)
+       ((string-match "Inferred type: \\([^:]+ :: \\)\\(forall [^.]+\\.\\( \\|\0 +\\)\\)?\\([^\0]*\\)" data)
 	(beginning-of-line)
 	(insert (match-string 1 data)
-		(replace-regexp-in-string "\\[Char\\]" "String" (match-string 3 data))
+		(replace-regexp-in-string "\\[Char\\]" "String" (match-string 4 data))
 		"\n"))
        ((string-match "lacks an accompanying binding" data)
 	(beginning-of-line)
