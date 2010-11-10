@@ -16,13 +16,15 @@
   (let* ((mod0 (ghc-extract-module))
 	 (mod (ghc-read-module-name mod0))
 	 (pkg (ghc-resolve-package-name mod)))
-    (ghc-display-document pkg mod haskell-org)))
+    (if (and pkg mod)
+	(ghc-display-document pkg mod haskell-org)
+      (message "No document found"))))
 
 (defun ghc-resolve-package-name (mod)
   (with-temp-buffer
     (call-process "ghc-pkg" nil t nil "find-module" "--simple-output" mod)
     (goto-char (point-min))
-    (when (re-search-forward "\\([^ ]+\\)-\\([0-9]*\\(\\.[0-9]+\\)*\\)$")
+    (when (re-search-forward "\\([^ ]+\\)-\\([0-9]*\\(\\.[0-9]+\\)*\\)$" nil t)
       (ghc-make-pkg-ver
        :pkg (match-string-no-properties 1)
        :ver (match-string-no-properties 2)))))
