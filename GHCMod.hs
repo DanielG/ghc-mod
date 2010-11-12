@@ -7,6 +7,7 @@ import Check
 import Control.Applicative
 import Control.Exception
 import Data.Typeable
+import Info
 import Lang
 import Lint
 import List
@@ -26,6 +27,7 @@ usage =    "ghc-mod version 0.4.4\n"
         ++ "\t ghc-mod [-l] lang\n"
         ++ "\t ghc-mod [-l] browse <module> [<module> ...]\n"
         ++ "\t ghc-mod check <HaskellFile>\n"
+        ++ "\t ghc-mod info <HaskellFile> <expression>\n"
         ++ "\t ghc-mod [-h opt] lint <HaskellFile>\n"
         ++ "\t ghc-mod boot\n"
         ++ "\t ghc-mod help\n"
@@ -72,6 +74,7 @@ main = flip catches handlers $ do
       "browse" -> concat <$> mapM (browseModule opt) (tail cmdArg)
       "list"   -> listModules opt
       "check"  -> withFile (checkSyntax opt) (safelist cmdArg 1)
+      "info"   -> withFile (infoExpr opt (safelist cmdArg 2)) (safelist cmdArg 1)
       "lint"   -> withFile (lintSyntax opt)  (safelist cmdArg 1)
       "lang"   -> listLanguages opt
       "boot"   -> do

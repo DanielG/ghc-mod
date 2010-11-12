@@ -23,7 +23,7 @@ Data-Files:             Makefile ghc.el ghc-func.el ghc-doc.el ghc-comp.el
                         ghc-flymake.el ghc-command.el
 Executable ghc-mod
   Main-Is:              GHCMod.hs
-  Other-Modules:        List Browse Check Lang Lint Types
+  Other-Modules:        List Browse Check Info Lang Lint Types
   if impl(ghc >= 6.12)
     GHC-Options:        -Wall -fno-warn-unused-do-bind
   else
