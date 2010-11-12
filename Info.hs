@@ -6,11 +6,11 @@ import Outputable
 import PprTyThing
 import Types
 
-infoExpr :: Options -> String -> String -> IO String
-infoExpr _ expr file = (++ "\n") <$> info file expr
+typeExpr :: Options -> String -> String -> IO String
+typeExpr _ expr file = (++ "\n") <$> typeOf file expr
 
-info :: String -> String -> IO String
-info fileName expr = withGHC $ do
+typeOf :: String -> String -> IO String
+typeOf fileName expr = withGHC $ do
     initSession []
     setTargetFile fileName
     load LoadAllTargets
