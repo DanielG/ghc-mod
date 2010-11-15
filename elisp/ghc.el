@@ -16,7 +16,7 @@
 
 ;;; Code:
 
-(defconst ghc-version "0.4.4")
+(defconst ghc-version "0.5.0")
 
 ;; (eval-when-compile
 ;;  (require 'haskell-mode))
