@@ -1,4 +1,5 @@
-SRCS = ghc.el ghc-func.el ghc-doc.el ghc-comp.el ghc-flymake.el ghc-command.el
+SRCS = ghc.el ghc-func.el ghc-doc.el ghc-comp.el ghc-flymake.el \
+       ghc-command.el ghc-info.el
 EMACS = emacs
 
 TEMPFILE  = temp.el
