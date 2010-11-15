@@ -41,7 +41,8 @@
 (defvar ghc-help-key        "\e?")
 (defvar ghc-insert-key      "\et")
 (defvar ghc-sort-key        "\es")
-(defvar ghc-type-key        "\e\C-t")
+(defvar ghc-type-key        "\ek")
+(defvar ghc-info-key        "\ei")
 (defvar ghc-check-key       "\C-x\C-s")
 (defvar ghc-toggle-key      "\C-c\C-c")
 
@@ -58,6 +59,7 @@
     (define-key haskell-mode-map ghc-completion-key  'ghc-complete)
     (define-key haskell-mode-map ghc-document-key    'ghc-browse-document)
     (define-key haskell-mode-map ghc-type-key        'ghc-show-type)
+    (define-key haskell-mode-map ghc-info-key        'ghc-show-info)
     (define-key haskell-mode-map ghc-import-key      'ghc-import-module)
     (define-key haskell-mode-map ghc-previous-key    'flymake-goto-prev-error)
     (define-key haskell-mode-map ghc-next-key        'flymake-goto-next-error)
