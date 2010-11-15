@@ -18,7 +18,7 @@ typeOf fileName expr = withGHC $ do
     pretty <$> exprType expr
   where
     setContextFromTarget = do
-        [mdlsum,_] <- depanal [] False
-        mdl <- findModule (ms_mod_name mdlsum) Nothing
+        ms <- depanal [] False
+        mdl <- findModule (ms_mod_name (head ms)) Nothing
         setContext [mdl] []
     pretty = showSDocForUser neverQualify . pprTypeForUser False
