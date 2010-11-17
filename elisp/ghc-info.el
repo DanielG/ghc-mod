@@ -16,8 +16,10 @@
       (message "%s not found" ghc-module-command)
     (let* ((expr0 (thing-at-point 'symbol))
 	   (expr (if ask (ghc-read-expression expr0) expr0))
+	   (cdir default-directory)
 	   (file (buffer-name)))
       (with-temp-buffer
+	(cd cdir)
 	(call-process ghc-module-command nil t nil "type" file expr)
 	(message (buffer-substring (point-min) (1- (point-max))))))))
 
@@ -27,12 +29,14 @@
       (message "%s not found" ghc-module-command)
     (let* ((expr0 (thing-at-point 'symbol))
 	   (expr (if ask (ghc-read-expression expr0) expr0))
+	   (cdir default-directory)
 	   (file (buffer-name))
 	   (buf (get-buffer-create ghc-error-buffer-name)))
       (with-current-buffer buf
         (erase-buffer)
 	(insert
 	 (with-temp-buffer
+	   (cd cdir)
 	   (call-process ghc-module-command nil t nil "info" file expr)
 	   (buffer-substring (point-min) (1- (point-max))))))
       (display-buffer buf))))
