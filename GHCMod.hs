@@ -27,8 +27,8 @@ usage =    "ghc-mod version 0.5.0\n"
         ++ "\t ghc-mod [-l] lang\n"
         ++ "\t ghc-mod [-l] browse <module> [<module> ...]\n"
         ++ "\t ghc-mod check <HaskellFile>\n"
-        ++ "\t ghc-mod type <HaskellFile> <expression>\n"
-        ++ "\t ghc-mod info <HaskellFile> <expression>\n"
+        ++ "\t ghc-mod type <HaskellFile> <module> <expression>\n"
+        ++ "\t ghc-mod info <HaskellFile> <module> <expression>\n"
         ++ "\t ghc-mod [-h opt] lint <HaskellFile>\n"
         ++ "\t ghc-mod boot\n"
         ++ "\t ghc-mod help\n"
@@ -75,8 +75,8 @@ main = flip catches handlers $ do
       "browse" -> concat <$> mapM (browseModule opt) (tail cmdArg)
       "list"   -> listModules opt
       "check"  -> withFile (checkSyntax opt) (safelist cmdArg 1)
-      "type"   -> withFile (typeExpr opt (safelist cmdArg 2)) (safelist cmdArg 1)
-      "info"   -> withFile (infoExpr opt (safelist cmdArg 2)) (safelist cmdArg 1)
+      "type"   -> withFile (typeExpr opt (safelist cmdArg 2) (safelist cmdArg 3)) (safelist cmdArg 1)
+      "info"   -> withFile (infoExpr opt (safelist cmdArg 2) (safelist cmdArg 3)) (safelist cmdArg 1)
       "lint"   -> withFile (lintSyntax opt)  (safelist cmdArg 1)
       "lang"   -> listLanguages opt
       "boot"   -> do

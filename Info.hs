@@ -9,35 +9,47 @@ import Types
 import NameSet
 import HscTypes
 import Data.List
+import Control.Exception
+
+type Expression = String
+type ModuleString = String
 
 ----------------------------------------------------------------
 
-typeExpr :: Options -> String -> String -> IO String
-typeExpr _ expr file = (++ "\n") <$> typeOf file expr
+typeExpr :: Options -> ModuleString -> Expression -> FilePath -> IO String
+typeExpr _ modstr expr file = (++ "\n") <$> typeOf file modstr expr
 
-typeOf :: String -> String -> IO String
-typeOf fileName expr = withGHC $ do
-    initSession []
-    setTargetFile fileName
-    load LoadAllTargets
-    setContextFromTarget
-    pretty <$> exprType expr
+typeOf :: FilePath -> ModuleString-> Expression -> IO String
+typeOf fileName modstr expr = withGHC $ valid `gcatch` invalid
   where
+    valid = makeTypeOf LoadAllTargets
+    invalid = constE invalid0
+    invalid0 = makeTypeOf $ LoadDependenciesOf (mkModuleName modstr)
+    makeTypeOf x = do
+        initSession ["-w"]
+        setTargetFile fileName
+        loadWithLogger (\_ -> return ()) x
+        setContextFromTarget
+        pretty <$> exprType expr
     pretty = showSDocForUser neverQualify . pprTypeForUser False
 
 ----------------------------------------------------------------
 
-infoExpr :: Options -> String -> String -> IO String
-infoExpr _ expr file = (++ "\n") <$> info file expr
+infoExpr :: Options -> ModuleString -> Expression -> FilePath -> IO String
+infoExpr _ modstr expr file = (++ "\n") <$> info file modstr expr
 
-info :: String -> String -> IO String
-info fileName expr = withGHC $ do
-    initSession []
-    setTargetFile fileName
-    load LoadAllTargets
-    setContextFromTarget
-    infoThing expr
+info :: FilePath -> ModuleString -> FilePath -> IO String
+info fileName modstr expr = withGHC $ valid `gcatch` invalid
   where
+    valid = makeInfo LoadAllTargets
+    invalid = constE invalid0
+    invalid0 = makeInfo $ LoadDependenciesOf (mkModuleName modstr)
+    makeInfo x = do
+        initSession ["-w"]
+        setTargetFile fileName
+        loadWithLogger (\_ -> return ()) x
+        setContextFromTarget
+        infoThing expr
     -- ghc/InteractiveUI.hs
     infoThing str = do
         names <- parseName str
@@ -68,5 +80,15 @@ pprInfo pefas (thing, fixity, insts)
 setContextFromTarget :: Ghc ()
 setContextFromTarget = do
     ms <- depanal [] False
-    mdl <- findModule (ms_mod_name (head ms)) Nothing
-    setContext [mdl] []
+    mdls <- mapM toModule ms
+    setContext (catMaybes mdls) []
+ where
+   toModule ms = lookupMod `gcatch` nothing
+     where
+       lookupMod = lookupModule (ms_mod_name ms) Nothing >>= return . Just
+       nothing = constE $ return Nothing
+
+----------------------------------------------------------------
+
+constE :: a -> (SomeException -> a)
+constE func = \_ -> func
