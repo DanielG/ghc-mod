@@ -1,6 +1,7 @@
 module Info where
 
 import Control.Applicative hiding (empty)
+import Control.Monad
 import Data.Maybe
 import GHC
 import Outputable
@@ -29,8 +30,10 @@ typeOf fileName modstr expr = withGHC $ valid `gcatch` invalid
         initSession ["-w"]
         setTargetFile fileName
         loadWithLogger (\_ -> return ()) x
-        setContextFromTarget
-        pretty <$> exprType expr
+        ok <- setContextFromTarget
+        if ok
+            then pretty <$> exprType expr
+            else return "Its type cannot be guessed"
     pretty = showSDocForUser neverQualify . pprTypeForUser False
 
 ----------------------------------------------------------------
@@ -48,8 +51,10 @@ info fileName modstr expr = withGHC $ valid `gcatch` invalid
         initSession ["-w"]
         setTargetFile fileName
         loadWithLogger (\_ -> return ()) x
-        setContextFromTarget
-        infoThing expr
+        ok <- setContextFromTarget
+        if ok
+            then infoThing expr
+            else return "Its info is not available"
     -- ghc/InteractiveUI.hs
     infoThing str = do
         names <- parseName str
@@ -77,16 +82,23 @@ pprInfo pefas (thing, fixity, insts)
 
 ----------------------------------------------------------------
 
-setContextFromTarget :: Ghc ()
+setContextFromTarget :: Ghc Bool
 setContextFromTarget = do
     ms <- depanal [] False
-    mdls <- mapM toModule ms
-    setContext (catMaybes mdls) []
- where
-   toModule ms = lookupMod `gcatch` nothing
-     where
-       lookupMod = lookupModule (ms_mod_name ms) Nothing >>= return . Just
-       nothing = constE $ return Nothing
+    top <- map ms_mod <$> filterM isTop ms
+    {-
+    top is a set of this module and your-defined modules.
+    If this module has syntax errors, it cannot be specified.
+    And if there is no your-defined modules, top is [].
+    In this case, we cannot obtain the type of an expression, sigh.
+    -}
+    setContext top []
+    return $ if top == [] then False else True
+  where
+    isTop ms = lookupMod `gcatch` returnFalse
+      where
+        lookupMod = lookupModule (ms_mod_name ms) Nothing >> return True
+        returnFalse = constE $ return False
 
 ----------------------------------------------------------------
 
