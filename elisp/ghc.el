@@ -41,8 +41,8 @@
 (defvar ghc-help-key        "\e?")
 (defvar ghc-insert-key      "\et")
 (defvar ghc-sort-key        "\es")
-(defvar ghc-type-key        "\ek")
-(defvar ghc-info-key        "\ei")
+(defvar ghc-type-key        "\C-c\C-t")
+(defvar ghc-info-key        "\C-c\C-i")
 (defvar ghc-check-key       "\C-x\C-s")
 (defvar ghc-toggle-key      "\C-c\C-c")
 
