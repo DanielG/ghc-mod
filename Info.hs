@@ -85,6 +85,7 @@ pprInfo pefas (thing, fixity, insts)
 setContextFromTarget :: Ghc Bool
 setContextFromTarget = do
     ms <- depanal [] False
+    -- ms <- getModuleGraph -- this is the same
     top <- map ms_mod <$> filterM isTop ms
     {-
     top is a set of this module and your-defined modules.
