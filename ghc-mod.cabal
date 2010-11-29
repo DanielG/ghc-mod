@@ -20,7 +20,7 @@ Cabal-Version:          >= 1.6
 Build-Type:             Simple
 Data-Dir:               elisp
 Data-Files:             Makefile ghc.el ghc-func.el ghc-doc.el ghc-comp.el
-                        ghc-flymake.el ghc-command.el
+                        ghc-flymake.el ghc-command.el ghc-info.el
 Executable ghc-mod
   Main-Is:              GHCMod.hs
   Other-Modules:        List Browse Check Info Lang Lint Types
