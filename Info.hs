@@ -11,6 +11,8 @@ import NameSet
 import HscTypes
 import Data.List
 import Control.Exception
+import StringBuffer
+import System.Time
 
 type Expression = String
 type ModuleString = String
@@ -20,21 +22,41 @@ type ModuleString = String
 typeExpr :: Options -> ModuleString -> Expression -> FilePath -> IO String
 typeExpr _ modstr expr file = (++ "\n") <$> typeOf file modstr expr
 
-typeOf :: FilePath -> ModuleString-> Expression -> IO String
-typeOf fileName modstr expr = withGHC $ valid `gcatch` invalid
+inModuleContext :: FilePath -> ModuleString -> Ghc String -> IO String
+inModuleContext fileName modstr action =
+  withGHC $ valid `gcatch` constE invalid `gcatch` constE (return errorMessage)
   where
-    valid = makeTypeOf LoadAllTargets
-    invalid = constE invalid0
-    invalid0 = makeTypeOf $ LoadDependenciesOf (mkModuleName modstr)
-    makeTypeOf x = do
+    valid = do
         initSession ["-w"]
         setTargetFile fileName
-        loadWithLogger (\_ -> return ()) x
+        loadWithLogger (\_ -> return ()) LoadAllTargets
         ok <- setContextFromTarget
         if ok
-            then pretty <$> exprType expr
-            else return "Its type cannot be guessed"
-    pretty = showSDocForUser neverQualify . pprTypeForUser False
+            then action
+            else throw $ ErrorCall errorMessage
+                 -- this will be caught anyway
+    invalid = do
+        initSession ["-w"]
+        modgraph <- depanal [mkModuleName modstr] True
+        let imports = concatMap (map (showSDoc . ppr . unLoc)) $
+                      map ms_imps modgraph ++ map ms_srcimps modgraph
+        importsBuf <- liftIO . stringToStringBuffer . unlines $
+                     ("module " ++ sanitize modstr ++ " where") : imports
+        clkTime <- liftIO getClockTime
+        setTargets [Target (TargetModule $ mkModuleName modstr) True
+                    (Just (importsBuf, clkTime))]
+        loadWithLogger defaultWarnErrLogger LoadAllTargets
+        ok <- setContextFromTarget
+        if ok
+          then action
+          else return errorMessage
+    errorMessage = "Couldn't determine type"
+    sanitize = fromMaybe "SomeModule" . listToMaybe . words
+
+typeOf :: FilePath -> ModuleString -> Expression -> IO String
+typeOf fileName modstr expr = inModuleContext fileName modstr
+                              (pretty <$> exprType expr)
+  where pretty = showSDocForUser neverQualify . pprTypeForUser False
 
 ----------------------------------------------------------------
 
@@ -42,26 +64,13 @@ infoExpr :: Options -> ModuleString -> Expression -> FilePath -> IO String
 infoExpr _ modstr expr file = (++ "\n") <$> info file modstr expr
 
 info :: FilePath -> ModuleString -> FilePath -> IO String
-info fileName modstr expr = withGHC $ valid `gcatch` invalid
-  where
-    valid = makeInfo LoadAllTargets
-    invalid = constE invalid0
-    invalid0 = makeInfo $ LoadDependenciesOf (mkModuleName modstr)
-    makeInfo x = do
-        initSession ["-w"]
-        setTargetFile fileName
-        loadWithLogger (\_ -> return ()) x
-        ok <- setContextFromTarget
-        if ok
-            then infoThing expr
-            else return "Its info is not available"
-    -- ghc/InteractiveUI.hs
-    infoThing str = do
-        names <- parseName str
-        mb_stuffs <- mapM getInfo names
-        let filtered = filterOutChildren (\(t,_f,_i) -> t) (catMaybes mb_stuffs)
-        unqual <- getPrintUnqual
-        return $ showSDocForUser unqual $ vcat (intersperse (text "") $ map (pprInfo False) filtered)
+info fileName modstr expr = inModuleContext fileName modstr (infoThing expr)
+  where infoThing str = do
+          names <- parseName str
+          mb_stuffs <- mapM getInfo names
+          let filtered = filterOutChildren (\(t,_f,_i) -> t) (catMaybes mb_stuffs)
+          unqual <- getPrintUnqual
+          return $ showSDocForUser unqual $ vcat (intersperse (text "") $ map (pprInfo False) filtered)
 
 -- ghc/InteractiveUI.hs
 filterOutChildren :: (a -> TyThing) -> [a] -> [a]
@@ -94,7 +103,7 @@ setContextFromTarget = do
     In this case, we cannot obtain the type of an expression, sigh.
     -}
     setContext top []
-    return $ if top == [] then False else True
+    return . not $ top == []
   where
     isTop ms = lookupMod `gcatch` returnFalse
       where
@@ -104,4 +113,4 @@ setContextFromTarget = do
 ----------------------------------------------------------------
 
 constE :: a -> (SomeException -> a)
-constE func = \_ -> func
+constE func _ = func
