@@ -22,41 +22,11 @@ type ModuleString = String
 typeExpr :: Options -> ModuleString -> Expression -> FilePath -> IO String
 typeExpr _ modstr expr file = (++ "\n") <$> typeOf file modstr expr
 
-inModuleContext :: FilePath -> ModuleString -> Ghc String -> IO String
-inModuleContext fileName modstr action =
-  withGHC $ valid `gcatch` constE invalid `gcatch` constE (return errorMessage)
-  where
-    valid = do
-        initSession ["-w"]
-        setTargetFile fileName
-        loadWithLogger (\_ -> return ()) LoadAllTargets
-        ok <- setContextFromTarget
-        if ok
-            then action
-            else throw $ ErrorCall errorMessage
-                 -- this will be caught anyway
-    invalid = do
-        initSession ["-w"]
-        modgraph <- depanal [mkModuleName modstr] True
-        let imports = concatMap (map (showSDoc . ppr . unLoc)) $
-                      map ms_imps modgraph ++ map ms_srcimps modgraph
-        importsBuf <- liftIO . stringToStringBuffer . unlines $
-                     ("module " ++ sanitize modstr ++ " where") : imports
-        clkTime <- liftIO getClockTime
-        setTargets [Target (TargetModule $ mkModuleName modstr) True
-                    (Just (importsBuf, clkTime))]
-        loadWithLogger defaultWarnErrLogger LoadAllTargets
-        ok <- setContextFromTarget
-        if ok
-          then action
-          else return errorMessage
-    errorMessage = "Couldn't determine type"
-    sanitize = fromMaybe "SomeModule" . listToMaybe . words
-
 typeOf :: FilePath -> ModuleString -> Expression -> IO String
-typeOf fileName modstr expr = inModuleContext fileName modstr
-                              (pretty <$> exprType expr)
-  where pretty = showSDocForUser neverQualify . pprTypeForUser False
+typeOf fileName modstr expr =
+    inModuleContext fileName modstr (pretty <$> exprType expr)
+  where
+    pretty = showSDocForUser neverQualify . pprTypeForUser False
 
 ----------------------------------------------------------------
 
@@ -65,14 +35,15 @@ infoExpr _ modstr expr file = (++ "\n") <$> info file modstr expr
 
 info :: FilePath -> ModuleString -> FilePath -> IO String
 info fileName modstr expr = inModuleContext fileName modstr (infoThing expr)
-  where infoThing str = do
-          names <- parseName str
-          mb_stuffs <- mapM getInfo names
-          let filtered = filterOutChildren (\(t,_f,_i) -> t) (catMaybes mb_stuffs)
-          unqual <- getPrintUnqual
-          return $ showSDocForUser unqual $ vcat (intersperse (text "") $ map (pprInfo False) filtered)
+  where
+    -- ghc/InteractiveUI.hs
+    infoThing str = do
+        names <- parseName str
+        mb_stuffs <- mapM getInfo names
+        let filtered = filterOutChildren (\(t,_f,_i) -> t) (catMaybes mb_stuffs)
+        unqual <- getPrintUnqual
+        return $ showSDocForUser unqual $ vcat (intersperse (text "") $ map (pprInfo False) filtered)
 
--- ghc/InteractiveUI.hs
 filterOutChildren :: (a -> TyThing) -> [a] -> [a]
 filterOutChildren get_thing xs
   = [x | x <- xs, not (getName (get_thing x) `elemNameSet` implicits)]
@@ -81,9 +52,9 @@ filterOutChildren get_thing xs
 
 pprInfo :: PrintExplicitForalls -> (TyThing, Fixity, [GHC.Instance]) -> SDoc
 pprInfo pefas (thing, fixity, insts)
-  =  pprTyThingInContextLoc pefas thing
-  $$ show_fixity fixity
-  $$ vcat (map pprInstance insts)
+    = pprTyThingInContextLoc pefas thing
+   $$ show_fixity fixity
+   $$ vcat (map pprInstance insts)
   where
     show_fixity fix
         | fix == defaultFixity = empty
@@ -91,19 +62,43 @@ pprInfo pefas (thing, fixity, insts)
 
 ----------------------------------------------------------------
 
+inModuleContext :: FilePath -> ModuleString -> Ghc String -> IO String
+inModuleContext fileName modstr action = withGHC valid
+  where
+    valid = do
+        initSession ["-w"]
+        setTargetFile fileName
+        loadWithLogger (\_ -> return ()) LoadAllTargets
+        ok <- setContextFromTarget
+        if ok
+          then action
+          else invalid
+    invalid = do
+        initSession ["-w"]
+        dummyModule
+        loadWithLogger defaultWarnErrLogger LoadAllTargets
+        ok <- setContextFromTarget
+        if ok
+          then action
+          else return errorMessage
+    dummyModule = do
+        modgraph <- depanal [mkModuleName modstr] True
+        let imports = concatMap (map (showSDoc . ppr . unLoc)) $
+                      map ms_imps modgraph ++ map ms_srcimps modgraph
+            moddef = "module " ++ sanitize modstr ++ " where"
+            header = moddef : imports
+        importsBuf <- liftIO . stringToStringBuffer . unlines $ header
+        clkTime <- liftIO getClockTime
+        setTargets [Target (TargetModule $ mkModuleName modstr) True (Just (importsBuf, clkTime))]
+    sanitize = fromMaybe "SomeModule" . listToMaybe . words
+    errorMessage = "Couldn't determine type"
+
 setContextFromTarget :: Ghc Bool
 setContextFromTarget = do
     ms <- depanal [] False
-    -- ms <- getModuleGraph -- this is the same
     top <- map ms_mod <$> filterM isTop ms
-    {-
-    top is a set of this module and your-defined modules.
-    If this module has syntax errors, it cannot be specified.
-    And if there is no your-defined modules, top is [].
-    In this case, we cannot obtain the type of an expression, sigh.
-    -}
     setContext top []
-    return . not $ top == []
+    return (top /= [])
   where
     isTop ms = lookupMod `gcatch` returnFalse
       where
@@ -113,4 +108,4 @@ setContextFromTarget = do
 ----------------------------------------------------------------
 
 constE :: a -> (SomeException -> a)
-constE func _ = func
+constE func = \_ -> func
