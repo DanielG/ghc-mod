@@ -80,7 +80,7 @@
     (goto-char (point-min))
     (when (re-search-forward "Inferred type: " nil t)
       (delete-region (point-min) (point)))
-    (when (re-search-forward "forall [^.]+\\. " nil t)
+    (when (re-search-forward " forall [^.]+\\." nil t)
       (replace-match ""))
     (while (re-search-forward "\0 +" nil t)
       (replace-match " "))
