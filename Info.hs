@@ -23,9 +23,9 @@ typeExpr :: Options -> ModuleString -> Expression -> FilePath -> IO String
 typeExpr _ modstr expr file = (++ "\n") <$> typeOf file modstr expr
 
 typeOf :: FilePath -> ModuleString -> Expression -> IO String
-typeOf fileName modstr expr =
-    inModuleContext fileName modstr (pretty <$> exprType expr)
+typeOf fileName modstr expr = inModuleContext fileName modstr exprToType
   where
+    exprToType = pretty <$> exprType expr
     pretty = showSDocForUser neverQualify . pprTypeForUser False
 
 ----------------------------------------------------------------
@@ -34,15 +34,20 @@ infoExpr :: Options -> ModuleString -> Expression -> FilePath -> IO String
 infoExpr _ modstr expr file = (++ "\n") <$> info file modstr expr
 
 info :: FilePath -> ModuleString -> FilePath -> IO String
-info fileName modstr expr = inModuleContext fileName modstr (infoThing expr)
+info fileName modstr expr = inModuleContext fileName modstr exprToInfo
   where
-    -- ghc/InteractiveUI.hs
-    infoThing str = do
-        names <- parseName str
-        mb_stuffs <- mapM getInfo names
-        let filtered = filterOutChildren (\(t,_f,_i) -> t) (catMaybes mb_stuffs)
-        unqual <- getPrintUnqual
-        return $ showSDocForUser unqual $ vcat (intersperse (text "") $ map (pprInfo False) filtered)
+    exprToInfo = infoThing expr
+
+----------------------------------------------------------------
+-- from ghc/InteractiveUI.hs
+
+infoThing :: String -> Ghc String
+infoThing str = do
+    names <- parseName str
+    mb_stuffs <- mapM getInfo names
+    let filtered = filterOutChildren (\(t,_f,_i) -> t) (catMaybes mb_stuffs)
+    unqual <- getPrintUnqual
+    return $ showSDocForUser unqual $ vcat (intersperse (text "") $ map (pprInfo False) filtered)
 
 filterOutChildren :: (a -> TyThing) -> [a] -> [a]
 filterOutChildren get_thing xs
@@ -69,19 +74,13 @@ inModuleContext fileName modstr action = withGHC valid
         initSession ["-w"]
         setTargetFile fileName
         loadWithLogger (\_ -> return ()) LoadAllTargets
-        ok <- setContextFromTarget
-        if ok
-          then action
-          else invalid
+        mif setContextFromTarget action invalid
     invalid = do
         initSession ["-w"]
-        dummyModule
+        setTargetBuffer
         loadWithLogger defaultWarnErrLogger LoadAllTargets
-        ok <- setContextFromTarget
-        if ok
-          then action
-          else return errorMessage
-    dummyModule = do
+        mif setContextFromTarget action (return errorMessage)
+    setTargetBuffer = do
         modgraph <- depanal [mkModuleName modstr] True
         let imports = concatMap (map (showSDoc . ppr . unLoc)) $
                       map ms_imps modgraph ++ map ms_srcimps modgraph
@@ -90,6 +89,7 @@ inModuleContext fileName modstr action = withGHC valid
         importsBuf <- liftIO . stringToStringBuffer . unlines $ header
         clkTime <- liftIO getClockTime
         setTargets [Target (TargetModule $ mkModuleName modstr) True (Just (importsBuf, clkTime))]
+    mif m t e = m >>= \ok -> if ok then t else e
     sanitize = fromMaybe "SomeModule" . listToMaybe . words
     errorMessage = "Couldn't determine type"
 
