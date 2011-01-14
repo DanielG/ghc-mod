@@ -55,7 +55,7 @@ filterOutChildren get_thing xs
   where
       implicits = mkNameSet [getName t | x <- xs, t <- implicitTyThings (get_thing x)]
 
-pprInfo :: PrintExplicitForalls -> (TyThing, Fixity, [GHC.Instance]) -> SDoc
+pprInfo :: PrintExplicitForalls -> (TyThing, Fixity, [Instance]) -> SDoc
 pprInfo pefas (thing, fixity, insts)
     = pprTyThingInContextLoc pefas thing
    $$ show_fixity fixity
