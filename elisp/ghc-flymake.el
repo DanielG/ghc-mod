@@ -74,16 +74,30 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+(defun ghc-extract-type (str)
+  (with-temp-buffer
+    (insert str)
+    (goto-char (point-min))
+    (when (re-search-forward "Inferred type: " nil t)
+      (delete-region (point-min) (point)))
+    (when (re-search-forward "forall [^.]+\\. " nil t)
+      (replace-match ""))
+    (while (re-search-forward "\0 +" nil t)
+      (replace-match " "))
+    (goto-char (point-min))
+    (while (re-search-forward "\\[Char\\]" nil t)
+      (replace-match "String"))
+    (re-search-forward "\0" nil t)
+    (buffer-substring-no-properties (point-min) (1- (point)))))
+
 (defun ghc-flymake-insert-from-warning ()
   (interactive)
   (dolist (data (ghc-flymake-err-list))
     (save-excursion
       (cond
-       ((string-match "Inferred type: \\([^:]+ :: \\)\\(forall [^.]+\\.\\( \\|\0 +\\)\\)?\\([^\0]*\\)" data)
+       ((string-match "Inferred type: " data)
 	(beginning-of-line)
-	(insert (match-string 1 data)
-		(replace-regexp-in-string "\\[Char\\]" "String" (match-string 4 data))
-		"\n"))
+	(insert (ghc-extract-type data) "\n"))
        ((string-match "lacks an accompanying binding" data)
 	(beginning-of-line)
 	(when (looking-at "^\\([^ ]+\\) *::")
