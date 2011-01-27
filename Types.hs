@@ -11,6 +11,7 @@ import GHC.Paths (libdir)
 data Options = Options {
     convert   :: [String] -> String
   , hlintOpts :: [String]
+  , operators :: Bool
   }
 
 withGHC :: (MonadPlus m) => Ghc (m a) -> IO (m a)

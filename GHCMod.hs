@@ -23,13 +23,13 @@ import Types
 usage :: String
 usage =    "ghc-mod version 0.5.1\n"
         ++ "Usage:\n"
-        ++ "\t ghc-mod [-l] list\n"
-        ++ "\t ghc-mod [-l] lang\n"
-        ++ "\t ghc-mod [-l] browse <module> [<module> ...]\n"
+        ++ "\t ghc-mod list [-l]\n"
+        ++ "\t ghc-mod lang [-l]\n"
+        ++ "\t ghc-mod browse [-l] [-o] <module> [<module> ...]\n"
         ++ "\t ghc-mod check <HaskellFile>\n"
         ++ "\t ghc-mod type <HaskellFile> <module> <expression>\n"
         ++ "\t ghc-mod info <HaskellFile> <module> <expression>\n"
-        ++ "\t ghc-mod [-h opt] lint <HaskellFile>\n"
+        ++ "\t ghc-mod lint [-h opt] <HaskellFile>\n"
         ++ "\t ghc-mod boot\n"
         ++ "\t ghc-mod help\n"
 
@@ -39,6 +39,7 @@ defaultOptions :: Options
 defaultOptions = Options {
     convert = toPlain
   , hlintOpts = []
+  , operators = False
   }
 
 argspec :: [OptDescr (Options -> Options)]
@@ -48,6 +49,9 @@ argspec = [ Option "l" ["tolisp"]
           , Option "h" ["hlintOpt"]
             (ReqArg (\h opts -> opts { hlintOpts = h : hlintOpts opts }) "hlintOpt")
             "hint to be ignored"
+          , Option "o" ["operators"]
+            (NoArg (\opts -> opts { operators = True }))
+            "print operators, too"
           ]
 
 parseArgs :: [OptDescr (Options -> Options)] -> [String] -> (Options, [String])

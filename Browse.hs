@@ -10,9 +10,17 @@ import Types
 ----------------------------------------------------------------
 
 browseModule :: Options -> String -> IO String
-browseModule opt mdlName = convert opt . validate <$> browse mdlName
+browseModule opt mdlName = convert opt . format <$> browse mdlName
   where
-    validate = sort . filter (isAlpha.head)
+    format
+      | operators opt = formatOps
+      | otherwise     = removeOps
+    removeOps = sort . filter (isAlpha.head)
+    formatOps = sort . map formatOps'
+    formatOps' x@(s:_)
+      | isAlpha s = x
+      | otherwise = '(' : x ++ ")"
+    formatOps' [] = error "formatOps'"
 
 browse :: String -> IO [String]
 browse mdlName = withGHC $ do
