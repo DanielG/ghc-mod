@@ -33,4 +33,4 @@ find_cabal_dev = do
 -- Can't seem to find anything on how to get the GHC version.
 -- It's late so I'll poke at it some more tomorrow.
    pkg_string :: String
-   pkg_string = "cabal-dev/packages-6.12.3.conf:"
+   pkg_string = "cabal-dev/packages-6.12.3.conf"

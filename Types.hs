@@ -18,7 +18,9 @@ withGHC :: (MonadPlus m) => Ghc (m a) -> IO (m a)
 withGHC body = ghandle ignore $ runGhc (Just libdir) body
   where
     ignore :: (MonadPlus m) => SomeException -> IO (m a)
-    ignore _ = return mzero
+    ignore b = do
+      putStrLn $ show b
+      return mzero
 
 ----------------------------------------------------------------
 
@@ -39,7 +41,7 @@ setFlags fp d = d {
     importPaths = importPaths d ++ importDirs
   , packageFlags = ghcPackage : packageFlags d
   , ghcLink = NoLink
-  , libraryPaths = fp
+  , extraPkgConfs = fp
 -- GHC.desugarModule does not produces the pattern warnings, why?
 --  , hscTarget = HscNothing
   , hscTarget = HscInterpreted
