@@ -12,6 +12,7 @@ import Outputable hiding (showSDoc)
 import Pretty
 import Types
 import Prelude hiding (catch)
+import System.Posix.Env
 
 ----------------------------------------------------------------
 
@@ -21,13 +22,18 @@ checkSyntax _ file = unlines <$> check file
 ----------------------------------------------------------------
 
 check :: String -> IO [String]
-check fileName = withGHC $ do
-    ref <- newRef []
-    initSession ["-Wall","-fno-warn-unused-do-bind"]
-    setTargetFile fileName
-    loadWithLogger (refLogger ref) LoadAllTargets `gcatch` handleParseError ref
-    clearWarnings
-    readRef ref
+check fileName = do
+      setEnv "GHC_PACKAGE_PATH" "./cabal-dev/packages-6.12.3.conf:" True
+      withGHC $ do
+        ref <- newRef []
+    
+        _ <- initSession ["-Wall","-fno-warn-unused-do-bind -L./cabal-dev/lib -i./src -i../src -i../../src"]
+        setTargetFile fileName
+        _ <- loadWithLogger
+             (refLogger ref)
+             LoadAllTargets `gcatch` handleParseError ref
+        clearWarnings
+        readRef ref
   where
     handleParseError ref e = do
         liftIO . writeIORef ref $ errBagToStrList . srcErrorMessages $ e
