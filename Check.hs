@@ -12,7 +12,8 @@ import Outputable hiding (showSDoc)
 import Pretty
 import Types
 import Prelude hiding (catch)
-import System.Posix.Env
+
+import CabalDev (find_cabal_dev)
 
 ----------------------------------------------------------------
 
@@ -23,11 +24,16 @@ checkSyntax _ file = unlines <$> check file
 
 check :: String -> IO [String]
 check fileName = do
-      setEnv "GHC_PACKAGE_PATH" "./cabal-dev/packages-6.12.3.conf:" True
+      tpk <- find_cabal_dev
+          
       withGHC $ do
         ref <- newRef []
     
-        _ <- initSession ["-Wall","-fno-warn-unused-do-bind -L./cabal-dev/lib -i./src -i../src -i../../src"]
+        _ <- initSession tpk [ "-Wall"
+                             , "-fno-warn-unused-do-bind"
+                             , "-i./src"
+                             , "-i../src"
+                             , "-i../../src" ]
         setTargetFile fileName
         _ <- loadWithLogger
              (refLogger ref)
@@ -73,3 +79,4 @@ showSDoc d = map toNull . Pretty.showDocWith PageMode $ d style
   where
     toNull '\n' = '\0'
     toNull x = x
+

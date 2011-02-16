@@ -25,20 +25,21 @@ withGHC body = ghandle ignore $ runGhc (Just libdir) body
 initSession0 :: Ghc [PackageId]
 initSession0 = getSessionDynFlags >>= setSessionDynFlags
 
-initSession :: [String] -> Ghc [PackageId]
-initSession cmdOpts = do
+initSession :: [FilePath] -> [String] -> Ghc [PackageId]
+initSession fx cmdOpts = do
     dflags <- getSessionDynFlags
     let opts = map noLoc cmdOpts
     (dflags',_,_) <- parseDynamicFlags dflags opts
-    setSessionDynFlags $ setFlags dflags'
+    setSessionDynFlags $ setFlags fx dflags'
 
 ----------------------------------------------------------------
 
-setFlags :: DynFlags -> DynFlags
-setFlags d = d {
+setFlags :: [FilePath] -> DynFlags -> DynFlags
+setFlags fp d = d {
     importPaths = importPaths d ++ importDirs
   , packageFlags = ghcPackage : packageFlags d
   , ghcLink = NoLink
+  , libraryPaths = fp
 -- GHC.desugarModule does not produces the pattern warnings, why?
 --  , hscTarget = HscNothing
   , hscTarget = HscInterpreted

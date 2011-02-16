@@ -13,6 +13,7 @@ import Data.List
 import Control.Exception
 import StringBuffer
 import System.Time
+import CabalDev
 
 type Expression = String
 type ModuleString = String
@@ -23,7 +24,9 @@ typeExpr :: Options -> ModuleString -> Expression -> FilePath -> IO String
 typeExpr _ modstr expr file = (++ "\n") <$> typeOf file modstr expr
 
 typeOf :: FilePath -> ModuleString -> Expression -> IO String
-typeOf fileName modstr expr = inModuleContext fileName modstr exprToType
+typeOf fileName modstr expr = do
+  cdpkg <- find_cabal_dev
+  inModuleContext cdpkg fileName modstr exprToType
   where
     exprToType = pretty <$> exprType expr
     pretty = showSDocForUser neverQualify . pprTypeForUser False
@@ -34,7 +37,9 @@ infoExpr :: Options -> ModuleString -> Expression -> FilePath -> IO String
 infoExpr _ modstr expr file = (++ "\n") <$> info file modstr expr
 
 info :: FilePath -> ModuleString -> FilePath -> IO String
-info fileName modstr expr = inModuleContext fileName modstr exprToInfo
+info fileName modstr expr = do
+  cdpkg <- find_cabal_dev
+  inModuleContext cdpkg fileName modstr exprToInfo
   where
     exprToInfo = infoThing expr
 
@@ -67,16 +72,16 @@ pprInfo pefas (thing, fixity, insts)
 
 ----------------------------------------------------------------
 
-inModuleContext :: FilePath -> ModuleString -> Ghc String -> IO String
-inModuleContext fileName modstr action = withGHC valid
+inModuleContext :: [FilePath] -> FilePath -> ModuleString -> Ghc String -> IO String
+inModuleContext cdpkg fileName modstr action = withGHC valid
   where
     valid = do
-        initSession ["-w"]
+        initSession cdpkg ["-w"]
         setTargetFile fileName
         loadWithLogger (\_ -> return ()) LoadAllTargets
         mif setContextFromTarget action invalid
     invalid = do
-        initSession ["-w"]
+        initSession cdpkg ["-w"]
         setTargetBuffer
         loadWithLogger defaultWarnErrLogger LoadAllTargets
         mif setContextFromTarget action (return errorMessage)
