@@ -103,7 +103,7 @@
 	(when (looking-at "^\\([^ ]+\\) *::")
 	  (save-match-data
 	    (forward-line)
-	    (if (eobp) (insert "\n")))
+	    (if (not (bolp)) (insert "\n")))
 	  (insert (match-string 1) " = undefined\n")))
        ((string-match "Not in scope: `\\([^']+\\)'" data)
 	(save-match-data
