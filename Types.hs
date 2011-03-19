@@ -45,7 +45,7 @@ setFlags d = d {
   }
 
 importDirs :: [String]
-importDirs = ["..","../..","../../..","../../../../.."]
+importDirs = ["..","../..","../../..","../../../..","../../../../.."]
 
 ghcPackage :: PackageFlag
 ghcPackage = ExposePackage "ghc"
