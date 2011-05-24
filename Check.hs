@@ -23,20 +23,9 @@ checkSyntax _ file = unlines <$> check file
 
 check :: String -> IO [String]
 check fileName = withGHC $ do
+    file <- initializeGHC fileName options
+    setTargetFile file
     ref <- newRef []
-    (owdir,mdirfile) <- getDirs
-    case mdirfile of
-        Nothing -> do
-            initSession options Nothing
-            setTargetFile fileName
-        Just (cdir,cfile) -> do
-            midirs <- parseCabalFile cfile
-            changeToCabalDirectory cdir
-            let idirs = case midirs of
-                    Nothing   -> [cdir,owdir]
-                    Just dirs -> dirs ++ [owdir]
-            initSession options (Just idirs)
-            setTargetFile (ajustFileName fileName owdir cdir)
     loadWithLogger (refLogger ref) LoadAllTargets `gcatch` handleParseError ref
     clearWarnings
     readRef ref

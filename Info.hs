@@ -1,18 +1,19 @@
 module Info where
 
+import Cabal
 import Control.Applicative hiding (empty)
+import Control.Exception
 import Control.Monad
+import Data.List
 import Data.Maybe
 import GHC
+import HscTypes
+import NameSet
 import Outputable
 import PprTyThing
-import Types
-import NameSet
-import HscTypes
-import Data.List
-import Control.Exception
 import StringBuffer
 import System.Time
+import Types
 
 type Expression = String
 type ModuleString = String
@@ -71,12 +72,12 @@ inModuleContext :: FilePath -> ModuleString -> Ghc String -> IO String
 inModuleContext fileName modstr action = withGHC valid
   where
     valid = do
-        initSession ["-w"] Nothing
-        setTargetFile fileName
+        file <- initializeGHC fileName ["-w"]
+        setTargetFile file
         loadWithLogger (\_ -> return ()) LoadAllTargets
         mif setContextFromTarget action invalid
     invalid = do
-        initSession ["-w"] Nothing
+        initializeGHC fileName ["-w"]
         setTargetBuffer
         loadWithLogger defaultWarnErrLogger LoadAllTargets
         mif setContextFromTarget action (return errorMessage)
