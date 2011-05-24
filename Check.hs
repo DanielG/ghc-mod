@@ -1,6 +1,7 @@
 module Check (checkSyntax) where
 
 import Bag
+import Cabal
 import Control.Applicative
 import Data.IORef
 import ErrUtils
@@ -9,9 +10,9 @@ import FastString
 import GHC
 import HscTypes
 import Outputable hiding (showSDoc)
+import Prelude hiding (catch)
 import Pretty
 import Types
-import Prelude hiding (catch)
 
 ----------------------------------------------------------------
 
@@ -23,12 +24,24 @@ checkSyntax _ file = unlines <$> check file
 check :: String -> IO [String]
 check fileName = withGHC $ do
     ref <- newRef []
-    initSession ["-Wall","-fno-warn-unused-do-bind"]
-    setTargetFile fileName
+    (owdir,mdirfile) <- getDirs
+    case mdirfile of
+        Nothing -> do
+            initSession options Nothing
+            setTargetFile fileName
+        Just (cdir,cfile) -> do
+            midirs <- parseCabalFile cfile
+            changeToCabalDirectory cdir
+            let idirs = case midirs of
+                    Nothing   -> [cdir,owdir]
+                    Just dirs -> dirs ++ [owdir]
+            initSession options (Just idirs)
+            setTargetFile (ajustFileName fileName owdir cdir)
     loadWithLogger (refLogger ref) LoadAllTargets `gcatch` handleParseError ref
     clearWarnings
     readRef ref
   where
+    options = ["-Wall","-fno-warn-unused-do-bind"]
     handleParseError ref e = do
         liftIO . writeIORef ref $ errBagToStrList . srcErrorMessages $ e
         return Succeeded

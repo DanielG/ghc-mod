@@ -71,12 +71,12 @@ inModuleContext :: FilePath -> ModuleString -> Ghc String -> IO String
 inModuleContext fileName modstr action = withGHC valid
   where
     valid = do
-        initSession ["-w"]
+        initSession ["-w"] Nothing
         setTargetFile fileName
         loadWithLogger (\_ -> return ()) LoadAllTargets
         mif setContextFromTarget action invalid
     invalid = do
-        initSession ["-w"]
+        initSession ["-w"] Nothing
         setTargetBuffer
         loadWithLogger defaultWarnErrLogger LoadAllTargets
         mif setContextFromTarget action (return errorMessage)

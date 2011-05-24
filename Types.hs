@@ -25,27 +25,23 @@ withGHC body = ghandle ignore $ runGhc (Just libdir) body
 initSession0 :: Ghc [PackageId]
 initSession0 = getSessionDynFlags >>= setSessionDynFlags
 
-initSession :: [String] -> Ghc [PackageId]
-initSession cmdOpts = do
+initSession :: [String] -> Maybe [FilePath] -> Ghc [PackageId]
+initSession cmdOpts midirs = do
     dflags <- getSessionDynFlags
     let opts = map noLoc cmdOpts
     (dflags',_,_) <- parseDynamicFlags dflags opts
-    setSessionDynFlags $ setFlags dflags'
+    setSessionDynFlags $ setFlags dflags' midirs
 
 ----------------------------------------------------------------
 
-setFlags :: DynFlags -> DynFlags
-setFlags d = d {
-    importPaths = importPaths d ++ importDirs
-  , packageFlags = ghcPackage : packageFlags d
-  , ghcLink = NoLink
--- GHC.desugarModule does not produces the pattern warnings, why?
---  , hscTarget = HscNothing
-  , hscTarget = HscInterpreted
-  }
-
-importDirs :: [String]
-importDirs = ["..","../..","../../..","../../../..","../../../../.."]
+setFlags :: DynFlags -> Maybe [FilePath] -> DynFlags
+setFlags d midirs = maybe d' (\x -> d' { importPaths = x }) midirs
+  where
+    d' = d {
+        packageFlags = ghcPackage : packageFlags d
+      , ghcLink = NoLink
+      , hscTarget = HscInterpreted
+      }
 
 ghcPackage :: PackageFlag
 ghcPackage = ExposePackage "ghc"
