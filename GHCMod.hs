@@ -21,7 +21,7 @@ import Types
 ----------------------------------------------------------------
 
 usage :: String
-usage =    "ghc-mod version 0.5.5\n"
+usage =    "ghc-mod version 0.6.0\n"
         ++ "Usage:\n"
         ++ "\t ghc-mod list [-l]\n"
         ++ "\t ghc-mod lang [-l]\n"
