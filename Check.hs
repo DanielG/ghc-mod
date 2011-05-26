@@ -12,6 +12,7 @@ import HscTypes
 import Outputable hiding (showSDoc)
 import Prelude hiding (catch)
 import Pretty
+import System.FilePath
 import Types
 
 ----------------------------------------------------------------
@@ -54,7 +55,7 @@ showErrMsg :: ErrMsg -> String
 showErrMsg err = file ++ ":" ++ line ++ ":" ++ col ++ ":" ++ msg ++ "\0" ++ ext
    where
      spn = head (errMsgSpans err)
-     file = unpackFS (srcSpanFile spn)
+     file = takeFileName $ unpackFS (srcSpanFile spn)
      line = show (srcSpanStartLine spn)
      col  = show (srcSpanStartCol spn)
      msg = showSDoc (errMsgShortDoc err)
