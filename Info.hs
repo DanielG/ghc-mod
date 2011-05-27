@@ -21,10 +21,10 @@ type ModuleString = String
 ----------------------------------------------------------------
 
 typeExpr :: Options -> ModuleString -> Expression -> FilePath -> IO String
-typeExpr _ modstr expr file = (++ "\n") <$> typeOf file modstr expr
+typeExpr opt modstr expr file = (++ "\n") <$> typeOf opt file modstr expr
 
-typeOf :: FilePath -> ModuleString -> Expression -> IO String
-typeOf fileName modstr expr = inModuleContext fileName modstr exprToType
+typeOf :: Options -> FilePath -> ModuleString -> Expression -> IO String
+typeOf opt fileName modstr expr = inModuleContext opt fileName modstr exprToType
   where
     exprToType = pretty <$> exprType expr
     pretty = showSDocForUser neverQualify . pprTypeForUser False
@@ -32,10 +32,10 @@ typeOf fileName modstr expr = inModuleContext fileName modstr exprToType
 ----------------------------------------------------------------
 
 infoExpr :: Options -> ModuleString -> Expression -> FilePath -> IO String
-infoExpr _ modstr expr file = (++ "\n") <$> info file modstr expr
+infoExpr opt modstr expr file = (++ "\n") <$> info opt file modstr expr
 
-info :: FilePath -> ModuleString -> FilePath -> IO String
-info fileName modstr expr = inModuleContext fileName modstr exprToInfo
+info :: Options -> FilePath -> ModuleString -> FilePath -> IO String
+info opt fileName modstr expr = inModuleContext opt fileName modstr exprToInfo
   where
     exprToInfo = infoThing expr
 
@@ -68,16 +68,17 @@ pprInfo pefas (thing, fixity, insts)
 
 ----------------------------------------------------------------
 
-inModuleContext :: FilePath -> ModuleString -> Ghc String -> IO String
-inModuleContext fileName modstr action = withGHC valid
+inModuleContext
+  :: Options -> FilePath -> ModuleString -> Ghc String -> IO String
+inModuleContext opt fileName modstr action = withGHC valid
   where
     valid = do
-        file <- initializeGHC fileName ["-w"]
+        file <- initializeGHC opt fileName ["-w"]
         setTargetFile file
         loadWithLogger (\_ -> return ()) LoadAllTargets
         mif setContextFromTarget action invalid
     invalid = do
-        initializeGHC fileName ["-w"]
+        initializeGHC opt fileName ["-w"]
         setTargetBuffer
         loadWithLogger defaultWarnErrLogger LoadAllTargets
         mif setContextFromTarget action (return errorMessage)
