@@ -1,3 +1,4 @@
+{-# LANGUAGE OverloadedStrings #-}
 module Cabal (initializeGHC) where
 
 import Control.Applicative hiding (many)
@@ -46,21 +47,7 @@ findTarget = Just <$> hs_source_dirs
 
 hs_source_dirs :: Parser [String]
 hs_source_dirs = do
-    satisfy $ inClass "hH"
-    satisfy $ inClass "sS"
-    char '-'
-    satisfy $ inClass "sS"
-    satisfy $ inClass "oO"
-    satisfy $ inClass "uU"
-    satisfy $ inClass "rR"
-    satisfy $ inClass "cC"
-    satisfy $ inClass "eE"
-    char '-'
-    satisfy $ inClass "dD"
-    satisfy $ inClass "iI"
-    satisfy $ inClass "rR"
-    satisfy $ inClass "sS"
-    char ':'
+    stringCI "hs-source-dirs:"
     many (char ' ')
     sepBy1 (many . satisfy $ notInClass " ,\n") (many1 . satisfy $ inClass " ,")
 
