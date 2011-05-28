@@ -15,12 +15,12 @@ import Types
 
 ----------------------------------------------------------------
 
-initializeGHC :: FilePath -> [String] -> Ghc FilePath
-initializeGHC fileName options = do
+initializeGHC :: Options -> FilePath -> [String] -> Ghc FilePath
+initializeGHC opt fileName ghcOptions = do
     (owdir,mdirfile) <- getDirs
     case mdirfile of
         Nothing -> do
-            initSession options Nothing
+            initSession opt ghcOptions Nothing
             return fileName
         Just (cdir,cfile) -> do
             midirs <- parseCabalFile cfile
@@ -28,7 +28,7 @@ initializeGHC fileName options = do
             let idirs = case midirs of
                     Nothing   -> [cdir,owdir]
                     Just dirs -> dirs ++ [owdir]
-            initSession options (Just idirs)
+            initSession opt ghcOptions (Just idirs)
             return (ajustFileName fileName owdir cdir)
 
 ----------------------------------------------------------------

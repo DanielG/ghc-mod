@@ -12,6 +12,8 @@ data Options = Options {
     convert   :: [String] -> String
   , hlintOpts :: [String]
   , operators :: Bool
+  , packageConfs :: [FilePath]
+  , useUserPackageConf :: Bool
   }
 
 withGHC :: (MonadPlus m) => Ghc (m a) -> IO (m a)
@@ -22,15 +24,16 @@ withGHC body = ghandle ignore $ runGhc (Just libdir) body
 
 ----------------------------------------------------------------
 
-initSession0 :: Ghc [PackageId]
-initSession0 = getSessionDynFlags >>= setSessionDynFlags
+initSession0 :: Options -> Ghc [PackageId]
+initSession0 opt = getSessionDynFlags >>=
+  setSessionDynFlags . setPackageConfFlags opt
 
-initSession :: [String] -> Maybe [FilePath] -> Ghc [PackageId]
-initSession cmdOpts midirs = do
+initSession :: Options -> [String] -> Maybe [FilePath] -> Ghc [PackageId]
+initSession opt cmdOpts midirs = do
     dflags <- getSessionDynFlags
     let opts = map noLoc cmdOpts
     (dflags',_,_) <- parseDynamicFlags dflags opts
-    setSessionDynFlags $ setFlags dflags' midirs
+    setSessionDynFlags $ setPackageConfFlags opt $ setFlags dflags' midirs
 
 ----------------------------------------------------------------
 
@@ -45,6 +48,17 @@ setFlags d midirs = maybe d' (\x -> d' { importPaths = x }) midirs
 
 ghcPackage :: PackageFlag
 ghcPackage = ExposePackage "ghc"
+
+setPackageConfFlags :: Options -> DynFlags -> DynFlags
+setPackageConfFlags
+  Options { packageConfs = confs, useUserPackageConf = useUser }
+  flagset@DynFlags { extraPkgConfs = extra, flags = origFlags }
+  = flagset { extraPkgConfs = extra', flags = flags' }
+  where
+    extra' = confs ++ extra
+    flags' = if useUser
+        then origFlags
+        else filter (/=Opt_ReadUserPackageConf) origFlags
 
 ----------------------------------------------------------------
 
