@@ -18,13 +18,13 @@ import Types
 ----------------------------------------------------------------
 
 checkSyntax :: Options -> String -> IO String
-checkSyntax _ file = unlines <$> check file
+checkSyntax opt file = unlines <$> check opt file
 
 ----------------------------------------------------------------
 
-check :: String -> IO [String]
-check fileName = withGHC $ do
-    file <- initializeGHC fileName options
+check :: Options -> String -> IO [String]
+check opt fileName = withGHC $ do
+    file <- initializeGHC opt fileName options
     setTargetFile file
     ref <- newRef []
     loadWithLogger (refLogger ref) LoadAllTargets `gcatch` handleParseError ref

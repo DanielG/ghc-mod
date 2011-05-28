@@ -10,11 +10,11 @@ import UniqFM
 ----------------------------------------------------------------
 
 listModules :: Options -> IO String
-listModules opt = convert opt . nub . sort <$> list
+listModules opt = convert opt . nub . sort <$> list opt
 
-list :: IO [String]
-list = withGHC $ do
-    initSession0
+list :: Options -> IO [String]
+list opt = withGHC $ do
+    initSession0 opt
     getExposedModules <$> getSessionDynFlags
   where
     getExposedModules = map moduleNameString
