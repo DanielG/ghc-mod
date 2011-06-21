@@ -26,16 +26,14 @@ checkSyntax opt file = unlines <$> check opt file
 
 check :: Options -> String -> IO [String]
 check opt fileName = withGHC $ do
+    options <- liftIO parseGhciContents
     file <- initializeGHC opt fileName options
     setTargetFile file
     ref <- newRef []
-    initSession =<< liftIO parseGhciContents
-    setTargetFile fileName
     loadWithLogger (refLogger ref) LoadAllTargets `gcatch` handleParseError ref
     clearWarnings
     readRef ref
   where
-    options = ["-Wall","-fno-warn-unused-do-bind"]
     handleParseError ref e = do
         liftIO . writeIORef ref $ errBagToStrList . srcErrorMessages $ e
         return Succeeded
@@ -105,10 +103,10 @@ parseGhciContents = do
   cwd <- getCurrentDirectory
   ts <- getGhciContents
   setCurrentDirectory cwd
-  let ls = filter (=~ "^:set ") (lines ts)
-  if length ls == 0
+  let sets = filter (=~ "^:set ") (lines ts)
+  if length sets == 0
     then return (findFlags [defaultFlags])
-    else return (findFlags ls)
+    else return (findFlags sets)
   where
     findFlags = concat . map (filter (=~ "^-[fwW]") . words) 
 

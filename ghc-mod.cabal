@@ -28,8 +28,8 @@ Executable ghc-mod
     GHC-Options:        -Wall -fno-warn-unused-do-bind
   else
     GHC-Options:        -Wall
-  Build-Depends:        base >= 4.0 && < 5, ghc, ghc-paths, transformers,
-                        process, directory, filepath, old-time,
+  Build-Depends:        base >= 4.0 && < 5, ghc, ghc-paths, transformers, attoparsec, attoparsec-enumerator, regex-posix,
+                        process, directory, filepath, old-time, hlint, enumerator, ghc
 Source-Repository head
   Type:                 git
   Location:             git://github.com/kazu-yamamoto/ghc-mod.git
