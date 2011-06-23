@@ -78,7 +78,7 @@
   (with-temp-buffer
     (insert str)
     (goto-char (point-min))
-    (when (re-search-forward "Inferred type: \\|no type signature:\\( \\|\0 +\\)?" nil t)
+    (when (re-search-forward "Inferred type: " nil t)
       (delete-region (point-min) (point)))
     (when (re-search-forward " forall [^.]+\\." nil t)
       (replace-match ""))
@@ -95,7 +95,7 @@
   (dolist (data (ghc-flymake-err-list))
     (save-excursion
       (cond
-       ((string-match "Inferred type: \\|no type signature:" data)
+       ((string-match "Inferred type: " data)
 	(beginning-of-line)
 	(insert (ghc-extract-type data) "\n"))
        ((string-match "lacks an accompanying binding" data)
@@ -103,7 +103,7 @@
 	(when (looking-at "^\\([^ ]+\\) *::")
 	  (save-match-data
 	    (forward-line)
-	    (if (not (bolp)) (insert "\n")))
+	    (if (eobp) (insert "\n")))
 	  (insert (match-string 1) " = undefined\n")))
        ((string-match "Not in scope: `\\([^']+\\)'" data)
 	(save-match-data
