@@ -11,6 +11,7 @@ import GHC.Paths (libdir)
 data Options = Options {
     convert   :: [String] -> String
   , hlintOpts :: [String]
+  , checkIncludes :: [String]
   , operators :: Bool
   , packageConfs :: [FilePath]
   , useUserPackageConf :: Bool
