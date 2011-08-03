@@ -19,7 +19,7 @@
 (defcustom ghc-flymake-check-includes nil
   "list of directories to include when checking file"
   :type '(repeat string)
-  :risky nil
+;;  :risky nil
   :require 'ghc-flymake
   :group 'ghc-flymake)
 
@@ -57,7 +57,7 @@
          (list "check" file)
        (let ((includes (ghc-mapconcat (lambda (x) (list "-i" x)) ghc-flymake-check-includes)))
          `("check" ,@includes ,file)))))
-     
+
 (defun ghc-flymake-toggle-command ()
   (interactive)
   (setq ghc-flymake-command (not ghc-flymake-command))
