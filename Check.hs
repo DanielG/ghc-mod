@@ -31,7 +31,7 @@ check opt fileName = withGHC $ do
     clearWarnings
     readRef ref
   where
-    options = ["-Wall","-fno-warn-unused-do-bind"]
+    options = ["-Wall","-fno-warn-unused-do-bind"] ++ map ((++) "-i") (checkIncludes opt)
     handleParseError ref e = do
         liftIO . writeIORef ref $ errBagToStrList . srcErrorMessages $ e
         return Succeeded
