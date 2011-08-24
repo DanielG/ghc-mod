@@ -2,39 +2,40 @@
 module Cabal (initializeGHC) where
 
 import Control.Applicative hiding (many)
+import CoreMonad
 import Data.Attoparsec.Char8
 import Data.Attoparsec.Enumerator
 import Data.Enumerator (run, ($$))
 import Data.Enumerator.Binary (enumFile)
 import Data.List
 import GHC
-import qualified HscTypes as H
 import System.Directory
 import System.FilePath
 import Types
 
 ----------------------------------------------------------------
 
-initializeGHC :: Options -> FilePath -> [String] -> Ghc FilePath
-initializeGHC opt fileName ghcOptions = do
-    (owdir,mdirfile) <- getDirs
+initializeGHC :: Options -> FilePath -> [String] -> Bool -> Ghc (FilePath,LogReader)
+initializeGHC opt fileName ghcOptions logging = do
+    (owdir,mdirfile) <- liftIO getDirs
     case mdirfile of
         Nothing -> do
-            initSession opt ghcOptions Nothing
-            return fileName
+            logReader <- initSession opt ghcOptions Nothing logging
+            return (fileName,logReader)
         Just (cdir,cfile) -> do
             midirs <- parseCabalFile cfile
             changeToCabalDirectory cdir
             let idirs = case midirs of
                     Nothing   -> [cdir,owdir]
                     Just dirs -> dirs ++ [owdir]
-            initSession opt ghcOptions (Just idirs)
-            return (ajustFileName fileName owdir cdir)
+                file = ajustFileName fileName owdir cdir
+            logReader <- initSession opt ghcOptions (Just idirs) logging
+            return (file,logReader)
 
 ----------------------------------------------------------------
 
 parseCabalFile :: FilePath -> Ghc (Maybe [String])
-parseCabalFile file = H.liftIO $ do
+parseCabalFile file = liftIO $ do
     res <- run (enumFile file $$ iterParser findTarget)
     case res of
         Right x -> return x
@@ -63,20 +64,20 @@ ajustFileName name olddir newdir
 
 changeToCabalDirectory :: FilePath -> Ghc ()
 changeToCabalDirectory dir = do
-    H.liftIO $ setCurrentDirectory dir
+    liftIO $ setCurrentDirectory dir
     workingDirectoryChanged
 
-getDirs :: Ghc (FilePath, Maybe (FilePath,FilePath))
+getDirs :: IO (FilePath, Maybe (FilePath,FilePath))
 getDirs = do
-    wdir <- H.liftIO $ getCurrentDirectory
+    wdir <- getCurrentDirectory
     mcabdir <- cabalDir wdir
     case mcabdir of
         Nothing -> return (wdir,Nothing)
         jdf     -> return (wdir,jdf)
 
-cabalDir :: FilePath -> Ghc (Maybe (FilePath,FilePath))
+cabalDir :: FilePath -> IO (Maybe (FilePath,FilePath))
 cabalDir dir = do
-    cnts <- H.liftIO $ getDirectoryContents dir
+    cnts <- getDirectoryContents dir
     case filter isCabal cnts of
         [] -> do
             let dir' = takeDirectory dir

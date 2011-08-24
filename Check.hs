@@ -1,18 +1,10 @@
 module Check (checkSyntax) where
 
-import Bag
 import Cabal
 import Control.Applicative
-import Data.IORef
-import ErrUtils
-import Exception
-import FastString
+import CoreMonad
 import GHC
-import HscTypes
-import Outputable hiding (showSDoc)
 import Prelude hiding (catch)
-import Pretty
-import System.FilePath
 import Types
 
 ----------------------------------------------------------------
@@ -24,49 +16,14 @@ checkSyntax opt file = unlines <$> check opt file
 
 check :: Options -> String -> IO [String]
 check opt fileName = withGHC $ do
-    file <- initializeGHC opt fileName options
+    (file,readLog) <- initializeGHC opt fileName options True
     setTargetFile file
-    ref <- newRef []
-    loadWithLogger (refLogger ref) LoadAllTargets `gcatch` handleParseError ref
-    clearWarnings
-    readRef ref
+    load LoadAllTargets -- `gcatch` handleParseError ref xxx
+    liftIO readLog
   where
-    options = ["-Wall","-fno-warn-unused-do-bind"] ++ map ((++) "-i") (checkIncludes opt)
+    options = ["-Wall","-fno-warn-unused-do-bind"] ++ map ("-i" ++) (checkIncludes opt)
+    {-
     handleParseError ref e = do
         liftIO . writeIORef ref $ errBagToStrList . srcErrorMessages $ e
         return Succeeded
-    newRef  = liftIO . newIORef
-    readRef = liftIO . readIORef
-
-----------------------------------------------------------------
-
-refLogger :: IORef [String] -> WarnErrLogger
-refLogger ref Nothing =
-    (errBagToStrList <$> getWarnings) >>= liftIO . writeIORef ref
-refLogger ref (Just e) =
-    liftIO . writeIORef ref $ errBagToStrList . srcErrorMessages $ e
-
-errBagToStrList :: Bag ErrMsg -> [String]
-errBagToStrList = map showErrMsg . reverse . bagToList
-
-----------------------------------------------------------------
-
-showErrMsg :: ErrMsg -> String
-showErrMsg err = file ++ ":" ++ line ++ ":" ++ col ++ ":" ++ msg ++ "\0" ++ ext
-   where
-     spn = head (errMsgSpans err)
-     file = takeFileName $ unpackFS (srcSpanFile spn)
-     line = show (srcSpanStartLine spn)
-     col  = show (srcSpanStartCol spn)
-     msg = showSDoc (errMsgShortDoc err)
-     ext = showSDoc (errMsgExtraInfo err)
-
-style :: PprStyle
-style = mkUserStyle neverQualify AllTheWay
-
-showSDoc :: SDoc -> String
---showSDoc d = map toNull . Pretty.showDocWith ZigZagMode $ d style
-showSDoc d = map toNull . Pretty.showDocWith PageMode $ d style
-  where
-    toNull '\n' = '\0'
-    toNull x = x
+    -}

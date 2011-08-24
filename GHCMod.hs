@@ -62,7 +62,7 @@ argspec = [ Option "l" ["tolisp"]
             (NoArg (\opts -> opts{ useUserPackageConf = False }))
             "do not read the user package database"
           , Option "i" ["include"]
-            (ReqArg (\i opts -> opts{ checkIncludes = i : (checkIncludes opts)}) "include")
+            (ReqArg (\i opts -> opts{ checkIncludes = i : checkIncludes opts }) "include")
             "directory to include in search for modules"
           ]
 
@@ -105,7 +105,7 @@ main = flip catches handlers $ do
   where
     handlers = [Handler handler1, Handler handler2]
     handler1 :: ErrorCall -> IO ()
-    handler1 e = print e -- for debug
+    handler1 = print -- for debug
     handler2 :: GHCModError -> IO ()
     handler2 SafeList = printUsage
     handler2 (NoSuchCommand cmd) = do
@@ -117,7 +117,7 @@ main = flip catches handlers $ do
     handler2 (FileNotExist file) = do
         hPutStrLn stderr $ "\"" ++ file ++ "\" not found"
         printUsage
-    printUsage = hPutStrLn stderr $ "\n" ++ usageInfo usage argspec
+    printUsage = hPutStrLn stderr $ '\n' : usageInfo usage argspec
     withFile cmd file = do
         exist <- doesFileExist file
         if exist

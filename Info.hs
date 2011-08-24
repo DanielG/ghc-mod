@@ -1,3 +1,5 @@
+{-# LANGUAGE CPP #-}
+
 module Info where
 
 import Cabal
@@ -14,6 +16,10 @@ import PprTyThing
 import StringBuffer
 import System.Time
 import Types
+
+#if __GLASGOW_HASKELL__ >= 702
+import CoreMonad
+#endif
 
 type Expression = String
 type ModuleString = String
@@ -68,19 +74,18 @@ pprInfo pefas (thing, fixity, insts)
 
 ----------------------------------------------------------------
 
-inModuleContext
-  :: Options -> FilePath -> ModuleString -> Ghc String -> IO String
+inModuleContext :: Options -> FilePath -> ModuleString -> Ghc String -> IO String
 inModuleContext opt fileName modstr action = withGHC valid
   where
     valid = do
-        file <- initializeGHC opt fileName ["-w"]
+        (file,_) <- initializeGHC opt fileName ["-w"] False
         setTargetFile file
-        loadWithLogger (\_ -> return ()) LoadAllTargets
+        load LoadAllTargets
         mif setContextFromTarget action invalid
     invalid = do
-        initializeGHC opt fileName ["-w"]
+        initializeGHC opt fileName ["-w"] False
         setTargetBuffer
-        loadWithLogger defaultWarnErrLogger LoadAllTargets
+        load LoadAllTargets
         mif setContextFromTarget action (return errorMessage)
     setTargetBuffer = do
         modgraph <- depanal [mkModuleName modstr] True
@@ -88,7 +93,11 @@ inModuleContext opt fileName modstr action = withGHC valid
                       map ms_imps modgraph ++ map ms_srcimps modgraph
             moddef = "module " ++ sanitize modstr ++ " where"
             header = moddef : imports
+#if __GLASGOW_HASKELL__ >= 702
+            importsBuf = stringToStringBuffer . unlines $ header
+#else
         importsBuf <- liftIO . stringToStringBuffer . unlines $ header
+#endif
         clkTime <- liftIO getClockTime
         setTargets [Target (TargetModule $ mkModuleName modstr) True (Just (importsBuf, clkTime))]
     mif m t e = m >>= \ok -> if ok then t else e
