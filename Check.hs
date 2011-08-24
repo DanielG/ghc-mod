@@ -3,6 +3,8 @@ module Check (checkSyntax) where
 import Cabal
 import Control.Applicative
 import CoreMonad
+import ErrMsg
+import Exception
 import GHC
 import Prelude hiding (catch)
 import Types
@@ -15,15 +17,12 @@ checkSyntax opt file = unlines <$> check opt file
 ----------------------------------------------------------------
 
 check :: Options -> String -> IO [String]
-check opt fileName = withGHC $ do
-    (file,readLog) <- initializeGHC opt fileName options True
-    setTargetFile file
-    load LoadAllTargets -- `gcatch` handleParseError ref xxx
-    liftIO readLog
+check opt fileName = withGHC $ checkIt `gcatch` handleErrMsg
   where
-    options = ["-Wall","-fno-warn-unused-do-bind"] ++ map ("-i" ++) (checkIncludes opt)
-    {-
-    handleParseError ref e = do
-        liftIO . writeIORef ref $ errBagToStrList . srcErrorMessages $ e
-        return Succeeded
-    -}
+    checkIt = do
+        (file,readLog) <- initializeGHC opt fileName options True
+        setTargetFile file
+        load LoadAllTargets
+        liftIO readLog
+    options = ["-Wall","-fno-warn-unused-do-bind"]
+           ++ map ("-i" ++) (checkIncludes opt)

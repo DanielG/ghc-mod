@@ -8,6 +8,7 @@ import Data.Attoparsec.Enumerator
 import Data.Enumerator (run, ($$))
 import Data.Enumerator.Binary (enumFile)
 import Data.List
+import ErrMsg
 import GHC
 import System.Directory
 import System.FilePath
