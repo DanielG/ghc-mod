@@ -33,6 +33,11 @@
 ;;; Customize Variables
 ;;;
 
+(defun ghc-find-C-h ()
+  (if keyboard-translate-table
+      (aref keyboard-translate-table ?\C-h)
+    ?\C-h))
+
 (defvar ghc-completion-key  "\e\t")
 (defvar ghc-document-key    "\e\C-d")
 (defvar ghc-import-key      "\e\C-m")
@@ -45,6 +50,7 @@
 (defvar ghc-info-key        "\C-c\C-i")
 (defvar ghc-check-key       "\C-x\C-s")
 (defvar ghc-toggle-key      "\C-c\C-c")
+(defvar ghc-hoogle-key      (format "\C-c%c" (ghc-find-C-h)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -68,6 +74,7 @@
     (define-key haskell-mode-map ghc-sort-key        'ghc-sort-lines)
     (define-key haskell-mode-map ghc-check-key       'ghc-save-buffer)
     (define-key haskell-mode-map ghc-toggle-key      'ghc-flymake-toggle-command)
+    (define-key haskell-mode-map ghc-hoogle-key      'haskell-hoogle)
     (ghc-comp-init)
     (setq ghc-initialized t)))
 
