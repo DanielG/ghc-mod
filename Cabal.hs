@@ -2,6 +2,7 @@
 module Cabal (initializeGHC) where
 
 import Control.Applicative hiding (many)
+import Control.Monad
 import CoreMonad
 import Data.Attoparsec.Char8
 import Data.Attoparsec.Enumerator
@@ -78,8 +79,9 @@ getDirs = do
 
 cabalDir :: FilePath -> IO (Maybe (FilePath,FilePath))
 cabalDir dir = do
-    cnts <- getDirectoryContents dir
-    case filter isCabal cnts of
+    cnts <- (filter isCabal <$> getDirectoryContents dir)
+            >>= filterM doesFileExist
+    case cnts of
         [] -> do
             let dir' = takeDirectory dir
             if dir' == dir
