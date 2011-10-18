@@ -31,22 +31,23 @@ initSession0 :: Options -> Ghc [PackageId]
 initSession0 opt = getSessionDynFlags >>=
   setSessionDynFlags . setPackageConfFlags opt
 
-initSession :: Options -> [String] -> Maybe [FilePath] -> Bool -> Ghc LogReader
-initSession opt cmdOpts midirs logging = do
+initSession :: Options -> [String] -> [FilePath] -> Bool -> Ghc LogReader
+initSession opt cmdOpts idirs logging = do
     dflags <- getSessionDynFlags
     let opts = map noLoc cmdOpts
     (dflags',_,_) <- parseDynamicFlags dflags opts
-    (dflags'',readLog) <- liftIO . setLogger logging . setPackageConfFlags opt . setFlags dflags' $ midirs
+    (dflags'',readLog) <- liftIO . setLogger logging . setPackageConfFlags opt . setFlags dflags' $ idirs
     setSessionDynFlags dflags''
     return readLog
 
 ----------------------------------------------------------------
 
-setFlags :: DynFlags -> Maybe [FilePath] -> DynFlags
-setFlags d midirs = maybe d' (\x -> d' { importPaths = x }) midirs
+setFlags :: DynFlags -> [FilePath] -> DynFlags
+setFlags d idirs = d'
   where
     d' = d {
         packageFlags = ghcPackage : packageFlags d
+      , importPaths = idirs
       , ghcLink = NoLink
       , hscTarget = HscInterpreted
       }

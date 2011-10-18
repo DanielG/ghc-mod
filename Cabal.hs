@@ -17,12 +17,15 @@ import Types
 
 ----------------------------------------------------------------
 
+importDirs :: [String]
+importDirs = ["..","../..","../../..","../../../..","../../../../.."]
+
 initializeGHC :: Options -> FilePath -> [String] -> Bool -> Ghc (FilePath,LogReader)
 initializeGHC opt fileName ghcOptions logging = do
     (owdir,mdirfile) <- liftIO getDirs
     case mdirfile of
         Nothing -> do
-            logReader <- initSession opt ghcOptions Nothing logging
+            logReader <- initSession opt ghcOptions importDirs logging
             return (fileName,logReader)
         Just (cdir,cfile) -> do
             midirs <- parseCabalFile cfile
@@ -31,7 +34,7 @@ initializeGHC opt fileName ghcOptions logging = do
                     Nothing   -> [cdir,owdir]
                     Just dirs -> dirs ++ [owdir]
                 file = ajustFileName fileName owdir cdir
-            logReader <- initSession opt ghcOptions (Just idirs) logging
+            logReader <- initSession opt ghcOptions idirs logging
             return (file,logReader)
 
 ----------------------------------------------------------------
