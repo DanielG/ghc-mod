@@ -83,7 +83,7 @@ getDirs = do
 cabalDir :: FilePath -> IO (Maybe (FilePath,FilePath))
 cabalDir dir = do
     cnts <- (filter isCabal <$> getDirectoryContents dir)
-            >>= filterM doesFileExist
+            >>= filterM (\file -> doesFileExist (dir </> file))
     case cnts of
         [] -> do
             let dir' = takeDirectory dir
