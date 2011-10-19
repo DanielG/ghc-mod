@@ -26,7 +26,7 @@ usage =    "ghc-mod version 0.6.2\n"
         ++ "\t ghc-mod list [-l]\n"
         ++ "\t ghc-mod lang [-l]\n"
         ++ "\t ghc-mod browse [-l] [-o] <module> [<module> ...]\n"
-        ++ "\t ghc-mod check [-i inc] <HaskellFile>\n"
+        ++ "\t ghc-mod check [-g GHC options] [-i inc] <HaskellFile>\n"
         ++ "\t ghc-mod type <HaskellFile> <module> <expression>\n"
         ++ "\t ghc-mod info <HaskellFile> <module> <expression>\n"
         ++ "\t ghc-mod lint [-h opt] <HaskellFile>\n"
@@ -39,6 +39,7 @@ defaultOptions :: Options
 defaultOptions = Options {
     convert = toPlain
   , hlintOpts = []
+  , ghcOpts = []
   , checkIncludes = []
   , operators = False
   , packageConfs = []
@@ -52,6 +53,9 @@ argspec = [ Option "l" ["tolisp"]
           , Option "h" ["hlintOpt"]
             (ReqArg (\h opts -> opts { hlintOpts = h : hlintOpts opts }) "hlintOpt")
             "hint to be ignored"
+          , Option "g" ["ghcOpt"]
+            (ReqArg (\g opts -> opts { ghcOpts = g : ghcOpts opts }) "ghcOpt")
+            "extra GHC options"
           , Option "o" ["operators"]
             (NoArg (\opts -> opts { operators = True }))
             "print operators, too"
