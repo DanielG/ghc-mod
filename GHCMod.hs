@@ -52,10 +52,10 @@ argspec = [ Option "l" ["tolisp"]
             "print as a list of Lisp"
           , Option "h" ["hlintOpt"]
             (ReqArg (\h opts -> opts { hlintOpts = h : hlintOpts opts }) "hlintOpt")
-            "hint to be ignored"
+            "hlint options"
           , Option "g" ["ghcOpt"]
             (ReqArg (\g opts -> opts { ghcOpts = g : ghcOpts opts }) "ghcOpt")
-            "extra GHC options"
+            "GHC options"
           , Option "o" ["operators"]
             (NoArg (\opts -> opts { operators = True }))
             "print operators, too"
