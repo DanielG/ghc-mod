@@ -24,7 +24,9 @@ withGHC :: (MonadPlus m) => Ghc (m a) -> IO (m a)
 withGHC body = ghandle ignore $ runGhc (Just libdir) body
   where
     ignore :: (MonadPlus m) => SomeException -> IO (m a)
-    ignore _ = return mzero
+    ignore b = do
+      putStrLn $ show b
+      return mzero
 
 ----------------------------------------------------------------
 
