@@ -30,7 +30,7 @@ Executable ghc-mod
     GHC-Options:        -Wall
   Build-Depends:        base >= 4.0 && < 5, ghc, ghc-paths, transformers,
                         process, directory, filepath, old-time, unix,
-                        hlint >= 1.7.1,
+                        hlint >= 1.7.1, filemanip, haskell98,
                         attoparsec, enumerator, attoparsec-enumerator
 Source-Repository head
   Type:                 git
