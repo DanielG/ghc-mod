@@ -13,6 +13,16 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defvar ghc-hlint-options nil "*Hlint options")
+(defvar ghc-ghc-options nil "*GHC options")
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defcustom ghc-flymake-check-includes nil
+  "list of directories to include when checking file"
+  :type '(repeat string)
+;;  :risky nil
+  :require 'ghc-flymake
+  :group 'ghc-flymake)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -36,15 +46,17 @@
   (let ((after-save-hook nil))
     (save-buffer))
   (let ((file (file-name-nondirectory (buffer-file-name))))
-    (list ghc-module-command (ghc-flymake-command file ghc-hlint-options))))
+    (list ghc-module-command (ghc-flymake-command file))))
 
 (defvar ghc-flymake-command nil) ;; nil: check, t: lint
 
-(defun ghc-flymake-command (file opts)
+(defun ghc-flymake-command (file)
    (if ghc-flymake-command
-       (let ((hopts (ghc-mapconcat (lambda (x) (list "-h" x)) opts)))
+       (let ((hopts (ghc-mapconcat (lambda (x) (list "-h" x)) ghc-hlint-options)))
 	 `(,@hopts "lint" ,file))
-     (list "check" file)))
+     (let ((gopts (ghc-mapconcat (lambda (x) (list "-g" x)) ghc-ghc-options))
+	   (includes (ghc-mapconcat (lambda (x) (list "-i" x)) ghc-flymake-check-includes)))
+       `(,@gopts "check" ,@includes ,file))))
 
 (defun ghc-flymake-toggle-command ()
   (interactive)

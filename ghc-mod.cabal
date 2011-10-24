@@ -1,5 +1,5 @@
 Name:                   ghc-mod
-Version:                0.5.4
+Version:                1.0.0
 Author:                 Kazu Yamamoto <kazu@iij.ad.jp>
 Maintainer:             Kazu Yamamoto <kazu@iij.ad.jp>
 License:                BSD3
@@ -23,14 +23,15 @@ Data-Files:             Makefile ghc.el ghc-func.el ghc-doc.el ghc-comp.el
                         ghc-flymake.el ghc-command.el ghc-info.el
 Executable ghc-mod
   Main-Is:              GHCMod.hs
-  Other-Modules:        List Browse Check Info Lang Lint Types
+  Other-Modules:        List Browse Cabal Check Info Lang Lint Types ErrMsg
   if impl(ghc >= 6.12)
     GHC-Options:        -Wall -fno-warn-unused-do-bind
   else
     GHC-Options:        -Wall
-  Build-Depends:        base >= 4.0 && < 5, ghc, ghc-paths,
-                        process, directory, filepath, old-time,
-                        hlint >= 1.7.1, unix, hint
+  Build-Depends:        base >= 4.0 && < 5, ghc, ghc-paths, transformers,
+                        process, directory, filepath, old-time, unix,
+                        hlint >= 1.7.1,
+                        attoparsec, enumerator, attoparsec-enumerator
 Source-Repository head
   Type:                 git
   Location:             git://github.com/kazu-yamamoto/ghc-mod.git

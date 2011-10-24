@@ -1,7 +1,9 @@
 module Types where
 
 import Control.Monad
+import CoreMonad
 import DynFlags
+import ErrMsg
 import Exception
 import GHC
 import GHC.Paths (libdir)
@@ -11,7 +13,11 @@ import GHC.Paths (libdir)
 data Options = Options {
     convert   :: [String] -> String
   , hlintOpts :: [String]
+  , ghcOpts   :: [String]
+  , checkIncludes :: [String]
   , operators :: Bool
+  , packageConfs :: [FilePath]
+  , useUserPackageConf :: Bool
   }
 
 withGHC :: (MonadPlus m) => Ghc (m a) -> IO (m a)
@@ -24,34 +30,45 @@ withGHC body = ghandle ignore $ runGhc (Just libdir) body
 
 ----------------------------------------------------------------
 
-initSession0 :: Ghc [PackageId]
-initSession0 = getSessionDynFlags >>= setSessionDynFlags
+initSession0 :: Options -> Ghc [PackageId]
+initSession0 opt = getSessionDynFlags >>=
+  setSessionDynFlags . setPackageConfFlags opt
 
-initSession :: [FilePath] -> [String] -> Ghc [PackageId]
-initSession fx cmdOpts = do
+initSession :: Options -> [String] -> [FilePath] -> Bool -> Ghc LogReader
+initSession opt cmdOpts idirs logging = do
     dflags <- getSessionDynFlags
     let opts = map noLoc cmdOpts
     (dflags',_,_) <- parseDynamicFlags dflags opts
-    setSessionDynFlags $ setFlags fx dflags'
+    (dflags'',readLog) <- liftIO . setLogger logging . setPackageConfFlags opt . setFlags dflags' $ idirs
+    setSessionDynFlags dflags''
+    return readLog
 
 ----------------------------------------------------------------
 
-setFlags :: [FilePath] -> DynFlags -> DynFlags
-setFlags fp d = d {
-    importPaths = importPaths d ++ importDirs
-  , packageFlags = ghcPackage : packageFlags d
-  , ghcLink = NoLink
-  , extraPkgConfs = fp
--- GHC.desugarModule does not produces the pattern warnings, why?
---  , hscTarget = HscNothing
-  , hscTarget = HscInterpreted
-  }
-
-importDirs :: [String]
-importDirs = ["..","../..","../../..","../../../..","../../../../.."]
+setFlags :: DynFlags -> [FilePath] -> DynFlags
+setFlags d idirs = d'
+  where
+    d' = d {
+        packageFlags = ghcPackage : packageFlags d
+      , importPaths = idirs
+      , ghcLink = NoLink
+      , hscTarget = HscInterpreted
+      }
 
 ghcPackage :: PackageFlag
 ghcPackage = ExposePackage "ghc"
+
+setPackageConfFlags :: Options -> DynFlags -> DynFlags
+setPackageConfFlags
+  Options { packageConfs = confs, useUserPackageConf = useUser }
+  flagset@DynFlags { extraPkgConfs = extra, flags = origFlags }
+  = flagset { extraPkgConfs = extra', flags = flags' }
+  where
+    extra' = confs ++ extra
+    flags' = if useUser then
+                 origFlags
+             else
+                 filter (/=Opt_ReadUserPackageConf) origFlags
 
 ----------------------------------------------------------------
 

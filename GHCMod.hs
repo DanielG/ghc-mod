@@ -21,12 +21,12 @@ import Types
 ----------------------------------------------------------------
 
 usage :: String
-usage =    "ghc-mod version 0.5.4\n"
+usage =    "ghc-mod version 1.0.0\n"
         ++ "Usage:\n"
         ++ "\t ghc-mod list [-l]\n"
         ++ "\t ghc-mod lang [-l]\n"
         ++ "\t ghc-mod browse [-l] [-o] <module> [<module> ...]\n"
-        ++ "\t ghc-mod check <HaskellFile>\n"
+        ++ "\t ghc-mod check [-g GHC options] [-i inc] <HaskellFile>\n"
         ++ "\t ghc-mod type <HaskellFile> <module> <expression>\n"
         ++ "\t ghc-mod info <HaskellFile> <module> <expression>\n"
         ++ "\t ghc-mod lint [-h opt] <HaskellFile>\n"
@@ -39,7 +39,11 @@ defaultOptions :: Options
 defaultOptions = Options {
     convert = toPlain
   , hlintOpts = []
+  , ghcOpts = []
+  , checkIncludes = []
   , operators = False
+  , packageConfs = []
+  , useUserPackageConf = True
   }
 
 argspec :: [OptDescr (Options -> Options)]
@@ -48,10 +52,22 @@ argspec = [ Option "l" ["tolisp"]
             "print as a list of Lisp"
           , Option "h" ["hlintOpt"]
             (ReqArg (\h opts -> opts { hlintOpts = h : hlintOpts opts }) "hlintOpt")
-            "hint to be ignored"
+            "hlint options"
+          , Option "g" ["ghcOpt"]
+            (ReqArg (\g opts -> opts { ghcOpts = g : ghcOpts opts }) "ghcOpt")
+            "GHC options"
           , Option "o" ["operators"]
             (NoArg (\opts -> opts { operators = True }))
             "print operators, too"
+          , Option ""  ["package-conf"]
+            (ReqArg (\p opts -> opts { packageConfs = p : packageConfs opts }) "path")
+            "additional package database"
+          , Option ""  ["no-user-package-conf"]
+            (NoArg (\opts -> opts{ useUserPackageConf = False }))
+            "do not read the user package database"
+          , Option "i" ["include"]
+            (ReqArg (\i opts -> opts{ checkIncludes = i : checkIncludes opts }) "include")
+            "directory to include in search for modules"
           ]
 
 parseArgs :: [OptDescr (Options -> Options)] -> [String] -> (Options, [String])
@@ -93,7 +109,7 @@ main = flip catches handlers $ do
   where
     handlers = [Handler handler1, Handler handler2]
     handler1 :: ErrorCall -> IO ()
-    handler1 e = print e -- for debug
+    handler1 = print -- for debug
     handler2 :: GHCModError -> IO ()
     handler2 SafeList = printUsage
     handler2 (NoSuchCommand cmd) = do
@@ -105,7 +121,7 @@ main = flip catches handlers $ do
     handler2 (FileNotExist file) = do
         hPutStrLn stderr $ "\"" ++ file ++ "\" not found"
         printUsage
-    printUsage = hPutStrLn stderr $ "\n" ++ usageInfo usage argspec
+    printUsage = hPutStrLn stderr $ '\n' : usageInfo usage argspec
     withFile cmd file = do
         exist <- doesFileExist file
         if exist

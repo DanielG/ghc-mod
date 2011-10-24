@@ -1,19 +1,25 @@
+{-# LANGUAGE CPP #-}
+
 module Info where
 
+import Cabal
 import Control.Applicative hiding (empty)
+import Control.Exception
 import Control.Monad
+import Data.List
 import Data.Maybe
 import GHC
+import HscTypes
+import NameSet
 import Outputable
 import PprTyThing
-import Types
-import NameSet
-import HscTypes
-import Data.List
-import Control.Exception
 import StringBuffer
 import System.Time
-import CabalDev
+import Types
+
+#if __GLASGOW_HASKELL__ >= 702
+import CoreMonad
+#endif
 
 type Expression = String
 type ModuleString = String
@@ -21,12 +27,10 @@ type ModuleString = String
 ----------------------------------------------------------------
 
 typeExpr :: Options -> ModuleString -> Expression -> FilePath -> IO String
-typeExpr _ modstr expr file = (++ "\n") <$> typeOf file modstr expr
+typeExpr opt modstr expr file = (++ "\n") <$> typeOf opt file modstr expr
 
-typeOf :: FilePath -> ModuleString -> Expression -> IO String
-typeOf fileName modstr expr = do
-  cdpkg <- find_cabal_dev
-  inModuleContext cdpkg fileName modstr exprToType
+typeOf :: Options -> FilePath -> ModuleString -> Expression -> IO String
+typeOf opt fileName modstr expr = inModuleContext opt fileName modstr exprToType
   where
     exprToType = pretty <$> exprType expr
     pretty = showSDocForUser neverQualify . pprTypeForUser False
@@ -34,12 +38,10 @@ typeOf fileName modstr expr = do
 ----------------------------------------------------------------
 
 infoExpr :: Options -> ModuleString -> Expression -> FilePath -> IO String
-infoExpr _ modstr expr file = (++ "\n") <$> info file modstr expr
+infoExpr opt modstr expr file = (++ "\n") <$> info opt file modstr expr
 
-info :: FilePath -> ModuleString -> FilePath -> IO String
-info fileName modstr expr = do
-  cdpkg <- find_cabal_dev
-  inModuleContext cdpkg fileName modstr exprToInfo
+info :: Options -> FilePath -> ModuleString -> FilePath -> IO String
+info opt fileName modstr expr = inModuleContext opt fileName modstr exprToInfo
   where
     exprToInfo = infoThing expr
 
@@ -72,18 +74,18 @@ pprInfo pefas (thing, fixity, insts)
 
 ----------------------------------------------------------------
 
-inModuleContext :: [FilePath] -> FilePath -> ModuleString -> Ghc String -> IO String
-inModuleContext cdpkg fileName modstr action = withGHC valid
+inModuleContext :: Options -> FilePath -> ModuleString -> Ghc String -> IO String
+inModuleContext opt fileName modstr action = withGHC valid
   where
     valid = do
-        initSession cdpkg ["-w"]
-        setTargetFile fileName
-        loadWithLogger (\_ -> return ()) LoadAllTargets
+        (file,_) <- initializeGHC opt fileName ["-w"] False
+        setTargetFile file
+        load LoadAllTargets
         mif setContextFromTarget action invalid
     invalid = do
-        initSession cdpkg ["-w"]
+        initializeGHC opt fileName ["-w"] False
         setTargetBuffer
-        loadWithLogger defaultWarnErrLogger LoadAllTargets
+        load LoadAllTargets
         mif setContextFromTarget action (return errorMessage)
     setTargetBuffer = do
         modgraph <- depanal [mkModuleName modstr] True
@@ -91,7 +93,11 @@ inModuleContext cdpkg fileName modstr action = withGHC valid
                       map ms_imps modgraph ++ map ms_srcimps modgraph
             moddef = "module " ++ sanitize modstr ++ " where"
             header = moddef : imports
+#if __GLASGOW_HASKELL__ >= 702
+            importsBuf = stringToStringBuffer . unlines $ header
+#else
         importsBuf <- liftIO . stringToStringBuffer . unlines $ header
+#endif
         clkTime <- liftIO getClockTime
         setTargets [Target (TargetModule $ mkModuleName modstr) True (Just (importsBuf, clkTime))]
     mif m t e = m >>= \ok -> if ok then t else e
