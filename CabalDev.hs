@@ -1,10 +1,9 @@
-{-
-Find, if it exists, a directory with the name 'cabal-dev/packages-X.X.X.conf'
-the path of which we have to add to the GHC options that ghc-mod uses.
-where X.X.X is the GHC version.
--}
-
 module CabalDev where
+
+{-
+If the directory 'cabal-dev/packages-X.X.X.conf' exists, add it to the 
+options ghc-mod uses to check the source.  Otherwise just pass it on.
+-}
 
 import Maybe                  (listToMaybe)
 import System.FilePath.Find
@@ -15,7 +14,11 @@ import Types
 
 modify_options :: Options -> IO Options
 modify_options opts =
-  fmap (maybe opts (add_path opts)) find_cabal_dev
+  fmap (has_cdev opts) find_cabal_dev
+ where
+   has_cdev :: Options -> Maybe String -> Options
+   has_cdev op Nothing = op
+   has_cdev op (Just path) = add_path op path
 
 find_cabal_dev :: IO (Maybe String)
 find_cabal_dev =
