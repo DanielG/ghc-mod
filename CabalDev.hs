@@ -1,4 +1,4 @@
-module CabalDev where
+module CabalDev (modify_options) where
 
 {-
 If the directory 'cabal-dev/packages-X.X.X.conf' exists, add it to the 
