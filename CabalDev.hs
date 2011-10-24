@@ -12,30 +12,33 @@ modify_options opts =
 
 add_path :: Options -> String -> Options
 add_path orig_opts path = do
-  let orig_path = packageConfs orig_opts
-  orig_opts { packageConfs = orig_path ++ [path] }
+  let orig_paths = packageConfs orig_opts
+  orig_opts {
+    packageConfs = orig_paths ++ [path]
+  }
 
 find_cabal_dev :: IO (Maybe String)
-find_cabal_dev = do
+find_cabal_dev =
   getWorkingDirectory >>= (searchit . splitPath)
 
-make_mod_path :: [FilePath] -> FilePath
-make_mod_path x = do     
-  let path = joinPath x
-  case hasTrailingPathSeparator path of
-    False -> path ++ "/" ++ pkg_string
-    True -> path ++ pkg_string
-
+-- Search down the line for a 'cabal-dev' directory
+-- and if found, look for the package.conf
 searchit :: [FilePath] -> IO (Maybe String)
-searchit p =
-  case (length p) > 1 of
-    False -> return Nothing
-    True -> do
-      xx <- doesDirectoryExist $ (joinPath p) ++"/cabal-dev"
-      case xx of
-        False -> searchit $ init p
-        True -> return $ Just $ make_mod_path p
-   
+searchit [] = return Nothing
+searchit p = do
+  xx <- doesDirectoryExist $ (joinPath p) ++"/cabal-dev"
+  case xx of
+    False -> searchit $ init p
+    True -> return $ Just $ make_mod_path p
+ where
+   make_mod_path :: [FilePath] -> FilePath
+   make_mod_path x = do
+     let path = joinPath x
+     case hasTrailingPathSeparator path of
+       False -> path ++ "/" ++ pkg_string
+       True -> path ++ pkg_string
+
+-- I really need to find a solution for this.
 pkg_string :: String
 pkg_string =
   "cabal-dev/packages-7.0.4.conf"
