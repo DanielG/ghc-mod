@@ -9,13 +9,13 @@ import GHC
 import Prelude hiding (catch)
 import Types
 
-import CabalDev (modify_options)
+import CabalDev (modifyOptions)
 
 ----------------------------------------------------------------
 
 checkSyntax :: Options -> String -> IO String
 checkSyntax opt file = do
-  opt' <- modify_options opt
+  opt' <- modifyOptions opt
   unlines <$> check opt' file
 
 ----------------------------------------------------------------
