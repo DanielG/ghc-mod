@@ -21,7 +21,7 @@ import Types
 ----------------------------------------------------------------
 
 usage :: String
-usage =    "ghc-mod version 0.6.2\n"
+usage =    "ghc-mod version 1.0.0\n"
         ++ "Usage:\n"
         ++ "\t ghc-mod list [-l]\n"
         ++ "\t ghc-mod lang [-l]\n"
@@ -51,10 +51,10 @@ argspec = [ Option "l" ["tolisp"]
             "print as a list of Lisp"
           , Option "h" ["hlintOpt"]
             (ReqArg (\h opts -> opts { hlintOpts = h : hlintOpts opts }) "hlintOpt")
-            "hint to be ignored"
+            "hlint options"
           , Option "g" ["ghcOpt"]
             (ReqArg (\g opts -> opts { ghcOpts = g : ghcOpts opts }) "ghcOpt")
-            "extra GHC options"
+            "GHC options"
           , Option "o" ["operators"]
             (NoArg (\opts -> opts { operators = True }))
             "print operators, too"
