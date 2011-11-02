@@ -14,7 +14,6 @@ data Options = Options {
     convert   :: [String] -> String
   , hlintOpts :: [String]
   , ghcOpts   :: [String]
-  , checkIncludes :: [String]
   , operators :: Bool
   , packageConfs :: [FilePath]
   , useUserPackageConf :: Bool

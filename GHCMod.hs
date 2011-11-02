@@ -26,7 +26,7 @@ usage =    "ghc-mod version 1.0.0\n"
         ++ "\t ghc-mod list [-l]\n"
         ++ "\t ghc-mod lang [-l]\n"
         ++ "\t ghc-mod browse [-l] [-o] <module> [<module> ...]\n"
-        ++ "\t ghc-mod check [-g GHC options] [-i inc] <HaskellFile>\n"
+        ++ "\t ghc-mod check [-g GHC opt1 -g GHC opt2 ...] <HaskellFile>\n"
         ++ "\t ghc-mod type <HaskellFile> <module> <expression>\n"
         ++ "\t ghc-mod info <HaskellFile> <module> <expression>\n"
         ++ "\t ghc-mod lint [-h opt] <HaskellFile>\n"
@@ -40,7 +40,6 @@ defaultOptions = Options {
     convert = toPlain
   , hlintOpts = []
   , ghcOpts = []
-  , checkIncludes = []
   , operators = False
   , packageConfs = []
   , useUserPackageConf = True
@@ -65,9 +64,6 @@ argspec = [ Option "l" ["tolisp"]
           , Option ""  ["no-user-package-conf"]
             (NoArg (\opts -> opts{ useUserPackageConf = False }))
             "do not read the user package database"
-          , Option "i" ["include"]
-            (ReqArg (\i opts -> opts{ checkIncludes = i : checkIncludes opts }) "include")
-            "directory to include in search for modules"
           ]
 
 parseArgs :: [OptDescr (Options -> Options)] -> [String] -> (Options, [String])
