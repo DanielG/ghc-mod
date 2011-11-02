@@ -17,13 +17,6 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defcustom ghc-flymake-check-includes nil
-  "list of directories to include when checking file"
-  :type '(repeat string)
-;;  :risky nil
-  :require 'ghc-flymake
-  :group 'ghc-flymake)
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defconst ghc-error-buffer-name "*GHC Errors*")
@@ -54,9 +47,8 @@
    (if ghc-flymake-command
        (let ((hopts (ghc-mapconcat (lambda (x) (list "-h" x)) ghc-hlint-options)))
 	 `(,@hopts "lint" ,file))
-     (let ((gopts (ghc-mapconcat (lambda (x) (list "-g" x)) ghc-ghc-options))
-	   (includes (ghc-mapconcat (lambda (x) (list "-i" x)) ghc-flymake-check-includes)))
-       `(,@gopts "check" ,@includes ,file))))
+     (let ((gopts (ghc-mapconcat (lambda (x) (list "-g" x)) ghc-ghc-options)))
+       `(,@gopts "check" ,file))))
 
 (defun ghc-flymake-toggle-command ()
   (interactive)
