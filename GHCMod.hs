@@ -40,7 +40,6 @@ defaultOptions = Options {
     convert = toPlain
   , hlintOpts = []
   , ghcOpts = []
-  , checkIncludes = []
   , operators = False
   , packageConfs = []
   , useUserPackageConf = True
@@ -65,9 +64,6 @@ argspec = [ Option "l" ["tolisp"]
           , Option ""  ["no-user-package-conf"]
             (NoArg (\opts -> opts{ useUserPackageConf = False }))
             "do not read the user package database"
-          , Option "i" ["include"]
-            (ReqArg (\i opts -> opts{ checkIncludes = i : checkIncludes opts }) "include")
-            "directory to include in search for modules"
           ]
 
 parseArgs :: [OptDescr (Options -> Options)] -> [String] -> (Options, [String])
