@@ -20,5 +20,23 @@ or
 
     (add-hook 'haskell-mode-hook (lambda () (ghc-init) (flymake-mode)))
 
+
+Changes:
+
+  If you have customized GHC import-path like follows,
+
+    (setq ghc-flymake-check-includes '("dir1" "dir2"))
+
+  You may update your settings as follows.
+
+    (setq ghc-ghc-options '("-idir1" "-idir2"))
+
+    or
+
+    (setq ghc-ghc-options '("-idir1:dir2"))
+
+  Now, you can simply pass GHC options to ghc-mod check command.
+
+
 For more information, see:
 	http://www.mew.org/~kazu/proj/ghc-mod/
