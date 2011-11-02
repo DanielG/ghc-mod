@@ -15,7 +15,6 @@ import FastString
 import GHC
 import HscTypes
 import Outputable
-import System.FilePath
 
 #if __GLASGOW_HASKELL__ < 702
 import Pretty
@@ -64,7 +63,7 @@ ppMsg src msg
 #endif
     = file ++ ":" ++ line ++ ":" ++ col ++ ":" ++ cts ++ "\0"
   where
-    file = takeFileName $ unpackFS (srcSpanFile src)
+    file = unpackFS (srcSpanFile src)
     line = show (srcSpanStartLine src)
     col  = show (srcSpanStartCol src)
     cts  = showMsg msg
