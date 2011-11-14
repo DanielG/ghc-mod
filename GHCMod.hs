@@ -45,8 +45,6 @@ defaultOptions = Options {
   , hlintOpts = []
   , ghcOpts = []
   , operators = False
-  , packageConfs = []
-  , useUserPackageConf = True
   }
 
 argspec :: [OptDescr (Options -> Options)]
@@ -62,12 +60,6 @@ argspec = [ Option "l" ["tolisp"]
           , Option "o" ["operators"]
             (NoArg (\opts -> opts { operators = True }))
             "print operators, too"
-          , Option ""  ["package-conf"]
-            (ReqArg (\p opts -> opts { packageConfs = p : packageConfs opts }) "path")
-            "additional package database"
-          , Option ""  ["no-user-package-conf"]
-            (NoArg (\opts -> opts{ useUserPackageConf = False }))
-            "do not read the user package database"
           ]
 
 parseArgs :: [OptDescr (Options -> Options)] -> [String] -> (Options, [String])

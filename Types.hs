@@ -15,8 +15,6 @@ data Options = Options {
   , hlintOpts :: [String]
   , ghcOpts   :: [String]
   , operators :: Bool
-  , packageConfs :: [FilePath]
-  , useUserPackageConf :: Bool
   }
 
 withGHC :: (MonadPlus m) => Ghc (m a) -> IO (m a)
