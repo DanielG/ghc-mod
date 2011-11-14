@@ -20,15 +20,18 @@ import Types
 
 ----------------------------------------------------------------
 
+ghcOptHelp :: String
+ghcOptHelp = " [-g GHC_opt1 -g GHC_opt2 ...] "
+
 usage :: String
 usage =    "ghc-mod version 1.0.0\n"
         ++ "Usage:\n"
-        ++ "\t ghc-mod list [-l]\n"
+        ++ "\t ghc-mod list" ++ ghcOptHelp ++ "[-l]\n"
         ++ "\t ghc-mod lang [-l]\n"
-        ++ "\t ghc-mod browse [-l] [-o] <module> [<module> ...]\n"
-        ++ "\t ghc-mod check [-g GHC opt1 -g GHC opt2 ...] <HaskellFile>\n"
-        ++ "\t ghc-mod type <HaskellFile> <module> <expression>\n"
-        ++ "\t ghc-mod info <HaskellFile> <module> <expression>\n"
+        ++ "\t ghc-mod browse" ++ ghcOptHelp ++ "[-l] [-o] <module> [<module> ...]\n"
+        ++ "\t ghc-mod check" ++ ghcOptHelp ++ "<HaskellFile>\n"
+        ++ "\t ghc-mod type" ++ ghcOptHelp ++ "<HaskellFile> <module> <expression>\n"
+        ++ "\t ghc-mod info" ++ ghcOptHelp ++ "<HaskellFile> <module> <expression>\n"
         ++ "\t ghc-mod lint [-h opt] <HaskellFile>\n"
         ++ "\t ghc-mod boot\n"
         ++ "\t ghc-mod help\n"

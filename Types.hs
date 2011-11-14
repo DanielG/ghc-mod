@@ -29,14 +29,14 @@ withGHC body = ghandle ignore $ runGhc (Just libdir) body
 
 initSession0 :: Options -> Ghc [PackageId]
 initSession0 opt = getSessionDynFlags >>=
-  setSessionDynFlags . setPackageConfFlags opt
+  (>>= setSessionDynFlags) . setGhcFlags opt
 
 initSession :: Options -> [String] -> [FilePath] -> Bool -> Ghc LogReader
 initSession opt cmdOpts idirs logging = do
     dflags <- getSessionDynFlags
     let opts = map noLoc cmdOpts
     (dflags',_,_) <- parseDynamicFlags dflags opts
-    (dflags'',readLog) <- liftIO . setLogger logging . setPackageConfFlags opt . setFlags dflags' $ idirs
+    (dflags'',readLog) <- liftIO . (>>= setLogger logging) . setGhcFlags opt . setFlags dflags' $ idirs
     setSessionDynFlags dflags''
     return readLog
 
@@ -55,17 +55,10 @@ setFlags d idirs = d'
 ghcPackage :: PackageFlag
 ghcPackage = ExposePackage "ghc"
 
-setPackageConfFlags :: Options -> DynFlags -> DynFlags
-setPackageConfFlags
-  Options { packageConfs = confs, useUserPackageConf = useUser }
-  flagset@DynFlags { extraPkgConfs = extra, flags = origFlags }
-  = flagset { extraPkgConfs = extra', flags = flags' }
-  where
-    extra' = confs ++ extra
-    flags' = if useUser then
-                 origFlags
-             else
-                 filter (/=Opt_ReadUserPackageConf) origFlags
+setGhcFlags :: Monad m => Options -> DynFlags -> m DynFlags
+setGhcFlags opt flagset =
+  do (flagset',_,_) <- parseDynamicFlags flagset (map noLoc (ghcOpts opt))
+     return flagset'
 
 ----------------------------------------------------------------
 
