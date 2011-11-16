@@ -9,11 +9,11 @@
 ;;; Code:
 
 (require 'flymake)
+(require 'ghc-func)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defvar ghc-hlint-options nil "*Hlint options")
-(defvar ghc-ghc-options nil "*GHC options")
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -47,8 +47,7 @@
    (if ghc-flymake-command
        (let ((hopts (ghc-mapconcat (lambda (x) (list "-h" x)) ghc-hlint-options)))
 	 `(,@hopts "lint" ,file))
-     (let ((gopts (ghc-mapconcat (lambda (x) (list "-g" x)) ghc-ghc-options)))
-       `(,@gopts "check" ,file))))
+     `(,@(ghc-make-ghc-options) "check" ,file)))
 
 (defun ghc-flymake-toggle-command ()
   (interactive)

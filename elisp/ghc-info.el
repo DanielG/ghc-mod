@@ -26,7 +26,8 @@
 	 (file (buffer-name)))
     (with-temp-buffer
       (cd cdir)
-      (call-process ghc-module-command nil t nil "type" file modname expr)
+      (apply 'call-process ghc-module-command nil t nil
+	     `(,@(ghc-make-ghc-options) "type" ,file ,modname ,expr))
       (message (buffer-substring (point-min) (1- (point-max)))))))
 
 (defun ghc-show-info (&optional ask)
@@ -49,7 +50,8 @@
       (insert
        (with-temp-buffer
 	 (cd cdir)
-	 (call-process ghc-module-command nil t nil "info" file modname expr)
+	 (apply 'call-process ghc-module-command nil t nil
+		`(,@(ghc-make-ghc-options) "info" ,file ,modname ,expr))
 	 (buffer-substring (point-min) (1- (point-max))))))
     (display-buffer buf)))
 

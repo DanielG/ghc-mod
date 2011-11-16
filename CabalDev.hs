@@ -9,7 +9,7 @@ options ghc-mod uses to check the source.  Otherwise just pass it on.
 
 import Data.Maybe             (listToMaybe)
 import System.FilePath.Find
-import System.FilePath.Posix  (splitPath,joinPath)
+import System.FilePath.Posix  (splitPath,joinPath,(</>))
 import System.Posix.Directory (getWorkingDirectory)
 import System.Directory
 
@@ -29,8 +29,8 @@ findCabalDev =
 
 addPath :: Options -> String -> Options
 addPath orig_opts path = do
-  let orig_paths = packageConfs orig_opts
-  orig_opts { packageConfs = orig_paths ++ [path] }
+  let orig_ghcopt = ghcOpts orig_opts
+  orig_opts { ghcOpts = orig_ghcopt ++ ["-package-conf", path] }
 
 searchIt :: [FilePath] -> IO (Maybe FilePath)
 searchIt [] = return Nothing
@@ -42,4 +42,4 @@ searchIt path = do
   else
     return Nothing
   where
-    mpath a = joinPath a ++ "cabal-dev/"
+    mpath a = joinPath a </> "cabal-dev/"

@@ -87,7 +87,7 @@ unloaded modules are loaded")
      (lambda ()
        (message "Loading names...")
        (apply 'call-process ghc-module-command nil t nil
-	      (cons "-l" (cons "browse" mods)))
+	      `(,@(ghc-make-ghc-options) "-l" "browse" ,@mods))
        (message "Loading names...done"))
      (length mods))))
 
