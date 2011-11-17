@@ -1,7 +1,6 @@
 module Check (checkSyntax) where
 
 import Cabal
-import CabalDev (modifyOptions)
 import Control.Applicative
 import CoreMonad
 import ErrMsg
@@ -14,8 +13,7 @@ import Types
 
 checkSyntax :: Options -> String -> IO String
 checkSyntax opt file = do
-  opt' <- modifyOptions opt
-  unlines <$> check opt' file
+  unlines <$> check opt file
 
 ----------------------------------------------------------------
 

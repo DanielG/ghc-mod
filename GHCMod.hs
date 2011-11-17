@@ -2,6 +2,7 @@
 
 module Main where
 
+import CabalDev (modifyOptions)
 import Browse
 import Check
 import Control.Applicative
@@ -20,15 +21,18 @@ import Types
 
 ----------------------------------------------------------------
 
+ghcOptHelp :: String
+ghcOptHelp = " [-g GHC_opt1 -g GHC_opt2 ...] "
+
 usage :: String
 usage =    "ghc-mod version 1.0.0\n"
         ++ "Usage:\n"
-        ++ "\t ghc-mod list [-l]\n"
+        ++ "\t ghc-mod list" ++ ghcOptHelp ++ "[-l]\n"
         ++ "\t ghc-mod lang [-l]\n"
-        ++ "\t ghc-mod browse [-l] [-o] <module> [<module> ...]\n"
-        ++ "\t ghc-mod check [-g GHC opt1 -g GHC opt2 ...] <HaskellFile>\n"
-        ++ "\t ghc-mod type <HaskellFile> <module> <expression>\n"
-        ++ "\t ghc-mod info <HaskellFile> <module> <expression>\n"
+        ++ "\t ghc-mod browse" ++ ghcOptHelp ++ "[-l] [-o] <module> [<module> ...]\n"
+        ++ "\t ghc-mod check" ++ ghcOptHelp ++ "<HaskellFile>\n"
+        ++ "\t ghc-mod type" ++ ghcOptHelp ++ "<HaskellFile> <module> <expression>\n"
+        ++ "\t ghc-mod info" ++ ghcOptHelp ++ "<HaskellFile> <module> <expression>\n"
         ++ "\t ghc-mod lint [-h opt] <HaskellFile>\n"
         ++ "\t ghc-mod boot\n"
         ++ "\t ghc-mod help\n"
@@ -41,8 +45,6 @@ defaultOptions = Options {
   , hlintOpts = []
   , ghcOpts = []
   , operators = False
-  , packageConfs = []
-  , useUserPackageConf = True
   }
 
 argspec :: [OptDescr (Options -> Options)]
@@ -58,12 +60,6 @@ argspec = [ Option "l" ["tolisp"]
           , Option "o" ["operators"]
             (NoArg (\opts -> opts { operators = True }))
             "print operators, too"
-          , Option ""  ["package-conf"]
-            (ReqArg (\p opts -> opts { packageConfs = p : packageConfs opts }) "path")
-            "additional package database"
-          , Option ""  ["no-user-package-conf"]
-            (NoArg (\opts -> opts{ useUserPackageConf = False }))
-            "do not read the user package database"
           ]
 
 parseArgs :: [OptDescr (Options -> Options)] -> [String] -> (Options, [String])
@@ -86,8 +82,8 @@ instance Exception GHCModError
 main :: IO ()
 main = flip catches handlers $ do
     args <- getArgs
-    let (opt,cmdArg) = parseArgs argspec args
-    res <- case safelist cmdArg 0 of
+    let (opt',cmdArg) = parseArgs argspec args
+    res <- modifyOptions opt' >>= \opt -> case safelist cmdArg 0 of
       "browse" -> concat <$> mapM (browseModule opt) (tail cmdArg)
       "list"   -> listModules opt
       "check"  -> withFile (checkSyntax opt) (safelist cmdArg 1)

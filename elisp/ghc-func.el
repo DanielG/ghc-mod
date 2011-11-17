@@ -11,6 +11,8 @@
 (defvar ghc-module-command "ghc-mod"
 "*The command name of \"ghc-mod\"")
 
+(defvar ghc-ghc-options nil "*GHC options")
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defun ghc-replace-character (string from to)
@@ -134,5 +136,8 @@
        (setq getter (intern (format "ghc-%s-get-%s" type-name member-name)))
        (fset getter (list 'lambda '(struct) (list 'nth i 'struct)))
        (setq keys (cdr keys)))))
+
+(defun ghc-make-ghc-options ()
+  (ghc-mapconcat (lambda (x) (list "-g" x)) ghc-ghc-options))
 
 (provide 'ghc-func)

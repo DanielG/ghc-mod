@@ -35,7 +35,7 @@ Changes:
 
     (setq ghc-ghc-options '("-idir1:dir2"))
 
-  Now, you can simply pass GHC options to ghc-mod check command.
+  Now, you can simply pass GHC options to ghc-mod sub-commands.
 
 
 For more information, see:
