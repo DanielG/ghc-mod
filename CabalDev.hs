@@ -7,6 +7,7 @@ If the directory 'cabal-dev/packages-X.X.X.conf' exists, add it to the
 options ghc-mod uses to check the source.  Otherwise just pass it on.
 -}
 
+import Control.Applicative    ((<$>))
 import Data.Maybe             (listToMaybe)
 import System.FilePath.Find
 import System.FilePath.Posix  (splitPath,joinPath,(</>))
@@ -37,9 +38,8 @@ searchIt [] = return Nothing
 searchIt path = do
   a <- doesDirectoryExist (mpath path)
   if a then do
-    b <- find always (fileName ~~? "packages*.conf") $ mpath path
-    maybe (searchIt $ init path) (return . Just) $ listToMaybe b
+    listToMaybe <$> find always (fileName ~~? "packages*.conf") (mpath path)
   else
-    return Nothing
+    searchIt $ init path
   where
     mpath a = joinPath a </> "cabal-dev/"
