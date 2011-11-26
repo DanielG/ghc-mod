@@ -8,11 +8,10 @@ options ghc-mod uses to check the source.  Otherwise just pass it on.
 -}
 
 import Control.Applicative    ((<$>))
-import Data.Maybe             (listToMaybe)
-import System.FilePath.Find
-import System.FilePath.Posix  (splitPath,joinPath,(</>))
-import System.Posix.Directory (getWorkingDirectory)
+import Data.List              (find)
+import System.FilePath        (splitPath,joinPath,(</>))
 import System.Directory
+import Text.Regex.Posix       ((=~))
 
 import Types
 
@@ -26,7 +25,7 @@ modifyOptions opts =
 
 findCabalDev :: IO (Maybe String)
 findCabalDev =
-  getWorkingDirectory >>= searchIt . splitPath
+  getCurrentDirectory >>= searchIt . splitPath
 
 addPath :: Options -> String -> Options
 addPath orig_opts path = do
@@ -38,8 +37,13 @@ searchIt [] = return Nothing
 searchIt path = do
   a <- doesDirectoryExist (mpath path)
   if a then do
-    listToMaybe <$> find always (fileName ~~? "packages*.conf") (mpath path)
+    findConf (mpath path)
   else
     searchIt $ init path
   where
     mpath a = joinPath a </> "cabal-dev/"
+
+findConf :: FilePath -> IO (Maybe FilePath)
+findConf path = do
+  f <- find (=~ "packages.*\\.conf") <$> getDirectoryContents path
+  return $ ((path </>) <$> f)
