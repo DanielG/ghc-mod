@@ -1,7 +1,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Cabal (initializeGHC) where
 
-import Control.Applicative hiding (many)
+import Control.Applicative
 import Control.Monad
 import CoreMonad
 import Data.Attoparsec.Char8
