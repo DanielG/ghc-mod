@@ -4,7 +4,7 @@ module Cabal (initializeGHC) where
 import Control.Applicative
 import Control.Monad
 import CoreMonad
-import Data.Attoparsec.Char8
+import Data.Attoparsec.ByteString.Char8
 import Data.Attoparsec.Enumerator
 import Data.Enumerator (run, ($$))
 import Data.Enumerator.Binary (enumFile)
