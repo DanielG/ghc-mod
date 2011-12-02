@@ -31,7 +31,7 @@ Executable ghc-mod
   Build-Depends:        base >= 4.0 && < 5, ghc, ghc-paths, transformers,
                         process, directory, filepath, old-time,
                         hlint >= 1.7.1, regex-posix,
-                        attoparsec, enumerator, attoparsec-enumerator
+                        attoparsec >= 0.10 , enumerator, attoparsec-enumerator
 Source-Repository head
   Type:                 git
   Location:             git://github.com/kazu-yamamoto/ghc-mod.git
