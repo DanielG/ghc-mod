@@ -21,8 +21,7 @@
     (message "Nothing to be done"))))
 
 (defun ghc-insert-module-template ()
-  ;; xxx mod from filename...
-  (let ((mod (file-name-sans-extension (buffer-name))))
+  (let ((mod (capitalize (file-name-sans-extension (buffer-name)))))
     (insert "module " mod " where\n")))
 
 (defun ghc-sort-lines (beg end)
