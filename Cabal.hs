@@ -18,7 +18,7 @@ import Types
 ----------------------------------------------------------------
 
 importDirs :: [String]
-importDirs = ["..","../..","../../..","../../../..","../../../../.."]
+importDirs = [".","..","../..","../../..","../../../..","../../../../.."]
 
 initializeGHC :: Options -> FilePath -> [String] -> Bool -> Ghc (FilePath,LogReader)
 initializeGHC opt fileName ghcOptions logging = do
