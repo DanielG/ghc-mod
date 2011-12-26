@@ -2,16 +2,18 @@
 
 module Main where
 
-import CabalDev (modifyOptions)
 import Browse
+import CabalDev (modifyOptions)
 import Check
 import Control.Applicative
 import Control.Exception
 import Data.Typeable
+import Data.Version
 import Info
 import Lang
 import Lint
 import List
+import Paths_ghc_mod
 import Prelude
 import System.Console.GetOpt
 import System.Directory
@@ -25,7 +27,7 @@ ghcOptHelp :: String
 ghcOptHelp = " [-g GHC_opt1 -g GHC_opt2 ...] "
 
 usage :: String
-usage =    "ghc-mod version 1.0.4\n"
+usage =    "ghc-mod version " ++ showVersion version ++ "\n"
         ++ "Usage:\n"
         ++ "\t ghc-mod list" ++ ghcOptHelp ++ "[-l]\n"
         ++ "\t ghc-mod lang [-l]\n"
