@@ -107,9 +107,15 @@ inModuleContext opt fileName modstr action = withGHC valid
 setContextFromTarget :: Ghc Bool
 setContextFromTarget = do
     ms <- depanal [] False
+
+#if __GLASGOW_HASKELL__ >= 704
+    top <- map (IIModule . ms_mod) <$> filterM isTop ms
+    setContext top
+#else
     top <- map ms_mod <$> filterM isTop ms
     setContext top []
-    return (top /= [])
+#endif
+    return (not . null $ top)
   where
     isTop ms = lookupMod `gcatch` returnFalse
       where
