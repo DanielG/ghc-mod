@@ -56,8 +56,10 @@
     (display-buffer buf)))
 
 (defun ghc-read-expression (default)
-  (let ((prompt (format "Expression (%s): " default)))
-    (read-string prompt default nil)))
+  (if default
+      (let ((prompt (format "Expression (%s): " default)))
+	(read-string prompt default nil))
+    (read-string "Expression: ")))
 
 (defun ghc-find-module-name ()
   (save-excursion
