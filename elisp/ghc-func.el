@@ -94,6 +94,11 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+(defun ghc-things-at-point ()
+  (thing-at-point 'sexp))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
 (defun ghc-keyword-number-pair (spec)
   (let ((len (length spec)) key ret)
     (dotimes (i len (nreverse ret))

@@ -20,7 +20,7 @@
 	(ghc-show-type0 ask modname)))))
 
 (defun ghc-show-type0 (ask modname)
-  (let* ((expr0 (thing-at-point 'symbol))
+  (let* ((expr0 (ghc-things-at-point))
 	 (expr (if ask (ghc-read-expression expr0) expr0))
 	 (cdir default-directory)
 	 (file (buffer-name)))
@@ -40,7 +40,7 @@
 	(ghc-show-info0 ask modname)))))
 
 (defun ghc-show-info0 (ask modname)
-  (let* ((expr0 (thing-at-point 'symbol))
+  (let* ((expr0 (ghc-things-at-point))
 	 (expr (if ask (ghc-read-expression expr0) expr0))
 	 (cdir default-directory)
 	 (file (buffer-name))

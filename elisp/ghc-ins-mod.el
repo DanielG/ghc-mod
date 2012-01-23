@@ -14,7 +14,7 @@
   (interactive)
   (if (not (ghc-which ghc-hoogle-command))
       (message "\"%s\" not found" ghc-hoogle-command)
-    (let* ((expr0 (thing-at-point 'symbol))
+    (let* ((expr0 (ghc-things-at-point))
 	   (expr (ghc-read-expression expr0)))
       (let ((mods (ghc-function-to-modules expr)))
 	(if (null mods)
@@ -30,10 +30,14 @@
 (defun ghc-goto-module-position ()
   (goto-char (point-max))
   (if (re-search-backward "^import" nil t)
-      (forward-line)
+      (ghc-goto-empty-line)
     (if (re-search-backward "^module" nil t)
-	(forward-line)
+	(ghc-goto-empty-line)
       (goto-char (point-min)))))
+
+(defun ghc-goto-empty-line ()
+  (unless (re-search-forward "^$" nil t)
+    (forward-line)))
 
 (defun ghc-function-to-modules (fn)
   (with-temp-buffer
