@@ -100,7 +100,7 @@ main = flip catches handlers $ do
          mods  <- listModules opt
          langs <- listLanguages opt
          flags <- listFlags opt
-         pre   <- browseModule opt "Prelude"
+         pre   <- concat <$> mapM (browseModule opt) preBrowsedModules
          return $ mods ++ langs ++ flags ++ pre
       cmd      -> throw (NoSuchCommand cmd)
     putStr res
@@ -138,3 +138,17 @@ toLisp ms = "(" ++ unwords quoted ++ ")\n"
 
 toPlain :: [String] -> String
 toPlain = unlines
+
+----------------------------------------------------------------
+
+preBrowsedModules :: [String]
+preBrowsedModules = [
+    "Prelude"
+  , "Control.Applicative"
+  , "Control.Monad"
+  , "Control.Exception"
+  , "Data.Char"
+  , "Data.List"
+  , "Data.Maybe"
+  , "System.IO"
+  ]

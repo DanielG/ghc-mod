@@ -53,19 +53,40 @@ unloaded modules are loaded")
 
 (defconst ghc-keyword-prefix "ghc-keyword-")
 (defvar ghc-keyword-Prelude nil)
+(defvar ghc-keyword-Control.Applicative nil)
+(defvar ghc-keyword-Control.Monad nil)
+(defvar ghc-keyword-Control.Exception nil)
+(defvar ghc-keyword-Data.Char nil)
+(defvar ghc-keyword-Data.List nil)
+(defvar ghc-keyword-Data.Maybe nil)
+(defvar ghc-keyword-System.IO nil)
+
 (defvar ghc-loaded-module nil)
 
 (defun ghc-comp-init ()
   (let* ((syms '(ghc-module-names
 		ghc-language-extensions
 		ghc-option-flags
-		ghc-keyword-Prelude))
+		ghc-keyword-Prelude
+		ghc-keyword-Control.Applicative
+		ghc-keyword-Control.Monad
+		ghc-keyword-Control.Exception
+		ghc-keyword-Data.Char
+		ghc-keyword-Data.List
+		ghc-keyword-Data.Maybe
+		ghc-keyword-System.IO))
 	 (vals (ghc-boot (length syms))))
     (ghc-set syms vals))
   (ghc-add ghc-module-names "qualified")
   (ghc-add ghc-module-names "hiding")
-  ;; (ghc-add ghc-language-extensions "LANGUAGE")
-  (ghc-merge-keywords '("Prelude"))
+  (ghc-merge-keywords '("Prelude"
+			"Control.Applicative"
+			"Control.Monad"
+			"Control.Exception"
+			"Data.Char"
+			"Data.List"
+			"Data.Maybe"
+			"System.IO"))
   (run-with-idle-timer ghc-idle-timer-interval 'repeat 'ghc-idle-timer))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

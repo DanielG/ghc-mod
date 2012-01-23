@@ -39,12 +39,23 @@
   (unless (re-search-forward "^$" nil t)
     (forward-line)))
 
+;; To avoid Data.Functor
+(defvar ghc-applicative-operators '("<$>" "<$" "<*>" "<**>" "<*" "*>" "<|>"))
+
 (defun ghc-function-to-modules (fn)
+  (if (member fn ghc-applicative-operators)
+      '("Control.Applicative")
+    (ghc-function-to-modules-hoogle fn)))
+
+(defun ghc-function-to-modules-hoogle (fn)
   (with-temp-buffer
-    (call-process ghc-hoogle-command nil t nil "search" fn)
-    (goto-char (point-min))
-    (let ((regex (concat "^\\([a-zA-Z0-9.]+\\) " fn " "))
-	  ret)
+    (let* ((fn1 (if (string-match "^[a-zA-Z0-9'_]+$" fn)
+		    fn
+		  (concat "(" fn ")")))
+	   (regex (concat "^\\([a-zA-Z0-9.]+\\) " fn1 " "))
+	   ret)
+      (call-process ghc-hoogle-command nil t nil "search" fn1)
+      (goto-char (point-min))
       (while (re-search-forward regex nil t)
 	(setq ret (cons (match-string 1) ret)))
       (nreverse ret))))
