@@ -65,16 +65,16 @@ unloaded modules are loaded")
 
 (defun ghc-comp-init ()
   (let* ((syms '(ghc-module-names
-		ghc-language-extensions
-		ghc-option-flags
-		ghc-keyword-Prelude
-		ghc-keyword-Control.Applicative
-		ghc-keyword-Control.Monad
-		ghc-keyword-Control.Exception
-		ghc-keyword-Data.Char
-		ghc-keyword-Data.List
-		ghc-keyword-Data.Maybe
-		ghc-keyword-System.IO))
+		 ghc-language-extensions
+		 ghc-option-flags
+		 ghc-keyword-Prelude
+		 ghc-keyword-Control.Applicative
+		 ghc-keyword-Control.Monad
+		 ghc-keyword-Control.Exception
+		 ghc-keyword-Data.Char
+		 ghc-keyword-Data.List
+		 ghc-keyword-Data.Maybe
+		 ghc-keyword-System.IO))
 	 (vals (ghc-boot (length syms))))
     (ghc-set syms vals))
   (ghc-add ghc-module-names "qualified")
