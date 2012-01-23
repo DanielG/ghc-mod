@@ -11,6 +11,7 @@ import Data.Typeable
 import Data.Version
 import Info
 import Lang
+import Flag
 import Lint
 import List
 import Paths_ghc_mod
@@ -31,6 +32,7 @@ usage =    "ghc-mod version " ++ showVersion version ++ "\n"
         ++ "Usage:\n"
         ++ "\t ghc-mod list" ++ ghcOptHelp ++ "[-l]\n"
         ++ "\t ghc-mod lang [-l]\n"
+        ++ "\t ghc-mod flag [-l]\n"
         ++ "\t ghc-mod browse" ++ ghcOptHelp ++ "[-l] [-o] <module> [<module> ...]\n"
         ++ "\t ghc-mod check" ++ ghcOptHelp ++ "<HaskellFile>\n"
         ++ "\t ghc-mod type" ++ ghcOptHelp ++ "<HaskellFile> <module> <expression>\n"
@@ -93,11 +95,13 @@ main = flip catches handlers $ do
       "info"   -> withFile (infoExpr opt (safelist cmdArg 2) (safelist cmdArg 3)) (safelist cmdArg 1)
       "lint"   -> withFile (lintSyntax opt)  (safelist cmdArg 1)
       "lang"   -> listLanguages opt
+      "flag"   -> listFlags opt
       "boot"   -> do
          mods  <- listModules opt
          langs <- listLanguages opt
+         flags <- listFlags opt
          pre   <- browseModule opt "Prelude"
-         return $ mods ++ langs ++ pre
+         return $ mods ++ langs ++ flags ++ pre
       cmd      -> throw (NoSuchCommand cmd)
     putStr res
   where

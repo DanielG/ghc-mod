@@ -48,6 +48,8 @@ unloaded modules are loaded")
 (defvar ghc-module-names nil)   ;; completion for "import"
 (defvar ghc-merged-keyword nil) ;; completion for type/func/...
 (defvar ghc-language-extensions nil)
+(defvar ghc-option-flags nil)
+(defvar ghc-pragma-names '("LANGUAGE" "OPTIONS_GHC"))
 
 (defconst ghc-keyword-prefix "ghc-keyword-")
 (defvar ghc-keyword-Prelude nil)
@@ -56,12 +58,13 @@ unloaded modules are loaded")
 (defun ghc-comp-init ()
   (let* ((syms '(ghc-module-names
 		ghc-language-extensions
+		ghc-option-flags
 		ghc-keyword-Prelude))
 	 (vals (ghc-boot (length syms))))
     (ghc-set syms vals))
   (ghc-add ghc-module-names "qualified")
   (ghc-add ghc-module-names "hiding")
-  (ghc-add ghc-language-extensions "LANGUAGE")
+  ;; (ghc-add ghc-language-extensions "LANGUAGE")
   (ghc-merge-keywords '("Prelude"))
   (run-with-idle-timer ghc-idle-timer-interval 'repeat 'ghc-idle-timer))
 
@@ -172,8 +175,16 @@ unloaded modules are loaded")
     ghc-module-names)
    ((save-excursion
       (beginning-of-line)
-      (looking-at "{-#"))
+      (looking-at "{-# LANGUAGE "))
     ghc-language-extensions)
+   ((save-excursion
+      (beginning-of-line)
+      (looking-at "{-# OPTIONS_GHC "))
+    ghc-option-flags)
+   ((save-excursion
+      (beginning-of-line)
+      (looking-at "{-# "))
+    ghc-pragma-names)
    ((or (bolp)
 	(let ((end (point)))
 	  (save-excursion
