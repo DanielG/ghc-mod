@@ -1,14 +1,14 @@
 {-# LANGUAGE OverloadedStrings #-}
+
 module Cabal (initializeGHC) where
 
 import Control.Applicative
 import Control.Monad
 import CoreMonad
-import Data.Attoparsec.ByteString.Char8
-import Data.Attoparsec.Enumerator
-import Data.Enumerator (run, ($$))
-import Data.Enumerator.Binary (enumFile)
 import Data.List
+import Distribution.PackageDescription
+import Distribution.PackageDescription.Parse (readPackageDescription)
+import Distribution.Verbosity (silent)
 import ErrMsg
 import GHC
 import System.Directory
@@ -31,31 +31,28 @@ initializeGHC opt fileName ghcOptions logging = do
             midirs <- parseCabalFile cfile
             changeToCabalDirectory cdir
             let idirs = case midirs of
-                    Nothing   -> [cdir,owdir]
-                    Just dirs -> dirs ++ [owdir]
+                    []   -> [cdir,owdir]
+                    dirs -> dirs ++ [owdir]
                 file = ajustFileName fileName owdir cdir
             logReader <- initSession opt ghcOptions idirs logging
             return (file,logReader)
 
 ----------------------------------------------------------------
 
-parseCabalFile :: FilePath -> Ghc (Maybe [String])
-parseCabalFile file = liftIO $ do
-    res <- run (enumFile file $$ iterParser findTarget)
-    case res of
-        Right x -> return x
-        Left  e -> error (show e)
-
-findTarget :: Parser (Maybe [String])
-findTarget = Just <$> hs_source_dirs
-         <|> (anyChar >> findTarget)
-         <|> Nothing <$ endOfInput
-
-hs_source_dirs :: Parser [String]
-hs_source_dirs = do
-    stringCI "hs-source-dirs:"
-    many (char ' ')
-    sepBy1 (many . satisfy $ notInClass " ,\n") (many1 . satisfy $ inClass " ,")
+parseCabalFile :: FilePath -> Ghc [String]
+parseCabalFile file = do
+    cabal <- liftIO $ readPackageDescription silent file
+    return $ fromLibrary cabal ||| fromExecutable cabal
+  where
+    [] ||| y = y
+    x  ||| _ = x
+    fromLibrary c = case condLibrary c of
+        Nothing  -> []
+        Just lib -> libHsSourceDir lib
+    libHsSourceDir = hsSourceDirs . libBuildInfo . condTreeData
+    fromExecutable = execHsSrouceDir . condExecutables
+    execHsSrouceDir [] = []
+    execHsSrouceDir (x:_) = hsSourceDirs . buildInfo . condTreeData . snd $ x
 
 ----------------------------------------------------------------
 

@@ -30,8 +30,7 @@ Executable ghc-mod
     GHC-Options:        -Wall
   Build-Depends:        base >= 4.0 && < 5, ghc, ghc-paths, transformers,
                         process, directory, filepath, old-time,
-                        hlint >= 1.7.1, regex-posix,
-                        attoparsec >= 0.10 , enumerator, attoparsec-enumerator
+                        hlint >= 1.7.1, regex-posix, Cabal
 Source-Repository head
   Type:                 git
   Location:             git://github.com/kazu-yamamoto/ghc-mod.git
