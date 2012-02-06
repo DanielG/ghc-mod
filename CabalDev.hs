@@ -1,4 +1,4 @@
-{-# LANGUAGE DoAndIfThenElse #-}
+-- {-# LANGUAGE DoAndIfThenElse #-} -- not in GHC 6.12.3
 
 module CabalDev (modifyOptions) where
 
@@ -38,7 +38,7 @@ searchIt path = do
   a <- doesDirectoryExist (mpath path)
   if a then do
     findConf (mpath path)
-  else
+   else
     searchIt $ init path
   where
     mpath a = joinPath a </> "cabal-dev/"
