@@ -34,7 +34,7 @@ searchIt :: [FilePath] -> IO (Maybe FilePath)
 searchIt [] = return Nothing
 searchIt path = do
     a <- doesDirectoryExist (mpath path)
-    if a then do
+    if a then
         findConf (mpath path)
       else
         searchIt $ init path
@@ -44,4 +44,4 @@ searchIt path = do
 findConf :: FilePath -> IO (Maybe FilePath)
 findConf path = do
     f <- find (=~ "packages.*\\.conf") <$> getDirectoryContents path
-    return $ ((path </>) <$> f)
+    return ((path </>) <$> f)

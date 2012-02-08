@@ -12,7 +12,7 @@ import Types
 ----------------------------------------------------------------
 
 checkSyntax :: Options -> String -> IO String
-checkSyntax opt file = do
+checkSyntax opt file =
   unlines <$> check opt file
 
 ----------------------------------------------------------------
