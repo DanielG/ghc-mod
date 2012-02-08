@@ -36,7 +36,7 @@ setLogger True  df = do
     let newdf = df { log_action = appendLog ref }
     return (newdf, reverse <$> readIORef ref)
   where
-    appendLog ref _ src _ msg = modifyIORef ref (\ls -> ppMsg src msg : ls)
+    appendLog ref _ src stl msg = modifyIORef ref (\ls -> ppMsg src msg stl : ls)
 
 ----------------------------------------------------------------
 
@@ -49,36 +49,33 @@ errBagToStrList = map ppErrMsg . reverse . bagToList
 ----------------------------------------------------------------
 
 ppErrMsg :: ErrMsg -> String
-ppErrMsg err = ppMsg spn msg ++ ext
+ppErrMsg err = ppMsg spn msg defaultUserStyle ++ ext
    where
      spn = head (errMsgSpans err)
      msg = errMsgShortDoc err
-     ext = showMsg (errMsgExtraInfo err)
+     ext = showMsg (errMsgExtraInfo err) defaultUserStyle
 
-ppMsg :: SrcSpan -> Message -> String
+ppMsg :: SrcSpan -> Message -> PprStyle -> String
 #if __GLASGOW_HASKELL__ >= 702
-ppMsg (UnhelpfulSpan _) _ = undefined
-ppMsg (RealSrcSpan src) msg
+ppMsg (UnhelpfulSpan _) _ _   = undefined
+ppMsg (RealSrcSpan src) msg _ = undefined
 #else
-ppMsg src msg
+ppMsg src msg stl
 #endif
     = file ++ ":" ++ line ++ ":" ++ col ++ ":" ++ cts ++ "\0"
   where
     file = takeFileName $ unpackFS (srcSpanFile src)
     line = show (srcSpanStartLine src)
     col  = show (srcSpanStartCol src)
-    cts  = showMsg msg
+    cts  = showMsg msg stl
 
 ----------------------------------------------------------------
 
-style :: PprStyle
-style = mkUserStyle neverQualify AllTheWay
-
-showMsg :: SDoc -> String
+showMsg :: SDoc -> PprStyle -> String
 #if __GLASGOW_HASKELL__ >= 702
-showMsg d = map toNull $ renderWithStyle d style
+showMsg d stl = map toNull $ renderWithStyle d stl
 #else
-showMsg d = map toNull . Pretty.showDocWith PageMode $ d style
+showMsg d stl = map toNull . Pretty.showDocWith PageMode $ d stl
 #endif
   where
     toNull '\n' = '\0'
