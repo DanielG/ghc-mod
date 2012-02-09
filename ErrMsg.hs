@@ -58,7 +58,7 @@ ppErrMsg err = ppMsg spn msg defaultUserStyle ++ ext
 ppMsg :: SrcSpan -> Message -> PprStyle -> String
 #if __GLASGOW_HASKELL__ >= 702
 ppMsg (UnhelpfulSpan _) _ _   = undefined
-ppMsg (RealSrcSpan src) msg _ = undefined
+ppMsg (RealSrcSpan src) msg stl
 #else
 ppMsg src msg stl
 #endif
