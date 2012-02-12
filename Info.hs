@@ -1,4 +1,4 @@
-{-# LANGUAGE CPP #-}
+{-# LANGUAGE CPP, Rank2Types, TupleSections #-}
 
 module Info where
 
@@ -6,8 +6,12 @@ import Cabal
 import Control.Applicative hiding (empty)
 import Control.Exception
 import Control.Monad
+import CoreUtils
+import Data.Generics as G
 import Data.List
 import Data.Maybe
+import Data.Ord
+import Desugar
 import GHC
 import HscTypes
 import NameSet
@@ -15,6 +19,7 @@ import Outputable
 import PprTyThing
 import StringBuffer
 import System.Time
+import TcRnTypes
 import Types
 
 #if __GLASGOW_HASKELL__ >= 702
@@ -27,13 +32,15 @@ type ModuleString = String
 ----------------------------------------------------------------
 
 typeExpr :: Options -> ModuleString -> Expression -> FilePath -> IO String
-typeExpr opt modstr expr file = (++ "\n") <$> typeOf opt file modstr expr
+typeExpr opt modstr expr file = (++ "\n") <$> Info.typeOf opt file modstr expr
 
 typeOf :: Options -> FilePath -> ModuleString -> Expression -> IO String
 typeOf opt fileName modstr expr = inModuleContext opt fileName modstr exprToType
   where
-    exprToType = pretty <$> exprType expr
-    pretty = showSDocForUser neverQualify . pprTypeForUser False
+    exprToType = pretty <$> GHC.exprType expr
+
+pretty :: Type -> String
+pretty = showSDocForUser neverQualify . pprTypeForUser False
 
 ----------------------------------------------------------------
 
@@ -44,6 +51,64 @@ info :: Options -> FilePath -> ModuleString -> FilePath -> IO String
 info opt fileName modstr expr = inModuleContext opt fileName modstr exprToInfo
   where
     exprToInfo = infoThing expr
+
+----------------------------------------------------------------
+
+annotExpr :: Options -> ModuleString -> Int -> Int -> FilePath -> IO String
+annotExpr opt modstr lineNo colNo file = (++ "\n") <$> annotOf opt file modstr lineNo colNo
+
+annotOf :: Options -> FilePath -> ModuleString -> Int -> Int -> IO String
+annotOf opt fileName modstr lineNo colNo = inModuleContext opt fileName modstr exprToType
+  where
+    exprToType = do
+      modSum <- getModSummary $ mkModuleName modstr
+      p <- parseModule modSum
+      tcm <- typecheckModule p
+      es <- liftIO $ findExpr tcm lineNo colNo
+      ts <- catMaybes <$> mapM (getType tcm) es
+      let ts' = sortBy (comparing $ fst) ts
+      return $ tolisp $ map (\(loc, e) -> ("(" ++ l loc ++ " " ++ show (pretty e) ++ ")")) ts'
+
+    l :: SrcSpan -> String
+    l (RealSrcSpan spn) = ("("++) . (++")") . unwords . map show $
+      [ srcSpanStartLine spn, srcSpanStartCol spn
+      , srcSpanEndLine spn, srcSpanEndCol spn ]
+    l _ = "(0 0 0 0)"
+    
+    tolisp ls = "(" ++ unwords ls ++ ")"
+
+findExpr :: TypecheckedModule -> Int -> Int -> IO [LHsExpr Id]
+findExpr tcm line col = do
+  let src = tm_typechecked_source tcm
+  ssrc <- everywhereM' sanitize src
+  return $ listify f ssrc
+  where
+    -- It is for GHC's panic!
+    sanitize :: Data a => a -> IO a
+    sanitize x = do
+      mret <- try (evaluate x)
+      return $ case mret of
+        Left (SomeException _) -> G.empty
+        Right ret -> ret
+    
+    f :: LHsExpr Id -> Bool
+    f (L spn _) = spn `spans` (line, col)
+
+-- | Monadic variation on everywhere'
+everywhereM' :: Monad m => GenericM m -> GenericM m
+everywhereM' f x = do
+  x' <- f x
+  gmapM (everywhereM' f) x'
+
+getType :: GhcMonad m => TypecheckedModule -> LHsExpr Id -> m (Maybe (SrcSpan, Type))
+getType tcm e = do
+  hs_env <- getSession
+  (_, mbe) <- liftIO $ deSugarExpr hs_env modu rn_env ty_env e
+  return $ (getLoc e, ) <$> CoreUtils.exprType <$> mbe
+  where
+    modu = ms_mod $ pm_mod_summary $ tm_parsed_module tcm
+    rn_env = tcg_rdr_env $ fst $ tm_internals_ tcm
+    ty_env = tcg_type_env $ fst $ tm_internals_ tcm
 
 ----------------------------------------------------------------
 -- from ghc/InteractiveUI.hs
@@ -62,14 +127,14 @@ filterOutChildren get_thing xs
   where
       implicits = mkNameSet [getName t | x <- xs, t <- implicitTyThings (get_thing x)]
 
-pprInfo :: PrintExplicitForalls -> (TyThing, Fixity, [Instance]) -> SDoc
+pprInfo :: PrintExplicitForalls -> (TyThing, GHC.Fixity, [Instance]) -> SDoc
 pprInfo pefas (thing, fixity, insts)
     = pprTyThingInContextLoc pefas thing
    $$ show_fixity fixity
    $$ vcat (map pprInstance insts)
   where
     show_fixity fix
-        | fix == defaultFixity = empty
+        | fix == defaultFixity = Outputable.empty
         | otherwise            = ppr fix <+> ppr (getName thing)
 
 ----------------------------------------------------------------
