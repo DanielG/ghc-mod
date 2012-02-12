@@ -10,7 +10,7 @@ import CoreUtils
 import Data.Generics as G
 import Data.List
 import Data.Maybe
-import Data.Ord
+import Data.Ord as O
 import Desugar
 import GHC
 import HscTypes
@@ -66,7 +66,7 @@ annotOf opt fileName modstr lineNo colNo = inModuleContext opt fileName modstr e
       tcm <- typecheckModule p
       es <- liftIO $ findExpr tcm lineNo colNo
       ts <- catMaybes <$> mapM (getType tcm) es
-      let ts' = sortBy (comparing $ fst) ts
+      let ts' = sortBy (\a b -> fst a `cmp` fst b) ts
       return $ tolisp $ map (\(loc, e) -> ("(" ++ l loc ++ " " ++ show (pretty e) ++ ")")) ts'
 
     l :: SrcSpan -> String
@@ -74,6 +74,11 @@ annotOf opt fileName modstr lineNo colNo = inModuleContext opt fileName modstr e
       [ srcSpanStartLine spn, srcSpanStartCol spn
       , srcSpanEndLine spn, srcSpanEndCol spn ]
     l _ = "(0 0 0 0)"
+    
+    cmp a b
+      | a `isSubspanOf` b = O.LT
+      | b `isSubspanOf` a = O.GT
+      | otherwise = O.EQ
     
     tolisp ls = "(" ++ unwords ls ++ ")"
 
