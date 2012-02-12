@@ -69,6 +69,13 @@
 (defvar *annot-ovl* (make-overlay 0 0))
 (overlay-put *annot-ovl* 'face 'region)
 
+(defun delete-annot-ovl (beg end len)
+  (delete-overlay *annot-ovl*))
+
+(setq after-change-functions
+      (cons 'delete-annot-ovl
+            after-change-functions))
+
 (defun ghc-show-annot0 (ask modname)
   (let* ((pt (point))
          (ln (int-to-string (line-number-at-pos)))
