@@ -57,10 +57,9 @@ ppErrMsg err = ppMsg spn msg defaultUserStyle ++ ext
 
 ppMsg :: SrcSpan -> Message -> PprStyle -> String
 #if __GLASGOW_HASKELL__ >= 702
-ppMsg (UnhelpfulSpan _) _ _   = undefined
 ppMsg (RealSrcSpan src) msg stl
 #else
-ppMsg src msg stl
+ppMsg src msg stl | isGoodSrcSpan src
 #endif
     = file ++ ":" ++ line ++ ":" ++ col ++ ":" ++ cts ++ "\0"
   where
@@ -68,12 +67,13 @@ ppMsg src msg stl
     line = show (srcSpanStartLine src)
     col  = show (srcSpanStartCol src)
     cts  = showMsg msg stl
+ppMsg _ _ _ = "ghc-mod:0:0:Probably mutual module import occurred\0"
 
 ----------------------------------------------------------------
 
 showMsg :: SDoc -> PprStyle -> String
 #if __GLASGOW_HASKELL__ >= 702
-showMsg d stl = map toNull $ renderWithStyle d stl
+showMsg d stl = map toNull . renderWithStyle d $ stl
 #else
 showMsg d stl = map toNull . Pretty.showDocWith PageMode $ d stl
 #endif
