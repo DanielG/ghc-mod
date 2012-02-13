@@ -64,6 +64,7 @@
 
 (defun ghc-init ()
   (ghc-abbrev-init)
+  (ghc-annot-init)
   (unless ghc-initialized
     (define-key haskell-mode-map ghc-completion-key  'ghc-complete)
     (define-key haskell-mode-map ghc-document-key    'ghc-browse-document)
