@@ -70,9 +70,14 @@ annotOf opt fileName modstr lineNo colNo = inModuleContext opt fileName modstr e
       return $ tolisp $ map (\(loc, e) -> ("(" ++ l loc ++ " " ++ show (pretty e) ++ ")")) ts'
 
     l :: SrcSpan -> String
-    l (RealSrcSpan spn) = ("("++) . (++")") . unwords . map show $
-      [ srcSpanStartLine spn, srcSpanStartCol spn
-      , srcSpanEndLine spn, srcSpanEndCol spn ]
+#if __GLASGOW_HASKELL__ >= 702
+    l (RealSrcSpan spn)
+#else
+    l spn | isGoodSrcSpan spn
+#endif
+      = ("("++) . (++")") . unwords . map show $
+        [ srcSpanStartLine spn, srcSpanStartCol spn
+        , srcSpanEndLine spn, srcSpanEndCol spn ]
     l _ = "(0 0 0 0)"
     
     cmp a b
