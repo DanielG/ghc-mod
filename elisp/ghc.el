@@ -49,7 +49,6 @@
 (defvar ghc-sort-key        "\es")
 (defvar ghc-type-key        "\C-c\C-t")
 (defvar ghc-info-key        "\C-c\C-i")
-(defvar ghc-annot-key       "\C-c\C-a")
 (defvar ghc-check-key       "\C-x\C-s")
 (defvar ghc-toggle-key      "\C-c\C-c")
 (defvar ghc-module-key      "\C-c\C-m")
@@ -64,13 +63,12 @@
 
 (defun ghc-init ()
   (ghc-abbrev-init)
-  (ghc-annot-init)
+  (ghc-type-init)
   (unless ghc-initialized
     (define-key haskell-mode-map ghc-completion-key  'ghc-complete)
     (define-key haskell-mode-map ghc-document-key    'ghc-browse-document)
     (define-key haskell-mode-map ghc-type-key        'ghc-show-type)
     (define-key haskell-mode-map ghc-info-key        'ghc-show-info)
-    (define-key haskell-mode-map ghc-annot-key       'ghc-show-annot)
     (define-key haskell-mode-map ghc-import-key      'ghc-import-module)
     (define-key haskell-mode-map ghc-previous-key    'flymake-goto-prev-error)
     (define-key haskell-mode-map ghc-next-key        'flymake-goto-next-error)

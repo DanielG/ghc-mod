@@ -1,6 +1,6 @@
 {-# LANGUAGE CPP, Rank2Types, TupleSections #-}
 
-module Info where
+module Info (infoExpr, typeExpr) where
 
 import Cabal
 import Control.Applicative hiding (empty)
@@ -31,19 +31,6 @@ type ModuleString = String
 
 ----------------------------------------------------------------
 
-typeExpr :: Options -> ModuleString -> Expression -> FilePath -> IO String
-typeExpr opt modstr expr file = (++ "\n") <$> Info.typeOf opt file modstr expr
-
-typeOf :: Options -> FilePath -> ModuleString -> Expression -> IO String
-typeOf opt fileName modstr expr = inModuleContext opt fileName modstr exprToType
-  where
-    exprToType = pretty <$> GHC.exprType expr
-
-pretty :: Type -> String
-pretty = showSDocForUser neverQualify . pprTypeForUser False
-
-----------------------------------------------------------------
-
 infoExpr :: Options -> ModuleString -> Expression -> FilePath -> IO String
 infoExpr opt modstr expr file = (++ "\n") <$> info opt file modstr expr
 
@@ -54,11 +41,11 @@ info opt fileName modstr expr = inModuleContext opt fileName modstr exprToInfo
 
 ----------------------------------------------------------------
 
-annotExpr :: Options -> ModuleString -> Int -> Int -> FilePath -> IO String
-annotExpr opt modstr lineNo colNo file = (++ "\n") <$> annotOf opt file modstr lineNo colNo
+typeExpr :: Options -> ModuleString -> Int -> Int -> FilePath -> IO String
+typeExpr opt modstr lineNo colNo file = (++ "\n") <$> Info.typeOf opt file modstr lineNo colNo
 
-annotOf :: Options -> FilePath -> ModuleString -> Int -> Int -> IO String
-annotOf opt fileName modstr lineNo colNo = inModuleContext opt fileName modstr exprToType
+typeOf :: Options -> FilePath -> ModuleString -> Int -> Int -> IO String
+typeOf opt fileName modstr lineNo colNo = inModuleContext opt fileName modstr exprToType
   where
     exprToType = do
       modSum <- getModSummary $ mkModuleName modstr
@@ -119,6 +106,9 @@ getType tcm e = do
     modu = ms_mod $ pm_mod_summary $ tm_parsed_module tcm
     rn_env = tcg_rdr_env $ fst $ tm_internals_ tcm
     ty_env = tcg_type_env $ fst $ tm_internals_ tcm
+
+pretty :: Type -> String
+pretty = showSDocForUser neverQualify . pprTypeForUser False
 
 ----------------------------------------------------------------
 -- from ghc/InteractiveUI.hs

@@ -35,9 +35,8 @@ usage =    "ghc-mod version " ++ showVersion version ++ "\n"
         ++ "\t ghc-mod flag [-l]\n"
         ++ "\t ghc-mod browse" ++ ghcOptHelp ++ "[-l] [-o] <module> [<module> ...]\n"
         ++ "\t ghc-mod check" ++ ghcOptHelp ++ "<HaskellFile>\n"
-        ++ "\t ghc-mod type" ++ ghcOptHelp ++ "<HaskellFile> <module> <expression>\n"
         ++ "\t ghc-mod info" ++ ghcOptHelp ++ "<HaskellFile> <module> <expression>\n"
-        ++ "\t ghc-mod annot" ++ ghcOptHelp ++ "<HaskellFile> <module> <line-no> <column-no>\n"
+        ++ "\t ghc-mod type" ++ ghcOptHelp ++ "<HaskellFile> <module> <line-no> <column-no>\n"
         ++ "\t ghc-mod lint [-h opt] <HaskellFile>\n"
         ++ "\t ghc-mod boot\n"
         ++ "\t ghc-mod help\n"
@@ -92,9 +91,8 @@ main = flip catches handlers $ do
       "browse" -> concat <$> mapM (browseModule opt) (tail cmdArg)
       "list"   -> listModules opt
       "check"  -> withFile (checkSyntax opt) (safelist cmdArg 1)
-      "type"   -> withFile (typeExpr opt (safelist cmdArg 2) (safelist cmdArg 3)) (safelist cmdArg 1)
+      "type"  -> withFile (typeExpr opt (safelist cmdArg 2) (read $ safelist cmdArg 3) (read $ safelist cmdArg 4)) (safelist cmdArg 1)
       "info"   -> withFile (infoExpr opt (safelist cmdArg 2) (safelist cmdArg 3)) (safelist cmdArg 1)
-      "annot"  -> withFile (annotExpr opt (safelist cmdArg 2) (read $ safelist cmdArg 3) (read $ safelist cmdArg 4)) (safelist cmdArg 1)
       "lint"   -> withFile (lintSyntax opt)  (safelist cmdArg 1)
       "lang"   -> listLanguages opt
       "flag"   -> listFlags opt

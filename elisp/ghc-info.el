@@ -10,26 +10,6 @@
 
 (require 'ghc-func)
 
-(defun ghc-show-type (&optional ask)
-  (interactive "P")
-  (if (not (ghc-which ghc-module-command))
-      (message "%s not found" ghc-module-command)
-    (let ((modname (ghc-find-module-name)))
-      (if (not modname)
-	  (message "module should be specified")
-	(ghc-show-type0 ask modname)))))
-
-(defun ghc-show-type0 (ask modname)
-  (let* ((expr0 (ghc-things-at-point))
-	 (expr (if ask (ghc-read-expression expr0) expr0))
-	 (cdir default-directory)
-	 (file (buffer-name)))
-    (with-temp-buffer
-      (cd cdir)
-      (apply 'call-process ghc-module-command nil t nil
-	     `(,@(ghc-make-ghc-options) "type" ,file ,modname ,expr))
-      (message (buffer-substring (point-min) (1- (point-max)))))))
-
 (defun ghc-show-info (&optional ask)
   (interactive "P")
   (if (not (ghc-which ghc-module-command))
@@ -57,73 +37,73 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; annot
+;;; type
 ;;;
 
-(defvar ghc-annot-overlay nil)
+(defvar ghc-type-overlay nil)
 
-(make-variable-buffer-local 'ghc-annot-overlay)
+(make-variable-buffer-local 'ghc-type-overlay)
 
-(defun ghc-annot-set-ix (n)
-  (overlay-put ghc-annot-overlay 'ix n))
+(defun ghc-type-set-ix (n)
+  (overlay-put ghc-type-overlay 'ix n))
 
-(defun ghc-annot-get-ix ()
-  (overlay-get ghc-annot-overlay 'ix))
+(defun ghc-type-get-ix ()
+  (overlay-get ghc-type-overlay 'ix))
 
-(defun ghc-annot-set-point (pos)
-  (overlay-put ghc-annot-overlay 'pos pos))
+(defun ghc-type-set-point (pos)
+  (overlay-put ghc-type-overlay 'pos pos))
 
-(defun ghc-annot-get-point ()
-  (overlay-get ghc-annot-overlay 'pos))
+(defun ghc-type-get-point ()
+  (overlay-get ghc-type-overlay 'pos))
 
-(defun ghc-annot-set-types (types)
-  (overlay-put ghc-annot-overlay 'types types))
+(defun ghc-type-set-types (types)
+  (overlay-put ghc-type-overlay 'types types))
 
-(defun ghc-annot-get-types ()
-  (overlay-get ghc-annot-overlay 'types))
+(defun ghc-type-get-types ()
+  (overlay-get ghc-type-overlay 'types))
 
-(defun ghc-annot-init ()
-  (setq ghc-annot-overlay (make-overlay 0 0))
-  (overlay-put ghc-annot-overlay 'face 'region)
-  (ghc-annot-set-ix 0)
-  (ghc-annot-set-point 0)
+(defun ghc-type-init ()
+  (setq ghc-type-overlay (make-overlay 0 0))
+  (overlay-put ghc-type-overlay 'face 'region)
+  (ghc-type-set-ix 0)
+  (ghc-type-set-point 0)
   (setq after-change-functions
-	(cons 'ghc-delete-annot-ovl after-change-functions)))
+	(cons 'ghc-delete-type-ovl after-change-functions)))
 
-(defun ghc-delete-annot-ovl (beg end len)
-  (when (overlayp ghc-annot-overlay)
-    (delete-overlay ghc-annot-overlay)))
+(defun ghc-delete-type-ovl (beg end len)
+  (when (overlayp ghc-type-overlay)
+    (delete-overlay ghc-type-overlay)))
 
-(defun ghc-show-annot ()
+(defun ghc-show-type ()
   (interactive)
   (if (not (ghc-which ghc-module-command))
       (message "%s not found" ghc-module-command)
     (let ((modname (ghc-find-module-name)))
       (if (not modname)
 	  (message "module should be specified")
-	(ghc-show-annot0 modname)))))
+	(ghc-show-type0 modname)))))
 
-(defun ghc-show-annot0 (modname)
+(defun ghc-show-type0 (modname)
   (let* ((buf (current-buffer))
-	 (types (ghc-get-annot modname))
-	 (tinfo (nth (ghc-annot-get-ix) types))
+	 (types (ghc-get-type modname))
+	 (tinfo (nth (ghc-type-get-ix) types))
 	 (pos (nth 0 tinfo))
 	 (type (nth 1 tinfo))
 	 (left (ghc-get-pos buf (nth 0 pos) (nth 1 pos)))
 	 (right (ghc-get-pos buf (nth 2 pos) (nth 3 pos))))
-      (move-overlay ghc-annot-overlay (- left 1) (- right 1) buf)
+      (move-overlay ghc-type-overlay (- left 1) (- right 1) buf)
       (message type)))
 
-(defun ghc-get-annot (modname)
-  (if (= (ghc-annot-get-point) (point))
-      (ghc-annot-set-ix
-       (mod (1+ (ghc-annot-get-ix)) (length (ghc-annot-get-types))))
-    (ghc-annot-set-types (ghc-call-annot modname))
-    (ghc-annot-set-point (point))
-    (ghc-annot-set-ix 0))
-  (ghc-annot-get-types))
+(defun ghc-get-type (modname)
+  (if (= (ghc-type-get-point) (point))
+      (ghc-type-set-ix
+       (mod (1+ (ghc-type-get-ix)) (length (ghc-type-get-types))))
+    (ghc-type-set-types (ghc-call-type modname))
+    (ghc-type-set-point (point))
+    (ghc-type-set-ix 0))
+  (ghc-type-get-types))
 
-(defun ghc-call-annot (modname)
+(defun ghc-call-type (modname)
   (let* ((ln (int-to-string (line-number-at-pos)))
 	 (cn (int-to-string (current-column)))
 	 (cdir default-directory)
@@ -132,7 +112,7 @@
      (lambda ()
        (cd cdir)
        (apply 'call-process ghc-module-command nil t nil
-	      `(,@(ghc-make-ghc-options) "annot" ,file ,modname ,ln ,cn))))))
+	      `(,@(ghc-make-ghc-options) "type" ,file ,modname ,ln ,cn))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
