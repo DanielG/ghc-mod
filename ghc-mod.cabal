@@ -28,7 +28,7 @@ Executable ghc-mod
     GHC-Options:        -Wall -fno-warn-unused-do-bind
   else
     GHC-Options:        -Wall
-  Build-Depends:        base >= 4.0 && < 5, ghc, ghc-paths, transformers, syb,
+  Build-Depends:        base >= 4.0 && < 5, ghc, ghc-paths, transformers, syb, ghc-syb-utils,
                         process, directory, filepath, old-time,
                         hlint >= 1.7.1, regex-posix, Cabal
 Source-Repository head
