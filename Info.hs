@@ -62,10 +62,10 @@ typeOf opt fileName modstr lineNo colNo = inModuleContext opt fileName modstr ex
 #else
     l spn | isGoodSrcSpan spn
 #endif
-      = ("("++) . (++")") . unwords . map show $
+      = unwords . map show $
         [ srcSpanStartLine spn, srcSpanStartCol spn
         , srcSpanEndLine spn, srcSpanEndCol spn ]
-    l _ = "(0 0 0 0)"
+    l _ = "0 0 0 0"
     
     cmp a b
       | a `isSubspanOf` b = O.LT
