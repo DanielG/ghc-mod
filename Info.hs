@@ -42,7 +42,10 @@ info opt fileName modstr expr = inModuleContext opt fileName modstr exprToInfo
 ----------------------------------------------------------------
 
 typeExpr :: Options -> ModuleString -> Int -> Int -> FilePath -> IO String
-typeExpr opt modstr lineNo colNo file = (++ "\n") <$> Info.typeOf opt file modstr lineNo colNo
+typeExpr opt modstr lineNo colNo file = addNewline (outputStyle opt) <$> Info.typeOf opt file modstr lineNo colNo
+  where
+    addNewline LispStyle = (++ "\n")
+    addNewline PlainStyle = id
 
 typeOf :: Options -> FilePath -> ModuleString -> Int -> Int -> IO String
 typeOf opt fileName modstr lineNo colNo = inModuleContext opt fileName modstr exprToType
@@ -53,8 +56,11 @@ typeOf opt fileName modstr lineNo colNo = inModuleContext opt fileName modstr ex
       tcm <- typecheckModule p
       es <- liftIO $ findExpr tcm lineNo colNo
       ts <- catMaybes <$> mapM (getType tcm) es
-      let ts' = sortBy (\a b -> fst a `cmp` fst b) ts
-      return $ tolisp $ map (\(loc, e) -> ("(" ++ l loc ++ " " ++ show (pretty e) ++ ")")) ts'
+      return $ format (outputStyle opt) $ sortBy (\a b -> fst a `cmp` fst b) ts
+
+    format :: OutputStyle -> [(SrcSpan, Type)] -> String
+    format LispStyle = tolisp . map (\(loc, e) -> "(" ++ l loc ++ " " ++ show (pretty e) ++ ")")
+    format PlainStyle = unlines . map (\(loc, e) -> l loc ++ " " ++ pretty e)
 
     l :: SrcSpan -> String
 #if __GLASGOW_HASKELL__ >= 702

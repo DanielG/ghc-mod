@@ -45,7 +45,7 @@ usage =    "ghc-mod version " ++ showVersion version ++ "\n"
 
 defaultOptions :: Options
 defaultOptions = Options {
-    convert = toPlain
+    outputStyle = PlainStyle
   , hlintOpts = []
   , ghcOpts = []
   , operators = False
@@ -53,7 +53,7 @@ defaultOptions = Options {
 
 argspec :: [OptDescr (Options -> Options)]
 argspec = [ Option "l" ["tolisp"]
-            (NoArg (\opts -> opts { convert = toLisp }))
+            (NoArg (\opts -> opts { outputStyle = LispStyle }))
             "print as a list of Lisp"
           , Option "h" ["hlintOpt"]
             (ReqArg (\h opts -> opts { hlintOpts = h : hlintOpts opts }) "hlintOpt")
@@ -128,16 +128,6 @@ main = flip catches handlers $ do
     safelist xs idx
       | length xs <= idx = throw SafeList
       | otherwise = xs !! idx
-
-----------------------------------------------------------------
-toLisp :: [String] -> String
-toLisp ms = "(" ++ unwords quoted ++ ")\n"
-    where
-      quote x = "\"" ++ x ++ "\""
-      quoted = map quote ms
-
-toPlain :: [String] -> String
-toPlain = unlines
 
 ----------------------------------------------------------------
 
