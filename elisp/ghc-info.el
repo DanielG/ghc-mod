@@ -55,6 +55,61 @@
 	 (buffer-substring (point-min) (1- (point-max))))))
     (display-buffer buf)))
 
+(defun ghc-show-annot (&optional ask)
+  (interactive "P")
+  (if (not (ghc-which ghc-module-command))
+      (message "%s not found" ghc-module-command)
+    (let ((modname (ghc-find-module-name)))
+      (if (not modname)
+	  (message "module should be specified")
+	(ghc-show-annot0 ask modname)))))
+
+(defvar *annot-point* 0)
+(defvar *annot-ix* 0)
+(defvar *annot-ovl* (make-overlay 0 0))
+(overlay-put *annot-ovl* 'face 'region)
+
+(defun delete-annot-ovl (beg end len)
+  (delete-overlay *annot-ovl*))
+
+(setq after-change-functions
+      (cons 'delete-annot-ovl
+            after-change-functions))
+
+(defun ghc-show-annot0 (ask modname)
+  (let* ((pt (point))
+         (ln (int-to-string (line-number-at-pos)))
+         (cn (int-to-string (current-column)))
+	 (cdir default-directory)
+         (buf (current-buffer))
+	 (file (buffer-name)))
+    (if (= *annot-point* pt)
+        (setq *annot-ix* (+ 1 *annot-ix*))
+      (progn
+        (setq *annot-point* pt)
+        (setq *annot-ix* 0)))
+    (save-excursion
+      (with-temp-buffer
+        (cd cdir)
+        (apply 'call-process ghc-module-command nil t nil
+               `(,@(ghc-make-ghc-options) "annot" ,file ,modname ,ln ,cn))
+        (let* ((types (read (buffer-substring (point-min) (1- (point-max)))))
+               (cix (mod *annot-ix* (length types)))
+               (tinfo (nth cix types))
+               (pos (nth 0 tinfo))
+               (type (nth 1 tinfo))
+               (left (ghc-get-pos buf (nth 0 pos) (nth 1 pos)))
+               (right (ghc-get-pos buf (nth 2 pos) (nth 3 pos))))
+          (move-overlay *annot-ovl* (- left 1) (- right 1) buf)
+          (message type))))))
+
+(defun ghc-get-pos (buf line col)
+  (save-excursion
+    (set-buffer buf)
+    (goto-line line)
+    (forward-char col)
+    (point)))
+
 (defun ghc-read-expression (default)
   (if default
       (let ((prompt (format "Expression (%s): " default)))
