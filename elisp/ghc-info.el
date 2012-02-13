@@ -70,11 +70,17 @@
   (ghc-type-set-ix 0)
   (ghc-type-set-point 0)
   (setq after-change-functions
-	(cons 'ghc-type-deleve-overlay after-change-functions)))
+	(cons 'ghc-type-delete-overlay after-change-functions))
+  (set (make-local-variable 'post-command-hook) 'ghc-type-post-command-hook))
 
-(defun ghc-type-deleve-overlay (beg end len)
+(defun ghc-type-delete-overlay (&optional beg end len)
   (when (overlayp ghc-type-overlay)
     (delete-overlay ghc-type-overlay)))
+
+(defun ghc-type-post-command-hook ()
+  (when (and (overlayp ghc-type-overlay)
+	     (/= (ghc-type-get-point) (point)))
+    (ghc-type-delete-overlay)))
 
 (defun ghc-show-type ()
   (interactive)
