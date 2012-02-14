@@ -47,6 +47,7 @@ Executable ghc-mod
                       , filepath
                       , ghc
                       , ghc-paths
+                      , ghc-syb-utils
                       , hlint >= 1.7.1
                       , old-time
                       , process
