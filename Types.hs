@@ -1,3 +1,5 @@
+{-# LANGUAGE FlexibleInstances #-}
+
 module Types where
 
 import Control.Monad
@@ -19,12 +21,41 @@ data Options = Options {
   , operators   :: Bool
   }
 
-convert :: Options -> [String] -> String
-convert Options{ outputStyle = LispStyle } ms = "(" ++ unwords quoted ++ ")\n"
-    where
-      quote x = "\"" ++ x ++ "\""
-      quoted = map quote ms
-convert Options{ outputStyle = PlainStyle } ms = unlines ms
+----------------------------------------------------------------
+convert :: ToString a => Options -> a -> String
+convert Options{ outputStyle = LispStyle  } = toLisp
+convert Options{ outputStyle = PlainStyle } = toPlain
+
+class ToString a where
+    toLisp  :: a -> String
+    toPlain :: a -> String
+
+instance ToString [String] where
+    toLisp  = addNewLine . toSexp True
+    toPlain = unlines
+
+instance ToString [((Int,Int,Int,Int),String)] where
+    toLisp  = addNewLine . toSexp False . map toS
+      where
+        toS x = "(" ++ tupToString x ++ ")"
+    toPlain = unlines . map tupToString
+
+toSexp :: Bool -> [String] -> String
+toSexp False ss = "(" ++ unwords ss ++ ")"
+toSexp True ss  = "(" ++ unwords (map quote ss) ++ ")"
+
+tupToString :: ((Int,Int,Int,Int),String) -> String
+tupToString ((a,b,c,d),s) = show a ++ " "
+                         ++ show b ++ " "
+                         ++ show c ++ " "
+                         ++ show d ++ " "
+                         ++ quote s
+
+quote :: String -> String
+quote x = "\"" ++ x ++ "\""
+
+addNewLine :: String -> String
+addNewLine = (++ "\n")
 
 ----------------------------------------------------------------
 

@@ -7,6 +7,7 @@ import Control.Applicative hiding (empty)
 import Control.Exception
 import Control.Monad
 import CoreUtils
+import Data.Function
 import Data.Generics as G
 import Data.List
 import Data.Maybe
@@ -42,10 +43,7 @@ info opt fileName modstr expr = inModuleContext opt fileName modstr exprToInfo
 ----------------------------------------------------------------
 
 typeExpr :: Options -> ModuleString -> Int -> Int -> FilePath -> IO String
-typeExpr opt modstr lineNo colNo file = addNewline (outputStyle opt) <$> Info.typeOf opt file modstr lineNo colNo
-  where
-    addNewline LispStyle = (++ "\n")
-    addNewline PlainStyle = id
+typeExpr opt modstr lineNo colNo file = Info.typeOf opt file modstr lineNo colNo
 
 typeOf :: Options -> FilePath -> ModuleString -> Int -> Int -> IO String
 typeOf opt fileName modstr lineNo colNo = inModuleContext opt fileName modstr exprToType
@@ -56,29 +54,26 @@ typeOf opt fileName modstr lineNo colNo = inModuleContext opt fileName modstr ex
       tcm <- typecheckModule p
       es <- liftIO $ findExpr tcm lineNo colNo
       ts <- catMaybes <$> mapM (getType tcm) es
-      return $ format (outputStyle opt) $ sortBy (\a b -> fst a `cmp` fst b) ts
+      let sss = map toTup $ sortBy (cmp `on` fst) ts
+      return $ convert opt sss
 
-    format :: OutputStyle -> [(SrcSpan, Type)] -> String
-    format LispStyle = tolisp . map (\(loc, e) -> "(" ++ l loc ++ " " ++ show (pretty e) ++ ")")
-    format PlainStyle = unlines . map (\(loc, e) -> l loc ++ " " ++ pretty e)
+    toTup :: (SrcSpan, Type) -> ((Int,Int,Int,Int),String)
+    toTup (spn, typ) = (l spn, pretty typ)
 
-    l :: SrcSpan -> String
+    l :: SrcSpan -> (Int,Int,Int,Int)
 #if __GLASGOW_HASKELL__ >= 702
     l (RealSrcSpan spn)
 #else
     l spn | isGoodSrcSpan spn
 #endif
-      = unwords . map show $
-        [ srcSpanStartLine spn, srcSpanStartCol spn
-        , srcSpanEndLine spn, srcSpanEndCol spn ]
-    l _ = "0 0 0 0"
-    
+      = (srcSpanStartLine spn, srcSpanStartCol spn
+       , srcSpanEndLine spn, srcSpanEndCol spn)
+    l _ = (0,0,0,0)
+
     cmp a b
       | a `isSubspanOf` b = O.LT
       | b `isSubspanOf` a = O.GT
       | otherwise = O.EQ
-    
-    tolisp ls = "(" ++ unwords ls ++ ")"
 
 findExpr :: TypecheckedModule -> Int -> Int -> IO [LHsExpr Id]
 findExpr tcm line col = do
@@ -93,7 +88,7 @@ findExpr tcm line col = do
       return $ case mret of
         Left (SomeException _) -> G.empty
         Right ret -> ret
-    
+
     f :: LHsExpr Id -> Bool
     f (L spn _) = spn `spans` (line, col)
 
@@ -139,9 +134,9 @@ pprInfo pefas (thing, fixity, insts)
    $$ show_fixity fixity
    $$ vcat (map pprInstance insts)
   where
-    show_fixity fix
-        | fix == defaultFixity = Outputable.empty
-        | otherwise            = ppr fix <+> ppr (getName thing)
+    show_fixity fx
+        | fx == defaultFixity = Outputable.empty
+        | otherwise           = ppr fx <+> ppr (getName thing)
 
 ----------------------------------------------------------------
 

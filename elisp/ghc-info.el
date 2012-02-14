@@ -125,7 +125,7 @@
      (lambda ()
        (cd cdir)
        (apply 'call-process ghc-module-command nil t nil
-	      `(,@(ghc-make-ghc-options) "type" ,file ,modname ,ln ,cn))
+	      `(,@(ghc-make-ghc-options) "-l" "type" ,file ,modname ,ln ,cn))
        (goto-char (point-min))
        (while (search-forward "[Char]" nil t)
 	 (replace-match "String"))))))
