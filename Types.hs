@@ -11,19 +11,22 @@ import GHC.Paths (libdir)
 ----------------------------------------------------------------
 
 data OutputStyle = LispStyle | PlainStyle
+
 data Options = Options {
     outputStyle :: OutputStyle
-  , hlintOpts :: [String]
-  , ghcOpts   :: [String]
-  , operators :: Bool
+  , hlintOpts   :: [String]
+  , ghcOpts     :: [String]
+  , operators   :: Bool
   }
 
 convert :: Options -> [String] -> String
-convert Options{outputStyle = LispStyle} ms = "(" ++ unwords quoted ++ ")\n"
+convert Options{ outputStyle = LispStyle } ms = "(" ++ unwords quoted ++ ")\n"
     where
       quote x = "\"" ++ x ++ "\""
       quoted = map quote ms
-convert Options{outputStyle = PlainStyle} ms = unlines ms
+convert Options{ outputStyle = PlainStyle } ms = unlines ms
+
+----------------------------------------------------------------
 
 withGHC :: (MonadPlus m) => Ghc (m a) -> IO (m a)
 withGHC body = ghandle ignore $ runGhc (Just libdir) body
