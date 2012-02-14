@@ -3,15 +3,18 @@
 module Cabal (initializeGHC) where
 
 import Control.Applicative
+import Control.Exception
 import Control.Monad
 import CoreMonad
 import Data.List
+import Data.Maybe
 import Distribution.PackageDescription
 import Distribution.PackageDescription.Parse (readPackageDescription)
 import Distribution.Verbosity (silent)
 import ErrMsg
 import GHC
 import GHCApi
+import Language.Haskell.Extension
 import System.Directory
 import System.FilePath
 import Types
@@ -22,38 +25,47 @@ importDirs :: [String]
 importDirs = [".","..","../..","../../..","../../../..","../../../../.."]
 
 initializeGHC :: Options -> FilePath -> [String] -> Bool -> Ghc (FilePath,LogReader)
-initializeGHC opt fileName ghcOptions logging = do
-    (owdir,mdirfile) <- liftIO getDirs
-    case mdirfile of
-        Nothing -> do
-            logReader <- initSession opt ghcOptions importDirs logging
-            return (fileName,logReader)
-        Just (cdir,cfile) -> do
-            midirs <- parseCabalFile cfile
-            changeToCabalDirectory cdir
-            let idirs = case midirs of
-                    []   -> [cdir,owdir]
-                    dirs -> dirs ++ [owdir]
-                file = ajustFileName fileName owdir cdir
-            logReader <- initSession opt ghcOptions idirs logging
-            return (file,logReader)
+initializeGHC opt fileName ghcOptions logging =
+    withCabal `gcatch` withoutCabal
+  where
+    withoutCabal :: SomeException -> Ghc (FilePath,LogReader)
+    withoutCabal _ = do
+        logReader <- initSession opt ghcOptions importDirs logging
+        return (fileName,logReader)
+    withCabal = do
+        (owdir,cdir,cfile) <- liftIO getDirs
+        binfo <- parseCabalFile cfile
+        let (idirs',exts',mlang) = extractBuildInfo binfo
+            exts = map addX exts'
+            lang = maybe "-XHaskell98" addX mlang
+            gopts = ghcOptions ++ exts ++ [lang]
+        changeToCabalDirectory cdir
+        let idirs = case idirs' of
+                []   -> [cdir,owdir]
+                dirs -> dirs ++ [owdir]
+            file = ajustFileName fileName owdir cdir
+        logReader <- initSession opt gopts idirs logging
+        return (file,logReader)
+    addX x = "-X" ++ show x
 
 ----------------------------------------------------------------
 
-parseCabalFile :: FilePath -> Ghc [String]
+-- Causes error, catched in the upper function.
+parseCabalFile :: FilePath -> Ghc BuildInfo
 parseCabalFile file = do
     cabal <- liftIO $ readPackageDescription silent file
-    return $ fromLibrary cabal ||| fromExecutable cabal
+    return . fromJust $ fromLibrary cabal >> fromExecutable cabal
   where
-    [] ||| y = y
-    x  ||| _ = x
-    fromLibrary c = case condLibrary c of
-        Nothing  -> []
-        Just lib -> libHsSourceDir lib
-    libHsSourceDir = hsSourceDirs . libBuildInfo . condTreeData
-    fromExecutable = execHsSrouceDir . condExecutables
-    execHsSrouceDir [] = []
-    execHsSrouceDir (x:_) = hsSourceDirs . buildInfo . condTreeData . snd $ x
+    fromLibrary c     = libBuildInfo . condTreeData <$> condLibrary c
+    fromExecutable c  = buildInfo . condTreeData . snd <$> toMaybe (condExecutables c)
+    toMaybe [] = Nothing
+    toMaybe (x:_) = Just x
+
+-- SourceDirs, Extensions, and Language
+extractBuildInfo :: BuildInfo -> ([String],[Extension],Maybe Language)
+extractBuildInfo binfo = (hsSourceDirs binfo
+                         ,oldExtensions binfo
+                         ,defaultLanguage binfo)
 
 ----------------------------------------------------------------
 
@@ -70,25 +82,23 @@ changeToCabalDirectory dir = do
     liftIO $ setCurrentDirectory dir
     workingDirectoryChanged
 
-getDirs :: IO (FilePath, Maybe (FilePath,FilePath))
+-- CurrentWorkingDir, CabalDir, CabalFile
+getDirs :: IO (FilePath,FilePath,FilePath)
 getDirs = do
     wdir <- getCurrentDirectory
-    mcabdir <- cabalDir wdir
-    case mcabdir of
-        Nothing -> return (wdir,Nothing)
-        jdf     -> return (wdir,jdf)
+    (cdir,cfile) <- cabalDir wdir
+    return (wdir,cdir,cfile)
 
-cabalDir :: FilePath -> IO (Maybe (FilePath,FilePath))
+-- Causes error, catched in the upper function.
+-- CabalDir, CabalFile
+cabalDir :: FilePath -> IO (FilePath,FilePath)
 cabalDir dir = do
     cnts <- (filter isCabal <$> getDirectoryContents dir)
             >>= filterM (\file -> doesFileExist (dir </> file))
+    let dir' = takeDirectory dir
     case cnts of
-        [] -> do
-            let dir' = takeDirectory dir
-            if dir' == dir
-               then return Nothing
-               else cabalDir dir'
-        cfile:_ -> return (Just (dir,dir </> cfile))
+        [] | dir' == dir -> throwIO $ userError "No cabal file"
+           | otherwise   -> cabalDir dir'
+        cfile:_          -> return (dir,dir </> cfile)
   where
-    isCabal name = ".cabal" `isSuffixOf` name
-                && length name > 6
+    isCabal name = ".cabal" `isSuffixOf` name && length name > 6

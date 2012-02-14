@@ -25,4 +25,4 @@ check opt fileName = withGHC $ checkIt `gcatch` handleErrMsg
         setTargetFile file
         load LoadAllTargets
         liftIO readLog
-    options = ["-Wall","-fno-warn-unused-do-bind", "-XHaskell98"] ++ ghcOpts opt
+    options = ["-Wall","-fno-warn-unused-do-bind"] ++ ghcOpts opt
