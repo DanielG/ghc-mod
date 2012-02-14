@@ -7,12 +7,12 @@ import Control.Applicative
 import CoreUtils
 import Data.Function
 import Data.Generics
-import GHC.SYB.Utils
 import Data.List
 import Data.Maybe
 import Data.Ord as O
 import Desugar
 import GHC
+import GHC.SYB.Utils
 import GHCApi
 import qualified Gap
 import HscTypes
@@ -75,7 +75,7 @@ findExpr tcm line col =
     f (L spn _) = isGoodSrcSpan spn && spn `spans` (line, col)
 
 listifyStaged :: Typeable r => Stage -> (r -> Bool) -> GenericQ [r]
-listifyStaged s p = everythingStaged s (++) [] ([] `mkQ` (\x -> if p x then [x] else []))
+listifyStaged s p = everythingStaged s (++) [] ([] `mkQ` (\x -> [x | p x]))
 
 getType :: GhcMonad m => TypecheckedModule -> LHsExpr Id -> m (Maybe (SrcSpan, Type))
 getType tcm e = do
