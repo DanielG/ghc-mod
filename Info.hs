@@ -8,7 +8,8 @@ import Control.Exception
 import Control.Monad
 import CoreUtils
 import Data.Function
-import Data.Generics as G
+import Data.Generics
+import GHC.SYB.Utils
 import Data.List
 import Data.Maybe
 import Data.Ord as O
@@ -52,7 +53,7 @@ typeOf opt fileName modstr lineNo colNo = inModuleContext opt fileName modstr ex
       modSum <- getModSummary $ mkModuleName modstr
       p <- parseModule modSum
       tcm <- typecheckModule p
-      es <- liftIO $ findExpr tcm lineNo colNo
+      let es = findExpr tcm lineNo colNo
       ts <- catMaybes <$> mapM (getType tcm) es
       let sss = map toTup $ sortBy (cmp `on` fst) ts
       return $ convert opt sss
@@ -75,28 +76,16 @@ typeOf opt fileName modstr lineNo colNo = inModuleContext opt fileName modstr ex
       | b `isSubspanOf` a = O.GT
       | otherwise = O.EQ
 
-findExpr :: TypecheckedModule -> Int -> Int -> IO [LHsExpr Id]
-findExpr tcm line col = do
+findExpr :: TypecheckedModule -> Int -> Int -> [LHsExpr Id]
+findExpr tcm line col =
   let src = tm_typechecked_source tcm
-  ssrc <- everywhereM' sanitize src
-  return $ listify f ssrc
+  in listifyStaged TypeChecker f src
   where
-    -- It is for GHC's panic!
-    sanitize :: Data a => a -> IO a
-    sanitize x = do
-      mret <- try (evaluate x)
-      return $ case mret of
-        Left (SomeException _) -> G.empty
-        Right ret -> ret
-
     f :: LHsExpr Id -> Bool
-    f (L spn _) = spn `spans` (line, col)
+    f (L spn _) = isGoodSrcSpan spn && spn `spans` (line, col)
 
--- | Monadic variation on everywhere'
-everywhereM' :: Monad m => GenericM m -> GenericM m
-everywhereM' f x = do
-  x' <- f x
-  gmapM (everywhereM' f) x'
+listifyStaged :: Typeable r => Stage -> (r -> Bool) -> GenericQ [r]
+listifyStaged s p = everythingStaged s (++) [] ([] `mkQ` (\x -> if p x then [x] else []))
 
 getType :: GhcMonad m => TypecheckedModule -> LHsExpr Id -> m (Maybe (SrcSpan, Type))
 getType tcm e = do
