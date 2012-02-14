@@ -12,7 +12,9 @@ import Types
 ----------------------------------------------------------------
 
 withGHC :: (MonadPlus m) => Ghc (m a) -> IO (m a)
-withGHC body = ghandle ignore $ runGhc (Just libdir) body
+withGHC body = ghandle ignore $ runGhc (Just libdir) $ do
+    dflags <- getSessionDynFlags
+    defaultCleanupHandler dflags body
   where
     ignore :: (MonadPlus m) => SomeException -> IO (m a)
     ignore _ = return mzero
