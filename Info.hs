@@ -82,9 +82,7 @@ findExpr tcm line col =
   in listifyStaged TypeChecker f src
   where
     f :: LHsExpr Id -> Bool
-    f (L spn _)
-      | isGoodSrcSpan spn = spn `spans` (line, col)
-      | otherwise = False
+    f (L spn _) = isGoodSrcSpan spn && spn `spans` (line, col)
 
 listifyStaged :: Typeable r => Stage -> (r -> Bool) -> GenericQ [r]
 listifyStaged s p = everythingStaged s (++) [] ([] `mkQ` (\x -> if p x then [x] else []))
