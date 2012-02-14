@@ -81,7 +81,11 @@ findExpr tcm line col = do
         Right ret -> ret
 
     f :: LHsExpr Id -> Bool
-    f (L spn _) = spn `spans` (line, col)
+    f (L spn _) = spn `spans'` (line, col)
+    
+    spans' spn loc
+      = isGoodSrcSpan spn &&
+        spn `spans` loc
 
 -- | Monadic variation on everywhere'
 everywhereM' :: Monad m => GenericM m -> GenericM m
