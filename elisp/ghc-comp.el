@@ -270,12 +270,13 @@ unloaded modules are loaded")
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defun ghc-gather-import-modules-all-buffers ()
-  (let ((bufs (mapcar 'buffer-name (buffer-list)))
+  (let ((bufs (mapcar (lambda (b) (cons (buffer-name b) (buffer-file-name b)))
+		      (buffer-list)))
 	ret)
     (save-excursion
       (dolist (buf bufs (ghc-uniq-lol ret))
-	(when (string-match "\\.hs$" buf)
-	  (set-buffer buf)
+	(when (and (cdr buf) (string-match "\\.hs$" (cdr buf)))
+	  (set-buffer (car buf))
 	  (ghc-add ret (ghc-gather-import-modules-buffer)))))))
 
 (defun ghc-gather-import-modules-buffer ()
