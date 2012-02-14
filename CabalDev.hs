@@ -6,32 +6,31 @@ module CabalDev (modifyOptions) where
 -}
 
 import Control.Applicative    ((<$>))
+import Control.Exception      (SomeException, throwIO)
 import Data.List              (find)
-import System.FilePath        (splitPath,joinPath,(</>))
+import GHC                    (gcatch)
 import System.Directory
+import System.FilePath        (splitPath,joinPath,(</>))
 import Text.Regex.Posix       ((=~))
-
 import Types
 
 modifyOptions :: Options -> IO Options
-modifyOptions opts =
-    fmap (has_cdev opts) findCabalDev
+modifyOptions opts = found `gcatch` notFound
   where
-    has_cdev :: Options -> Maybe String -> Options
-    has_cdev op Nothing = op
-    has_cdev op (Just path) = addPath op path
+    found = addPath opts <$> findCabalDev
+    notFound :: SomeException -> IO Options
+    notFound _ = return opts
 
-findCabalDev :: IO (Maybe String)
-findCabalDev =
-    getCurrentDirectory >>= searchIt . splitPath
+findCabalDev :: IO String
+findCabalDev = getCurrentDirectory >>= searchIt . splitPath
 
 addPath :: Options -> String -> Options
 addPath orig_opts path = do
     let orig_ghcopt = ghcOpts orig_opts
     orig_opts { ghcOpts = orig_ghcopt ++ ["-package-conf", path] }
 
-searchIt :: [FilePath] -> IO (Maybe FilePath)
-searchIt [] = return Nothing
+searchIt :: [FilePath] -> IO FilePath
+searchIt [] = throwIO $ userError "Not found"
 searchIt path = do
     a <- doesDirectoryExist (mpath path)
     if a then
@@ -41,7 +40,7 @@ searchIt path = do
   where
     mpath a = joinPath a </> "cabal-dev/"
 
-findConf :: FilePath -> IO (Maybe FilePath)
+findConf :: FilePath -> IO FilePath
 findConf path = do
-    f <- find (=~ "packages.*\\.conf") <$> getDirectoryContents path
-    return ((path </>) <$> f)
+    Just f <- find (=~ "packages.*\\.conf") <$> getDirectoryContents path
+    return $ path </> f
