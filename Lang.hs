@@ -1,13 +1,7 @@
-{-# LANGUAGE CPP #-}
-
 module Lang where
 
-import DynFlags
+import qualified Gap
 import Types
 
 listLanguages :: Options -> IO String
-#if __GLASGOW_HASKELL__ >= 700
-listLanguages opt = return $ convert opt supportedLanguagesAndExtensions
-#else
-listLanguages opt = return $ convert opt supportedLanguages
-#endif
+listLanguages opt = return $ convert opt Gap.supportedExtensions

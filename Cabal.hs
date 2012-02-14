@@ -11,6 +11,7 @@ import Distribution.PackageDescription.Parse (readPackageDescription)
 import Distribution.Verbosity (silent)
 import ErrMsg
 import GHC
+import GHCApi
 import System.Directory
 import System.FilePath
 import Types

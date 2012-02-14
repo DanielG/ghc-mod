@@ -6,6 +6,7 @@ import CoreMonad
 import ErrMsg
 import Exception
 import GHC
+import GHCApi
 import Prelude hiding (catch)
 import Types
 

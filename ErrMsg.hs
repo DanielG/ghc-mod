@@ -1,5 +1,3 @@
-{-# LANGUAGE CPP #-}
-
 module ErrMsg (
     LogReader
   , setLogger
@@ -9,17 +7,14 @@ module ErrMsg (
 import Bag
 import Control.Applicative
 import Data.IORef
+import Data.Maybe
 import DynFlags
 import ErrUtils
-import FastString
 import GHC
+import qualified Gap
 import HscTypes
 import Outputable
 import System.FilePath
-
-#if __GLASGOW_HASKELL__ < 702
-import Pretty
-#endif
 
 ----------------------------------------------------------------
 
@@ -56,27 +51,18 @@ ppErrMsg err = ppMsg spn msg defaultUserStyle ++ ext
      ext = showMsg (errMsgExtraInfo err) defaultUserStyle
 
 ppMsg :: SrcSpan -> Message -> PprStyle -> String
-#if __GLASGOW_HASKELL__ >= 702
-ppMsg (RealSrcSpan src) msg stl
-#else
-ppMsg src msg stl | isGoodSrcSpan src
-#endif
-    = file ++ ":" ++ line ++ ":" ++ col ++ ":" ++ cts ++ "\0"
+ppMsg spn msg stl = fromMaybe def $ do
+    (line,col,_,_) <- Gap.getSrcSpan spn
+    file <- Gap.getSrcFile spn
+    return $ takeFileName file ++ ":" ++ show line ++ ":" ++ show col ++ ":" ++ cts ++ "\0"
   where
-    file = takeFileName $ unpackFS (srcSpanFile src)
-    line = show (srcSpanStartLine src)
-    col  = show (srcSpanStartCol src)
+    def = "ghc-mod:0:0:Probably mutual module import occurred\0"
     cts  = showMsg msg stl
-ppMsg _ _ _ = "ghc-mod:0:0:Probably mutual module import occurred\0"
 
 ----------------------------------------------------------------
 
 showMsg :: SDoc -> PprStyle -> String
-#if __GLASGOW_HASKELL__ >= 702
-showMsg d stl = map toNull . renderWithStyle d $ stl
-#else
-showMsg d stl = map toNull . Pretty.showDocWith PageMode $ d stl
-#endif
+showMsg d stl = map toNull $ Gap.renderMsg d stl
   where
     toNull '\n' = '\0'
     toNull x = x

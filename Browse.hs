@@ -4,6 +4,7 @@ import Control.Applicative
 import Data.Char
 import Data.List
 import GHC
+import GHCApi
 import Name
 import Types
 

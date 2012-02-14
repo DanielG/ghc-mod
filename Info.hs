@@ -3,9 +3,8 @@
 module Info (infoExpr, typeExpr) where
 
 import Cabal
-import Control.Applicative hiding (empty)
+import Control.Applicative
 import Control.Exception
-import Control.Monad
 import CoreUtils
 import Data.Function
 import Data.Generics as G
@@ -14,18 +13,17 @@ import Data.Maybe
 import Data.Ord as O
 import Desugar
 import GHC
+import GHCApi
+import qualified Gap
 import HscTypes
 import NameSet
 import Outputable
 import PprTyThing
-import StringBuffer
 import System.Time
 import TcRnTypes
 import Types
 
-#if __GLASGOW_HASKELL__ >= 702
-import CoreMonad
-#endif
+----------------------------------------------------------------
 
 type Expression = String
 type ModuleString = String
@@ -52,23 +50,16 @@ typeOf opt fileName modstr lineNo colNo = inModuleContext opt fileName modstr ex
       modSum <- getModSummary $ mkModuleName modstr
       p <- parseModule modSum
       tcm <- typecheckModule p
-      es <- liftIO $ findExpr tcm lineNo colNo
+      es <- Gap.liftIO $ findExpr tcm lineNo colNo
       ts <- catMaybes <$> mapM (getType tcm) es
       let sss = map toTup $ sortBy (cmp `on` fst) ts
       return $ convert opt sss
 
     toTup :: (SrcSpan, Type) -> ((Int,Int,Int,Int),String)
-    toTup (spn, typ) = (l spn, pretty typ)
+    toTup (spn, typ) = (fourInts spn, pretty typ)
 
-    l :: SrcSpan -> (Int,Int,Int,Int)
-#if __GLASGOW_HASKELL__ >= 702
-    l (RealSrcSpan spn)
-#else
-    l spn | isGoodSrcSpan spn
-#endif
-      = (srcSpanStartLine spn, srcSpanStartCol spn
-       , srcSpanEndLine spn, srcSpanEndCol spn)
-    l _ = (0,0,0,0)
+    fourInts :: SrcSpan -> (Int,Int,Int,Int)
+    fourInts = fromMaybe (0,0,0,0) . Gap.getSrcSpan
 
     cmp a b
       | a `isSubspanOf` b = O.LT
@@ -101,7 +92,7 @@ everywhereM' f x = do
 getType :: GhcMonad m => TypecheckedModule -> LHsExpr Id -> m (Maybe (SrcSpan, Type))
 getType tcm e = do
   hs_env <- getSession
-  (_, mbe) <- liftIO $ deSugarExpr hs_env modu rn_env ty_env e
+  (_, mbe) <- Gap.liftIO $ deSugarExpr hs_env modu rn_env ty_env e
   return $ (getLoc e, ) <$> CoreUtils.exprType <$> mbe
   where
     modu = ms_mod $ pm_mod_summary $ tm_parsed_module tcm
@@ -159,36 +150,12 @@ inModuleContext opt fileName modstr action = withGHC valid
                       map ms_imps modgraph ++ map ms_srcimps modgraph
             moddef = "module " ++ sanitize modstr ++ " where"
             header = moddef : imports
-#if __GLASGOW_HASKELL__ >= 702
-            importsBuf = stringToStringBuffer . unlines $ header
-#else
-        importsBuf <- liftIO . stringToStringBuffer . unlines $ header
-#endif
-        clkTime <- liftIO getClockTime
+        importsBuf <- Gap.toStringBuffer header
+        clkTime <- Gap.liftIO getClockTime
         setTargets [Target (TargetModule $ mkModuleName modstr) True (Just (importsBuf, clkTime))]
     mif m t e = m >>= \ok -> if ok then t else e
     sanitize = fromMaybe "SomeModule" . listToMaybe . words
     errorMessage = "Couldn't determine type"
 
 setContextFromTarget :: Ghc Bool
-setContextFromTarget = do
-    ms <- depanal [] False
-
-#if __GLASGOW_HASKELL__ >= 704
-    top <- map (IIModule . ms_mod) <$> filterM isTop ms
-    setContext top
-#else
-    top <- map ms_mod <$> filterM isTop ms
-    setContext top []
-#endif
-    return (not . null $ top)
-  where
-    isTop ms = lookupMod `gcatch` returnFalse
-      where
-        lookupMod = lookupModule (ms_mod_name ms) Nothing >> return True
-        returnFalse = constE $ return False
-
-----------------------------------------------------------------
-
-constE :: a -> (SomeException -> a)
-constE func = \_ -> func
+setContextFromTarget = depanal [] False >>= Gap.setCtx

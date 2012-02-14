@@ -3,6 +3,7 @@ module List (listModules) where
 import Control.Applicative
 import Data.List
 import GHC
+import GHCApi
 import Packages
 import Types
 import UniqFM
