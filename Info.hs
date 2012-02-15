@@ -73,8 +73,8 @@ typeOf opt fileName modstr lineNo colNo =
 
 findExpr :: TypecheckedModule -> Int -> Int -> [LHsExpr Id]
 findExpr tcm line col =
-  let src = tm_typechecked_source tcm
-  in listifyStaged TypeChecker f src
+    let src = tm_typechecked_source tcm
+    in listifyStaged TypeChecker f src
   where
     f :: LHsExpr Id -> Bool
     f (L spn _) = isGoodSrcSpan spn && spn `spans` (line, col)
@@ -84,9 +84,9 @@ listifyStaged s p = everythingStaged s (++) [] ([] `mkQ` (\x -> [x | p x]))
 
 getType :: GhcMonad m => TypecheckedModule -> LHsExpr Id -> m (Maybe (SrcSpan, Type))
 getType tcm e = do
-  hs_env <- getSession
-  (_, mbe) <- Gap.liftIO $ deSugarExpr hs_env modu rn_env ty_env e
-  return $ (getLoc e, ) <$> CoreUtils.exprType <$> mbe
+    hs_env <- getSession
+    (_, mbe) <- Gap.liftIO $ deSugarExpr hs_env modu rn_env ty_env e
+    return $ (getLoc e, ) <$> CoreUtils.exprType <$> mbe
   where
     modu = ms_mod $ pm_mod_summary $ tm_parsed_module tcm
     rn_env = tcg_rdr_env $ fst $ tm_internals_ tcm
