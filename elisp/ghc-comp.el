@@ -269,14 +269,19 @@ unloaded modules are loaded")
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+(ghc-defstruct buffer name file)
+
+(defun ghc-buffer-name-file (buf)
+  (ghc-make-buffer (buffer-name buf) (buffer-file-name buf)))
+
 (defun ghc-gather-import-modules-all-buffers ()
-  (let ((bufs (mapcar (lambda (b) (cons (buffer-name b) (buffer-file-name b)))
-		      (buffer-list)))
-	ret)
+  (let ((bufs (mapcar 'ghc-buffer-name-file (buffer-list)))
+	ret file)
     (save-excursion
       (dolist (buf bufs (ghc-uniq-lol ret))
-	(when (and (cdr buf) (string-match "\\.hs$" (cdr buf)))
-	  (set-buffer (car buf))
+	(setq file (ghc-buffer-get-file buf))
+	(when (and file (string-match "\\.hs$" file))
+	  (set-buffer (ghc-buffer-get-name buf))
 	  (ghc-add ret (ghc-gather-import-modules-buffer)))))))
 
 (defun ghc-gather-import-modules-buffer ()

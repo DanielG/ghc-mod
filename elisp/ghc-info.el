@@ -23,7 +23,7 @@
   (let* ((expr0 (ghc-things-at-point))
 	 (expr (if ask (ghc-read-expression expr0) expr0))
 	 (cdir default-directory)
-	 (file buffer-file-name)
+	 (file (buffer-file-name))
 	 (buf (get-buffer-create ghc-error-buffer-name)))
     (with-current-buffer buf
       (erase-buffer)
@@ -120,7 +120,7 @@
   (let* ((ln (int-to-string (line-number-at-pos)))
 	 (cn (int-to-string (current-column)))
 	 (cdir default-directory)
-	 (file buffer-file-name))
+	 (file (buffer-file-name)))
     (ghc-read-lisp
      (lambda ()
        (cd cdir)
