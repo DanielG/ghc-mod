@@ -9,6 +9,7 @@ module Gap (
   , fOptions
   , toStringBuffer
   , liftIO
+  , extensionToString
 #if __GLASGOW_HASKELL__ >= 702
 #else
   , module Pretty
@@ -21,6 +22,7 @@ import Control.Monad
 import DynFlags
 import FastString
 import GHC
+import Language.Haskell.Extension
 import Outputable
 import StringBuffer
 
@@ -119,3 +121,15 @@ setCtx ms = do
       where
         lookupMod = lookupModule (ms_mod_name mos) Nothing >> return True
         returnFalse = return False
+
+----------------------------------------------------------------
+-- This is Cabal, not GHC API
+
+extensionToString :: Extension -> String
+#if __GLASGOW_HASKELL__ == 704
+extensionToString (EnableExtension ext)  = show ext
+extensionToString (DisableExtension ext) = show ext -- FIXME
+extensionToString (UnknownExtension ext) = ext
+#else
+extensionToString = show
+#endif

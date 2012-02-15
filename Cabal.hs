@@ -14,6 +14,7 @@ import Distribution.Verbosity (silent)
 import ErrMsg
 import GHC
 import GHCApi
+import qualified Gap
 import Language.Haskell.Extension
 import System.Directory
 import System.FilePath
@@ -34,8 +35,8 @@ initializeGHC opt fileName ghcOptions logging = withCabal <|> withoutCabal
         (owdir,cdir,cfile) <- liftIO getDirs
         binfo <- liftIO $ parseCabalFile cfile
         let (idirs',exts',mlang) = extractBuildInfo binfo
-            exts = map addX exts'
-            lang = maybe "-XHaskell98" addX mlang
+            exts = map (addX . Gap.extensionToString)  exts'
+            lang = maybe "-XHaskell98" (addX . show) mlang
             gopts = ghcOptions ++ exts ++ [lang]
         changeToCabalDirectory cdir
         let idirs = case idirs' of
@@ -44,7 +45,7 @@ initializeGHC opt fileName ghcOptions logging = withCabal <|> withoutCabal
             file = ajustFileName fileName owdir cdir
         logReader <- initSession opt gopts idirs logging
         return (file,logReader)
-    addX x = "-X" ++ show x
+    addX = ("-X" ++)
 
 ----------------------------------------------------------------
 
