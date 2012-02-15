@@ -25,11 +25,9 @@ importDirs :: [String]
 importDirs = [".","..","../..","../../..","../../../..","../../../../.."]
 
 initializeGHC :: Options -> FilePath -> [String] -> Bool -> Ghc (FilePath,LogReader)
-initializeGHC opt fileName ghcOptions logging =
-    withCabal `gcatch` withoutCabal
+initializeGHC opt fileName ghcOptions logging = withCabal <|> withoutCabal
   where
-    withoutCabal :: SomeException -> Ghc (FilePath,LogReader)
-    withoutCabal _ = do
+    withoutCabal = do
         logReader <- initSession opt ghcOptions importDirs logging
         return (fileName,logReader)
     withCabal = do

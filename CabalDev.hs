@@ -5,21 +5,20 @@ module CabalDev (modifyOptions) where
   options ghc-mod uses to check the source.  Otherwise just pass it on.
 -}
 
-import Control.Applicative    ((<$>))
-import Control.Exception      (SomeException, throwIO)
-import Data.List              (find)
-import GHC                    (gcatch)
+import Control.Applicative ((<$>),(<|>))
+import Control.Exception (throwIO)
+import Data.List (find)
 import System.Directory
-import System.FilePath        (splitPath,joinPath,(</>))
-import Text.Regex.Posix       ((=~))
+import System.FilePath (splitPath,joinPath,(</>))
+import Text.Regex.Posix ((=~))
 import Types
+import Data.Alternative.IO ()
 
 modifyOptions :: Options -> IO Options
-modifyOptions opts = found `gcatch` notFound
+modifyOptions opts = found <|> notFound
   where
     found = addPath opts <$> findCabalDev
-    notFound :: SomeException -> IO Options
-    notFound _ = return opts
+    notFound = return opts
 
 findCabalDev :: IO String
 findCabalDev = getCurrentDirectory >>= searchIt . splitPath

@@ -2,6 +2,7 @@
 
 module Info (infoExpr, typeExpr) where
 
+import AA
 import Cabal
 import Control.Applicative
 import CoreUtils
@@ -34,7 +35,8 @@ infoExpr :: Options -> ModuleString -> Expression -> FilePath -> IO String
 infoExpr opt modstr expr file = (++ "\n") <$> info opt file modstr expr
 
 info :: Options -> FilePath -> ModuleString -> FilePath -> IO String
-info opt fileName modstr expr = inModuleContext opt fileName modstr exprToInfo
+info opt fileName modstr expr =
+    inModuleContext opt fileName modstr exprToInfo "Cannot show info"
   where
     exprToInfo = infoThing expr
 
@@ -44,7 +46,8 @@ typeExpr :: Options -> ModuleString -> Int -> Int -> FilePath -> IO String
 typeExpr opt modstr lineNo colNo file = Info.typeOf opt file modstr lineNo colNo
 
 typeOf :: Options -> FilePath -> ModuleString -> Int -> Int -> IO String
-typeOf opt fileName modstr lineNo colNo = inModuleContext opt fileName modstr exprToType
+typeOf opt fileName modstr lineNo colNo =
+    inModuleContext opt fileName modstr exprToType errmsg
   where
     exprToType = do
       modSum <- getModSummary $ mkModuleName modstr
@@ -65,6 +68,8 @@ typeOf opt fileName modstr lineNo colNo = inModuleContext opt fileName modstr ex
       | a `isSubspanOf` b = O.LT
       | b `isSubspanOf` a = O.GT
       | otherwise = O.EQ
+
+    errmsg = convert opt ([] :: [((Int,Int,Int,Int),String)])
 
 findExpr :: TypecheckedModule -> Int -> Int -> [LHsExpr Id]
 findExpr tcm line col =
@@ -119,19 +124,20 @@ pprInfo pefas (thing, fixity, insts)
 
 ----------------------------------------------------------------
 
-inModuleContext :: Options -> FilePath -> ModuleString -> Ghc String -> IO String
-inModuleContext opt fileName modstr action = withGHC valid
+inModuleContext :: Options -> FilePath -> ModuleString -> Ghc String -> String -> IO String
+inModuleContext opt fileName modstr action errmsg =
+    withGHC (valid <|> invalid <|> return errmsg)
   where
     valid = do
         (file,_) <- initializeGHC opt fileName ["-w"] False
         setTargetFile file
         load LoadAllTargets
-        mif setContextFromTarget action invalid
+        doif setContextFromTarget action
     invalid = do
         initializeGHC opt fileName ["-w"] False
         setTargetBuffer
         load LoadAllTargets
-        mif setContextFromTarget action (return errorMessage)
+        doif setContextFromTarget action
     setTargetBuffer = do
         modgraph <- depanal [mkModuleName modstr] True
         let imports = concatMap (map (showSDoc . ppr . unLoc)) $
@@ -141,9 +147,8 @@ inModuleContext opt fileName modstr action = withGHC valid
         importsBuf <- Gap.toStringBuffer header
         clkTime <- Gap.liftIO getClockTime
         setTargets [Target (TargetModule $ mkModuleName modstr) True (Just (importsBuf, clkTime))]
-    mif m t e = m >>= \ok -> if ok then t else e
+    doif m t = m >>= \ok -> if ok then t else goNext
     sanitize = fromMaybe "SomeModule" . listToMaybe . words
-    errorMessage = "Couldn't determine type"
 
 setContextFromTarget :: Ghc Bool
 setContextFromTarget = depanal [] False >>= Gap.setCtx

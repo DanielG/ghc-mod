@@ -1,6 +1,7 @@
 module GHCApi where
 
-import Control.Monad
+import Control.Exception
+import Control.Applicative
 import CoreMonad
 import DynFlags
 import ErrMsg
@@ -11,13 +12,13 @@ import Types
 
 ----------------------------------------------------------------
 
-withGHC :: (MonadPlus m) => Ghc (m a) -> IO (m a)
+withGHC :: Alternative m => Ghc (m a) -> IO (m a)
 withGHC body = ghandle ignore $ runGhc (Just libdir) $ do
     dflags <- getSessionDynFlags
     defaultCleanupHandler dflags body
   where
-    ignore :: (MonadPlus m) => SomeException -> IO (m a)
-    ignore _ = return mzero
+    ignore :: Alternative m => SomeException -> IO (m a)
+    ignore _ = return empty
 
 ----------------------------------------------------------------
 
