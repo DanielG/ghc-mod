@@ -67,20 +67,21 @@
 (defun ghc-type-init ()
   (setq ghc-type-overlay (make-overlay 0 0))
   (overlay-put ghc-type-overlay 'face 'region)
-  (ghc-type-set-ix 0)
-  (ghc-type-set-point 0)
+  (ghc-type-clear-overlay)
   (setq after-change-functions
-	(cons 'ghc-type-delete-overlay after-change-functions))
+	(cons 'ghc-type-clear-overlay after-change-functions))
   (set (make-local-variable 'post-command-hook) 'ghc-type-post-command-hook))
 
-(defun ghc-type-delete-overlay (&optional beg end len)
+(defun ghc-type-clear-overlay (&optional beg end len)
   (when (overlayp ghc-type-overlay)
-    (delete-overlay ghc-type-overlay)))
+    (ghc-type-set-ix 0)
+    (ghc-type-set-point 0)
+    (move-overlay ghc-type-overlay 0 0)))
 
 (defun ghc-type-post-command-hook ()
   (when (and (overlayp ghc-type-overlay)
 	     (/= (ghc-type-get-point) (point)))
-    (ghc-type-delete-overlay)))
+    (ghc-type-clear-overlay)))
 
 (defun ghc-show-type ()
   (interactive)
@@ -95,7 +96,9 @@
   (let* ((buf (current-buffer))
 	 (tinfos (ghc-type-get-tinfos modname)))
     (if (null tinfos)
-	(message "Cannot guess type")
+	(progn
+	  (ghc-type-clear-overlay)
+	  (message "Cannot guess type"))
       (let* ((tinfo (nth (ghc-type-get-ix) tinfos))
 	     (type (ghc-tinfo-get-info tinfo))
 	     (beg-line (ghc-tinfo-get-beg-line tinfo))
