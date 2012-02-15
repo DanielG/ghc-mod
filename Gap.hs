@@ -31,6 +31,14 @@ import HscTypes (liftIO)
 import Pretty
 #endif
 
+{-
+pretty :: Outputable a => a -> String
+pretty = showSDocForUser neverQualify . ppr
+
+debug :: Outputable a => a -> b -> b
+debug x v = trace (pretty x) v
+-}
+
 ----------------------------------------------------------------
 ----------------------------------------------------------------
 

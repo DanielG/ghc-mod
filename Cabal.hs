@@ -34,7 +34,7 @@ initializeGHC opt fileName ghcOptions logging =
         return (fileName,logReader)
     withCabal = do
         (owdir,cdir,cfile) <- liftIO getDirs
-        binfo <- parseCabalFile cfile
+        binfo <- liftIO $ parseCabalFile cfile
         let (idirs',exts',mlang) = extractBuildInfo binfo
             exts = map addX exts'
             lang = maybe "-XHaskell98" addX mlang
@@ -51,10 +51,10 @@ initializeGHC opt fileName ghcOptions logging =
 ----------------------------------------------------------------
 
 -- Causes error, catched in the upper function.
-parseCabalFile :: FilePath -> Ghc BuildInfo
+parseCabalFile :: FilePath -> IO BuildInfo
 parseCabalFile file = do
-    cabal <- liftIO $ readPackageDescription silent file
-    return . fromJust $ fromLibrary cabal >> fromExecutable cabal
+    cabal <- readPackageDescription silent file
+    return . fromJust $ fromLibrary cabal <|> fromExecutable cabal
   where
     fromLibrary c     = libBuildInfo . condTreeData <$> condLibrary c
     fromExecutable c  = buildInfo . condTreeData . snd <$> toMaybe (condExecutables c)
