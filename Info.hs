@@ -20,6 +20,7 @@ import HscTypes
 import NameSet
 import Outputable
 import PprTyThing
+import Pretty (showDocWith, Mode(OneLineMode))
 import System.Time
 import TcRnTypes
 import Types
@@ -93,7 +94,7 @@ getType tcm e = do
     ty_env = tcg_type_env $ fst $ tm_internals_ tcm
 
 pretty :: Type -> String
-pretty = showSDocForUser neverQualify . pprTypeForUser False
+pretty = showDocWith OneLineMode . withPprStyleDoc (mkUserStyle neverQualify AllTheWay) . pprTypeForUser False
 
 ----------------------------------------------------------------
 -- from ghc/InteractiveUI.hs
