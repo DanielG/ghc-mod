@@ -5,7 +5,7 @@ Maintainer:             Kazu Yamamoto <kazu@iij.ad.jp>
 License:                BSD3
 License-File:           LICENSE
 Homepage:               http://www.mew.org/~kazu/proj/ghc-mod/
-Synopsis:               Happy Haskell programming on Emacs
+Synopsis:               Happy Haskell programming on Emacs/Vim
 Description:            This packages includes Elisp files
 			and a Haskell command, "ghc-mod".
 			"ghc*.el" enable completion of
@@ -15,6 +15,8 @@ Description:            This packages includes Elisp files
 			It lists up all installed modules
                         or extracts names of functions, classes,
                         and data declarations.
+                        To use "ghc-mod" on Vim,
+                        see <https://github.com/eagletmt/ghcmod-vim>
 Category:               Development
 Cabal-Version:          >= 1.6
 Build-Type:             Simple
