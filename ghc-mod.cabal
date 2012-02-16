@@ -23,14 +23,14 @@ Data-Files:             Makefile ghc.el ghc-func.el ghc-doc.el ghc-comp.el
                         ghc-flymake.el ghc-command.el ghc-info.el ghc-ins-mod.el
 Executable ghc-mod
   Main-Is:              GHCMod.hs
-  Other-Modules:        AA
-                        Browse
+  Other-Modules:        Browse
                         Cabal
                         CabalDev
                         Check
                         ErrMsg
                         Flag
                         GHCApi
+                        GHCChoice
                         Gap
                         Info
                         Lang
@@ -44,13 +44,13 @@ Executable ghc-mod
     GHC-Options:        -Wall
   Build-Depends:        base >= 4.0 && < 5
                       , Cabal
-                      , alternative-io
                       , directory
                       , filepath
                       , ghc
                       , ghc-paths
                       , ghc-syb-utils
                       , hlint >= 1.7.1
+                      , io-choice
                       , old-time
                       , process
                       , regex-posix

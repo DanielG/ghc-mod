@@ -14,6 +14,7 @@ import Distribution.Verbosity (silent)
 import ErrMsg
 import GHC
 import GHCApi
+import GHCChoice
 import qualified Gap
 import Language.Haskell.Extension
 import System.Directory
@@ -26,7 +27,7 @@ importDirs :: [String]
 importDirs = [".","..","../..","../../..","../../../..","../../../../.."]
 
 initializeGHC :: Options -> FilePath -> [String] -> Bool -> Ghc (FilePath,LogReader)
-initializeGHC opt fileName ghcOptions logging = withCabal <|> withoutCabal
+initializeGHC opt fileName ghcOptions logging = withCabal ||> withoutCabal
   where
     withoutCabal = do
         logReader <- initSession opt ghcOptions importDirs logging

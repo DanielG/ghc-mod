@@ -16,12 +16,12 @@ module Gap (
 #endif
   ) where
 
-import AA ()
 import Control.Applicative hiding (empty)
 import Control.Monad
 import DynFlags
 import FastString
 import GHC
+import GHCChoice
 import Language.Haskell.Extension
 import Outputable
 import StringBuffer
@@ -117,7 +117,7 @@ setCtx ms = do
     return (not . null $ top)
 #endif
   where
-    isTop mos = lookupMod <|> returnFalse
+    isTop mos = lookupMod ||> returnFalse
       where
         lookupMod = lookupModule (ms_mod_name mos) Nothing >> return True
         returnFalse = return False

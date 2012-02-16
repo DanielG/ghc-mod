@@ -2,7 +2,6 @@
 
 module Info (infoExpr, typeExpr) where
 
-import AA
 import Cabal
 import Control.Applicative
 import CoreUtils
@@ -15,6 +14,7 @@ import Desugar
 import GHC
 import GHC.SYB.Utils
 import GHCApi
+import GHCChoice
 import qualified Gap
 import HscTypes
 import NameSet
@@ -127,7 +127,7 @@ pprInfo pefas (thing, fixity, insts)
 
 inModuleContext :: Options -> FilePath -> ModuleString -> Ghc String -> String -> IO String
 inModuleContext opt fileName modstr action errmsg =
-    withGHC (valid <|> invalid <|> return errmsg)
+    withGHC (valid ||> invalid ||> return errmsg)
   where
     valid = do
         (file,_) <- initializeGHC opt fileName ["-w"] False
