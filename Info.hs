@@ -23,6 +23,7 @@ import PprTyThing
 import Pretty (showDocWith, Mode(OneLineMode))
 import System.Time
 import TcRnTypes
+import TcHsSyn (hsPatType)
 import Types
 
 ----------------------------------------------------------------
@@ -58,7 +59,9 @@ typeOf opt fileName modstr lineNo colNo =
       ets <- catMaybes <$> mapM (getExprType tcm) es
       let bs = findBind tcm lineNo colNo
           bts = catMaybes $ map getBindType bs
-      let sss = map toTup $ sortBy (cmp `on` fst) $ ets ++ bts
+      let ps = findPat tcm lineNo colNo
+          pts = map getPatType ps
+      let sss = map toTup $ sortBy (cmp `on` fst) $ concat [ets, bts, pts]
       return $ convert opt sss
 
     toTup :: (SrcSpan, Type) -> ((Int,Int,Int,Int),String)
@@ -89,6 +92,12 @@ findBind TypecheckedModule{tm_typechecked_source = src} line col = listifyStaged
     f (L _ (FunBind{fun_id = L spn _})) = isGoodSrcSpan spn && spn `spans` (line, col)
     f _ = False
 
+findPat :: TypecheckedModule -> Int -> Int -> [LPat Id]
+findPat TypecheckedModule{tm_typechecked_source = src} line col = listifyStaged TypeChecker f src
+  where
+    f :: LPat Id -> Bool
+    f (L spn _) = isGoodSrcSpan spn && spn `spans` (line, col)
+
 listifyStaged :: Typeable r => Stage -> (r -> Bool) -> GenericQ [r]
 listifyStaged s p = everythingStaged s (++) [] ([] `mkQ` (\x -> [x | p x]))
 
@@ -105,6 +114,9 @@ getExprType tcm e = do
 getBindType :: LHsBind Id -> Maybe (SrcSpan, Type)
 getBindType (L _ FunBind{fun_id = L spn _, fun_matches = MatchGroup _ typ}) = Just (spn, typ)
 getBindType _ = Nothing
+
+getPatType :: LPat Id -> (SrcSpan, Type)
+getPatType (L spn pat) = (spn, hsPatType pat)
 
 pretty :: Type -> String
 pretty = showDocWith OneLineMode . withPprStyleDoc (mkUserStyle neverQualify AllTheWay) . pprTypeForUser False
