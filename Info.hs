@@ -1,4 +1,4 @@
-{-# LANGUAGE CPP, Rank2Types, TupleSections #-}
+{-# LANGUAGE TupleSections, FlexibleInstances #-}
 
 module Info (infoExpr, typeExpr) where
 
@@ -44,6 +44,27 @@ info opt fileName modstr expr =
 
 ----------------------------------------------------------------
 
+class HasType a where
+    getType :: GhcMonad m => TypecheckedModule -> a -> m (Maybe (SrcSpan, Type))
+
+instance HasType (LHsExpr Id) where
+    getType tcm e = do
+        hs_env <- getSession
+        (_, mbe) <- Gap.liftIO $ deSugarExpr hs_env modu rn_env ty_env e
+        return $ (getLoc e, ) <$> CoreUtils.exprType <$> mbe
+      where
+        modu = ms_mod $ pm_mod_summary $ tm_parsed_module tcm
+        rn_env = tcg_rdr_env $ fst $ tm_internals_ tcm
+        ty_env = tcg_type_env $ fst $ tm_internals_ tcm
+
+instance HasType (LHsBind Id) where
+    getType _ (L _ FunBind{fun_id = L spn _, fun_matches = MatchGroup _ typ}) =
+        return $ Just (spn, typ)
+    getType _ _ = return Nothing
+
+instance HasType (LPat Id) where
+    getType _ (L spn pat) = return $ Just (spn, hsPatType pat)
+
 typeExpr :: Options -> ModuleString -> Int -> Int -> FilePath -> IO String
 typeExpr opt modstr lineNo colNo file = Info.typeOf opt file modstr lineNo colNo
 
@@ -54,14 +75,14 @@ typeOf opt fileName modstr lineNo colNo =
     exprToType = do
       modSum <- getModSummary $ mkModuleName modstr
       p <- parseModule modSum
-      tcm <- typecheckModule p
-      let es = findExpr tcm lineNo colNo
-      ets <- catMaybes <$> mapM (getExprType tcm) es
-      let bs = findBind tcm lineNo colNo
-          bts = catMaybes $ map getBindType bs
-      let ps = findPat tcm lineNo colNo
-          pts = map getPatType ps
-      let sss = map toTup $ sortBy (cmp `on` fst) $ concat [ets, bts, pts]
+      tcm@TypecheckedModule{tm_typechecked_source = tcs} <- typecheckModule p
+      let bs = listifyBinds tcs (lineNo, colNo)
+          es = listifySpans tcs (lineNo, colNo) :: [LHsExpr Id]
+          ps = listifySpans tcs (lineNo, colNo) :: [LPat Id]
+      bts <- mapM (getType tcm) bs
+      ets <- mapM (getType tcm) es
+      pts <- mapM (getType tcm) ps
+      let sss = map toTup $ sortBy (cmp `on` fst) $ catMaybes $ concat [ets, bts, pts]
       return $ convert opt sss
 
     toTup :: (SrcSpan, Type) -> ((Int,Int,Int,Int),String)
@@ -77,46 +98,19 @@ typeOf opt fileName modstr lineNo colNo =
 
     errmsg = convert opt ([] :: [((Int,Int,Int,Int),String)])
 
-findExpr :: TypecheckedModule -> Int -> Int -> [LHsExpr Id]
-findExpr tcm line col =
-    let src = tm_typechecked_source tcm
-    in listifyStaged TypeChecker f src
-  where
-    f :: LHsExpr Id -> Bool
-    f (L spn _) = isGoodSrcSpan spn && spn `spans` (line, col)
+    listifyBinds tcs lc = listifyStaged TypeChecker f tcs
+      where
+        f :: LHsBind Id -> Bool
+        f (L _ (FunBind{fun_id = L spn _})) = isGoodSrcSpan spn && spn `spans` lc
+        f _ = False
 
-findBind :: TypecheckedModule -> Int -> Int -> [LHsBind Id]
-findBind TypecheckedModule{tm_typechecked_source = src} line col = listifyStaged TypeChecker f src
+listifySpans :: Typeable a => TypecheckedSource -> (Int, Int) -> [Located a]
+listifySpans tcs lc = listifyStaged TypeChecker p tcs
   where
-    f :: LHsBind Id -> Bool
-    f (L _ (FunBind{fun_id = L spn _})) = isGoodSrcSpan spn && spn `spans` (line, col)
-    f _ = False
-
-findPat :: TypecheckedModule -> Int -> Int -> [LPat Id]
-findPat TypecheckedModule{tm_typechecked_source = src} line col = listifyStaged TypeChecker f src
-  where
-    f :: LPat Id -> Bool
-    f (L spn _) = isGoodSrcSpan spn && spn `spans` (line, col)
+    p (L spn _) = isGoodSrcSpan spn && spn `spans` lc
 
 listifyStaged :: Typeable r => Stage -> (r -> Bool) -> GenericQ [r]
 listifyStaged s p = everythingStaged s (++) [] ([] `mkQ` (\x -> [x | p x]))
-
-getExprType :: GhcMonad m => TypecheckedModule -> LHsExpr Id -> m (Maybe (SrcSpan, Type))
-getExprType tcm e = do
-    hs_env <- getSession
-    (_, mbe) <- Gap.liftIO $ deSugarExpr hs_env modu rn_env ty_env e
-    return $ (getLoc e, ) <$> CoreUtils.exprType <$> mbe
-  where
-    modu = ms_mod $ pm_mod_summary $ tm_parsed_module tcm
-    rn_env = tcg_rdr_env $ fst $ tm_internals_ tcm
-    ty_env = tcg_type_env $ fst $ tm_internals_ tcm
-
-getBindType :: LHsBind Id -> Maybe (SrcSpan, Type)
-getBindType (L _ FunBind{fun_id = L spn _, fun_matches = MatchGroup _ typ}) = Just (spn, typ)
-getBindType _ = Nothing
-
-getPatType :: LPat Id -> (SrcSpan, Type)
-getPatType (L spn pat) = (spn, hsPatType pat)
 
 pretty :: Type -> String
 pretty = showDocWith OneLineMode . withPprStyleDoc (mkUserStyle neverQualify AllTheWay) . pprTypeForUser False
