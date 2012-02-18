@@ -61,6 +61,7 @@
 
 (defvar ghc-initialized nil)
 
+;;;###autoload
 (defun ghc-init ()
   (ghc-abbrev-init)
   (ghc-type-init)
