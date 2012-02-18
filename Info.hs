@@ -55,8 +55,10 @@ typeOf opt fileName modstr lineNo colNo =
       p <- parseModule modSum
       tcm <- typecheckModule p
       let es = findExpr tcm lineNo colNo
-      ts <- catMaybes <$> mapM (getType tcm) es
-      let sss = map toTup $ sortBy (cmp `on` fst) ts
+      ets <- catMaybes <$> mapM (getExprType tcm) es
+      let bs = findBind tcm lineNo colNo
+          bts = catMaybes $ map getBindType bs
+      let sss = map toTup $ sortBy (cmp `on` fst) $ ets ++ bts
       return $ convert opt sss
 
     toTup :: (SrcSpan, Type) -> ((Int,Int,Int,Int),String)
@@ -80,11 +82,18 @@ findExpr tcm line col =
     f :: LHsExpr Id -> Bool
     f (L spn _) = isGoodSrcSpan spn && spn `spans` (line, col)
 
+findBind :: TypecheckedModule -> Int -> Int -> [LHsBind Id]
+findBind TypecheckedModule{tm_typechecked_source = src} line col = listifyStaged TypeChecker f src
+  where
+    f :: LHsBind Id -> Bool
+    f (L _ (FunBind{fun_id = L spn _})) = isGoodSrcSpan spn && spn `spans` (line, col)
+    f _ = False
+
 listifyStaged :: Typeable r => Stage -> (r -> Bool) -> GenericQ [r]
 listifyStaged s p = everythingStaged s (++) [] ([] `mkQ` (\x -> [x | p x]))
 
-getType :: GhcMonad m => TypecheckedModule -> LHsExpr Id -> m (Maybe (SrcSpan, Type))
-getType tcm e = do
+getExprType :: GhcMonad m => TypecheckedModule -> LHsExpr Id -> m (Maybe (SrcSpan, Type))
+getExprType tcm e = do
     hs_env <- getSession
     (_, mbe) <- Gap.liftIO $ deSugarExpr hs_env modu rn_env ty_env e
     return $ (getLoc e, ) <$> CoreUtils.exprType <$> mbe
@@ -92,6 +101,10 @@ getType tcm e = do
     modu = ms_mod $ pm_mod_summary $ tm_parsed_module tcm
     rn_env = tcg_rdr_env $ fst $ tm_internals_ tcm
     ty_env = tcg_type_env $ fst $ tm_internals_ tcm
+
+getBindType :: LHsBind Id -> Maybe (SrcSpan, Type)
+getBindType (L _ FunBind{fun_id = L spn _, fun_matches = MatchGroup _ typ}) = Just (spn, typ)
+getBindType _ = Nothing
 
 pretty :: Type -> String
 pretty = showDocWith OneLineMode . withPprStyleDoc (mkUserStyle neverQualify AllTheWay) . pprTypeForUser False
