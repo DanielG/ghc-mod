@@ -58,8 +58,7 @@ instance HasType (LHsExpr Id) where
         ty_env = tcg_type_env $ fst $ tm_internals_ tcm
 
 instance HasType (LHsBind Id) where
-    getType _ (L _ FunBind{fun_id = L spn _, fun_matches = MatchGroup _ typ}) =
-        return $ Just (spn, typ)
+    getType _ (L spn FunBind{fun_matches = MatchGroup _ typ}) = return $ Just (spn, typ)
     getType _ _ = return Nothing
 
 instance HasType (LPat Id) where
@@ -76,7 +75,7 @@ typeOf opt fileName modstr lineNo colNo =
       modSum <- getModSummary $ mkModuleName modstr
       p <- parseModule modSum
       tcm@TypecheckedModule{tm_typechecked_source = tcs} <- typecheckModule p
-      let bs = listifyBinds tcs (lineNo, colNo)
+      let bs = listifySpans tcs (lineNo, colNo) :: [LHsBind Id]
           es = listifySpans tcs (lineNo, colNo) :: [LHsExpr Id]
           ps = listifySpans tcs (lineNo, colNo) :: [LPat Id]
       bts <- mapM (getType tcm) bs
@@ -97,12 +96,6 @@ typeOf opt fileName modstr lineNo colNo =
       | otherwise = O.EQ
 
     errmsg = convert opt ([] :: [((Int,Int,Int,Int),String)])
-
-    listifyBinds tcs lc = listifyStaged TypeChecker f tcs
-      where
-        f :: LHsBind Id -> Bool
-        f (L _ (FunBind{fun_id = L spn _})) = isGoodSrcSpan spn && spn `spans` lc
-        f _ = False
 
 listifySpans :: Typeable a => TypecheckedSource -> (Int, Int) -> [Located a]
 listifySpans tcs lc = listifyStaged TypeChecker p tcs
