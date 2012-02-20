@@ -1,4 +1,4 @@
-{-# LANGUAGE CPP, Rank2Types, TupleSections #-}
+{-# LANGUAGE TupleSections, FlexibleInstances #-}
 
 module Info (infoExpr, typeExpr) where
 
@@ -23,6 +23,7 @@ import PprTyThing
 import Pretty (showDocWith, Mode(OneLineMode))
 import System.Time
 import TcRnTypes
+import TcHsSyn (hsPatType)
 import Types
 
 ----------------------------------------------------------------
@@ -43,6 +44,26 @@ info opt fileName modstr expr =
 
 ----------------------------------------------------------------
 
+class HasType a where
+    getType :: GhcMonad m => TypecheckedModule -> a -> m (Maybe (SrcSpan, Type))
+
+instance HasType (LHsExpr Id) where
+    getType tcm e = do
+        hs_env <- getSession
+        (_, mbe) <- Gap.liftIO $ deSugarExpr hs_env modu rn_env ty_env e
+        return $ (getLoc e, ) <$> CoreUtils.exprType <$> mbe
+      where
+        modu = ms_mod $ pm_mod_summary $ tm_parsed_module tcm
+        rn_env = tcg_rdr_env $ fst $ tm_internals_ tcm
+        ty_env = tcg_type_env $ fst $ tm_internals_ tcm
+
+instance HasType (LHsBind Id) where
+    getType _ (L spn FunBind{fun_matches = MatchGroup _ typ}) = return $ Just (spn, typ)
+    getType _ _ = return Nothing
+
+instance HasType (LPat Id) where
+    getType _ (L spn pat) = return $ Just (spn, hsPatType pat)
+
 typeExpr :: Options -> ModuleString -> Int -> Int -> FilePath -> IO String
 typeExpr opt modstr lineNo colNo file = Info.typeOf opt file modstr lineNo colNo
 
@@ -53,10 +74,14 @@ typeOf opt fileName modstr lineNo colNo =
     exprToType = do
       modSum <- getModSummary $ mkModuleName modstr
       p <- parseModule modSum
-      tcm <- typecheckModule p
-      let es = findExpr tcm lineNo colNo
-      ts <- catMaybes <$> mapM (getType tcm) es
-      let sss = map toTup $ sortBy (cmp `on` fst) ts
+      tcm@TypecheckedModule{tm_typechecked_source = tcs} <- typecheckModule p
+      let bs = listifySpans tcs (lineNo, colNo) :: [LHsBind Id]
+          es = listifySpans tcs (lineNo, colNo) :: [LHsExpr Id]
+          ps = listifySpans tcs (lineNo, colNo) :: [LPat Id]
+      bts <- mapM (getType tcm) bs
+      ets <- mapM (getType tcm) es
+      pts <- mapM (getType tcm) ps
+      let sss = map toTup $ sortBy (cmp `on` fst) $ catMaybes $ concat [ets, bts, pts]
       return $ convert opt sss
 
     toTup :: (SrcSpan, Type) -> ((Int,Int,Int,Int),String)
@@ -72,26 +97,13 @@ typeOf opt fileName modstr lineNo colNo =
 
     errmsg = convert opt ([] :: [((Int,Int,Int,Int),String)])
 
-findExpr :: TypecheckedModule -> Int -> Int -> [LHsExpr Id]
-findExpr tcm line col =
-    let src = tm_typechecked_source tcm
-    in listifyStaged TypeChecker f src
+listifySpans :: Typeable a => TypecheckedSource -> (Int, Int) -> [Located a]
+listifySpans tcs lc = listifyStaged TypeChecker p tcs
   where
-    f :: LHsExpr Id -> Bool
-    f (L spn _) = isGoodSrcSpan spn && spn `spans` (line, col)
+    p (L spn _) = isGoodSrcSpan spn && spn `spans` lc
 
 listifyStaged :: Typeable r => Stage -> (r -> Bool) -> GenericQ [r]
 listifyStaged s p = everythingStaged s (++) [] ([] `mkQ` (\x -> [x | p x]))
-
-getType :: GhcMonad m => TypecheckedModule -> LHsExpr Id -> m (Maybe (SrcSpan, Type))
-getType tcm e = do
-    hs_env <- getSession
-    (_, mbe) <- Gap.liftIO $ deSugarExpr hs_env modu rn_env ty_env e
-    return $ (getLoc e, ) <$> CoreUtils.exprType <$> mbe
-  where
-    modu = ms_mod $ pm_mod_summary $ tm_parsed_module tcm
-    rn_env = tcg_rdr_env $ fst $ tm_internals_ tcm
-    ty_env = tcg_type_env $ fst $ tm_internals_ tcm
 
 pretty :: Type -> String
 pretty = showDocWith OneLineMode . withPprStyleDoc (mkUserStyle neverQualify AllTheWay) . pprTypeForUser False
