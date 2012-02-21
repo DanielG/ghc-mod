@@ -1,4 +1,4 @@
-{-# LANGUAGE TupleSections, FlexibleInstances #-}
+{-# LANGUAGE TupleSections, FlexibleInstances, TypeSynonymInstances #-}
 
 module Info (infoExpr, typeExpr) where
 
