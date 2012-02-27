@@ -12,26 +12,12 @@
 
 (defun ghc-show-info (&optional ask)
   (interactive "P")
-  (if (not (ghc-which ghc-module-command))
-      (message "%s not found" ghc-module-command)
-    (let ((modname (or (ghc-find-module-name) "Main")))
-      (ghc-show-info0 ask modname))))
-
-(defun ghc-show-info0 (ask modname)
-  (let* ((expr0 (ghc-things-at-point))
+  (let* ((modname (or (ghc-find-module-name) "Main"))
+	 (expr0 (ghc-things-at-point))
 	 (expr (if ask (ghc-read-expression expr0) expr0))
-	 (cdir default-directory)
 	 (file (buffer-file-name))
-	 (buf (get-buffer-create ghc-error-buffer-name)))
-    (with-current-buffer buf
-      (erase-buffer)
-      (insert
-       (with-temp-buffer
-	 (cd cdir)
-	 (apply 'call-process ghc-module-command nil t nil
-		`(,@(ghc-make-ghc-options) "info" ,file ,modname ,expr))
-	 (buffer-substring (point-min) (1- (point-max))))))
-    (display-buffer buf)))
+	 (cmds (list "info" file modname expr)))
+    (ghc-display-information cmds)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -128,6 +114,41 @@
        (goto-char (point-min))
        (while (search-forward "[Char]" nil t)
 	 (replace-match "String"))))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;
+;;; Expanding Template Haskell
+;;;
+
+(defun ghc-expand-th ()
+  (interactive)
+  (let* ((file (buffer-file-name))
+	 (cmds (list "expand" file)))
+    (ghc-display-information cmds)))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;
+;;; Display
+;;;
+
+(defun ghc-display-information (cmds)
+  (interactive)
+  (if (not (ghc-which ghc-module-command))
+      (message "%s not found" ghc-module-command)
+    (let ((cdir default-directory)
+	  (buf (get-buffer-create ghc-error-buffer-name)))
+      (with-current-buffer buf
+	(erase-buffer)
+	(insert
+	 (with-temp-buffer
+	   (cd cdir)
+	   (apply 'call-process ghc-module-command nil t nil
+		  (append (ghc-make-ghc-options) cmds))
+	   (buffer-substring (point-min) (1- (point-max)))))
+	(goto-char (point-min))
+	(haskell-font-lock-defaults-create)
+	(turn-on-haskell-font-lock))
+      (display-buffer buf))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;

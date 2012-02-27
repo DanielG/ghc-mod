@@ -52,6 +52,7 @@
 (defvar ghc-check-key       "\C-x\C-s")
 (defvar ghc-toggle-key      "\C-c\C-c")
 (defvar ghc-module-key      "\C-c\C-m")
+(defvar ghc-expand-key      "\C-c\C-e")
 (defvar ghc-hoogle-key      (format "\C-c%c" (ghc-find-C-h)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -70,6 +71,7 @@
     (define-key haskell-mode-map ghc-document-key    'ghc-browse-document)
     (define-key haskell-mode-map ghc-type-key        'ghc-show-type)
     (define-key haskell-mode-map ghc-info-key        'ghc-show-info)
+    (define-key haskell-mode-map ghc-expand-key      'ghc-expand-th)
     (define-key haskell-mode-map ghc-import-key      'ghc-import-module)
     (define-key haskell-mode-map ghc-previous-key    'flymake-goto-prev-error)
     (define-key haskell-mode-map ghc-next-key        'flymake-goto-next-error)
