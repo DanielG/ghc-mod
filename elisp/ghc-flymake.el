@@ -114,6 +114,10 @@
 	    (goto-char (point-max))
 	    (insert "\n")))
 	(insert "\n" (match-string 1 data) " = undefined\n"))
+       ((string-match "Pattern match(es) are non-exhaustive" data)
+	(let* ((fn (ghc-get-function-name))
+	       (arity (ghc-get-function-arity fn)))
+	  (ghc-insert-underscore fn arity)))
        ((string-match "Found:\0[ ]*\\([^\0]+\\)\0Why not:\0[ ]*\\([^\0]+\\)" data)
 	(let ((old (match-string 1 data))
 	      (new (match-string 2 data)))
@@ -123,6 +127,39 @@
 	      (search-backward old nil t)
 	      (delete-region (point) end))
 	    (insert new))))))))
+
+(defun ghc-get-function-name ()
+  (save-excursion
+    (beginning-of-line)
+    (when (looking-at "\\([^ ]+\\) ")
+      (match-string 1))))
+
+(defun ghc-get-function-arity (fn)
+  (when fn
+    (save-excursion
+      (let ((regex (format "^%s *::" (regexp-quote fn))))
+	(when (re-search-backward regex nil t)
+	  (ghc-get-function-arity0))))))
+
+(defun ghc-get-function-arity0 ()
+  (let ((end (save-excursion (end-of-line) (point)))
+	(arity 0))
+    (while (search-forward "->" end t)
+      (setq arity (1+ arity)))
+    arity))
+
+(defun ghc-insert-underscore (fn ar)
+  (when fn
+    (let ((arity (or ar 1)))
+      (save-excursion
+	(goto-char (point-max))
+	(re-search-backward (format "^%s *::" (regexp-quote fn)))
+	(forward-line)
+	(re-search-forward "^$" nil t)
+	(insert fn)
+	(dotimes (i arity)
+	  (insert " _"))
+	(insert  " = undefined\n")))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
