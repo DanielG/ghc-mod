@@ -5,10 +5,20 @@ module Types where
 data OutputStyle = LispStyle | PlainStyle
 
 data Options = Options {
-    outputStyle :: OutputStyle
-  , hlintOpts   :: [String]
-  , ghcOpts     :: [String]
-  , operators   :: Bool
+    outputStyle  :: OutputStyle
+  , hlintOpts    :: [String]
+  , ghcOpts      :: [String]
+  , operators    :: Bool
+  , expandSplice :: Bool
+  }
+
+defaultOptions :: Options
+defaultOptions = Options {
+    outputStyle  = PlainStyle
+  , hlintOpts    = []
+  , ghcOpts      = []
+  , operators    = False
+  , expandSplice = False
   }
 
 ----------------------------------------------------------------

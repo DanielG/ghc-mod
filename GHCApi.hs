@@ -31,20 +31,24 @@ initSession opt cmdOpts idirs logging = do
     dflags <- getSessionDynFlags
     let opts = map noLoc cmdOpts
     (dflags',_,_) <- parseDynamicFlags dflags opts
-    (dflags'',readLog) <- liftIO . (>>= setLogger logging) . setGhcFlags opt . setFlags dflags' $ idirs
+    (dflags'',readLog) <- liftIO . (>>= setLogger logging) . setGhcFlags opt . setFlags opt dflags' $ idirs
     setSessionDynFlags dflags''
     return readLog
 
 ----------------------------------------------------------------
 
-setFlags :: DynFlags -> [FilePath] -> DynFlags
-setFlags d idirs = d'
+setFlags :: Options -> DynFlags -> [FilePath] -> DynFlags
+setFlags opt d idirs = d'
   where
     d' = d {
         packageFlags = ghcPackage : packageFlags d
       , importPaths = idirs
       , ghcLink = NoLink
       , hscTarget = HscInterpreted
+      , flags = if expandSplice opt then
+                    flags d ++ [Opt_D_dump_splices]
+                else
+                    flags d
       }
 
 ghcPackage :: PackageFlag
