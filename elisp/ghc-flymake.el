@@ -159,7 +159,7 @@
 	(insert fn)
 	(dotimes (i arity)
 	  (insert " _"))
-	(insert  " = undefined\n")))))
+	(insert  " = error \"" fn "\"")))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
