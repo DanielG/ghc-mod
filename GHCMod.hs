@@ -84,7 +84,7 @@ main = flip catches handlers $ do
       "browse" -> concat <$> mapM (browseModule opt) (tail cmdArg)
       "list"   -> listModules opt
       "check"  -> withFile (checkSyntax opt) (safelist cmdArg 1)
-      "expand" -> withFile (checkSyntax opt { expandSplice = True }) 
+      "expand" -> withFile (checkSyntax opt { expandSplice = True })
                            (safelist cmdArg 1)
       "type"  -> withFile (typeExpr opt (safelist cmdArg 2) (read $ safelist cmdArg 3) (read $ safelist cmdArg 4)) (safelist cmdArg 1)
       "info"   -> withFile (infoExpr opt (safelist cmdArg 2) (safelist cmdArg 3)) (safelist cmdArg 1)
