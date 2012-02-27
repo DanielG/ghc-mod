@@ -38,17 +38,16 @@ initSession opt cmdOpts idirs logging = do
 ----------------------------------------------------------------
 
 setFlags :: Options -> DynFlags -> [FilePath] -> DynFlags
-setFlags opt d idirs = d'
+setFlags opt d idirs
+  | expandSplice opt = dopt_set d' Opt_D_dump_splices
+  | otherwise        = d'
   where
     d' = d {
         packageFlags = ghcPackage : packageFlags d
       , importPaths = idirs
       , ghcLink = NoLink
       , hscTarget = HscInterpreted
-      , flags = if expandSplice opt then
-                    flags d ++ [Opt_D_dump_splices]
-                else
-                    flags d
+      , flags = flags d
       }
 
 ghcPackage :: PackageFlag

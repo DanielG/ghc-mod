@@ -26,5 +26,5 @@ check opt fileName = withGHC $ checkIt `gcatch` handleErrMsg
         load LoadAllTargets
         liftIO readLog
     options
-      | expandSplice opt = ghcOpts opt
+      | expandSplice opt = ["-w:"] ++ ghcOpts opt
       | otherwise        = ["-Wall","-fno-warn-unused-do-bind"] ++ ghcOpts opt
