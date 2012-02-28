@@ -27,6 +27,7 @@
 (require 'ghc-flymake)
 (require 'ghc-command)
 (require 'ghc-ins-mod)
+(require 'ghc-indent)
 (require 'dabbrev)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -54,6 +55,8 @@
 (defvar ghc-module-key      "\C-c\C-m")
 (defvar ghc-expand-key      "\C-c\C-e")
 (defvar ghc-hoogle-key      (format "\C-c%c" (ghc-find-C-h)))
+(defvar ghc-shallower-key   "\C-c<")
+(defvar ghc-deeper-key      "\C-c>")
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -82,6 +85,8 @@
     (define-key haskell-mode-map ghc-toggle-key      'ghc-flymake-toggle-command)
     (define-key haskell-mode-map ghc-module-key      'ghc-insert-module)
     (define-key haskell-mode-map ghc-hoogle-key      'haskell-hoogle)
+    (define-key haskell-mode-map ghc-shallower-key   'ghc-make-indent-shallower)
+    (define-key haskell-mode-map ghc-deeper-key      'ghc-make-indent-deeper)
     (ghc-comp-init)
     (setq ghc-initialized t)))
 
