@@ -14,7 +14,6 @@ import GHC
 import qualified Gap
 import HscTypes
 import Outputable
-import System.FilePath
 
 ----------------------------------------------------------------
 
@@ -54,7 +53,7 @@ ppMsg :: SrcSpan -> Message -> PprStyle -> String
 ppMsg spn msg stl = fromMaybe def $ do
     (line,col,_,_) <- Gap.getSrcSpan spn
     file <- Gap.getSrcFile spn
-    return $ takeFileName file ++ ":" ++ show line ++ ":" ++ show col ++ ":" ++ cts ++ "\0"
+    return $ file ++ ":" ++ show line ++ ":" ++ show col ++ ":" ++ cts ++ "\0"
   where
     def = "ghc-mod:0:0:Probably mutual module import occurred\0"
     cts  = showMsg msg stl

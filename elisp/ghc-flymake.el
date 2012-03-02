@@ -77,6 +77,18 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+(defun ghc-flymake-jump ()
+  (interactive)
+  (if (not (ghc-flymake-have-errs-p))
+      (message "No errors or warnings")
+    (let* ((acts (ghc-flymake-act-list))
+	   (act (car acts)))
+      (if (not act)
+	  (message "No destination")
+	(eval act)))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
 (defun ghc-extract-type (str)
   (with-temp-buffer
     (insert str)
@@ -166,6 +178,9 @@
 (defun ghc-flymake-err-get-title (x) (nth 0 x))
 (defun ghc-flymake-err-get-errs (x) (nth 1 x))
 
+(defun ghc-flymake-err-get-err-msg (x) (nth 0 x))
+(defun ghc-flymake-err-get-err-act (x) (nth 1 x))
+
 (defalias 'ghc-flymake-have-errs-p 'ghc-flymake-data)
 
 (defun ghc-flymake-data ()
@@ -177,6 +192,9 @@
   (ghc-flymake-err-get-title (ghc-flymake-data)))
 
 (defun ghc-flymake-err-list ()
-  (mapcar 'car (ghc-flymake-err-get-errs (ghc-flymake-data))))
+  (mapcar 'ghc-flymake-err-get-err-msg (ghc-flymake-err-get-errs (ghc-flymake-data))))
+
+(defun ghc-flymake-act-list ()
+  (mapcar 'ghc-flymake-err-get-err-act (ghc-flymake-err-get-errs (ghc-flymake-data))))
 
 (provide 'ghc-flymake)
