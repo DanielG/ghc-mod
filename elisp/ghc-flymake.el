@@ -22,7 +22,7 @@
 (defconst ghc-error-buffer-name "*GHC Errors*")
 
 (defconst ghc-flymake-allowed-file-name-masks
-  '("\\.l?hs$" ghc-flymake-init flymake-simple-cleanup flymake-get-real-file-name))
+  '("\\.l?hs$" ghc-flymake-init flymake-simple-cleanup ghc-flymake-get-real-file-name))
 
 (defconst ghc-flymake-err-line-patterns
   '("^\\(.*\\.l?hs\\):\\([0-9]+\\):\\([0-9]+\\):[ ]*\\(.+\\)" 1 2 3 4))
@@ -55,6 +55,15 @@
   (if ghc-flymake-command
       (message "Syntax check with hlint")
     (message "Syntax check with GHC")))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defun ghc-flymake-get-real-file-name (path)
+  (let ((bufnam (buffer-name))
+	(filnam (file-name-nondirectory path)))
+    (if (string= bufnam filnam)
+	bufnam
+      path)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
