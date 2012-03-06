@@ -22,6 +22,14 @@
       (if (char-equal (aref ret cnt) from)
 	  (aset ret cnt to)))))
 
+(defun ghc-replace-character-buffer (from-c to-c)
+  (let ((from (char-to-string from-c))
+	(to (char-to-string to-c)))
+    (save-excursion
+      (goto-char (point-min))
+      (while (search-forward from nil t)
+	(replace-match to)))))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defmacro ghc-add (sym val)
@@ -144,5 +152,23 @@
 
 (defun ghc-make-ghc-options ()
   (ghc-mapconcat (lambda (x) (list "-g" x)) ghc-ghc-options))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defconst ghc-error-buffer-name "*GHC Info*")
+
+(defun ghc-display (fontify ins-func)
+  (let ((cdir default-directory)
+	(buf (get-buffer-create ghc-error-buffer-name)))
+    (with-current-buffer buf
+      (erase-buffer)
+      (funcall ins-func cdir)
+      (ghc-replace-character-buffer ghc-null ghc-newline)
+      (goto-char (point-min))
+      (if (not fontify)
+	  (turn-off-haskell-font-lock)
+	(haskell-font-lock-defaults-create)
+	(turn-on-haskell-font-lock)))
+    (display-buffer buf)))
 
 (provide 'ghc-func)

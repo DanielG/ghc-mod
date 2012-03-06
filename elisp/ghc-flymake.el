@@ -19,8 +19,6 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defconst ghc-error-buffer-name "*GHC Errors*")
-
 (defconst ghc-flymake-allowed-file-name-masks
   '("\\.l?hs$" ghc-flymake-init flymake-simple-cleanup ghc-flymake-get-real-file-name))
 
@@ -71,18 +69,13 @@
   (interactive)
   (if (not (ghc-flymake-have-errs-p))
       (message "No errors or warnings")
-    (let ((buf (get-buffer-create ghc-error-buffer-name))
-	  (title (ghc-flymake-err-title))
+    (let ((title (ghc-flymake-err-title))
 	  (errs (ghc-flymake-err-list)))
-      (with-current-buffer buf
-	(erase-buffer)
-	(ghc-flymake-insert-errors title errs))
-      (display-buffer buf))))
-
-(defun ghc-flymake-insert-errors (title errs)
-  (save-excursion
-    (insert title "\n\n")
-    (mapc (lambda (x) (insert (ghc-replace-character x ghc-null ghc-newline) "\n")) errs)))
+      (ghc-display
+       nil
+       (lambda (&rest ignore)
+	 (insert title "\n\n")
+	 (mapc (lambda (x) (insert x "\n")) errs))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 

@@ -17,7 +17,7 @@
 	 (expr (if ask (ghc-read-expression expr0) expr0))
 	 (file (buffer-file-name))
 	 (cmds (list "info" file modname expr)))
-    (ghc-display-information cmds)))
+    (ghc-display-information cmds nil)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -124,31 +124,26 @@
   (interactive)
   (let* ((file (buffer-file-name))
 	 (cmds (list "expand" file)))
-    (ghc-display-information cmds)))
+    (ghc-display-information cmds t)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
 ;;; Display
 ;;;
 
-(defun ghc-display-information (cmds)
+(defun ghc-display-information (cmds fontify)
   (interactive)
   (if (not (ghc-which ghc-module-command))
       (message "%s not found" ghc-module-command)
-    (let ((cdir default-directory)
-	  (buf (get-buffer-create ghc-error-buffer-name)))
-      (with-current-buffer buf
-	(erase-buffer)
-	(insert
-	 (with-temp-buffer
-	   (cd cdir)
-	   (apply 'call-process ghc-module-command nil t nil
-		  (append (ghc-make-ghc-options) cmds))
-	   (buffer-substring (point-min) (1- (point-max)))))
-	(goto-char (point-min))
-	(haskell-font-lock-defaults-create)
-	(turn-on-haskell-font-lock))
-      (display-buffer buf))))
+    (ghc-display
+     fontify
+     (lambda (cdir)
+       (insert
+	(with-temp-buffer
+	  (cd cdir)
+	  (apply 'call-process ghc-module-command nil t nil
+		 (append (ghc-make-ghc-options) cmds))
+	  (buffer-substring (point-min) (1- (point-max)))))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
