@@ -62,7 +62,7 @@ argspec = [ Option "l" ["tolisp"]
 parseArgs :: [OptDescr (Options -> Options)] -> [String] -> (Options, [String])
 parseArgs spec argv
     = case getOpt Permute spec argv of
-        (o,n,[]  ) -> (foldl (flip id) defaultOptions o, n)
+        (o,n,[]  ) -> (foldr id defaultOptions o, n)
         (_,_,errs) -> throw (CmdArg errs)
 
 ----------------------------------------------------------------
