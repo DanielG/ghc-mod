@@ -39,13 +39,11 @@ initializeGHC opt fileName ghcOptions logging = withCabal ||> withoutCabal
             exts = map (addX . Gap.extensionToString)  exts'
             lang = maybe "-XHaskell98" (addX . show) mlang
             gopts = ghcOptions ++ exts ++ [lang]
-        changeToCabalDirectory cdir
-        let idirs = case idirs' of
+            idirs = case idirs' of
                 []   -> [cdir,owdir]
-                dirs -> dirs ++ [owdir]
-            file = ajustFileName fileName owdir cdir
+                dirs -> map (cdir </>) dirs ++ [owdir]
         logReader <- initSession opt gopts idirs logging
-        return (file,logReader)
+        return (fileName,logReader)
     addX = ("-X" ++)
 
 ----------------------------------------------------------------
@@ -68,19 +66,6 @@ extractBuildInfo binfo = (hsSourceDirs binfo
                          ,defaultLanguage binfo)
 
 ----------------------------------------------------------------
-
-ajustFileName :: FilePath -> FilePath -> FilePath -> FilePath
-ajustFileName name olddir newdir
-  | olen == nlen = name
-  | otherwise    = drop (nlen+1) olddir </> name
-  where
-    olen = length olddir
-    nlen = length newdir
-
-changeToCabalDirectory :: FilePath -> Ghc ()
-changeToCabalDirectory dir = do
-    liftIO $ setCurrentDirectory dir
-    workingDirectoryChanged
 
 -- CurrentWorkingDir, CabalDir, CabalFile
 getDirs :: IO (FilePath,FilePath,FilePath)
