@@ -1,4 +1,4 @@
-{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE OverloadedStrings, RecordWildCards #-}
 
 module Cabal (initializeGHC) where
 
@@ -16,7 +16,6 @@ import GHC
 import GHCApi
 import GHCChoice
 import qualified Gap
-import Language.Haskell.Extension
 import System.Directory
 import System.FilePath
 import Types
@@ -34,12 +33,13 @@ initializeGHC opt fileName ghcOptions logging = withCabal ||> withoutCabal
         return (fileName,logReader)
     withCabal = do
         (owdir,cdir,cfile) <- liftIO getDirs
-        binfo <- liftIO $ parseCabalFile cfile
-        let (idirs',exts',mlang) = extractBuildInfo binfo
-            exts = map (addX . Gap.extensionToString)  exts'
-            lang = maybe "-XHaskell98" (addX . show) mlang
-            gopts = ghcOptions ++ exts ++ [lang]
-            idirs = case idirs' of
+        binfo@BuildInfo{..} <- liftIO $ parseCabalFile cfile
+        let exts = map (addX . Gap.extensionToString) $ usedExtensions binfo
+            lang = maybe "-XHaskell98" (addX . show) defaultLanguage
+            libs = map ("-l" ++) extraLibs
+            libDirs = map ("-L" ++) extraLibDirs
+            gopts = ghcOptions ++ exts ++ [lang] ++ libs ++ libDirs
+            idirs = case hsSourceDirs of
                 []   -> [cdir,owdir]
                 dirs -> map (cdir </>) dirs ++ [owdir]
         logReader <- initSession opt gopts idirs logging
@@ -58,12 +58,6 @@ parseCabalFile file = do
     fromExecutable c  = buildInfo . condTreeData . snd <$> toMaybe (condExecutables c)
     toMaybe [] = Nothing
     toMaybe (x:_) = Just x
-
--- SourceDirs, Extensions, and Language
-extractBuildInfo :: BuildInfo -> ([String],[Extension],Maybe Language)
-extractBuildInfo binfo = (hsSourceDirs binfo
-                         ,usedExtensions binfo
-                         ,defaultLanguage binfo)
 
 ----------------------------------------------------------------
 
