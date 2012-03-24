@@ -45,7 +45,7 @@ setFlags opt d idirs
     d' = d {
         packageFlags = ghcPackage : packageFlags d
       , importPaths = idirs
-      , ghcLink = NoLink
+      , ghcLink = LinkInMemory
       , hscTarget = HscInterpreted
       , flags = flags d
       }
