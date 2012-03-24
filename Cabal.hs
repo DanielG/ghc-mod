@@ -62,7 +62,7 @@ parseCabalFile file = do
 -- SourceDirs, Extensions, and Language
 extractBuildInfo :: BuildInfo -> ([String],[Extension],Maybe Language)
 extractBuildInfo binfo = (hsSourceDirs binfo
-                         ,oldExtensions binfo
+                         ,usedExtensions binfo
                          ,defaultLanguage binfo)
 
 ----------------------------------------------------------------
