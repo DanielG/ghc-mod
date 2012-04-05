@@ -54,7 +54,7 @@
   (ghc-type-clear-overlay)
   (setq after-change-functions
 	(cons 'ghc-type-clear-overlay after-change-functions))
-  (set (make-local-variable 'post-command-hook) 'ghc-type-post-command-hook))
+  (add-hook 'post-command-hook 'ghc-type-post-command-hook))
 
 (defun ghc-type-clear-overlay (&optional beg end len)
   (when (overlayp ghc-type-overlay)
@@ -63,7 +63,8 @@
     (move-overlay ghc-type-overlay 0 0)))
 
 (defun ghc-type-post-command-hook ()
-  (when (and (overlayp ghc-type-overlay)
+  (when (and (eq major-mode 'haskell-mode)
+	     (overlayp ghc-type-overlay)
 	     (/= (ghc-type-get-point) (point)))
     (ghc-type-clear-overlay)))
 
