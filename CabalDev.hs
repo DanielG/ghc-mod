@@ -34,7 +34,7 @@ findCabalDev Nothing = getCurrentDirectory >>= searchIt . splitPath
 addPath :: Options -> String -> Options
 addPath orig_opts path = do
     let orig_ghcopt = ghcOpts orig_opts
-    orig_opts { ghcOpts = orig_ghcopt ++ ["-package-conf", path] }
+    orig_opts { ghcOpts = orig_ghcopt ++ ["-package-conf", path, "-no-user-package-conf"] }
 
 searchIt :: [FilePath] -> IO FilePath
 searchIt [] = throwIO $ userError "Not found"
