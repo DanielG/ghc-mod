@@ -17,11 +17,19 @@ import Types
 modifyOptions :: Options -> IO Options
 modifyOptions opts = found ||> notFound
   where
-    found = addPath opts <$> findCabalDev
+    found = do
+        path <- findCabalDev (sandbox opts)
+        return $ addPath opts path
     notFound = return opts
 
-findCabalDev :: IO String
-findCabalDev = getCurrentDirectory >>= searchIt . splitPath
+findCabalDev :: Maybe String -> IO FilePath
+findCabalDev (Just path) = do
+    a <- doesDirectoryExist path
+    if a then
+        findConf path
+      else
+        findCabalDev Nothing
+findCabalDev Nothing = getCurrentDirectory >>= searchIt . splitPath
 
 addPath :: Options -> String -> Options
 addPath orig_opts path = do
