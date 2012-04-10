@@ -57,6 +57,9 @@ argspec = [ Option "l" ["tolisp"]
           , Option "o" ["operators"]
             (NoArg (\opts -> opts { operators = True }))
             "print operators, too"
+          , Option "s" ["sandbox"]
+            (ReqArg (\s opts -> opts { sandbox = Just s }) "path")
+            "specify cabal-dev sandbox (default 'cabal-dev`)"
           ]
 
 parseArgs :: [OptDescr (Options -> Options)] -> [String] -> (Options, [String])
