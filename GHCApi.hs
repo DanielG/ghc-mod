@@ -1,13 +1,15 @@
 module GHCApi where
 
-import Control.Exception
 import Control.Applicative
+import Control.Exception
 import CoreMonad
 import DynFlags
 import ErrMsg
 import Exception
 import GHC
 import GHC.Paths (libdir)
+import System.Exit
+import System.IO
 import Types
 
 ----------------------------------------------------------------
@@ -18,7 +20,9 @@ withGHC body = ghandle ignore $ runGhc (Just libdir) $ do
     defaultCleanupHandler dflags body
   where
     ignore :: Alternative m => SomeException -> IO (m a)
-    ignore _ = return empty
+    ignore e = do
+        hPrint stderr e
+        exitFailure
 
 ----------------------------------------------------------------
 
