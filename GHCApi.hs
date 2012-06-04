@@ -21,8 +21,9 @@ withGHC body = ghandle ignore $ runGhc (Just libdir) $ do
   where
     ignore :: Alternative m => SomeException -> IO (m a)
     ignore e = do
+        hPutStr stderr "Dummy:0:0:Error:"
         hPrint stderr e
-        exitFailure
+        exitSuccess
 
 ----------------------------------------------------------------
 
