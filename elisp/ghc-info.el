@@ -167,7 +167,7 @@
 (defun ghc-find-module-name ()
   (save-excursion
     (goto-char (point-min))
-    (if (re-search-forward "^module[ ]+\\([^ ]+\\)" nil t)
+    (if (re-search-forward "^module[ ]+\\([^ \n]+\\)" nil t)
 	(match-string-no-properties 1))))
 
 (provide 'ghc-info)
