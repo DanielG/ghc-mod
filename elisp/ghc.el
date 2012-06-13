@@ -1,4 +1,4 @@
-;;; ghc.el --- ???
+;;; ghc.el --- ghc-mod front-end for haskell-mode
 
 ;; Author:  Kazu Yamamoto <Kazu@Mew.org>
 ;; Created: Sep 25, 2009
