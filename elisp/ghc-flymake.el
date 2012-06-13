@@ -34,7 +34,8 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defun ghc-flymake-init ()
-  (let ((after-save-hook nil))
+  (let ((before-save-hook nil)
+	(after-save-hook nil))
     (save-buffer))
   (let ((file (file-name-nondirectory (buffer-file-name))))
     (list ghc-module-command (ghc-flymake-command file))))
