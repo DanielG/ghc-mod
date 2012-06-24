@@ -20,10 +20,10 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defconst ghc-flymake-allowed-file-name-masks
-  '("\\.l?hs$" ghc-flymake-init flymake-simple-cleanup ghc-flymake-get-real-file-name))
+  '("\\.l?hs$" ghc-flymake-init))
 
 (defconst ghc-flymake-err-line-patterns
-  '("^\\(.*\\.l?hs\\):\\([0-9]+\\):\\([0-9]+\\):[ ]*\\(.+\\)" 1 2 3 4))
+  '("^\\(.*\\):\\([0-9]+\\):\\([0-9]+\\):[ ]*\\(.+\\)" 1 2 3 4))
 
 (add-to-list 'flymake-allowed-file-name-masks
 	     ghc-flymake-allowed-file-name-masks)
@@ -34,11 +34,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defun ghc-flymake-init ()
-  (let ((before-save-hook nil)
-	(after-save-hook nil))
-    (save-buffer))
-  (let ((file (file-name-nondirectory (buffer-file-name))))
-    (list ghc-module-command (ghc-flymake-command file))))
+  (list ghc-module-command (ghc-flymake-command (flymake-init-create-temp-buffer-copy 'flymake-create-temp-inplace))))
 
 (defvar ghc-flymake-command nil) ;; nil: check, t: lint
 
@@ -54,15 +50,6 @@
   (if ghc-flymake-command
       (message "Syntax check with hlint")
     (message "Syntax check with GHC")))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-(defun ghc-flymake-get-real-file-name (path)
-  (let ((bufnam (buffer-name))
-	(filnam (file-name-nondirectory path)))
-    (if (string= bufnam filnam)
-	bufnam
-      path)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
