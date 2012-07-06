@@ -37,9 +37,10 @@ addPath orig_opts path = do
 searchIt :: [FilePath] -> IO FilePath
 searchIt [] = throwIO $ userError "Not found"
 searchIt path = do
-    a <- doesDirectoryExist (mpath path)
-    if a then
-        findConf (mpath path)
+    let cabalDir = mpath path
+    exist <- doesDirectoryExist cabalDir
+    if exist then
+        findConf cabalDir
       else
         searchIt $ init path
   where
