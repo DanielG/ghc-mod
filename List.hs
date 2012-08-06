@@ -15,7 +15,7 @@ listModules opt = convert opt . nub . sort <$> list opt
 
 list :: Options -> IO [String]
 list opt = withGHC $ do
-    initSession0 opt
+    _ <- initSession0 opt
     getExposedModules <$> getSessionDynFlags
   where
     getExposedModules = map moduleNameString

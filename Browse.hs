@@ -25,7 +25,7 @@ browseModule opt mdlName = convert opt . format <$> browse opt mdlName
 
 browse :: Options -> String -> IO [String]
 browse opt mdlName = withGHC $ do
-    initSession0 opt
+    _ <- initSession0 opt
     maybeNamesToStrings <$> lookupModuleInfo
   where
     lookupModuleInfo = findModule (mkModuleName mdlName) Nothing >>= getModuleInfo

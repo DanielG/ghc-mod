@@ -23,8 +23,8 @@ check opt fileName = withGHC $ checkIt `gcatch` handleErrMsg
     checkIt = do
         (file,readLog) <- initializeGHC opt fileName options True
         setTargetFile file
-        load LoadAllTargets
+        _ <- load LoadAllTargets
         liftIO readLog
     options
       | expandSplice opt = ["-w:"] ++ ghcOpts opt
-      | otherwise        = ["-Wall","-fno-warn-unused-do-bind"] ++ ghcOpts opt
+      | otherwise        = ["-Wall"] ++ ghcOpts opt

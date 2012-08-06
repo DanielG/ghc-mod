@@ -144,12 +144,12 @@ inModuleContext opt fileName modstr action errmsg =
     valid = do
         (file,_) <- initializeGHC opt fileName ["-w"] False
         setTargetFile file
-        load LoadAllTargets
+        _ <- load LoadAllTargets
         doif setContextFromTarget action
     invalid = do
-        initializeGHC opt fileName ["-w"] False
+        _ <- initializeGHC opt fileName ["-w"] False
         setTargetBuffer
-        load LoadAllTargets
+        _ <- load LoadAllTargets
         doif setContextFromTarget action
     setTargetBuffer = do
         modgraph <- depanal [mkModuleName modstr] True

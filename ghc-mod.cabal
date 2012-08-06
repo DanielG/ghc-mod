@@ -42,10 +42,7 @@ Executable ghc-mod
                         List
                         Paths_ghc_mod
                         Types
-  if impl(ghc >= 6.12)
-    GHC-Options:        -Wall -fno-warn-unused-do-bind
-  else
-    GHC-Options:        -Wall
+  GHC-Options:          -Wall
   Build-Depends:        base >= 4.0 && < 5
                       , Cabal
                       , directory

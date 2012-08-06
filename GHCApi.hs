@@ -37,7 +37,7 @@ initSession opt cmdOpts idirs logging = do
     let opts = map noLoc cmdOpts
     (dflags',_,_) <- parseDynamicFlags dflags opts
     (dflags'',readLog) <- liftIO . (>>= setLogger logging) . setGhcFlags opt . setFlags opt dflags' $ idirs
-    setSessionDynFlags dflags''
+    _ <- setSessionDynFlags dflags''
     return readLog
 
 ----------------------------------------------------------------
