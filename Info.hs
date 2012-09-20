@@ -1,4 +1,4 @@
-{-# LANGUAGE TupleSections, FlexibleInstances, TypeSynonymInstances #-}
+{-# LANGUAGE TupleSections, FlexibleInstances, TypeSynonymInstances, RankNTypes #-}
 
 module Info (infoExpr, typeExpr) where
 
@@ -10,6 +10,7 @@ import Data.Generics
 import Data.List
 import Data.Maybe
 import Data.Ord as O
+import DynFlags (tracingDynFlags)
 import Desugar
 import GHC
 import GHC.SYB.Utils
@@ -106,7 +107,7 @@ listifyStaged :: Typeable r => Stage -> (r -> Bool) -> GenericQ [r]
 listifyStaged s p = everythingStaged s (++) [] ([] `mkQ` (\x -> [x | p x]))
 
 pretty :: Type -> String
-pretty = showDocWith OneLineMode . withPprStyleDoc (mkUserStyle neverQualify AllTheWay) . pprTypeForUser False
+pretty = showDocWith OneLineMode . withPprStyleDoc tracingDynFlags (mkUserStyle neverQualify AllTheWay) . pprTypeForUser False
 
 ----------------------------------------------------------------
 -- from ghc/InteractiveUI.hs
@@ -125,7 +126,7 @@ filterOutChildren get_thing xs
   where
       implicits = mkNameSet [getName t | x <- xs, t <- implicitTyThings (get_thing x)]
 
-pprInfo :: PrintExplicitForalls -> (TyThing, GHC.Fixity, [Instance]) -> SDoc
+--pprInfo :: PrintExplicitForalls -> (TyThing, GHC.Fixity, [Instance]) -> SDoc
 pprInfo pefas (thing, fixity, insts)
     = pprTyThingInContextLoc pefas thing
    $$ show_fixity fixity

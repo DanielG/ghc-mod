@@ -78,7 +78,7 @@ getSrcFile _ = Nothing
 
 renderMsg :: SDoc -> PprStyle -> String
 #if __GLASGOW_HASKELL__ >= 702
-renderMsg d stl = renderWithStyle d stl
+renderMsg d stl = renderWithStyle  tracingDynFlags d stl
 #else
 renderMsg d stl = Pretty.showDocWith PageMode $ d stl
 #endif
@@ -109,15 +109,15 @@ fOptions = [option | (option,_,_) <- fFlags]
 ----------------------------------------------------------------
 
 setCtx :: [ModSummary] -> Ghc Bool
-#if __GLASGOW_HASKELL__ >= 704
+#if __GLASGOW_HASKELL__ >= 70
 setCtx ms = do
-    top <- map (IIModule . ms_mod) <$> filterM isTop ms
+    top <- map (IIModule . moduleName . ms_mod) <$> filterM isTop ms
     setContext top
     return (not . null $ top)
 #else
 setCtx ms = do
-    top <- map ms_mod <$> filterM isTop ms
-    setContext top []
+    top <- map (IIModule . ms_mod) <$> filterM isTop ms
+    setContext top
     return (not . null $ top)
 #endif
   where
