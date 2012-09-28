@@ -118,7 +118,7 @@ infoThing str = do
     mb_stuffs <- mapM getInfo names
     let filtered = filterOutChildren (\(t,_f,_i) -> t) (catMaybes mb_stuffs)
     unqual <- getPrintUnqual
-    return $ showSDocForUser unqual $ vcat (intersperse (text "") $ map (pprInfo False) filtered)
+    return $ showSDocForUser tracingDynFlags unqual $ vcat (intersperse (text "") $ map (pprInfo False) filtered)
 
 filterOutChildren :: (a -> TyThing) -> [a] -> [a]
 filterOutChildren get_thing xs
@@ -154,7 +154,7 @@ inModuleContext opt fileName modstr action errmsg =
         doif setContextFromTarget action
     setTargetBuffer = do
         modgraph <- depanal [mkModuleName modstr] True
-        let imports = concatMap (map (showSDoc . ppr . unLoc)) $
+        let imports = concatMap (map ((showSDoc tracingDynFlags) . ppr . unLoc)) $
                       map ms_imps modgraph ++ map ms_srcimps modgraph
             moddef = "module " ++ sanitize modstr ++ " where"
             header = moddef : imports
