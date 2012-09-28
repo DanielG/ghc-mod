@@ -10,6 +10,7 @@ import Data.Generics
 import Data.List
 import Data.Maybe
 import Data.Ord as O
+import Data.Time.Clock
 import DynFlags (tracingDynFlags)
 import Desugar
 import GHC
@@ -118,7 +119,7 @@ infoThing str = do
     mb_stuffs <- mapM getInfo names
     let filtered = filterOutChildren (\(t,_f,_i) -> t) (catMaybes mb_stuffs)
     unqual <- getPrintUnqual
-    return $ showSDocForUser unqual $ vcat (intersperse (text "") $ map (pprInfo False) filtered)
+    return $ showSDocForUser tracingDynFlags unqual $ vcat (intersperse (text "") $ map (pprInfo False) filtered)
 
 filterOutChildren :: (a -> TyThing) -> [a] -> [a]
 filterOutChildren get_thing xs
@@ -154,12 +155,12 @@ inModuleContext opt fileName modstr action errmsg =
         doif setContextFromTarget action
     setTargetBuffer = do
         modgraph <- depanal [mkModuleName modstr] True
-        let imports = concatMap (map (showSDoc . ppr . unLoc)) $
+        let imports = concatMap (map ((showSDoc tracingDynFlags) . ppr . unLoc)) $
                       map ms_imps modgraph ++ map ms_srcimps modgraph
             moddef = "module " ++ sanitize modstr ++ " where"
             header = moddef : imports
         importsBuf <- Gap.toStringBuffer header
-        clkTime <- Gap.liftIO getClockTime
+        clkTime <- Gap.liftIO getCurrentTime
         setTargets [Target (TargetModule $ mkModuleName modstr) True (Just (importsBuf, clkTime))]
     doif m t = m >>= \ok -> if ok then t else goNext
     sanitize = fromMaybe "SomeModule" . listToMaybe . words

@@ -53,6 +53,7 @@ Executable ghc-mod
                       , hlint >= 1.7.1
                       , io-choice
                       , old-time
+                      , time
                       , process
                       , regex-posix
                       , syb
