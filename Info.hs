@@ -10,6 +10,7 @@ import Data.Generics
 import Data.List
 import Data.Maybe
 import Data.Ord as O
+import Data.Time.Clock
 import DynFlags (tracingDynFlags)
 import Desugar
 import GHC
@@ -159,7 +160,7 @@ inModuleContext opt fileName modstr action errmsg =
             moddef = "module " ++ sanitize modstr ++ " where"
             header = moddef : imports
         importsBuf <- Gap.toStringBuffer header
-        clkTime <- Gap.liftIO getClockTime
+        clkTime <- Gap.liftIO getCurrentTime
         setTargets [Target (TargetModule $ mkModuleName modstr) True (Just (importsBuf, clkTime))]
     doif m t = m >>= \ok -> if ok then t else goNext
     sanitize = fromMaybe "SomeModule" . listToMaybe . words
