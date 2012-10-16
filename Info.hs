@@ -1,4 +1,5 @@
-{-# LANGUAGE TupleSections, FlexibleInstances, TypeSynonymInstances, RankNTypes #-}
+{-# LANGUAGE TupleSections, FlexibleInstances, TypeSynonymInstances #-}
+{-# LANGUAGE Rank2Types #-}
 
 module Info (infoExpr, typeExpr) where
 
@@ -11,7 +12,6 @@ import Data.List
 import Data.Maybe
 import Data.Ord as O
 import Data.Time.Clock
-import DynFlags (tracingDynFlags)
 import Desugar
 import GHC
 import GHC.SYB.Utils
@@ -23,7 +23,6 @@ import NameSet
 import Outputable
 import PprTyThing
 import Pretty (showDocWith, Mode(OneLineMode))
-import System.Time
 import TcRnTypes
 import TcHsSyn (hsPatType)
 import Types
@@ -108,7 +107,7 @@ listifyStaged :: Typeable r => Stage -> (r -> Bool) -> GenericQ [r]
 listifyStaged s p = everythingStaged s (++) [] ([] `mkQ` (\x -> [x | p x]))
 
 pretty :: Type -> String
-pretty = showDocWith OneLineMode . withPprStyleDoc tracingDynFlags (mkUserStyle neverQualify AllTheWay) . pprTypeForUser False
+pretty = showDocWith OneLineMode . Gap.styleDoc (mkUserStyle neverQualify AllTheWay) . pprTypeForUser False
 
 ----------------------------------------------------------------
 -- from ghc/InteractiveUI.hs
@@ -119,7 +118,7 @@ infoThing str = do
     mb_stuffs <- mapM getInfo names
     let filtered = filterOutChildren (\(t,_f,_i) -> t) (catMaybes mb_stuffs)
     unqual <- getPrintUnqual
-    return $ showSDocForUser tracingDynFlags unqual $ vcat (intersperse (text "") $ map (pprInfo False) filtered)
+    return $ Gap.showDocForUser unqual $ vcat (intersperse (text "") $ map (pprInfo False) filtered)
 
 filterOutChildren :: (a -> TyThing) -> [a] -> [a]
 filterOutChildren get_thing xs
@@ -127,7 +126,7 @@ filterOutChildren get_thing xs
   where
       implicits = mkNameSet [getName t | x <- xs, t <- implicitTyThings (get_thing x)]
 
---pprInfo :: PrintExplicitForalls -> (TyThing, GHC.Fixity, [Instance]) -> SDoc
+pprInfo :: PrintExplicitForalls -> (TyThing, GHC.Fixity, [Gap.ClsInst]) -> SDoc
 pprInfo pefas (thing, fixity, insts)
     = pprTyThingInContextLoc pefas thing
    $$ show_fixity fixity
@@ -155,13 +154,15 @@ inModuleContext opt fileName modstr action errmsg =
         doif setContextFromTarget action
     setTargetBuffer = do
         modgraph <- depanal [mkModuleName modstr] True
-        let imports = concatMap (map ((showSDoc tracingDynFlags) . ppr . unLoc)) $
+        let imports = concatMap (map (Gap.showDoc . ppr . unLoc)) $
                       map ms_imps modgraph ++ map ms_srcimps modgraph
             moddef = "module " ++ sanitize modstr ++ " where"
             header = moddef : imports
         importsBuf <- Gap.toStringBuffer header
         clkTime <- Gap.liftIO getCurrentTime
-        setTargets [Target (TargetModule $ mkModuleName modstr) True (Just (importsBuf, clkTime))]
+        setTargets [Gap.mkTarget (TargetModule $ mkModuleName modstr)
+                                 True
+                                 (Just (importsBuf, clkTime))]
     doif m t = m >>= \ok -> if ok then t else goNext
     sanitize = fromMaybe "SomeModule" . listToMaybe . words
 
