@@ -24,13 +24,13 @@ type LogReader = IO [String]
 setLogger :: Bool -> DynFlags -> IO (DynFlags, LogReader)
 setLogger False df = return (newdf, undefined)
   where
-    newdf = df { log_action = \_ _ _ _ -> return () }
+    newdf = Gap.setLogAction df $ \_ _ _ _ _ -> return ()
 setLogger True  df = do
     ref <- newIORef [] :: IO (IORef [String])
-    let newdf = df { log_action = appendLog ref }
+    let newdf = Gap.setLogAction df $ appendLog ref
     return (newdf, reverse <$> readIORef ref)
   where
-    appendLog ref _ src stl msg = modifyIORef ref (\ls -> ppMsg src msg stl : ls)
+    appendLog ref _ _ src stl msg = modifyIORef ref (\ls -> ppMsg src msg stl : ls)
 
 ----------------------------------------------------------------
 
@@ -49,7 +49,7 @@ ppErrMsg err = ppMsg spn msg defaultUserStyle ++ ext
      msg = errMsgShortDoc err
      ext = showMsg (errMsgExtraInfo err) defaultUserStyle
 
-ppMsg :: SrcSpan -> Message -> PprStyle -> String
+ppMsg :: SrcSpan -> SDoc -> PprStyle -> String
 ppMsg spn msg stl = fromMaybe def $ do
     (line,col,_,_) <- Gap.getSrcSpan spn
     file <- Gap.getSrcFile spn

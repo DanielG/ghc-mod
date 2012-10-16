@@ -1,7 +1,13 @@
 {-# LANGUAGE CPP #-}
 
 module Gap (
-    supportedExtensions
+    Gap.ClsInst
+  , mkTarget
+  , showDocForUser
+  , showDoc
+  , styleDoc
+  , setLogAction
+  , supportedExtensions
   , getSrcSpan
   , getSrcFile
   , renderMsg
@@ -18,7 +24,9 @@ module Gap (
 
 import Control.Applicative hiding (empty)
 import Control.Monad
+import Data.Time.Clock
 import DynFlags
+import ErrUtils
 import FastString
 import GHC
 import GHCChoice
@@ -26,11 +34,21 @@ import Language.Haskell.Extension
 import Outputable
 import StringBuffer
 
+import qualified InstEnv
+import qualified Pretty
+import qualified StringBuffer as SB
+
+
 #if __GLASGOW_HASKELL__ >= 702
 import CoreMonad (liftIO)
 #else
 import HscTypes (liftIO)
 import Pretty
+#endif
+
+#if __GLASGOW_HASKELL__ < 706
+import Control.Arrow
+import Data.Convertible
 #endif
 
 {-
@@ -40,6 +58,56 @@ pretty = showSDocForUser neverQualify . ppr
 debug :: Outputable a => a -> b -> b
 debug x v = trace (pretty x) v
 -}
+
+----------------------------------------------------------------
+----------------------------------------------------------------
+--
+#if __GLASGOW_HASKELL__ >= 706
+type ClsInst = InstEnv.ClsInst
+#else
+type ClsInst = InstEnv.Instance
+#endif
+
+mkTarget :: TargetId -> Bool -> Maybe (SB.StringBuffer, UTCTime) -> Target
+#if __GLASGOW_HASKELL__ >= 706
+mkTarget = Target
+#else
+mkTarget tid allowObjCode = Target tid allowObjCode . (fmap . second) convert
+#endif
+
+----------------------------------------------------------------
+----------------------------------------------------------------
+
+showDocForUser :: PrintUnqualified -> SDoc -> String
+#if __GLASGOW_HASKELL__ >= 706
+showDocForUser = showSDocForUser tracingDynFlags
+#else
+showDocForUser = showSDocForUser
+#endif
+
+showDoc :: SDoc -> String
+#if __GLASGOW_HASKELL__ >= 706
+showDoc = showSDoc tracingDynFlags
+#else
+showDoc = showSDoc
+#endif
+
+styleDoc :: PprStyle -> SDoc -> Pretty.Doc
+#if __GLASGOW_HASKELL__ >= 706
+styleDoc = withPprStyleDoc tracingDynFlags
+#else
+styleDoc = withPprStyleDoc
+#endif
+
+setLogAction :: DynFlags
+             -> (DynFlags -> Severity -> SrcSpan -> PprStyle -> SDoc -> IO ())
+             -> DynFlags
+setLogAction df f =
+#if __GLASGOW_HASKELL__ >= 706
+    df { log_action = f }
+#else
+    df { log_action = f df }
+#endif
 
 ----------------------------------------------------------------
 ----------------------------------------------------------------
@@ -77,7 +145,9 @@ getSrcFile _ = Nothing
 ----------------------------------------------------------------
 
 renderMsg :: SDoc -> PprStyle -> String
-#if __GLASGOW_HASKELL__ >= 702
+#if __GLASGOW_HASKELL__ >= 706
+renderMsg d stl = renderWithStyle tracingDynFlags d stl
+#elif __GLASGOW_HASKELL__ >= 702
 renderMsg d stl = renderWithStyle d stl
 #else
 renderMsg d stl = Pretty.showDocWith PageMode $ d stl
@@ -111,7 +181,12 @@ fOptions = [option | (option,_,_) <- fFlags]
 setCtx :: [ModSummary] -> Ghc Bool
 #if __GLASGOW_HASKELL__ >= 704
 setCtx ms = do
-    top <- map (IIModule . ms_mod) <$> filterM isTop ms
+#if __GLASGOW_HASKELL__ >= 706
+    let modName = IIModule . moduleName . ms_mod
+#else
+    let modName = IIModule . ms_mod
+#endif
+    top <- map modName <$> filterM isTop ms
     setContext top
     return (not . null $ top)
 #else

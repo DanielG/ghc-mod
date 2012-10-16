@@ -45,6 +45,7 @@ Executable ghc-mod
   GHC-Options:          -Wall
   Build-Depends:        base >= 4.0 && < 5
                       , Cabal
+                      , convertible
                       , directory
                       , filepath
                       , ghc
@@ -56,6 +57,7 @@ Executable ghc-mod
                       , process
                       , regex-posix
                       , syb
+                      , time
                       , transformers
 
 Source-Repository head
