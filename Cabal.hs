@@ -2,7 +2,7 @@
 
 module Cabal (initializeGHC) where
 
-import CabalApi (cabalBuildInfo, cabalDependPackages)
+import CabalApi (cabalParseFile, cabalBuildInfo, cabalDependPackages)
 import Control.Applicative
 import Control.Exception
 import Control.Monad
@@ -31,7 +31,8 @@ initializeGHC opt fileName ghcOptions logging = withCabal ||> withoutCabal
         return (fileName,logReader)
     withCabal = do
         (owdir,cdir,cfile) <- liftIO getDirs
-        binfo@BuildInfo{..} <- liftIO $ cabalBuildInfo cfile
+        cabal <- liftIO $ cabalParseFile cfile
+        binfo@BuildInfo{..} <- liftIO $ cabalBuildInfo cabal
         let exts = map (addX . Gap.extensionToString) $ usedExtensions binfo
             lang = maybe "-XHaskell98" (addX . show) defaultLanguage
             libs = map ("-l" ++) extraLibs
@@ -40,7 +41,7 @@ initializeGHC opt fileName ghcOptions logging = withCabal ||> withoutCabal
             idirs = case hsSourceDirs of
                 []   -> [cdir,owdir]
                 dirs -> map (cdir </>) dirs ++ [owdir]
-        depPkgs   <- liftIO $ cabalDependPackages cfile
+        depPkgs   <- liftIO $ cabalDependPackages cabal
         logReader <- initSession opt gopts idirs (Just depPkgs) logging
         return (fileName,logReader)
     addX = ("-X" ++)

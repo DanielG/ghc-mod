@@ -1,4 +1,5 @@
 module CabalApi (
+  cabalParseFile,
   cabalBuildInfo,
   cabalDependPackages
   ) where
@@ -19,19 +20,18 @@ import Distribution.PackageDescription.Parse (readPackageDescription)
 
 ----------------------------------------------------------------
 
+cabalParseFile :: FilePath -> IO GenericPackageDescription
+cabalParseFile =  readPackageDescription silent
+
 -- Causes error, catched in the upper function.
-cabalBuildInfo :: FilePath -> IO BuildInfo
-cabalBuildInfo file = do
-    cabal <- readPackageDescription silent file
-    return . fromJust $ fromLibrary cabal <|> fromExecutable cabal
+cabalBuildInfo :: GenericPackageDescription -> IO BuildInfo
+cabalBuildInfo pd = do
+    return . fromJust $ fromLibrary pd <|> fromExecutable pd
   where
     fromLibrary c     = libBuildInfo . condTreeData <$> condLibrary c
     fromExecutable c  = buildInfo . condTreeData . snd <$> toMaybe (condExecutables c)
     toMaybe [] = Nothing
     toMaybe (x:_) = Just x
-
-parseGenericDescription :: FilePath -> IO GenericPackageDescription
-parseGenericDescription =  readPackageDescription silent
 
 getDepsOfPairs :: [(a1, CondTree v [b] a)] -> [b]
 getDepsOfPairs =  concatMap (condTreeConstraints . snd)
@@ -48,9 +48,8 @@ allDependsOfDescription pd =
 getDependencyPackageName :: Dependency -> String
 getDependencyPackageName (Dependency (PackageName n) _) = n
 
-cabalDependPackages :: FilePath -> IO [String]
+cabalDependPackages :: GenericPackageDescription -> IO [String]
 cabalDependPackages =
-  fmap (toList . fromList
-        . map getDependencyPackageName
-        . allDependsOfDescription)
-  . parseGenericDescription
+  return . toList . fromList
+  . map getDependencyPackageName
+  . allDependsOfDescription
