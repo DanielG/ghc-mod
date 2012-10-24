@@ -2,6 +2,7 @@
 
 module Cabal (initializeGHC) where
 
+import CabalApi (dependPackages)
 import Control.Applicative
 import Control.Exception
 import Control.Monad
@@ -29,7 +30,7 @@ initializeGHC :: Options -> FilePath -> [String] -> Bool -> Ghc (FilePath,LogRea
 initializeGHC opt fileName ghcOptions logging = withCabal ||> withoutCabal
   where
     withoutCabal = do
-        logReader <- initSession opt ghcOptions importDirs logging
+        logReader <- initSession opt ghcOptions importDirs Nothing logging
         return (fileName,logReader)
     withCabal = do
         (owdir,cdir,cfile) <- liftIO getDirs
@@ -42,7 +43,8 @@ initializeGHC opt fileName ghcOptions logging = withCabal ||> withoutCabal
             idirs = case hsSourceDirs of
                 []   -> [cdir,owdir]
                 dirs -> map (cdir </>) dirs ++ [owdir]
-        logReader <- initSession opt gopts idirs logging
+        depPkgs   <- liftIO $ dependPackages cfile
+        logReader <- initSession opt gopts idirs (Just depPkgs) logging
         return (fileName,logReader)
     addX = ("-X" ++)
 
