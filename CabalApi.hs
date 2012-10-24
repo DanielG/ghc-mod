@@ -1,6 +1,11 @@
-module CabalApi (dependPackages) where
+module CabalApi (
+  cabalBuildInfo,
+  cabalDependPackages
+  ) where
 
-import Data.Maybe (maybeToList)
+import Control.Applicative
+
+import Data.Maybe (fromJust, maybeToList)
 import Data.Set (fromList, toList)
 
 import Distribution.Verbosity (silent)
@@ -8,10 +13,27 @@ import Distribution.Package (Dependency(Dependency), PackageName(PackageName))
 import Distribution.PackageDescription
   (GenericPackageDescription,
    condLibrary, condExecutables, condTestSuites, condBenchmarks,
-   CondTree, condTreeConstraints)
+   BuildInfo, usedExtensions, libBuildInfo, buildInfo,
+   CondTree, condTreeConstraints, condTreeData)
 import Distribution.PackageDescription.Parse (readPackageDescription)
 
+-- import Distribution.PackageDescription
+--   (BuildInfo(..))
+-- import Distribution.PackageDescription.Parse (readPackageDescription)
+-- import Distribution.Verbosity (silent)
+
 ----------------------------------------------------------------
+
+-- Causes error, catched in the upper function.
+cabalBuildInfo :: FilePath -> IO BuildInfo
+cabalBuildInfo file = do
+    cabal <- readPackageDescription silent file
+    return . fromJust $ fromLibrary cabal <|> fromExecutable cabal
+  where
+    fromLibrary c     = libBuildInfo . condTreeData <$> condLibrary c
+    fromExecutable c  = buildInfo . condTreeData . snd <$> toMaybe (condExecutables c)
+    toMaybe [] = Nothing
+    toMaybe (x:_) = Just x
 
 parseGenericDescription :: FilePath -> IO GenericPackageDescription
 parseGenericDescription =  readPackageDescription silent
@@ -31,8 +53,8 @@ allDependsOfDescription pd =
 getDependencyPackageName :: Dependency -> String
 getDependencyPackageName (Dependency (PackageName n) _) = n
 
-dependPackages :: FilePath -> IO [String]
-dependPackages =
+cabalDependPackages :: FilePath -> IO [String]
+cabalDependPackages =
   fmap (toList . fromList
         . map getDependencyPackageName
         . allDependsOfDescription)
