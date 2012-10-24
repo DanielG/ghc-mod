@@ -13,14 +13,9 @@ import Distribution.Package (Dependency(Dependency), PackageName(PackageName))
 import Distribution.PackageDescription
   (GenericPackageDescription,
    condLibrary, condExecutables, condTestSuites, condBenchmarks,
-   BuildInfo, usedExtensions, libBuildInfo, buildInfo,
+   BuildInfo, libBuildInfo, buildInfo,
    CondTree, condTreeConstraints, condTreeData)
 import Distribution.PackageDescription.Parse (readPackageDescription)
-
--- import Distribution.PackageDescription
---   (BuildInfo(..))
--- import Distribution.PackageDescription.Parse (readPackageDescription)
--- import Distribution.Verbosity (silent)
 
 ----------------------------------------------------------------
 
