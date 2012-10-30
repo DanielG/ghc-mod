@@ -16,6 +16,7 @@ module Gap (
   , toStringBuffer
   , liftIO
   , extensionToString
+  , showSeverityCaption
 #if __GLASGOW_HASKELL__ >= 702
 #else
   , module Pretty
@@ -201,6 +202,14 @@ setCtx ms = do
         lookupMod = lookupModule (ms_mod_name mos) Nothing >> return True
         returnFalse = return False
 
+
+showSeverityCaption :: Severity -> String
+#if __GLASGOW_HASKELL__ >= 706
+showSeverityCaption SevWarning = "Warning:"
+showSeverityCaption _          = ""
+#else
+showSeverityCaption = const ""
+#endif
 ----------------------------------------------------------------
 -- This is Cabal, not GHC API
 

@@ -30,7 +30,7 @@ setLogger True  df = do
     let newdf = Gap.setLogAction df $ appendLog ref
     return (newdf, reverse <$> readIORef ref)
   where
-    appendLog ref _ _ src stl msg = modifyIORef ref (\ls -> ppMsg src msg stl : ls)
+    appendLog ref _ sev src stl msg = modifyIORef ref (\ls -> ppMsg src sev msg stl : ls)
 
 ----------------------------------------------------------------
 
@@ -43,17 +43,19 @@ errBagToStrList = map ppErrMsg . reverse . bagToList
 ----------------------------------------------------------------
 
 ppErrMsg :: ErrMsg -> String
-ppErrMsg err = ppMsg spn msg defaultUserStyle ++ ext
+ppErrMsg err = ppMsg spn SevError msg defaultUserStyle ++ ext
    where
      spn = head (errMsgSpans err)
      msg = errMsgShortDoc err
      ext = showMsg (errMsgExtraInfo err) defaultUserStyle
 
-ppMsg :: SrcSpan -> SDoc -> PprStyle -> String
-ppMsg spn msg stl = fromMaybe def $ do
+ppMsg :: SrcSpan -> Severity-> SDoc -> PprStyle -> String
+ppMsg spn sev msg stl = fromMaybe def $ do
     (line,col,_,_) <- Gap.getSrcSpan spn
     file <- Gap.getSrcFile spn
-    return $ file ++ ":" ++ show line ++ ":" ++ show col ++ ":" ++ cts ++ "\0"
+    let severityCaption = Gap.showSeverityCaption sev
+    return $ file ++ ":" ++ show line ++ ":"
+               ++ show col ++ ":" ++ severityCaption ++ cts ++ "\0"
   where
     def = "ghc-mod:0:0:Probably mutual module import occurred\0"
     cts  = showMsg msg stl
