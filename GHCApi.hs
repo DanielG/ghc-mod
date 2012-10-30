@@ -31,29 +31,33 @@ initSession0 :: Options -> Ghc [PackageId]
 initSession0 opt = getSessionDynFlags >>=
   (>>= setSessionDynFlags) . setGhcFlags opt
 
-initSession :: Options -> [String] -> [FilePath] -> Bool -> Ghc LogReader
-initSession opt cmdOpts idirs logging = do
+initSession :: Options -> [String] -> [FilePath] -> Maybe [String] -> Bool -> Ghc LogReader
+initSession opt cmdOpts idirs mayPkgs logging = do
     dflags <- getSessionDynFlags
     let opts = map noLoc cmdOpts
     (dflags',_,_) <- parseDynamicFlags dflags opts
-    (dflags'',readLog) <- liftIO . (>>= setLogger logging) . setGhcFlags opt . setFlags opt dflags' $ idirs
+    (dflags'',readLog) <- liftIO . (>>= setLogger logging)
+                          . setGhcFlags opt . setFlags opt dflags' idirs $ mayPkgs
     _ <- setSessionDynFlags dflags''
     return readLog
 
 ----------------------------------------------------------------
 
-setFlags :: Options -> DynFlags -> [FilePath] -> DynFlags
-setFlags opt d idirs
+setFlags :: Options -> DynFlags -> [FilePath] -> Maybe [String] -> DynFlags
+setFlags opt d idirs mayPkgs
   | expandSplice opt = dopt_set d' Opt_D_dump_splices
   | otherwise        = d'
   where
-    d' = d {
-        packageFlags = ghcPackage : packageFlags d
-      , importPaths = idirs
+    d' = maySetExpose $ d {
+        importPaths = idirs
       , ghcLink = LinkInMemory
       , hscTarget = HscInterpreted
       , flags = flags d
       }
+    -- Do hide-all only when depend packages specified
+    maySetExpose df = maybe df (\x -> (dopt_set df Opt_HideAllPackages) {
+                                   packageFlags = map ExposePackage x ++ packageFlags df
+                                   }) mayPkgs
 
 ghcPackage :: PackageFlag
 ghcPackage = ExposePackage "ghc"
