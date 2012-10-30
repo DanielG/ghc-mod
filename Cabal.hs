@@ -2,15 +2,13 @@
 
 module Cabal (initializeGHC) where
 
+import CabalApi (cabalParseFile, cabalBuildInfo, cabalDependPackages)
 import Control.Applicative
 import Control.Exception
 import Control.Monad
 import CoreMonad
 import Data.List
-import Data.Maybe
-import Distribution.PackageDescription
-import Distribution.PackageDescription.Parse (readPackageDescription)
-import Distribution.Verbosity (silent)
+import Distribution.PackageDescription (BuildInfo(..), usedExtensions)
 import ErrMsg
 import GHC
 import GHCApi
@@ -29,11 +27,12 @@ initializeGHC :: Options -> FilePath -> [String] -> Bool -> Ghc (FilePath,LogRea
 initializeGHC opt fileName ghcOptions logging = withCabal ||> withoutCabal
   where
     withoutCabal = do
-        logReader <- initSession opt ghcOptions importDirs logging
+        logReader <- initSession opt ghcOptions importDirs Nothing logging
         return (fileName,logReader)
     withCabal = do
         (owdir,cdir,cfile) <- liftIO getDirs
-        binfo@BuildInfo{..} <- liftIO $ parseCabalFile cfile
+        cabal <- liftIO $ cabalParseFile cfile
+        binfo@BuildInfo{..} <- liftIO $ cabalBuildInfo cabal
         let exts = map (addX . Gap.extensionToString) $ usedExtensions binfo
             lang = maybe "-XHaskell98" (addX . show) defaultLanguage
             libs = map ("-l" ++) extraLibs
@@ -42,22 +41,10 @@ initializeGHC opt fileName ghcOptions logging = withCabal ||> withoutCabal
             idirs = case hsSourceDirs of
                 []   -> [cdir,owdir]
                 dirs -> map (cdir </>) dirs ++ [owdir]
-        logReader <- initSession opt gopts idirs logging
+        depPkgs   <- liftIO $ cabalDependPackages cabal
+        logReader <- initSession opt gopts idirs (Just depPkgs) logging
         return (fileName,logReader)
     addX = ("-X" ++)
-
-----------------------------------------------------------------
-
--- Causes error, catched in the upper function.
-parseCabalFile :: FilePath -> IO BuildInfo
-parseCabalFile file = do
-    cabal <- readPackageDescription silent file
-    return . fromJust $ fromLibrary cabal <|> fromExecutable cabal
-  where
-    fromLibrary c     = libBuildInfo . condTreeData <$> condLibrary c
-    fromExecutable c  = buildInfo . condTreeData . snd <$> toMaybe (condExecutables c)
-    toMaybe [] = Nothing
-    toMaybe (x:_) = Just x
 
 ----------------------------------------------------------------
 
