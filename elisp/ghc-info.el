@@ -14,7 +14,7 @@
   (interactive "P")
   (let* ((modname (or (ghc-find-module-name) "Main"))
 	 (expr0 (ghc-things-at-point))
-	 (expr (if ask (ghc-read-expression expr0) expr0))
+	 (expr (if (or ask (not expr0)) (ghc-read-expression expr0) expr0))
 	 (file (buffer-file-name))
 	 (cmds (list "info" file modname expr)))
     (ghc-display-information cmds nil)))
