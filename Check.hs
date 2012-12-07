@@ -18,7 +18,7 @@ checkSyntax opt file = unlines <$> check opt file
 ----------------------------------------------------------------
 
 check :: Options -> String -> IO [String]
-check opt fileName = withGHC $ checkIt `gcatch` handleErrMsg
+check opt fileName = withGHC' fileName $ checkIt `gcatch` handleErrMsg
   where
     checkIt = do
         (file,readLog) <- initializeGHC opt fileName options True

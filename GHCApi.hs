@@ -15,13 +15,16 @@ import Types
 ----------------------------------------------------------------
 
 withGHC :: Alternative m => Ghc (m a) -> IO (m a)
-withGHC body = ghandle ignore $ runGhc (Just libdir) $ do
+withGHC = withGHC' "Dummy"
+
+withGHC' :: Alternative m => FilePath -> Ghc (m a) -> IO (m a)
+withGHC' file body = ghandle ignore $ runGhc (Just libdir) $ do
     dflags <- getSessionDynFlags
     defaultCleanupHandler dflags body
   where
     ignore :: Alternative m => SomeException -> IO (m a)
     ignore e = do
-        hPutStr stderr "Dummy:0:0:Error:"
+        hPutStr stderr $ file ++ ":0:0:Error:"
         hPrint stderr e
         exitSuccess
 
