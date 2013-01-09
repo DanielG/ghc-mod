@@ -104,9 +104,12 @@
 
 (defun ghc-type-obtain-tinfos (modname)
   (let* ((ln (int-to-string (line-number-at-pos)))
-	 (cn (int-to-string (current-column)))
-	 (cdir default-directory)
-	 (file (buffer-file-name)))
+         (cn (int-to-string (current-column)))
+         (cdir default-directory)
+         (file (buffer-file-name)))
+    (if (and (not (eq (char-syntax (char-after)) ? ))
+             (eq (char-syntax (char-before)) ? ))
+        (setq cn (int-to-string (1+ (string-to-int cn)))))
     (ghc-read-lisp
      (lambda ()
        (cd cdir)
