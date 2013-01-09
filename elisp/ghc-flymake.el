@@ -42,7 +42,7 @@
    (if ghc-flymake-command
        (let ((hopts (ghc-mapconcat (lambda (x) (list "-h" x)) ghc-hlint-options)))
 	 `(,@hopts "lint" ,file))
-     `(,@(ghc-make-ghc-options) "check" ,file)))
+     `(,@(ghc-make-ghc-options) "check" "-g" "-fno-code" ,file)))
 
 (defun ghc-flymake-toggle-command ()
   (interactive)
