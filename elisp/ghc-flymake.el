@@ -34,7 +34,11 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defun ghc-flymake-init ()
-  (list ghc-module-command (ghc-flymake-command (flymake-init-create-temp-buffer-copy 'flymake-create-temp-inplace))))
+  (list (if ghc-flymake-command
+            ghc-module-command
+          ghc-hdevtools-command)
+        (ghc-flymake-command
+         (flymake-init-create-temp-buffer-copy 'flymake-create-temp-inplace))))
 
 (defvar ghc-flymake-command nil) ;; nil: check, t: lint
 
