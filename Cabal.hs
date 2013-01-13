@@ -2,7 +2,7 @@
 
 module Cabal (initializeGHC) where
 
-import CabalApi (cabalParseFile, cabalBuildInfo, cabalDependPackages)
+import CabalApi
 import Control.Applicative
 import Control.Exception
 import Control.Monad
@@ -41,7 +41,8 @@ initializeGHC opt fileName ghcOptions logging = withCabal ||> withoutCabal
             idirs = case hsSourceDirs of
                 []   -> [cdir,owdir]
                 dirs -> map (cdir </>) dirs ++ [owdir]
-        depPkgs   <- liftIO $ cabalDependPackages cabal
+            name = cabalPackageName cabal
+        depPkgs   <- liftIO $ filter (/= name) <$> cabalDependPackages cabal
         logReader <- initSession opt gopts idirs (Just depPkgs) logging
         return (fileName,logReader)
     addX = ("-X" ++)
