@@ -9,11 +9,11 @@ import Control.Monad
 import CoreMonad
 import Data.List
 import Distribution.PackageDescription (BuildInfo(..), usedExtensions)
+import Distribution.Text (display)
 import ErrMsg
 import GHC
 import GHCApi
 import GHCChoice
-import qualified Gap
 import System.Directory
 import System.FilePath
 import Types
@@ -33,8 +33,8 @@ initializeGHC opt fileName ghcOptions logging = withCabal ||> withoutCabal
         (owdir,cdir,cfile) <- liftIO getDirs
         cabal <- liftIO $ cabalParseFile cfile
         binfo@BuildInfo{..} <- liftIO $ cabalBuildInfo cabal
-        let exts = map (addX . Gap.extensionToString) $ usedExtensions binfo
-            lang = maybe "-XHaskell98" (addX . show) defaultLanguage
+        let exts = map (addX . display) $ usedExtensions binfo
+            lang = maybe "-XHaskell98" (addX . display) defaultLanguage
             libs = map ("-l" ++) extraLibs
             libDirs = map ("-L" ++) extraLibDirs
             gopts = ghcOptions ++ exts ++ [lang] ++ libs ++ libDirs
