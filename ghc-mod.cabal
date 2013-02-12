@@ -62,6 +62,32 @@ Executable ghc-mod
                       , time
                       , transformers
 
+Test-Suite spec
+  Main-Is:              Spec.hs
+  Hs-Source-Dirs:       test, .
+  Type:                 exitcode-stdio-1.0
+  Other-Modules:        Expectation
+                        LangSpec
+                        ListSpec
+  Build-Depends:        base >= 4.0 && < 5
+                      , Cabal >= 1.10
+                      , containers
+                      , convertible
+                      , directory
+                      , filepath
+                      , ghc
+                      , ghc-paths
+                      , ghc-syb-utils
+                      , hlint >= 1.7.1
+                      , io-choice
+                      , old-time
+                      , process
+                      , regex-posix
+                      , syb
+                      , time
+                      , transformers
+                      , hspec
+
 Source-Repository head
   Type:                 git
   Location:             git://github.com/kazu-yamamoto/ghc-mod.git
