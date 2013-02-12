@@ -1,6 +1,6 @@
 {-# LANGUAGE OverloadedStrings, RecordWildCards #-}
 
-module Cabal (initializeGHC) where
+module Cabal (initializeGHC, getDirs, fromCabal) where
 
 import CabalApi (cabalParseFile, cabalBuildInfo, cabalDependPackages)
 import Control.Applicative
@@ -30,20 +30,26 @@ initializeGHC opt fileName ghcOptions logging = withCabal ||> withoutCabal
         logReader <- initSession opt ghcOptions importDirs Nothing logging
         return (fileName,logReader)
     withCabal = do
-        (owdir,cdir,cfile) <- liftIO getDirs
-        cabal <- liftIO $ cabalParseFile cfile
-        binfo@BuildInfo{..} <- liftIO $ cabalBuildInfo cabal
-        let exts = map (addX . Gap.extensionToString) $ usedExtensions binfo
-            lang = maybe "-XHaskell98" (addX . show) defaultLanguage
-            libs = map ("-l" ++) extraLibs
-            libDirs = map ("-L" ++) extraLibDirs
-            gopts = ghcOptions ++ exts ++ [lang] ++ libs ++ libDirs
-            idirs = case hsSourceDirs of
-                []   -> [cdir,owdir]
-                dirs -> map (cdir </>) dirs ++ [owdir]
-        depPkgs   <- liftIO $ cabalDependPackages cabal
+        (gopts,idirs,depPkgs) <- liftIO $ fromCabal ghcOptions
         logReader <- initSession opt gopts idirs (Just depPkgs) logging
         return (fileName,logReader)
+
+fromCabal :: [String] -> IO ([String], [FilePath], [String])
+fromCabal ghcOptions = do
+    (owdir,cdir,cfile) <- getDirs
+    cabal <- cabalParseFile cfile
+    binfo@BuildInfo{..} <- cabalBuildInfo cabal
+    let exts = map (addX . Gap.extensionToString) $ usedExtensions binfo
+        lang = maybe "-XHaskell98" (addX . show) defaultLanguage
+        libs = map ("-l" ++) extraLibs
+        libDirs = map ("-L" ++) extraLibDirs
+        gopts = ghcOptions ++ exts ++ [lang] ++ libs ++ libDirs
+        idirs = case hsSourceDirs of
+            []   -> [cdir,owdir]
+            dirs -> map (cdir </>) dirs ++ [owdir]
+    depPkgs <- cabalDependPackages cabal
+    return (gopts,idirs,depPkgs)
+  where
     addX = ("-X" ++)
 
 ----------------------------------------------------------------
