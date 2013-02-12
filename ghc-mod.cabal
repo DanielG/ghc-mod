@@ -70,6 +70,7 @@ Test-Suite spec
                         BrowseSpec
                         FlagSpec
                         LangSpec
+                        LintSpec
                         ListSpec
   Build-Depends:        base >= 4.0 && < 5
                       , Cabal >= 1.10
