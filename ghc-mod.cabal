@@ -67,6 +67,7 @@ Test-Suite spec
   Hs-Source-Dirs:       test, .
   Type:                 exitcode-stdio-1.0
   Other-Modules:        Expectation
+                        FlagSpec
                         LangSpec
                         ListSpec
   Build-Depends:        base >= 4.0 && < 5
