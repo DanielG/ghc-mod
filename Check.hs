@@ -26,5 +26,5 @@ check opt fileName = withGHC' fileName $ checkIt `gcatch` handleErrMsg
         _ <- load LoadAllTargets
         liftIO readLog
     options
-      | expandSplice opt = ["-w:"] ++ ghcOpts opt
-      | otherwise        = ["-Wall"] ++ ghcOpts opt
+      | expandSplice opt = "-w:"   : ghcOpts opt
+      | otherwise        = "-Wall" : ghcOpts opt

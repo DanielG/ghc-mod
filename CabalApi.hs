@@ -25,7 +25,7 @@ cabalParseFile =  readPackageDescription silent
 
 -- Causes error, catched in the upper function.
 cabalBuildInfo :: GenericPackageDescription -> IO BuildInfo
-cabalBuildInfo pd = do
+cabalBuildInfo pd =
     return . fromJust $ fromLibrary pd <|> fromExecutable pd
   where
     fromLibrary c     = libBuildInfo . condTreeData <$> condLibrary c
