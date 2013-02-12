@@ -10,5 +10,5 @@ spec :: Spec
 spec = do
     describe "listLanguages" $ do
         it "lists up language extensions" $ do
-            modules <- lines <$> listLanguages defaultOptions
-            modules `shouldContain` "OverloadedStrings"
+            exts <- lines <$> listLanguages defaultOptions
+            exts `shouldContain` "OverloadedStrings"
