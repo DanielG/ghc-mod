@@ -47,8 +47,13 @@ fromCabal ghcOptions = do
         idirs = case hsSourceDirs of
             []   -> [cdir,owdir]
             dirs -> map (cdir </>) dirs ++ [owdir]
-    depPkgs <- cabalDependPackages cabal
+    depPkgs <- removeMe cfile <$> cabalDependPackages cabal
     return (gopts,idirs,depPkgs)
+
+removeMe :: FilePath -> [String] -> [String]
+removeMe cabalfile depPkgs = filter (/= me) depPkgs
+  where
+    me = dropExtension $ takeFileName cabalfile
 
 ----------------------------------------------------------------
 
