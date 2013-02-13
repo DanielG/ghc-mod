@@ -9,11 +9,11 @@ import Control.Monad
 import CoreMonad
 import Data.List
 import Distribution.PackageDescription (BuildInfo(..), usedExtensions)
+import Distribution.Text (display)
 import ErrMsg
 import GHC
 import GHCApi
 import GHCChoice
-import qualified Gap
 import System.Directory
 import System.FilePath
 import Types
@@ -39,8 +39,8 @@ fromCabal ghcOptions = do
     (owdir,cdir,cfile) <- getDirs
     cabal <- cabalParseFile cfile
     binfo@BuildInfo{..} <- cabalBuildInfo cabal
-    let exts = map (addX . Gap.extensionToString) $ usedExtensions binfo
-        lang = maybe "-XHaskell98" (addX . show) defaultLanguage
+    let exts = map (("-X" ++) . display) $ usedExtensions binfo
+        lang = maybe "-XHaskell98" (("-X" ++) . display) defaultLanguage
         libs = map ("-l" ++) extraLibs
         libDirs = map ("-L" ++) extraLibDirs
         gopts = ghcOptions ++ exts ++ [lang] ++ libs ++ libDirs
@@ -49,8 +49,6 @@ fromCabal ghcOptions = do
             dirs -> map (cdir </>) dirs ++ [owdir]
     depPkgs <- cabalDependPackages cabal
     return (gopts,idirs,depPkgs)
-  where
-    addX = ("-X" ++)
 
 ----------------------------------------------------------------
 

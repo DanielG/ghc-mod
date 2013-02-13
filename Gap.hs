@@ -15,7 +15,6 @@ module Gap (
   , fOptions
   , toStringBuffer
   , liftIO
-  , extensionToString
   , showSeverityCaption
 #if __GLASGOW_HASKELL__ >= 702
 #else
@@ -31,7 +30,6 @@ import ErrUtils
 import FastString
 import GHC
 import GHCChoice
-import Language.Haskell.Extension
 import Outputable
 import StringBuffer
 
@@ -209,15 +207,4 @@ showSeverityCaption SevWarning = "Warning:"
 showSeverityCaption _          = ""
 #else
 showSeverityCaption = const ""
-#endif
-----------------------------------------------------------------
--- This is Cabal, not GHC API
-
-extensionToString :: Extension -> String
-#if __GLASGOW_HASKELL__ == 704
-extensionToString (EnableExtension ext)  = show ext
-extensionToString (DisableExtension ext) = show ext -- FIXME
-extensionToString (UnknownExtension ext) = ext
-#else
-extensionToString = show
 #endif
