@@ -203,7 +203,7 @@ setCtx ms = do
 
 showSeverityCaption :: Severity -> String
 #if __GLASGOW_HASKELL__ >= 706
-showSeverityCaption SevWarning = "Warning:"
+showSeverityCaption SevWarning = "Warning: "
 showSeverityCaption _          = ""
 #else
 showSeverityCaption = const ""
