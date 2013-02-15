@@ -1,5 +1,5 @@
 Name:                   ghc-mod
-Version:                1.11.3
+Version:                1.11.4
 Author:                 Kazu Yamamoto <kazu@iij.ad.jp>
 Maintainer:             Kazu Yamamoto <kazu@iij.ad.jp>
 License:                BSD3
@@ -19,13 +19,20 @@ Description:            This packages includes Elisp files
                         see <https://github.com/eagletmt/ghcmod-vim> or
                         <https://github.com/scrooloose/syntastic>
 Category:               Development
-Cabal-Version:          >= 1.6
+Cabal-Version:          >= 1.10
 Build-Type:             Simple
 Data-Dir:               elisp
 Data-Files:             Makefile ghc.el ghc-func.el ghc-doc.el ghc-comp.el
                         ghc-flymake.el ghc-command.el ghc-info.el
                         ghc-ins-mod.el ghc-indent.el
+Extra-Source-Files:     test/data/*.cabal
+                        test/data/*.hs
+                        test/data/ghc-mod-check/*.hs
+                        test/data/ghc-mod-check/*.cabal
+                        test/data/ghc-mod-check/Data/*.hs
+                        test/data/subdir1/subdir2/dummy
 Executable ghc-mod
+  Default-Language:     Haskell2010
   Main-Is:              GHCMod.hs
   Other-Modules:        Browse
                         CabalApi
@@ -63,6 +70,7 @@ Executable ghc-mod
                       , transformers
 
 Test-Suite spec
+  Default-Language:     Haskell2010
   Main-Is:              Spec.hs
   Hs-Source-Dirs:       test, .
   Type:                 exitcode-stdio-1.0
