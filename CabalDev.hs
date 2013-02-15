@@ -21,29 +21,30 @@ modifyOptions opts = found ||> notFound
     notFound = return opts
 
 findCabalDev :: Maybe String -> IO FilePath
+findCabalDev Nothing = getCurrentDirectory >>= searchIt . splitPath
 findCabalDev (Just path) = do
     exist <- doesDirectoryExist path
     if exist then
         findConf path
       else
         findCabalDev Nothing
-findCabalDev Nothing = getCurrentDirectory >>= searchIt . splitPath
 
 addPath :: Options -> String -> Options
-addPath orig_opts path = do
-    let orig_ghcopt = ghcOpts orig_opts
-    orig_opts { ghcOpts = orig_ghcopt ++ ["-package-conf", path, "-no-user-package-conf"] }
+addPath orig_opts path = orig_opts { ghcOpts = opts' }
+  where
+    orig_ghcopt = ghcOpts orig_opts
+    opts' = orig_ghcopt ++ ["-package-conf", path, "-no-user-package-conf"]
 
 searchIt :: [FilePath] -> IO FilePath
 searchIt [] = throwIO $ userError "Not found"
 searchIt path = do
-    let cabalDir = mpath path
     exist <- doesDirectoryExist cabalDir
     if exist then
         findConf cabalDir
       else
         searchIt $ init path
   where
+    cabalDir = mpath path
     mpath a = joinPath a </> "cabal-dev/"
 
 findConf :: FilePath -> IO FilePath
