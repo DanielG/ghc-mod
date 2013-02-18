@@ -44,8 +44,7 @@ searchIt path = do
       else
         searchIt $ init path
   where
-    cabalDir = mpath path
-    mpath a = joinPath a </> "cabal-dev/"
+    cabalDir = joinPath path </> "cabal-dev/"
 
 findConf :: FilePath -> IO FilePath
 findConf path = do
