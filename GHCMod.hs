@@ -83,7 +83,8 @@ main :: IO ()
 main = flip catches handlers $ do
     args <- getArgs
     let (opt',cmdArg) = parseArgs argspec args
-    res <- modifyOptions opt' >>= \opt -> case safelist cmdArg 0 of
+    opt <- modifyOptions opt'
+    res <- case safelist cmdArg 0 of
       "browse" -> concat <$> mapM (browseModule opt) (tail cmdArg)
       "list"   -> listModules opt
       "check"  -> withFile (checkSyntax opt) (safelist cmdArg 1)
