@@ -1,5 +1,6 @@
 module Browse (browseModule) where
 
+import Control.Arrow (second)
 import Control.Applicative
 import Data.Char
 import Data.List
@@ -12,6 +13,7 @@ import Types
 import Outputable
 import Var
 import TyCon
+import Type
 
 ----------------------------------------------------------------
 
@@ -62,7 +64,7 @@ browse opt mdlName = withGHC $ do
 
     showThing :: DynFlags -> TyThing -> Maybe String
     showThing dflags t = case t of
-      (AnId i) -> Just $ getOccString i ++ " :: " ++ showOutputable dflags (snd $ splitForAllTys $ varType i)
+      (AnId i) -> Just $ getOccString i ++ " :: " ++ showOutputable dflags (removeForAlls $ varType i)
       (ATyCon t) -> do
         tyType' <- tyType t
         return $ intercalate " " $ [tyType', getOccString t] ++ map getOccString (tyConTyVars t)
@@ -75,6 +77,15 @@ browse opt mdlName = withGHC $ do
           | isClassTyCon t = Just "class"
           | isSynTyCon t = Just "type"
           | otherwise = Nothing
+
+    removeForAlls :: Type -> Type
+    removeForAlls ty = case splitFunTy_maybe ty' of
+      Nothing -> ty'
+      Just (pre, ftype) -> if isPredTy pre then mkFunTy pre (dropForAlls ftype) else ty'
+      where
+        ty' = dropForAlls ty
+
+
 
 showOutputable :: Outputable a => DynFlags -> a -> String
 showOutputable dflags = unwords . lines . showSDocForUser dflags neverQualify . ppr
