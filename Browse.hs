@@ -45,7 +45,15 @@ browse opt mdlName = withGHC $ do
         processName :: Name -> Ghc String
         processName nm = do
           tyInfo <- modInfoLookupName minfo nm
-          return $ fromMaybe (getOccString nm) (tyInfo >>= showThing dynFlags)
+          -- If nothing found, load dependent module and lookup global
+          tyResult <- maybe inOtherModule (return . Just) tyInfo
+          return $ fromMaybe name (tyResult >>= showThing dynFlags)
+          where
+            inOtherModule :: Ghc (Maybe TyThing)
+            inOtherModule = do
+              otherModule <- getModuleInfo (nameModule nm)
+              lookupGlobalName nm
+            name = getOccString nm ++ " from " ++ moduleNameString (moduleName (nameModule nm))
       mapM processName exports
       where
         exports = modInfoExports minfo
