@@ -25,7 +25,9 @@ browseModule opt mdlName = (convert opt . format) <$> browse opt mdlName
     formatOps = sort . map formatOps'
     formatOps' x@(s:_)
       | isAlpha s = x
-      | otherwise = '(' : x ++ ")"
+      | otherwise = "(" ++ name ++ ")" ++ tail_
+      where
+        (name, tail_) = break isSpace x
     formatOps' [] = error "formatOps'"
 
 browse :: Options -> String -> IO [String]
