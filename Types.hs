@@ -9,6 +9,7 @@ data Options = Options {
   , hlintOpts    :: [String]
   , ghcOpts      :: [String]
   , operators    :: Bool
+  , detailed :: Bool
   , expandSplice :: Bool
   , sandbox      :: Maybe String
   }
@@ -19,6 +20,7 @@ defaultOptions = Options {
   , hlintOpts    = []
   , ghcOpts      = []
   , operators    = False
+  , detailed = False
   , expandSplice = False
   , sandbox      = Nothing
   }

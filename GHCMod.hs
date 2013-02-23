@@ -33,7 +33,7 @@ usage =    "ghc-mod version " ++ showVersion version ++ "\n"
         ++ "\t ghc-mod list" ++ ghcOptHelp ++ "[-l]\n"
         ++ "\t ghc-mod lang [-l]\n"
         ++ "\t ghc-mod flag [-l]\n"
-        ++ "\t ghc-mod browse" ++ ghcOptHelp ++ "[-l] [-o] <module> [<module> ...]\n"
+        ++ "\t ghc-mod browse" ++ ghcOptHelp ++ "[-l] [-o] [-d] <module> [<module> ...]\n"
         ++ "\t ghc-mod check" ++ ghcOptHelp ++ "<HaskellFile>\n"
         ++ "\t ghc-mod expand" ++ ghcOptHelp ++ "<HaskellFile>\n"
         ++ "\t ghc-mod info" ++ ghcOptHelp ++ "<HaskellFile> <module> <expression>\n"
@@ -57,6 +57,9 @@ argspec = [ Option "l" ["tolisp"]
           , Option "o" ["operators"]
             (NoArg (\opts -> opts { operators = True }))
             "print operators, too"
+          , Option "d" ["detailed"]
+            (NoArg (\opts -> opts { detailed = True }))
+            "print detailed info"
           , Option "s" ["sandbox"]
             (ReqArg (\s opts -> opts { sandbox = Just s }) "path")
             "specify cabal-dev sandbox (default 'cabal-dev`)"
