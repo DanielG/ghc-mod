@@ -53,7 +53,7 @@ browse opt mdlName = withGHC $ do
             inOtherModule = do
               otherModule <- getModuleInfo (nameModule nm)
               lookupGlobalName nm
-            name = getOccString nm ++ " from " ++ moduleNameString (moduleName (nameModule nm))
+            name = getOccString nm
       mapM processName exports
       where
         exports = modInfoExports minfo
