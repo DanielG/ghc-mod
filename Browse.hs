@@ -1,24 +1,23 @@
 module Browse (browseModule) where
 
-import Control.Arrow (second)
 import Control.Applicative
 import Data.Char
 import Data.List
 import Data.Maybe (fromMaybe)
+import DynFlags (getDynFlags) -- FIXME
 import GHC
 import GHCApi
-import DynFlags (getDynFlags)
 import Name
-import Types
 import Outputable
-import Var
 import TyCon
 import Type
+import Types
+import Var
 
 ----------------------------------------------------------------
 
 browseModule :: Options -> String -> IO String
-browseModule opt mdlName = (convert opt . format) <$> browse opt mdlName
+browseModule opt mdlName = convert opt . format <$> browse opt mdlName
   where
     format
       | operators opt = formatOps
@@ -45,38 +44,39 @@ browse opt mdlName = withGHC $ do
     processModule :: ModuleInfo -> Ghc [String]
     processModule minfo = do
       dynFlags <- getDynFlags
-      let
-        processName :: Name -> Ghc String
-        processName nm = do
-          tyInfo <- modInfoLookupName minfo nm
-          -- If nothing found, load dependent module and lookup global
-          tyResult <- maybe inOtherModule (return . Just) tyInfo
-          return $ fromMaybe name (tyResult >>= showThing dynFlags)
-          where
-            inOtherModule :: Ghc (Maybe TyThing)
-            inOtherModule = do
-              otherModule <- getModuleInfo (nameModule nm)
-              lookupGlobalName nm
-            name = getOccString nm
+      let processName :: Name -> Ghc String
+          processName nm = do
+              tyInfo <- modInfoLookupName minfo nm
+              -- If nothing found, load dependent module and lookup global
+              tyResult <- maybe inOtherModule (return . Just) tyInfo
+              return $ fromMaybe name (tyResult >>= showThing dynFlags)
+            where
+              inOtherModule :: Ghc (Maybe TyThing)
+              inOtherModule = do
+                  _ <- getModuleInfo (nameModule nm) -- FIXME
+                  lookupGlobalName nm
+              name = getOccString nm
       mapM processName exports
-      where
-        exports = modInfoExports minfo
+        where
+          exports = modInfoExports minfo
 
     showThing :: DynFlags -> TyThing -> Maybe String
     showThing dflags t = case t of
-      (AnId i) -> Just $ getOccString i ++ " :: " ++ showOutputable dflags (removeForAlls $ varType i)
-      (ATyCon t) -> do
-        tyType' <- tyType t
-        return $ intercalate " " $ [tyType', getOccString t] ++ map getOccString (tyConTyVars t)
+      AnId i -> Just $ getOccString i ++ " :: " ++ showOutputable dflags (removeForAlls $ varType i)
+      ATyCon typ -> do
+        tyType' <- tyType typ
+        return $ unwords $ [tyType', getOccString typ] ++ map getOccString (tyConTyVars typ)
       _ -> Nothing
       where
         tyType :: TyCon -> Maybe String
-        tyType t
-          | isAlgTyCon t && not (isNewTyCon t) && not (isClassTyCon t) = Just "data"
-          | isNewTyCon t = Just "newtype"
-          | isClassTyCon t = Just "class"
-          | isSynTyCon t = Just "type"
-          | otherwise = Nothing
+        tyType typ
+          | isAlgTyCon typ
+            && not (isNewTyCon typ)
+            && not (isClassTyCon typ) = Just "data"
+          | isNewTyCon typ            = Just "newtype"
+          | isClassTyCon typ          = Just "class"
+          | isSynTyCon typ            = Just "type"
+          | otherwise                 = Nothing
 
     removeForAlls :: Type -> Type
     removeForAlls ty = case splitFunTy_maybe ty' of
@@ -84,8 +84,6 @@ browse opt mdlName = withGHC $ do
       Just (pre, ftype) -> if isPredTy pre then mkFunTy pre (dropForAlls ftype) else ty'
       where
         ty' = dropForAlls ty
-
-
 
 showOutputable :: Outputable a => DynFlags -> a -> String
 showOutputable dflags = unwords . lines . showSDocForUser dflags neverQualify . ppr
