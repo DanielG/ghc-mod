@@ -4,9 +4,9 @@ import Control.Applicative
 import Data.Char
 import Data.List
 import Data.Maybe (fromMaybe)
-import DynFlags (getDynFlags) -- FIXME
 import GHC
 import GHCApi
+import Gap
 import Name
 import Outputable
 import TyCon
@@ -42,29 +42,25 @@ processExports :: ModuleInfo -> [String]
 processExports = map getOccString . modInfoExports
 
 processModule :: ModuleInfo -> Ghc [String]
-processModule minfo = do
-    dynFlags <- getDynFlags
-    mapM (processName dynFlags) names
+processModule minfo = mapM processName names
   where
     names = modInfoExports minfo
-    processName :: DynFlags -> Name -> Ghc String
-    processName dynFlags nm = do
+    processName :: Name -> Ghc String
+    processName nm = do
         tyInfo <- modInfoLookupName minfo nm
         -- If nothing found, load dependent module and lookup global
         tyResult <- maybe (inOtherModule nm) (return . Just) tyInfo
-        return $ fromMaybe (getOccString nm) (tyResult >>= showThing dynFlags)
+        return $ fromMaybe (getOccString nm) (tyResult >>= showThing)
     inOtherModule :: Name -> Ghc (Maybe TyThing)
     inOtherModule nm = do
         _ <- getModuleInfo (nameModule nm) -- FIXME
         lookupGlobalName nm
 
-showThing :: DynFlags -> TyThing -> Maybe String
-showThing dflags t = case t of
-    AnId i -> Just $ getOccString i ++ " :: " ++ showOutputable dflags (removeForAlls $ varType i)
-    ATyCon typ -> do
-        tyType' <- tyType typ
-        return $ unwords $ [tyType', getOccString typ] ++ map getOccString (tyConTyVars typ)
-    _ -> Nothing
+showThing :: TyThing -> Maybe String
+showThing (AnId i)   = Just $ getOccString i ++ " :: " ++ showOutputable (removeForAlls $ varType i)
+showThing (ATyCon t) = do
+    tyType' <- tyType t
+    return $ unwords $ [tyType', getOccString t] ++ map getOccString (tyConTyVars t)
   where
     tyType :: TyCon -> Maybe String
     tyType typ
@@ -75,6 +71,7 @@ showThing dflags t = case t of
         | isClassTyCon typ          = Just "class"
         | isSynTyCon typ            = Just "type"
         | otherwise                 = Nothing
+showThing _ = Nothing
 
 removeForAlls :: Type -> Type
 removeForAlls ty = case splitFunTy_maybe ty' of
@@ -83,5 +80,5 @@ removeForAlls ty = case splitFunTy_maybe ty' of
   where
     ty' = dropForAlls ty
 
-showOutputable :: Outputable a => DynFlags -> a -> String
-showOutputable dflags = unwords . lines . showSDocForUser dflags neverQualify . ppr
+showOutputable :: Outputable a => a -> String
+showOutputable = unwords . lines . showDocForUser neverQualify . ppr
