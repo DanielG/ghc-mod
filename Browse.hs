@@ -1,6 +1,5 @@
 module Browse (browseModule) where
 
-import Control.Arrow (second)
 import Control.Applicative
 import Data.Char
 import Data.List
@@ -8,7 +7,6 @@ import Data.Maybe (fromMaybe)
 import DynFlags (getDynFlags) -- FIXME
 import GHC
 import GHCApi
-import DynFlags (getDynFlags)
 import Name
 import Outputable
 import TyCon
@@ -19,7 +17,7 @@ import Var
 ----------------------------------------------------------------
 
 browseModule :: Options -> String -> IO String
-browseModule opt mdlName = (convert opt . format) <$> browse opt mdlName
+browseModule opt mdlName = convert opt . format <$> browse opt mdlName
   where
     format
       | operators opt = formatOps
@@ -89,3 +87,4 @@ browse opt mdlName = withGHC $ do
 
 showOutputable :: Outputable a => DynFlags -> a -> String
 showOutputable dflags = unwords . lines . showSDocForUser dflags neverQualify . ppr
+
