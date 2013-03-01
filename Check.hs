@@ -21,8 +21,8 @@ check :: Options -> String -> IO [String]
 check opt fileName = withGHC' fileName $ checkIt `gcatch` handleErrMsg
   where
     checkIt = do
-        (file,readLog) <- initializeGHC opt fileName options True
-        setTargetFile file
+        readLog <- initializeGHC opt fileName options True
+        setTargetFile fileName
         _ <- load LoadAllTargets
         liftIO readLog
     options

@@ -143,8 +143,8 @@ inModuleContext opt fileName modstr action errmsg =
     withGHC (valid ||> invalid ||> return errmsg)
   where
     valid = do
-        (file,_) <- initializeGHC opt fileName ["-w"] False
-        setTargetFile file
+        _ <- initializeGHC opt fileName ["-w"] False
+        setTargetFile fileName
         _ <- load LoadAllTargets
         doif setContextFromTarget action
     invalid = do

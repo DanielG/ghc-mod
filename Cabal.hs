@@ -23,16 +23,16 @@ import Types
 importDirs :: [String]
 importDirs = [".","..","../..","../../..","../../../..","../../../../.."]
 
-initializeGHC :: Options -> FilePath -> [String] -> Bool -> Ghc (FilePath,LogReader)
+initializeGHC :: Options -> FilePath -> [String] -> Bool -> Ghc LogReader
 initializeGHC opt fileName ghcOptions logging = withCabal ||> withoutCabal
   where
     withoutCabal = do
         logReader <- initSession opt ghcOptions importDirs Nothing logging
-        return (fileName,logReader)
+        return logReader
     withCabal = do
         (gopts,idirs,depPkgs) <- liftIO $ fromCabal ghcOptions
         logReader <- initSession opt gopts idirs (Just depPkgs) logging
-        return (fileName,logReader)
+        return logReader
 
 fromCabal :: [String] -> IO ([String], [FilePath], [String])
 fromCabal ghcOptions = do
