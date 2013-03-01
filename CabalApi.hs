@@ -1,19 +1,19 @@
 module CabalApi (
     cabalParseFile
   , cabalBuildInfo
-  , cabalDependPackages
-  , getBuildInfos
+  , cabalAllDependPackages
+  , cabalAllExtentions
   ) where
 
 import Control.Applicative
-
-import Data.Maybe (fromJust, maybeToList)
+import Data.Maybe (fromJust, maybeToList, catMaybes)
 import Data.Set (fromList, toList)
-
 import Distribution.Package (Dependency(Dependency), PackageName(PackageName))
 import Distribution.PackageDescription
 import Distribution.PackageDescription.Parse (readPackageDescription)
+import Distribution.Text (display)
 import Distribution.Verbosity (silent)
+import Language.Haskell.Extension (Extension(..))
 
 ----------------------------------------------------------------
 
@@ -33,24 +33,38 @@ cabalBuildInfo pd = fromJust $ fromLibrary pd <|> fromExecutable pd
 
 ----------------------------------------------------------------
 
-cabalDependPackages :: GenericPackageDescription -> [String]
-cabalDependPackages = uniqueAndSort . map getDependencyPackageName . allDependsOfDescription
+cabalAllDependPackages :: GenericPackageDescription -> [String]
+cabalAllDependPackages pd = uniqueAndSort pkgs
   where
-    uniqueAndSort = toList . fromList
+    pkgs = map getDependencyPackageName $ cabalAllDependency pd
 
-allDependsOfDescription :: GenericPackageDescription -> [Dependency]
-allDependsOfDescription = fromPackageDescription getDeps getDeps getDeps getDeps
+cabalAllDependency :: GenericPackageDescription -> [Dependency]
+cabalAllDependency = fromPackageDescription getDeps getDeps getDeps getDeps
   where
     getDeps :: [Tree a] -> [Dependency]
     getDeps = concatMap condTreeConstraints
 
 getDependencyPackageName :: Dependency -> String
-getDependencyPackageName (Dependency (PackageName n) _) = n
+getDependencyPackageName (Dependency (PackageName nm) _) = nm
 
 ----------------------------------------------------------------
 
-getBuildInfos :: GenericPackageDescription -> [BuildInfo]
-getBuildInfos = fromPackageDescription f1 f2 f3 f4
+cabalAllExtentions :: GenericPackageDescription -> [String]
+cabalAllExtentions pd = uniqueAndSort exts
+  where
+    buildInfos = cabalAllBuildInfos pd
+    eexts = concatMap oldExtensions buildInfos
+         ++ concatMap defaultExtensions buildInfos
+    exts  = catMaybes $ map getExtensionName eexts
+
+getExtensionName :: Extension -> Maybe String
+getExtensionName (EnableExtension nm) = Just (display nm)
+getExtensionName _                    = Nothing
+
+----------------------------------------------------------------
+
+cabalAllBuildInfos :: GenericPackageDescription -> [BuildInfo]
+cabalAllBuildInfos = fromPackageDescription f1 f2 f3 f4
   where
     f1 = map (libBuildInfo       . condTreeData)
     f2 = map (buildInfo          . condTreeData)
@@ -73,3 +87,8 @@ fromPackageDescription f1 f2 f3 f4 pd = lib ++ exe ++ tests ++ bench
     exe   = f2 . map snd . condExecutables $ pd
     tests = f3 . map snd . condTestSuites  $ pd
     bench = f4 . map snd . condBenchmarks  $ pd
+
+----------------------------------------------------------------
+
+uniqueAndSort :: [String] -> [String]
+uniqueAndSort = toList . fromList

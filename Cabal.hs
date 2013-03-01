@@ -2,7 +2,7 @@
 
 module Cabal (initializeGHC, getDirs, fromCabal) where
 
-import CabalApi (cabalParseFile, cabalBuildInfo, cabalDependPackages)
+import CabalApi
 import Control.Applicative
 import Control.Exception
 import Control.Monad
@@ -47,7 +47,7 @@ fromCabal ghcOptions = do
         idirs = case hsSourceDirs of
             []   -> [cdir,owdir]
             dirs -> map (cdir </>) dirs ++ [owdir]
-    let depPkgs = removeMe cfile $ cabalDependPackages cabal
+    let depPkgs = removeMe cfile $ cabalAllDependPackages cabal
     return (gopts,idirs,depPkgs)
 
 removeMe :: FilePath -> [String] -> [String]
