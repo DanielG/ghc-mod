@@ -13,6 +13,7 @@ import TyCon
 import Type
 import Types
 import Var
+import DataCon (dataConRepType)
 
 ----------------------------------------------------------------
 
@@ -59,11 +60,15 @@ processModule minfo = mapM processName names
     inOtherModule nm = getModuleInfo (nameModule nm) >> lookupGlobalName nm
 
 showThing :: TyThing -> Maybe String
-showThing (AnId i)   = Just $ getOccString i ++ " :: " ++ showOutputable (removeForAlls $ varType i)
-showThing (ATyCon t) = unwords . toList <$> tyType t
+showThing (AnId i)     = Just $ formatType varType i
+showThing (ADataCon d) = Just $ formatType dataConRepType d
+showThing (ATyCon t)   = unwords . toList <$> tyType t
   where
     toList t' = t' : getOccString t : map getOccString (tyConTyVars t)
 showThing _          = Nothing
+
+formatType :: NamedThing a => (a -> Type) -> a -> String
+formatType f x = getOccString x ++ " :: " ++ showOutputable (removeForAlls $ f x)
 
 tyType :: TyCon -> Maybe String
 tyType typ
