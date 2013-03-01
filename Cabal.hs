@@ -38,7 +38,7 @@ fromCabal :: [String] -> IO ([String], [FilePath], [String])
 fromCabal ghcOptions = do
     (owdir,cdir,cfile) <- getDirs
     cabal <- cabalParseFile cfile
-    binfo@BuildInfo{..} <- cabalBuildInfo cabal
+    let binfo@BuildInfo{..} = cabalBuildInfo cabal
     let exts = map (("-X" ++) . display) $ usedExtensions binfo
         lang = maybe "-XHaskell98" (("-X" ++) . display) defaultLanguage
         libs = map ("-l" ++) extraLibs

@@ -24,9 +24,8 @@ cabalParseFile :: FilePath -> IO GenericPackageDescription
 cabalParseFile =  readPackageDescription silent
 
 -- Causes error, catched in the upper function.
-cabalBuildInfo :: GenericPackageDescription -> IO BuildInfo
-cabalBuildInfo pd =
-    return . fromJust $ fromLibrary pd <|> fromExecutable pd
+cabalBuildInfo :: GenericPackageDescription -> BuildInfo
+cabalBuildInfo pd = fromJust $ fromLibrary pd <|> fromExecutable pd
   where
     fromLibrary c     = libBuildInfo . condTreeData <$> condLibrary c
     fromExecutable c  = buildInfo . condTreeData . snd <$> toMaybe (condExecutables c)
