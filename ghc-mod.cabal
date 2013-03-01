@@ -25,7 +25,8 @@ Data-Dir:               elisp
 Data-Files:             Makefile ghc.el ghc-func.el ghc-doc.el ghc-comp.el
                         ghc-flymake.el ghc-command.el ghc-info.el
                         ghc-ins-mod.el ghc-indent.el
-Extra-Source-Files:     test/data/*.cabal
+Extra-Source-Files:     ChangeLog
+			test/data/*.cabal
                         test/data/*.hs
                         test/data/ghc-mod-check/*.hs
                         test/data/ghc-mod-check/*.cabal
