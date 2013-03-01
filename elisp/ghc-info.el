@@ -104,17 +104,30 @@
 
 (defun ghc-type-obtain-tinfos (modname)
   (let* ((ln (int-to-string (line-number-at-pos)))
-	 (cn (int-to-string (current-column)))
-	 (cdir default-directory)
-	 (file (buffer-file-name)))
+         (cn (int-to-string (current-column)))
+         (cdir default-directory)
+         (file (buffer-file-name)))
+    (if (and (not (eq (char-syntax (char-after)) ? ))
+             (eq (char-syntax (char-before)) ? ))
+        (setq cn (int-to-string (1+ (string-to-int cn)))))
     (ghc-read-lisp
      (lambda ()
        (cd cdir)
-       (apply 'call-process ghc-module-command nil t nil
-	      `(,@(ghc-make-ghc-options) "-l" "type" ,file ,modname ,ln ,cn))
+       (if ghc-hdevtools-command
+           (apply 'call-process ghc-hdevtools-command nil t nil
+                  `(,@(ghc-make-ghc-options) "type" ,file ,ln ,cn))
+         (apply 'call-process ghc-module-command nil t nil
+                `(,@(ghc-make-ghc-options) "-l" "type" ,file ,modname ,ln ,cn)))
        (goto-char (point-min))
+       (when ghc-hdevtools-command
+         (insert "((")
+         (while (re-search-forward "\n\\(.\\)" nil t)
+           (replace-match ") (\\1"))
+         (goto-char (point-max))
+         (delete-backward-char 1)
+         (insert "))"))
        (while (search-forward "[Char]" nil t)
-	 (replace-match "String"))))))
+         (replace-match "String"))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;

@@ -10,6 +10,8 @@
 
 (defvar ghc-module-command "ghc-mod"
 "*The command name of \"ghc-mod\"")
+(defvar ghc-hdevtools-command "hdevtools"
+"*The command name of \"hdevtools\"")
 
 (defvar ghc-ghc-options nil "*GHC options")
 
