@@ -3,7 +3,6 @@
 
 module Info (infoExpr, typeExpr) where
 
-import Cabal
 import Control.Applicative
 import CoreUtils
 import Data.Function
@@ -23,8 +22,8 @@ import NameSet
 import Outputable
 import PprTyThing
 import Pretty (showDocWith, Mode(OneLineMode))
-import TcRnTypes
 import TcHsSyn (hsPatType)
+import TcRnTypes
 import Types
 
 ----------------------------------------------------------------

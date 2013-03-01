@@ -1,6 +1,5 @@
 module Check (checkSyntax) where
 
-import Cabal
 import Control.Applicative
 import CoreMonad
 import ErrMsg

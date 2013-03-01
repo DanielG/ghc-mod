@@ -1,40 +1,24 @@
 {-# LANGUAGE OverloadedStrings, RecordWildCards #-}
 
-module Cabal (initializeGHC, getDirs, fromCabal) where
+module Cabal (getDirs, fromCabal) where
 
 import CabalApi
 import Control.Applicative
 import Control.Exception
 import Control.Monad
-import CoreMonad
 import Data.List
 import Distribution.PackageDescription (BuildInfo(..), usedExtensions)
 import Distribution.Text (display)
-import ErrMsg
-import GHC
-import GHCApi
-import GHCChoice
 import System.Directory
 import System.FilePath
 import Types
 
 ----------------------------------------------------------------
 
-importDirs :: [String]
-importDirs = [".","..","../..","../../..","../../../..","../../../../.."]
-
-initializeGHC :: Options -> FilePath -> [String] -> Bool -> Ghc LogReader
-initializeGHC opt fileName ghcOptions logging = withCabal ||> withoutCabal
-  where
-    withoutCabal = do
-        logReader <- initSession opt ghcOptions importDirs Nothing logging
-        return logReader
-    withCabal = do
-        (gopts,idirs,depPkgs) <- liftIO $ fromCabal ghcOptions
-        logReader <- initSession opt gopts idirs (Just depPkgs) logging
-        return logReader
-
-fromCabal :: [String] -> IO ([String], [FilePath], [String])
+fromCabal :: [GHCOption] -> IO ([GHCOption]
+                               ,[IncludeDir]
+                               ,[Package]
+                               ,[LangExt])
 fromCabal ghcOptions = do
     (owdir,cdir,cfile) <- getDirs
     cabal <- cabalParseFile cfile
@@ -48,10 +32,11 @@ fromCabal ghcOptions = do
             []   -> [cdir,owdir]
             dirs -> map (cdir </>) dirs ++ [owdir]
     let depPkgs = removeMe cfile $ cabalAllDependPackages cabal
-    return (gopts,idirs,depPkgs)
+        hdrExts = cabalAllExtentions cabal
+    return (gopts,idirs,depPkgs,hdrExts)
 
 removeMe :: FilePath -> [String] -> [String]
-removeMe cabalfile depPkgs = filter (/= me) depPkgs
+removeMe cabalfile = filter (/= me)
   where
     me = dropExtension $ takeFileName cabalfile
 

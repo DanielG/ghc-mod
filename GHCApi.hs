@@ -1,5 +1,6 @@
 module GHCApi where
 
+import Cabal
 import Control.Applicative
 import Control.Exception
 import CoreMonad
@@ -8,6 +9,8 @@ import ErrMsg
 import Exception
 import GHC
 import GHC.Paths (libdir)
+import GHCChoice
+import HeaderInfo
 import System.Exit
 import System.IO
 import Types
@@ -34,36 +37,65 @@ initSession0 :: Options -> Ghc [PackageId]
 initSession0 opt = getSessionDynFlags >>=
   (>>= setSessionDynFlags) . setGhcFlags opt
 
-initSession :: Options -> [String] -> [FilePath] -> Maybe [String] -> Bool -> Ghc LogReader
-initSession opt cmdOpts idirs mayPkgs logging = do
+----------------------------------------------------------------
+
+importDirs :: [IncludeDir]
+importDirs = [".","..","../..","../../..","../../../..","../../../../.."]
+
+initializeGHC :: Options -> FilePath -> [GHCOption] -> Bool -> Ghc LogReader
+initializeGHC opt fileName ghcOptions logging = withCabal ||> withoutCabal
+  where
+    withoutCabal = initSession opt ghcOptions importDirs Nothing Nothing logging fileName
+    withCabal = do
+        (gopts,idirs,depPkgs,hdrExts) <- liftIO $ fromCabal ghcOptions
+        initSession opt gopts idirs (Just depPkgs) (Just hdrExts) logging fileName
+
+initSession :: Options
+            -> [GHCOption]
+            -> [IncludeDir]
+            -> Maybe [Package]
+            -> Maybe [LangExt]
+            -> Bool
+            -> FilePath
+            -> Ghc LogReader
+initSession opt cmdOpts idirs mDepPkgs mLangExts logging file = do
     dflags <- getSessionDynFlags
-    let opts = map noLoc cmdOpts
+    hdrExts <- liftIO $ map unLoc <$> getOptionsFromFile dflags file
+    let th = useTemplateHaskell mLangExts hdrExts
+        opts = map noLoc cmdOpts
     (dflags',_,_) <- parseDynamicFlags dflags opts
     (dflags'',readLog) <- liftIO . (>>= setLogger logging)
-                          . setGhcFlags opt . setFlags opt dflags' idirs $ mayPkgs
+                          . setGhcFlags opt . setFlags opt dflags' idirs mDepPkgs $ th
     _ <- setSessionDynFlags dflags''
     return readLog
 
+useTemplateHaskell :: Maybe [LangExt] -> [HeaderExt] -> Bool
+useTemplateHaskell mLangExts hdrExts = th1 || th2
+  where
+    th1 = "-XTemplateHaskell" `elem` hdrExts
+    th2 = maybe False ("TemplateHaskell" `elem`) mLangExts
+
 ----------------------------------------------------------------
 
-setFlags :: Options -> DynFlags -> [FilePath] -> Maybe [String] -> DynFlags
-setFlags opt d idirs mayPkgs
+setFlags :: Options -> DynFlags -> [IncludeDir] -> Maybe [Package] -> Bool -> DynFlags
+setFlags opt d idirs mDepPkgs th
   | expandSplice opt = dopt_set d' Opt_D_dump_splices
   | otherwise        = d'
   where
-    d' = maySetExpose $ d {
+    d' = addDevPkgs mDepPkgs $ d {
         importPaths = idirs
-      , ghcLink = LinkInMemory
-      , hscTarget = HscInterpreted
-      , flags = flags d
+      , ghcLink     = if th then LinkInMemory else NoLink
+      , hscTarget   = if th then HscInterpreted else HscNothing
+      , flags       = flags d
       }
-    -- Do hide-all only when depend packages specified
-    maySetExpose df = maybe df (\x -> (dopt_set df Opt_HideAllPackages) {
-                                   packageFlags = map ExposePackage x ++ packageFlags df
-                                   }) mayPkgs
 
-ghcPackage :: PackageFlag
-ghcPackage = ExposePackage "ghc"
+addDevPkgs :: Maybe [Package] -> DynFlags -> DynFlags
+addDevPkgs Nothing df     = df
+addDevPkgs (Just pkgs) df = df' {
+    packageFlags = map ExposePackage pkgs ++ packageFlags df
+  }
+  where
+    df' = dopt_set df Opt_HideAllPackages
 
 setGhcFlags :: Monad m => Options -> DynFlags -> m DynFlags
 setGhcFlags opt flagset =

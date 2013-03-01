@@ -6,7 +6,7 @@ module CabalApi (
   ) where
 
 import Control.Applicative
-import Data.Maybe (fromJust, maybeToList, catMaybes)
+import Data.Maybe (fromJust, maybeToList, mapMaybe)
 import Data.Set (fromList, toList)
 import Distribution.Package (Dependency(Dependency), PackageName(PackageName))
 import Distribution.PackageDescription
@@ -14,6 +14,7 @@ import Distribution.PackageDescription.Parse (readPackageDescription)
 import Distribution.Text (display)
 import Distribution.Verbosity (silent)
 import Language.Haskell.Extension (Extension(..))
+import Types
 
 ----------------------------------------------------------------
 
@@ -33,7 +34,7 @@ cabalBuildInfo pd = fromJust $ fromLibrary pd <|> fromExecutable pd
 
 ----------------------------------------------------------------
 
-cabalAllDependPackages :: GenericPackageDescription -> [String]
+cabalAllDependPackages :: GenericPackageDescription -> [Package]
 cabalAllDependPackages pd = uniqueAndSort pkgs
   where
     pkgs = map getDependencyPackageName $ cabalAllDependency pd
@@ -44,20 +45,20 @@ cabalAllDependency = fromPackageDescription getDeps getDeps getDeps getDeps
     getDeps :: [Tree a] -> [Dependency]
     getDeps = concatMap condTreeConstraints
 
-getDependencyPackageName :: Dependency -> String
+getDependencyPackageName :: Dependency -> Package
 getDependencyPackageName (Dependency (PackageName nm) _) = nm
 
 ----------------------------------------------------------------
 
-cabalAllExtentions :: GenericPackageDescription -> [String]
+cabalAllExtentions :: GenericPackageDescription -> [LangExt]
 cabalAllExtentions pd = uniqueAndSort exts
   where
     buildInfos = cabalAllBuildInfos pd
     eexts = concatMap oldExtensions buildInfos
          ++ concatMap defaultExtensions buildInfos
-    exts  = catMaybes $ map getExtensionName eexts
+    exts  = mapMaybe getExtensionName eexts
 
-getExtensionName :: Extension -> Maybe String
+getExtensionName :: Extension -> Maybe LangExt
 getExtensionName (EnableExtension nm) = Just (display nm)
 getExtensionName _                    = Nothing
 
