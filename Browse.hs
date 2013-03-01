@@ -34,9 +34,13 @@ browseModule opt mdlName = convert opt . format <$> browse opt mdlName
 browse :: Options -> String -> IO [String]
 browse opt mdlName = withGHC $ do
     _ <- initSession0 opt
-    lookupModuleInfo >>= maybe (return []) (if detailed opt then processModule else return . processExports)
+    getModule >>= getModuleInfo >>= listExports
   where
-    lookupModuleInfo = findModule (mkModuleName mdlName) Nothing >>= getModuleInfo
+    getModule = findModule (mkModuleName mdlName) Nothing
+    listExports Nothing       = return []
+    listExports (Just mdinfo)
+      | detailed opt = processModule mdinfo
+      | otherwise    = return (processExports mdinfo)
 
 processExports :: ModuleInfo -> [String]
 processExports = map getOccString . modInfoExports
@@ -52,33 +56,36 @@ processModule minfo = mapM processName names
         tyResult <- maybe (inOtherModule nm) (return . Just) tyInfo
         return $ fromMaybe (getOccString nm) (tyResult >>= showThing)
     inOtherModule :: Name -> Ghc (Maybe TyThing)
-    inOtherModule nm = do
-        _ <- getModuleInfo (nameModule nm) -- FIXME
-        lookupGlobalName nm
+    inOtherModule nm = getModuleInfo (nameModule nm) >> lookupGlobalName nm
 
 showThing :: TyThing -> Maybe String
 showThing (AnId i)   = Just $ getOccString i ++ " :: " ++ showOutputable (removeForAlls $ varType i)
-showThing (ATyCon t) = do
-    tyType' <- tyType t
-    return $ unwords $ [tyType', getOccString t] ++ map getOccString (tyConTyVars t)
+showThing (ATyCon t) = unwords . toList <$> tyType t
   where
-    tyType :: TyCon -> Maybe String
-    tyType typ
-        | isAlgTyCon typ
-          && not (isNewTyCon typ)
-          && not (isClassTyCon typ) = Just "data"
-        | isNewTyCon typ            = Just "newtype"
-        | isClassTyCon typ          = Just "class"
-        | isSynTyCon typ            = Just "type"
-        | otherwise                 = Nothing
-showThing _ = Nothing
+    toList t' = t' : getOccString t : map getOccString (tyConTyVars t)
+showThing _          = Nothing
+
+tyType :: TyCon -> Maybe String
+tyType typ
+    | isAlgTyCon typ
+      && not (isNewTyCon typ)
+      && not (isClassTyCon typ) = Just "data"
+    | isNewTyCon typ            = Just "newtype"
+    | isClassTyCon typ          = Just "class"
+    | isSynTyCon typ            = Just "type"
+    | otherwise                 = Nothing
 
 removeForAlls :: Type -> Type
-removeForAlls ty = case splitFunTy_maybe ty' of
-    Nothing -> ty'
-    Just (pre, ftype) -> if isPredTy pre then mkFunTy pre (dropForAlls ftype) else ty'
+removeForAlls ty = removeForAlls' ty' tty'
   where
-    ty' = dropForAlls ty
+    ty'  = dropForAlls ty
+    tty' = splitFunTy_maybe ty'
+
+removeForAlls' :: Type -> Maybe (Type, Type) -> Type
+removeForAlls' ty Nothing = ty
+removeForAlls' ty (Just (pre, ftype))
+    | isPredTy pre        = mkFunTy pre (dropForAlls ftype)
+    | otherwise           = ty
 
 showOutputable :: Outputable a => a -> String
 showOutputable = unwords . lines . showDocForUser neverQualify . ppr
