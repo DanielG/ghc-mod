@@ -1,5 +1,6 @@
 module CabalApiSpec where
 
+import Control.Applicative
 import Test.Hspec
 import CabalApi
 
@@ -7,7 +8,7 @@ spec :: Spec
 spec = do
     describe "cabalDependPackages" $ do
         it "extracts dependent packages" $ do
-            pkgs <- cabalParseFile "test/data/cabalapi.cabal" >>= cabalDependPackages
+            pkgs <- cabalDependPackages <$> cabalParseFile "test/data/cabalapi.cabal"
             pkgs `shouldBe` ["Cabal","base","containers","convertible","directory","filepath","ghc","ghc-paths","ghc-syb-utils","hlint","hspec","io-choice","old-time","process","regex-posix","syb","time","transformers"]
 
     describe "cabalBuildInfo" $ do

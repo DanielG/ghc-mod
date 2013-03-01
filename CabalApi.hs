@@ -48,8 +48,8 @@ allDependsOfDescription pd =
 getDependencyPackageName :: Dependency -> String
 getDependencyPackageName (Dependency (PackageName n) _) = n
 
-cabalDependPackages :: GenericPackageDescription -> IO [String]
+cabalDependPackages :: GenericPackageDescription -> [String]
 cabalDependPackages =
-  return . toList . fromList
+  toList . fromList
   . map getDependencyPackageName
   . allDependsOfDescription
