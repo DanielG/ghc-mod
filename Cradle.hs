@@ -13,8 +13,8 @@ import System.FilePath ((</>),takeDirectory)
 import Types
 
 -- An error would be thrown
-checkEnv :: Maybe FilePath -> IO Cradle
-checkEnv (Just sbox) = do
+findCradle :: Maybe FilePath -> IO Cradle
+findCradle (Just sbox) = do
     (strver, ver) <- ghcVersion
     conf <- checkPackageConf sbox strver
     let confOpts = ghcPackageConfOptions ver conf
@@ -33,7 +33,7 @@ checkEnv (Just sbox) = do
           , cradleCabalFile   = Just cfile
           , cradlePackageConfOpts = Just confOpts
           }
-checkEnv Nothing = do
+findCradle Nothing = do
     (strver, ver) <- ghcVersion
     wdir <- getCurrentDirectory
     cfiles <- cabalDir wdir

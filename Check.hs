@@ -11,16 +11,16 @@ import Types
 
 ----------------------------------------------------------------
 
-checkSyntax :: Options -> String -> IO String
-checkSyntax opt file = unlines <$> check opt file
+checkSyntax :: Options -> Cradle -> String -> IO String
+checkSyntax opt cradle file = unlines <$> check opt cradle file
 
 ----------------------------------------------------------------
 
-check :: Options -> String -> IO [String]
-check opt fileName = withGHC' fileName $ checkIt `gcatch` handleErrMsg
+check :: Options -> Cradle -> String -> IO [String]
+check opt cradle fileName = withGHC' fileName $ checkIt `gcatch` handleErrMsg
   where
     checkIt = do
-        readLog <- initializeGHC opt fileName options True
+        readLog <- initializeGHC opt cradle fileName options True
         setTargetFile fileName
         _ <- load LoadAllTargets
         liftIO readLog

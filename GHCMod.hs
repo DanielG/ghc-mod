@@ -86,19 +86,16 @@ main :: IO ()
 main = flip catches handlers $ do
     args <- getArgs
     let (opt',cmdArg) = parseArgs argspec args
-    cradle <- checkEnv $ sandbox opt'
-    let mpkgopts = cradlePackageConfOpts cradle
-        opt = case mpkgopts of
-            Nothing      -> opt'
-            Just pkgopts -> opt' { ghcOpts = pkgopts ++ ghcOpts opt' }
+    cradle <- findCradle $ sandbox opt'
+    let opt = ajustOpts opt' cradle
     res <- case safelist cmdArg 0 of
       "browse" -> concat <$> mapM (browseModule opt) (tail cmdArg)
       "list"   -> listModules opt
-      "check"  -> withFile (checkSyntax opt) (safelist cmdArg 1)
-      "expand" -> withFile (checkSyntax opt { expandSplice = True })
+      "check"  -> withFile (checkSyntax opt cradle) (safelist cmdArg 1)
+      "expand" -> withFile (checkSyntax opt { expandSplice = True } cradle)
                            (safelist cmdArg 1)
-      "type"  -> withFile (typeExpr opt (safelist cmdArg 2) (read $ safelist cmdArg 3) (read $ safelist cmdArg 4)) (safelist cmdArg 1)
-      "info"   -> withFile (infoExpr opt (safelist cmdArg 2) (safelist cmdArg 3)) (safelist cmdArg 1)
+      "type"  -> withFile (typeExpr opt cradle (safelist cmdArg 2) (read $ safelist cmdArg 3) (read $ safelist cmdArg 4)) (safelist cmdArg 1)
+      "info"   -> withFile (infoExpr opt cradle (safelist cmdArg 2) (safelist cmdArg 3)) (safelist cmdArg 1)
       "lint"   -> withFile (lintSyntax opt)  (safelist cmdArg 1)
       "lang"   -> listLanguages opt
       "flag"   -> listFlags opt
@@ -134,6 +131,11 @@ main = flip catches handlers $ do
     safelist xs idx
       | length xs <= idx = throw SafeList
       | otherwise = xs !! idx
+    ajustOpts opt cradle = case mpkgopts of
+            Nothing      -> opt
+            Just pkgopts -> opt { ghcOpts = pkgopts ++ ghcOpts opt }
+      where
+        mpkgopts = cradlePackageConfOpts cradle
 
 ----------------------------------------------------------------
 

@@ -4,12 +4,12 @@ import Cabal
 import Control.Applicative
 import Control.Exception
 import CoreMonad
+import Data.Maybe (isJust)
 import DynFlags
 import ErrMsg
 import Exception
 import GHC
 import GHC.Paths (libdir)
-import GHCChoice
 import HeaderInfo
 import System.Exit
 import System.IO
@@ -42,13 +42,15 @@ initSession0 opt = getSessionDynFlags >>=
 importDirs :: [IncludeDir]
 importDirs = [".","..","../..","../../..","../../../..","../../../../.."]
 
-initializeGHC :: Options -> FilePath -> [GHCOption] -> Bool -> Ghc LogReader
-initializeGHC opt fileName ghcOptions logging = withCabal ||> withoutCabal
+initializeGHC :: Options -> Cradle -> FilePath -> [GHCOption] -> Bool -> Ghc LogReader
+initializeGHC opt cradle fileName ghcOptions logging
+  | cabal     =
+      initSession opt ghcOptions importDirs Nothing Nothing logging fileName
+  | otherwise = do
+      (gopts,idirs,depPkgs,hdrExts) <- liftIO $ fromCabal ghcOptions cradle
+      initSession opt gopts idirs (Just depPkgs) (Just hdrExts) logging fileName
   where
-    withoutCabal = initSession opt ghcOptions importDirs Nothing Nothing logging fileName
-    withCabal = do
-        (gopts,idirs,depPkgs,hdrExts) <- liftIO $ fromCabal ghcOptions
-        initSession opt gopts idirs (Just depPkgs) (Just hdrExts) logging fileName
+    cabal = isJust $ cradleCabalFile cradle
 
 initSession :: Options
             -> [GHCOption]

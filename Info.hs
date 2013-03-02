@@ -33,12 +33,12 @@ type ModuleString = String
 
 ----------------------------------------------------------------
 
-infoExpr :: Options -> ModuleString -> Expression -> FilePath -> IO String
-infoExpr opt modstr expr file = (++ "\n") <$> info opt file modstr expr
+infoExpr :: Options -> Cradle -> ModuleString -> Expression -> FilePath -> IO String
+infoExpr opt cradle modstr expr file = (++ "\n") <$> info opt cradle file modstr expr
 
-info :: Options -> FilePath -> ModuleString -> FilePath -> IO String
-info opt fileName modstr expr =
-    inModuleContext opt fileName modstr exprToInfo "Cannot show info"
+info :: Options -> Cradle -> FilePath -> ModuleString -> FilePath -> IO String
+info opt cradle fileName modstr expr =
+    inModuleContext opt cradle fileName modstr exprToInfo "Cannot show info"
   where
     exprToInfo = infoThing expr
 
@@ -64,12 +64,12 @@ instance HasType (LHsBind Id) where
 instance HasType (LPat Id) where
     getType _ (L spn pat) = return $ Just (spn, hsPatType pat)
 
-typeExpr :: Options -> ModuleString -> Int -> Int -> FilePath -> IO String
-typeExpr opt modstr lineNo colNo file = Info.typeOf opt file modstr lineNo colNo
+typeExpr :: Options -> Cradle -> ModuleString -> Int -> Int -> FilePath -> IO String
+typeExpr opt cradle modstr lineNo colNo file = Info.typeOf opt cradle file modstr lineNo colNo
 
-typeOf :: Options -> FilePath -> ModuleString -> Int -> Int -> IO String
-typeOf opt fileName modstr lineNo colNo =
-    inModuleContext opt fileName modstr exprToType errmsg
+typeOf :: Options -> Cradle -> FilePath -> ModuleString -> Int -> Int -> IO String
+typeOf opt cradle fileName modstr lineNo colNo =
+    inModuleContext opt cradle fileName modstr exprToType errmsg
   where
     exprToType = do
       modSum <- getModSummary $ mkModuleName modstr
@@ -137,17 +137,17 @@ pprInfo pefas (thing, fixity, insts)
 
 ----------------------------------------------------------------
 
-inModuleContext :: Options -> FilePath -> ModuleString -> Ghc String -> String -> IO String
-inModuleContext opt fileName modstr action errmsg =
+inModuleContext :: Options -> Cradle -> FilePath -> ModuleString -> Ghc String -> String -> IO String
+inModuleContext opt cradle fileName modstr action errmsg =
     withGHC (valid ||> invalid ||> return errmsg)
   where
     valid = do
-        _ <- initializeGHC opt fileName ["-w"] False
+        _ <- initializeGHC opt cradle fileName ["-w"] False
         setTargetFile fileName
         _ <- load LoadAllTargets
         doif setContextFromTarget action
     invalid = do
-        _ <- initializeGHC opt fileName ["-w"] False
+        _ <- initializeGHC opt cradle fileName ["-w"] False
         setTargetBuffer
         _ <- load LoadAllTargets
         doif setContextFromTarget action
