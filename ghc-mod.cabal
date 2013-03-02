@@ -36,10 +36,10 @@ Executable ghc-mod
   Default-Language:     Haskell2010
   Main-Is:              GHCMod.hs
   Other-Modules:        Browse
-                        CabalApi
                         Cabal
-                        CabalDev
+                        CabalApi
                         Check
+                        Cradle
                         ErrMsg
                         Flag
                         GHCApi
@@ -65,7 +65,6 @@ Executable ghc-mod
                       , io-choice
                       , old-time
                       , process
-                      , regex-posix
                       , syb
                       , time
                       , transformers
@@ -98,7 +97,6 @@ Test-Suite spec
                       , io-choice
                       , old-time
                       , process
-                      , regex-posix
                       , syb
                       , time
                       , transformers

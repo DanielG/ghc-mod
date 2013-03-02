@@ -62,6 +62,17 @@ quote x = "\"" ++ x ++ "\""
 addNewLine :: String -> String
 addNewLine = (++ "\n")
 
+----------------------------------------------------------------
+
+data Cradle = Cradle {
+    cradleCurrentDir  :: FilePath
+  , cradleCabalDir    :: Maybe FilePath
+  , cradleCabalFile   :: Maybe FilePath
+  , cradlePackageConfOpts :: Maybe [String]
+  } deriving Show
+
+----------------------------------------------------------------
+
 type GHCOption  = String
 type IncludeDir = FilePath
 type Package    = String

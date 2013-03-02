@@ -3,15 +3,15 @@
 module Main where
 
 import Browse
-import CabalDev (modifyOptions)
 import Check
 import Control.Applicative
 import Control.Exception
+import Cradle
 import Data.Typeable
 import Data.Version
+import Flag
 import Info
 import Lang
-import Flag
 import Lint
 import List
 import Paths_ghc_mod
@@ -86,7 +86,11 @@ main :: IO ()
 main = flip catches handlers $ do
     args <- getArgs
     let (opt',cmdArg) = parseArgs argspec args
-    opt <- modifyOptions opt'
+    cradle <- checkEnv $ sandbox opt'
+    let mpkgopts = cradlePackageConfOpts cradle
+        opt = case mpkgopts of
+            Nothing      -> opt'
+            Just pkgopts -> opt' { ghcOpts = pkgopts ++ ghcOpts opt' }
     res <- case safelist cmdArg 0 of
       "browse" -> concat <$> mapM (browseModule opt) (tail cmdArg)
       "list"   -> listModules opt
