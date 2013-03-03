@@ -38,7 +38,7 @@ findCradle Nothing = do
     wdir <- getCurrentDirectory
     cfiles <- cabalDir wdir
     case cfiles of
-        Nothing -> return $ Cradle {
+        Nothing -> return Cradle {
             cradleCurrentDir  = wdir
           , cradleCabalDir    = Nothing
           , cradleCabalFile   = Nothing
@@ -49,7 +49,7 @@ findCradle Nothing = do
                 conf = packageConfName sbox strver
                 confOpts = ghcPackageConfOptions ver conf
             exist <- doesFileExist conf
-            return $ Cradle {
+            return Cradle {
                 cradleCurrentDir      = wdir
               , cradleCabalDir        = Just cdir
               , cradleCabalFile       = Just cfile
@@ -72,7 +72,7 @@ ghcVersion :: IO (String, Int)
 ghcVersion = ghcVer >>= toTupple
   where
     ghcVer = programFindVersion ghcProgram silent (programName ghcProgram)
-    toTupple Nothing  = throwIO $ userError $ "ghc not found"
+    toTupple Nothing  = throwIO $ userError "ghc not found"
     toTupple (Just v)
       | length vs < 2 = return (verstr, 0)
       | otherwise     = return (verstr, ver)
