@@ -69,11 +69,11 @@ cabalDir dir = do
     isCabal name = ".cabal" `isSuffixOf` name && length name > 6
 
 ghcVersion :: IO (String, Int)
-ghcVersion = ghcVer >>= cook
+ghcVersion = ghcVer >>= toTupple
   where
     ghcVer = programFindVersion ghcProgram silent (programName ghcProgram)
-    cook Nothing      = throwIO $ userError $ "ghc not found"
-    cook (Just v)
+    toTupple Nothing  = throwIO $ userError $ "ghc not found"
+    toTupple (Just v)
       | length vs < 2 = return (verstr, 0)
       | otherwise     = return (verstr, ver)
       where
