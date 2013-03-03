@@ -47,7 +47,7 @@ initializeGHC opt cradle fileName ghcOptions logging
   | cabal     =
       initSession opt ghcOptions importDirs Nothing Nothing logging fileName
   | otherwise = do
-      (gopts,idirs,depPkgs,hdrExts) <- liftIO $ fromCabal ghcOptions cradle
+      (gopts,idirs,depPkgs,hdrExts) <- liftIO $ fromCabalFile ghcOptions cradle
       initSession opt gopts idirs (Just depPkgs) (Just hdrExts) logging fileName
   where
     cabal = isJust $ cradleCabalFile cradle

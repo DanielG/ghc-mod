@@ -1,7 +1,7 @@
 {-# LANGUAGE OverloadedStrings, RecordWildCards #-}
 
 module CabalApi (
-    fromCabal
+    fromCabalFile
   , cabalParseFile
   , cabalBuildInfo
   , cabalAllDependPackages
@@ -22,13 +22,13 @@ import Types
 
 ----------------------------------------------------------------
 
-fromCabal :: [GHCOption]
-           -> Cradle
-           -> IO ([GHCOption]
-                 ,[IncludeDir]
-                 ,[Package]
-                 ,[LangExt])
-fromCabal ghcOptions cradle = do
+fromCabalFile :: [GHCOption]
+              -> Cradle
+              -> IO ([GHCOption]
+                    ,[IncludeDir]
+                    ,[Package]
+                    ,[LangExt])
+fromCabalFile ghcOptions cradle = do
     cabal <- cabalParseFile cfile
     let binfo@BuildInfo{..} = cabalBuildInfo cabal
     let exts = map (("-X" ++) . display) $ usedExtensions binfo
