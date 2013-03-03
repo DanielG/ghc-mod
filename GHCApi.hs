@@ -1,6 +1,6 @@
 module GHCApi where
 
-import Cabal
+import CabalApi
 import Control.Applicative
 import Control.Exception
 import CoreMonad

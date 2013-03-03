@@ -36,7 +36,6 @@ Executable ghc-mod
   Default-Language:     Haskell2010
   Main-Is:              GHCMod.hs
   Other-Modules:        Browse
-                        Cabal
                         CabalApi
                         Check
                         Cradle
