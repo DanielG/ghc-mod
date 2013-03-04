@@ -9,6 +9,7 @@ import Control.Exception
 import Cradle
 import Data.Typeable
 import Data.Version
+import Debug
 import Flag
 import Info
 import Lang
@@ -98,6 +99,7 @@ main = flip catches handlers $ do
       "list"   -> listModules opt
       "check"  -> withFile (checkSyntax opt cradle) cmdArg1
       "expand" -> withFile (checkSyntax opt { expandSplice = True } cradle) cmdArg1
+      "debug"  -> withFile (debugInfo opt cradle) cmdArg1
       "type"   -> withFile (typeExpr opt cradle cmdArg2 (read cmdArg3) (read cmdArg4)) cmdArg1
       "info"   -> withFile (infoExpr opt cradle cmdArg2 cmdArg3) cmdArg1
       "lint"   -> withFile (lintSyntax opt) cmdArg1

@@ -61,15 +61,23 @@ initSession :: Options
             -> FilePath
             -> Ghc LogReader
 initSession opt cmdOpts idirs mDepPkgs mLangExts logging file = do
-    dflags <- getSessionDynFlags
-    hdrExts <- liftIO $ map unLoc <$> getOptionsFromFile dflags file
+    dflags0 <- getSessionDynFlags
+    hdrExts <- liftIO $ getHeaderExtension dflags0 file
     let th = useTemplateHaskell mLangExts hdrExts
         opts = map noLoc cmdOpts
-    (dflags',_,_) <- parseDynamicFlags dflags opts
-    (dflags'',readLog) <- liftIO . (>>= setLogger logging)
-                          . setGhcFlags opt . setFlags opt dflags' idirs mDepPkgs $ th
-    _ <- setSessionDynFlags dflags''
+    (dflags1,_,_) <- parseDynamicFlags dflags0 opts
+    let dflags2 = modifyFlags opt dflags1 idirs mDepPkgs th
+    dflags3 <- setGhcFlags opt dflags2
+    (dflags4,readLog) <- liftIO $ setLogger logging dflags3
+    _ <- setSessionDynFlags dflags4
     return readLog
+
+----------------------------------------------------------------
+
+getHeaderExtension :: DynFlags -> FilePath -> IO [String]
+getHeaderExtension dflags file = map unLoc <$> getOptionsFromFile dflags file
+
+----------------------------------------------------------------
 
 useTemplateHaskell :: Maybe [LangExt] -> [HeaderExt] -> Bool
 useTemplateHaskell mLangExts hdrExts = th1 || th2
@@ -79,25 +87,28 @@ useTemplateHaskell mLangExts hdrExts = th1 || th2
 
 ----------------------------------------------------------------
 
-setFlags :: Options -> DynFlags -> [IncludeDir] -> Maybe [Package] -> Bool -> DynFlags
-setFlags opt d idirs mDepPkgs th
-  | expandSplice opt = dopt_set d' Opt_D_dump_splices
-  | otherwise        = d'
+modifyFlags :: Options -> DynFlags -> [IncludeDir] -> Maybe [Package] -> Bool -> DynFlags
+modifyFlags opt d idirs mDepPkgs th
+  | expandSplice opt = dopt_set d'' Opt_D_dump_splices
+  | otherwise        = d''
   where
-    d' = addDevPkgs mDepPkgs $ d {
+    d' = d {
         importPaths = idirs
       , ghcLink     = if th then LinkInMemory else NoLink
       , hscTarget   = if th then HscInterpreted else HscNothing
       , flags       = flags d
       }
+    d'' = maybe d' (addDevPkgs d') mDepPkgs
 
-addDevPkgs :: Maybe [Package] -> DynFlags -> DynFlags
-addDevPkgs Nothing df     = df
-addDevPkgs (Just pkgs) df = df' {
-    packageFlags = map ExposePackage pkgs ++ packageFlags df
-  }
+addDevPkgs :: DynFlags -> [Package] -> DynFlags
+addDevPkgs df pkgs = df''
   where
     df' = dopt_set df Opt_HideAllPackages
+    df'' = df' {
+        packageFlags = map ExposePackage pkgs ++ packageFlags df
+      }
+
+----------------------------------------------------------------
 
 setGhcFlags :: Monad m => Options -> DynFlags -> m DynFlags
 setGhcFlags opt flagset =
@@ -110,3 +121,8 @@ setTargetFile :: (GhcMonad m) => String -> m ()
 setTargetFile file = do
     target <- guessTarget file Nothing
     setTargets [target]
+
+----------------------------------------------------------------
+
+getDynFlags :: IO DynFlags
+getDynFlags = runGhc (Just libdir) getSessionDynFlags
