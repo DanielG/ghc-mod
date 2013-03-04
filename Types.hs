@@ -65,10 +65,11 @@ addNewLine = (++ "\n")
 ----------------------------------------------------------------
 
 data Cradle = Cradle {
-    cradleCurrentDir  :: FilePath
-  , cradleCabalDir    :: Maybe FilePath
-  , cradleCabalFile   :: Maybe FilePath
+    cradleCurrentDir      :: FilePath
+  , cradleCabalDir        :: Maybe FilePath
+  , cradleCabalFile       :: Maybe FilePath
   , cradlePackageConfOpts :: Maybe [String]
+  , cradleGHCVersion      :: String
   } deriving Show
 
 ----------------------------------------------------------------
