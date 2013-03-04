@@ -1,4 +1,4 @@
-module Cradle where
+module Cradle (findCradle) where
 
 import Control.Applicative ((<$>))
 import Control.Exception (throwIO)
