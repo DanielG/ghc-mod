@@ -62,11 +62,9 @@ initSession :: Options
             -> Ghc LogReader
 initSession opt cmdOpts idirs mDepPkgs mLangExts logging file = do
     dflags0 <- getSessionDynFlags
-    hdrExts <- liftIO $ getHeaderExtension dflags0 file
-    let th = useTemplateHaskell mLangExts hdrExts
-        opts = map noLoc cmdOpts
-    (dflags1,_,_) <- parseDynamicFlags dflags0 opts
-    let dflags2 = modifyFlags opt dflags1 idirs mDepPkgs th
+    dflags1 <- modifyFlagsWithOpts dflags0 cmdOpts
+    fast <- not <$> checkTemplateHaskell dflags0 file mLangExts
+    let dflags2 = modifyFlags dflags1 idirs mDepPkgs fast (expandSplice opt)
     dflags3 <- setGhcFlags opt dflags2
     (dflags4,readLog) <- liftIO $ setLogger logging dflags3
     _ <- setSessionDynFlags dflags4
@@ -79,6 +77,11 @@ getHeaderExtension dflags file = map unLoc <$> getOptionsFromFile dflags file
 
 ----------------------------------------------------------------
 
+checkTemplateHaskell :: DynFlags -> FilePath -> Maybe [LangExt] -> Ghc Bool
+checkTemplateHaskell dflags file mLangExts = do
+    hdrExts <- liftIO $ getHeaderExtension dflags file
+    return $ useTemplateHaskell mLangExts hdrExts
+
 useTemplateHaskell :: Maybe [LangExt] -> [HeaderExt] -> Bool
 useTemplateHaskell mLangExts hdrExts = th1 || th2
   where
@@ -87,18 +90,35 @@ useTemplateHaskell mLangExts hdrExts = th1 || th2
 
 ----------------------------------------------------------------
 
-modifyFlags :: Options -> DynFlags -> [IncludeDir] -> Maybe [Package] -> Bool -> DynFlags
-modifyFlags opt d idirs mDepPkgs th
-  | expandSplice opt = dopt_set d'' Opt_D_dump_splices
-  | otherwise        = d''
+modifyFlagsWithOpts :: DynFlags -> [String] -> Ghc DynFlags
+modifyFlagsWithOpts dflags cmdOpts = do
+    (dflags',_,_) <- parseDynamicFlags dflags (map noLoc cmdOpts)
+    return dflags'
+
+----------------------------------------------------------------
+
+-- FIXME removing Options
+modifyFlags :: DynFlags -> [IncludeDir] -> Maybe [Package] -> Bool -> Bool -> DynFlags
+modifyFlags d0 idirs mDepPkgs fast splice
+  | splice    = setSplice d3
+  | otherwise = d3
   where
-    d' = d {
-        importPaths = idirs
-      , ghcLink     = if th then LinkInMemory else NoLink
-      , hscTarget   = if th then HscInterpreted else HscNothing
-      , flags       = flags d
-      }
-    d'' = maybe d' (addDevPkgs d') mDepPkgs
+    d1 = d0 { importPaths = idirs }
+    d2 = setFastOrNot d1 fast
+    d3 = maybe d2 (addDevPkgs d2) mDepPkgs
+
+setSplice :: DynFlags -> DynFlags
+setSplice dflag =  dopt_set dflag Opt_D_dump_splices
+
+setFastOrNot :: DynFlags -> Bool -> DynFlags
+setFastOrNot dflags False = dflags {
+    ghcLink     = LinkInMemory
+  , hscTarget   = HscInterpreted
+  }
+setFastOrNot dflags True = dflags {
+    ghcLink     = NoLink
+  , hscTarget   = HscNothing
+  }
 
 addDevPkgs :: DynFlags -> [Package] -> DynFlags
 addDevPkgs df pkgs = df''
