@@ -6,16 +6,22 @@ module CabalApi (
   , cabalBuildInfo
   , cabalAllDependPackages
   , cabalAllExtentions
+  , getGHCVersion
   ) where
 
 import Control.Applicative
+import Control.Exception (throwIO)
+import Data.List (intercalate)
 import Data.Maybe (fromJust, maybeToList, mapMaybe)
 import Data.Set (fromList, toList)
 import Distribution.Package (Dependency(Dependency), PackageName(PackageName))
 import Distribution.PackageDescription
 import Distribution.PackageDescription.Parse (readPackageDescription)
+import Distribution.Simple.Program (ghcProgram)
+import Distribution.Simple.Program.Types (programName, programFindVersion)
 import Distribution.Text (display)
 import Distribution.Verbosity (silent)
+import Distribution.Version (versionBranch)
 import Language.Haskell.Extension (Extension(..))
 import System.FilePath
 import Types
@@ -129,3 +135,18 @@ fromPackageDescription f1 f2 f3 f4 pd = lib ++ exe ++ tests ++ bench
 
 uniqueAndSort :: [String] -> [String]
 uniqueAndSort = toList . fromList
+
+----------------------------------------------------------------
+
+getGHCVersion :: IO (String, Int)
+getGHCVersion = ghcVer >>= toTupple
+  where
+    ghcVer = programFindVersion ghcProgram silent (programName ghcProgram)
+    toTupple Nothing  = throwIO $ userError "ghc not found"
+    toTupple (Just v)
+      | length vs < 2 = return (verstr, 0)
+      | otherwise     = return (verstr, ver)
+      where
+        vs = versionBranch v
+        ver = (vs !! 0) * 100 + (vs !! 1)
+        verstr = intercalate "." . map show $ vs
