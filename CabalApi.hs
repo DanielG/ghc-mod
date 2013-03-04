@@ -45,7 +45,7 @@ fromCabalFile ghcOptions cradle = do
   where
     owdir = cradleCurrentDir cradle
     Just cdir = cradleCabalDir cradle
-    Just cfile = cradleCabalDir cradle
+    Just cfile = cradleCabalFile cradle
 
 removeMe :: FilePath -> [String] -> [String]
 removeMe cabalfile = filter (/= me)
