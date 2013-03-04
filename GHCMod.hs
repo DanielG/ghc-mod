@@ -88,15 +88,19 @@ main = flip catches handlers $ do
     let (opt',cmdArg) = parseArgs argspec args
     cradle <- findCradle $ sandbox opt'
     let opt = ajustOpts opt' cradle
-    res <- case safelist cmdArg 0 of
+        cmdArg0 = cmdArg !. 0
+        cmdArg1 = cmdArg !. 1
+        cmdArg2 = cmdArg !. 2
+        cmdArg3 = cmdArg !. 3
+        cmdArg4 = cmdArg !. 4
+    res <- case cmdArg0 of
       "browse" -> concat <$> mapM (browseModule opt) (tail cmdArg)
       "list"   -> listModules opt
-      "check"  -> withFile (checkSyntax opt cradle) (safelist cmdArg 1)
-      "expand" -> withFile (checkSyntax opt { expandSplice = True } cradle)
-                           (safelist cmdArg 1)
-      "type"  -> withFile (typeExpr opt cradle (safelist cmdArg 2) (read $ safelist cmdArg 3) (read $ safelist cmdArg 4)) (safelist cmdArg 1)
-      "info"   -> withFile (infoExpr opt cradle (safelist cmdArg 2) (safelist cmdArg 3)) (safelist cmdArg 1)
-      "lint"   -> withFile (lintSyntax opt)  (safelist cmdArg 1)
+      "check"  -> withFile (checkSyntax opt cradle) cmdArg1
+      "expand" -> withFile (checkSyntax opt { expandSplice = True } cradle) cmdArg1
+      "type"   -> withFile (typeExpr opt cradle cmdArg2 (read cmdArg3) (read cmdArg4)) cmdArg1
+      "info"   -> withFile (infoExpr opt cradle cmdArg2 cmdArg3) cmdArg1
+      "lint"   -> withFile (lintSyntax opt) cmdArg1
       "lang"   -> listLanguages opt
       "flag"   -> listFlags opt
       "boot"   -> do
@@ -128,7 +132,7 @@ main = flip catches handlers $ do
         if exist
             then cmd file
             else throw (FileNotExist file)
-    safelist xs idx
+    xs !. idx
       | length xs <= idx = throw SafeList
       | otherwise = xs !! idx
     ajustOpts opt cradle = case mpkgopts of
