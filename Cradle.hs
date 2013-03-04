@@ -22,16 +22,18 @@ findCradle (Just sbox) = do
     cfiles <- cabalDir wdir
     return $ case cfiles of
         Nothing -> Cradle {
-            cradleCurrentDir  = wdir
-          , cradleCabalDir    = Nothing
-          , cradleCabalFile   = Nothing
+            cradleCurrentDir      = wdir
+          , cradleCabalDir        = Nothing
+          , cradleCabalFile       = Nothing
           , cradlePackageConfOpts = Just confOpts
+          , cradleGHCVersion      = strver
           }
         Just (cdir,cfile) -> Cradle {
-            cradleCurrentDir  = wdir
-          , cradleCabalDir    = Just cdir
-          , cradleCabalFile   = Just cfile
+            cradleCurrentDir      = wdir
+          , cradleCabalDir        = Just cdir
+          , cradleCabalFile       = Just cfile
           , cradlePackageConfOpts = Just confOpts
+          , cradleGHCVersion      = strver
           }
 findCradle Nothing = do
     (strver, ver) <- ghcVersion
@@ -39,10 +41,11 @@ findCradle Nothing = do
     cfiles <- cabalDir wdir
     case cfiles of
         Nothing -> return Cradle {
-            cradleCurrentDir  = wdir
-          , cradleCabalDir    = Nothing
-          , cradleCabalFile   = Nothing
+            cradleCurrentDir      = wdir
+          , cradleCabalDir        = Nothing
+          , cradleCabalFile       = Nothing
           , cradlePackageConfOpts = Nothing
+          , cradleGHCVersion      = strver
           }
         Just (cdir,cfile) -> do
             let sbox = cdir </> "cabal-dev/"
@@ -54,6 +57,7 @@ findCradle Nothing = do
               , cradleCabalDir        = Just cdir
               , cradleCabalFile       = Just cfile
               , cradlePackageConfOpts = if exist then Just confOpts else Nothing
+              , cradleGHCVersion      = strver
               }
 
 cabalDir :: FilePath -> IO (Maybe (FilePath,FilePath))
