@@ -33,8 +33,8 @@ browseModule opt mdlName = convert opt . format <$> browse opt mdlName
     formatOps' [] = error "formatOps'"
 
 browse :: Options -> String -> IO [String]
-browse opt mdlName = withGHC $ do
-    _ <- initSession0 opt
+browse opt mdlName = withGHCDummyFile $ do
+    initializeFlags opt
     getModule >>= getModuleInfo >>= listExports
   where
     getModule = findModule (mkModuleName mdlName) Nothing

@@ -1,4 +1,4 @@
-module Debug where
+module Debug (debugInfo) where
 
 import CabalApi
 import GHCApi
@@ -20,8 +20,8 @@ debug opt cradle fileName = do
             fromCabalFile (ghcOpts opt) cradle
           else
             return (ghcOpts opt, [], [], [])
-    dflags <- getDynFlags
-    fast <- isFastCheck dflags fileName (Just langext)
+    dflags <- getDynamicFlags
+    fast <- getFastCheck dflags fileName (Just langext)
     return [
         "GHC version:         " ++ ghcVer
       , "Current directory:   " ++ currentDir

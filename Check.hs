@@ -17,10 +17,10 @@ checkSyntax opt cradle file = unlines <$> check opt cradle file
 ----------------------------------------------------------------
 
 check :: Options -> Cradle -> String -> IO [String]
-check opt cradle fileName = withGHC' fileName $ checkIt `gcatch` handleErrMsg
+check opt cradle fileName = withGHC fileName $ checkIt `gcatch` handleErrMsg
   where
     checkIt = do
-        readLog <- initializeGHC opt cradle fileName options True
+        readLog <- initializeFlagsWithCradle opt cradle fileName options True
         setTargetFile fileName
         _ <- load LoadAllTargets
         liftIO readLog

@@ -1,8 +1,17 @@
-module GHCApi where
+module GHCApi (
+    withGHC
+  , withGHCDummyFile
+  , initializeFlags
+  , initializeFlagsWithCradle
+  , setTargetFile
+  , getDynamicFlags
+  , getFastCheck
+  ) where
 
 import CabalApi
 import Control.Applicative
 import Control.Exception
+import Control.Monad
 import CoreMonad
 import Data.Maybe (isJust)
 import DynFlags
@@ -17,11 +26,11 @@ import Types
 
 ----------------------------------------------------------------
 
-withGHC :: Alternative m => Ghc (m a) -> IO (m a)
-withGHC = withGHC' "Dummy"
+withGHCDummyFile :: Alternative m => Ghc (m a) -> IO (m a)
+withGHCDummyFile = withGHC "Dummy"
 
-withGHC' :: Alternative m => FilePath -> Ghc (m a) -> IO (m a)
-withGHC' file body = ghandle ignore $ runGhc (Just libdir) $ do
+withGHC :: Alternative m => FilePath -> Ghc (m a) -> IO (m a)
+withGHC file body = ghandle ignore $ runGhc (Just libdir) $ do
     dflags <- getSessionDynFlags
     defaultCleanupHandler dflags body
   where
@@ -33,19 +42,11 @@ withGHC' file body = ghandle ignore $ runGhc (Just libdir) $ do
 
 ----------------------------------------------------------------
 
-initSession0 :: Options -> Ghc [PackageId]
-initSession0 opt = do
-    dflags0 <- getSessionDynFlags
-    dflags1 <- setGhcFlags dflags0 opt
-    setSessionDynFlags dflags1
-
-----------------------------------------------------------------
-
 importDirs :: [IncludeDir]
 importDirs = [".","..","../..","../../..","../../../..","../../../../.."]
 
-initializeGHC :: Options -> Cradle -> FilePath -> [GHCOption] -> Bool -> Ghc LogReader
-initializeGHC opt cradle fileName ghcOptions logging
+initializeFlagsWithCradle :: Options -> Cradle -> FilePath -> [GHCOption] -> Bool -> Ghc LogReader
+initializeFlagsWithCradle opt cradle fileName ghcOptions logging
   | cabal     = do
       (gopts,idirs,depPkgs,hdrExts) <- liftIO $ fromCabalFile ghcOptions cradle
       initSession opt gopts idirs (Just depPkgs) (Just hdrExts) logging fileName
@@ -53,6 +54,8 @@ initializeGHC opt cradle fileName ghcOptions logging
       initSession opt ghcOptions importDirs Nothing Nothing logging fileName
   where
     cabal = isJust $ cradleCabalFile cradle
+
+----------------------------------------------------------------
 
 initSession :: Options
             -> [GHCOption]
@@ -70,10 +73,18 @@ initSession opt cmdOpts idirs mDepPkgs mLangExts logging file = do
   where
     setupDynamicFlags df0 = do
         df1 <- modifyFlagsWithOpts df0 cmdOpts
-        fast <- liftIO $ isFastCheck df0 file mLangExts
+        fast <- liftIO $ getFastCheck df0 file mLangExts
         let df2 = modifyFlags df1 idirs mDepPkgs fast (expandSplice opt)
         df3 <- setGhcFlags df2 opt
         liftIO $ setLogger logging df3
+
+----------------------------------------------------------------
+
+initializeFlags :: Options -> Ghc ()
+initializeFlags opt = do
+    dflags0 <- getSessionDynFlags
+    dflags1 <- setGhcFlags dflags0 opt
+    void $ setSessionDynFlags dflags1
 
 ----------------------------------------------------------------
 
@@ -82,8 +93,8 @@ getHeaderExtension dflags file = map unLoc <$> getOptionsFromFile dflags file
 
 ----------------------------------------------------------------
 
-isFastCheck :: DynFlags -> FilePath -> Maybe [LangExt] -> IO Bool
-isFastCheck dflags file mLangExts = do
+getFastCheck :: DynFlags -> FilePath -> Maybe [LangExt] -> IO Bool
+getFastCheck dflags file mLangExts = do
     hdrExts <- getHeaderExtension dflags file
     return . not $ useTemplateHaskell mLangExts hdrExts
 
@@ -149,5 +160,5 @@ setTargetFile file = do
 
 ----------------------------------------------------------------
 
-getDynFlags :: IO DynFlags
-getDynFlags = runGhc (Just libdir) getSessionDynFlags
+getDynamicFlags :: IO DynFlags
+getDynamicFlags = runGhc (Just libdir) getSessionDynFlags

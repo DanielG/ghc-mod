@@ -139,15 +139,15 @@ pprInfo pefas (thing, fixity, insts)
 
 inModuleContext :: Options -> Cradle -> FilePath -> ModuleString -> Ghc String -> String -> IO String
 inModuleContext opt cradle fileName modstr action errmsg =
-    withGHC (valid ||> invalid ||> return errmsg)
+    withGHCDummyFile (valid ||> invalid ||> return errmsg)
   where
     valid = do
-        _ <- initializeGHC opt cradle fileName ["-w"] False
+        _ <- initializeFlagsWithCradle opt cradle fileName ["-w"] False
         setTargetFile fileName
         _ <- load LoadAllTargets
         doif setContextFromTarget action
     invalid = do
-        _ <- initializeGHC opt cradle fileName ["-w"] False
+        _ <- initializeFlagsWithCradle opt cradle fileName ["-w"] False
         setTargetBuffer
         _ <- load LoadAllTargets
         doif setContextFromTarget action
