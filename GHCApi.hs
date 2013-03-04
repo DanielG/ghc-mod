@@ -44,11 +44,11 @@ importDirs = [".","..","../..","../../..","../../../..","../../../../.."]
 
 initializeGHC :: Options -> Cradle -> FilePath -> [GHCOption] -> Bool -> Ghc LogReader
 initializeGHC opt cradle fileName ghcOptions logging
-  | cabal     =
-      initSession opt ghcOptions importDirs Nothing Nothing logging fileName
-  | otherwise = do
+  | cabal     = do
       (gopts,idirs,depPkgs,hdrExts) <- liftIO $ fromCabalFile ghcOptions cradle
       initSession opt gopts idirs (Just depPkgs) (Just hdrExts) logging fileName
+  | otherwise =
+      initSession opt ghcOptions importDirs Nothing Nothing logging fileName
   where
     cabal = isJust $ cradleCabalFile cradle
 
