@@ -3,6 +3,7 @@
 module Main where
 
 import Browse
+import CabalApi
 import Check
 import Control.Applicative
 import Control.Exception
@@ -87,8 +88,9 @@ main :: IO ()
 main = flip catches handlers $ do
     args <- getArgs
     let (opt',cmdArg) = parseArgs argspec args
-    cradle <- findCradle $ sandbox opt'
-    let opt = ajustOpts opt' cradle
+    (strVer,ver) <- getGHCVersion
+    cradle <- findCradle (sandbox opt') strVer
+    let opt = adjustOpts opt' cradle ver
         cmdArg0 = cmdArg !. 0
         cmdArg1 = cmdArg !. 1
         cmdArg2 = cmdArg !. 2
@@ -99,7 +101,7 @@ main = flip catches handlers $ do
       "list"   -> listModules opt
       "check"  -> withFile (checkSyntax opt cradle) cmdArg1
       "expand" -> withFile (checkSyntax opt { expandSplice = True } cradle) cmdArg1
-      "debug"  -> withFile (debugInfo opt cradle) cmdArg1
+      "debug"  -> withFile (debugInfo opt cradle strVer) cmdArg1
       "type"   -> withFile (typeExpr opt cradle cmdArg2 (read cmdArg3) (read cmdArg4)) cmdArg1
       "info"   -> withFile (infoExpr opt cradle cmdArg2 cmdArg3) cmdArg1
       "lint"   -> withFile (lintSyntax opt) cmdArg1
@@ -137,11 +139,13 @@ main = flip catches handlers $ do
     xs !. idx
       | length xs <= idx = throw SafeList
       | otherwise = xs !! idx
-    ajustOpts opt cradle = case mpkgopts of
+    adjustOpts opt cradle ver = case mPkgConf of
             Nothing      -> opt
-            Just pkgopts -> opt { ghcOpts = pkgopts ++ ghcOpts opt }
+            Just pkgConf -> opt {
+                ghcOpts = ghcPackageConfOptions ver pkgConf ++ ghcOpts opt
+              }
       where
-        mpkgopts = cradlePackageConfOpts cradle
+        mPkgConf = cradlePackageConf cradle
 
 ----------------------------------------------------------------
 
@@ -156,3 +160,9 @@ preBrowsedModules = [
   , "Data.Maybe"
   , "System.IO"
   ]
+
+
+ghcPackageConfOptions :: Int -> String -> [String]
+ghcPackageConfOptions ver file
+  | ver >= 706 = ["-package-db",   file, "-no-user-package-conf"]
+  | otherwise  = ["-package-conf", file, "-no-user-package-conf"]

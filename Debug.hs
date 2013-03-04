@@ -10,11 +10,11 @@ import Types
 
 ----------------------------------------------------------------
 
-debugInfo :: Options -> Cradle -> String -> IO String
-debugInfo opt cradle fileName = unlines <$> debug opt cradle fileName
+debugInfo :: Options -> Cradle -> String -> String -> IO String
+debugInfo opt cradle ver fileName = unlines <$> debug opt cradle ver fileName
 
-debug :: Options -> Cradle -> String -> IO [String]
-debug opt cradle fileName = do
+debug :: Options -> Cradle -> String -> String -> IO [String]
+debug opt cradle ver fileName = do
     (gopts, incDir, pkgs, langext) <-
         if cabal then
             fromCabalFile (ghcOpts opt) cradle
@@ -23,7 +23,7 @@ debug opt cradle fileName = do
     dflags <- getDynamicFlags
     fast <- getFastCheck dflags fileName (Just langext)
     return [
-        "GHC version:         " ++ ghcVer
+        "GHC version:         " ++ ver
       , "Current directory:   " ++ currentDir
       , "Cabal file:          " ++ cabalFile
       , "GHC options:         " ++ intercalate " " gopts
@@ -32,7 +32,6 @@ debug opt cradle fileName = do
       , "Fast check:          " ++ if fast then "Yes" else "No"
       ]
   where
-    ghcVer = cradleGHCVersion cradle
     currentDir = cradleCurrentDir cradle
     cabal = isJust $ cradleCabalFile cradle
     cabalFile = fromMaybe "" $ cradleCabalFile cradle
