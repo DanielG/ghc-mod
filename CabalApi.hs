@@ -43,9 +43,9 @@ fromCabalFile ghcOptions cradle = do
         hdrExts = cabalAllExtentions cabal
     return (gopts,idirs,depPkgs,hdrExts)
   where
-    owdir = cradleCurrentDir cradle
-    Just cdir = cradleCabalDir cradle
-    Just cfile = cradleCabalFile cradle
+    owdir      = cradleCurrentDir cradle
+    Just cdir  = cradleCabalDir   cradle
+    Just cfile = cradleCabalFile  cradle
 
 removeMe :: FilePath -> [String] -> [String]
 removeMe cabalfile = filter (/= me)
