@@ -21,8 +21,7 @@ debug opt cradle fileName = do
           else
             return (ghcOpts opt, [], [], [])
     dflags <- getDynFlags
-    hdrext <- getHeaderExtension dflags fileName
-    let th = useTemplateHaskell (Just langext) hdrext
+    fast <- isFastCheck dflags fileName (Just langext)
     return [
         "GHC version:         " ++ ghcVer
       , "Current directory:   " ++ currentDir
@@ -30,7 +29,7 @@ debug opt cradle fileName = do
       , "GHC options:         " ++ intercalate " " gopts
       , "Include directories: " ++ intercalate " " incDir
       , "Dependent packages:  " ++ intercalate ", " pkgs
-      , "Fast check:          " ++ if th then "No" else "Yes"
+      , "Fast check:          " ++ if fast then "Yes" else "No"
       ]
   where
     ghcVer = cradleGHCVersion cradle

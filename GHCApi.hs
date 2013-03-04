@@ -34,8 +34,10 @@ withGHC' file body = ghandle ignore $ runGhc (Just libdir) $ do
 ----------------------------------------------------------------
 
 initSession0 :: Options -> Ghc [PackageId]
-initSession0 opt = getSessionDynFlags >>=
-  (>>= setSessionDynFlags) . setGhcFlags opt
+initSession0 opt = do
+    dflags0 <- getSessionDynFlags
+    dflags1 <- setGhcFlags dflags0 opt
+    setSessionDynFlags dflags1
 
 ----------------------------------------------------------------
 
@@ -62,13 +64,16 @@ initSession :: Options
             -> Ghc LogReader
 initSession opt cmdOpts idirs mDepPkgs mLangExts logging file = do
     dflags0 <- getSessionDynFlags
-    dflags1 <- modifyFlagsWithOpts dflags0 cmdOpts
-    fast <- not <$> checkTemplateHaskell dflags0 file mLangExts
-    let dflags2 = modifyFlags dflags1 idirs mDepPkgs fast (expandSplice opt)
-    dflags3 <- setGhcFlags opt dflags2
-    (dflags4,readLog) <- liftIO $ setLogger logging dflags3
-    _ <- setSessionDynFlags dflags4
+    (dflags1,readLog) <- setupDynamicFlags dflags0
+    _ <- setSessionDynFlags dflags1
     return readLog
+  where
+    setupDynamicFlags df0 = do
+        df1 <- modifyFlagsWithOpts df0 cmdOpts
+        fast <- liftIO $ isFastCheck df0 file mLangExts
+        let df2 = modifyFlags df1 idirs mDepPkgs fast (expandSplice opt)
+        df3 <- setGhcFlags df2 opt
+        liftIO $ setLogger logging df3
 
 ----------------------------------------------------------------
 
@@ -77,10 +82,10 @@ getHeaderExtension dflags file = map unLoc <$> getOptionsFromFile dflags file
 
 ----------------------------------------------------------------
 
-checkTemplateHaskell :: DynFlags -> FilePath -> Maybe [LangExt] -> Ghc Bool
-checkTemplateHaskell dflags file mLangExts = do
-    hdrExts <- liftIO $ getHeaderExtension dflags file
-    return $ useTemplateHaskell mLangExts hdrExts
+isFastCheck :: DynFlags -> FilePath -> Maybe [LangExt] -> IO Bool
+isFastCheck dflags file mLangExts = do
+    hdrExts <- getHeaderExtension dflags file
+    return . not $ useTemplateHaskell mLangExts hdrExts
 
 useTemplateHaskell :: Maybe [LangExt] -> [HeaderExt] -> Bool
 useTemplateHaskell mLangExts hdrExts = th1 || th2
@@ -108,16 +113,16 @@ modifyFlags d0 idirs mDepPkgs fast splice
     d3 = maybe d2 (addDevPkgs d2) mDepPkgs
 
 setSplice :: DynFlags -> DynFlags
-setSplice dflag =  dopt_set dflag Opt_D_dump_splices
+setSplice dflag = dopt_set dflag Opt_D_dump_splices
 
 setFastOrNot :: DynFlags -> Bool -> DynFlags
 setFastOrNot dflags False = dflags {
-    ghcLink     = LinkInMemory
-  , hscTarget   = HscInterpreted
+    ghcLink   = LinkInMemory
+  , hscTarget = HscInterpreted
   }
 setFastOrNot dflags True = dflags {
-    ghcLink     = NoLink
-  , hscTarget   = HscNothing
+    ghcLink   = NoLink
+  , hscTarget = HscNothing
   }
 
 addDevPkgs :: DynFlags -> [Package] -> DynFlags
@@ -130,8 +135,8 @@ addDevPkgs df pkgs = df''
 
 ----------------------------------------------------------------
 
-setGhcFlags :: Monad m => Options -> DynFlags -> m DynFlags
-setGhcFlags opt flagset =
+setGhcFlags :: Monad m => DynFlags -> Options -> m DynFlags
+setGhcFlags flagset opt =
   do (flagset',_,_) <- parseDynamicFlags flagset (map noLoc (ghcOpts opt))
      return flagset'
 
