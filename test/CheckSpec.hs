@@ -11,7 +11,7 @@ spec :: Spec
 spec = do
     describe "checkSyntax" $ do
         it "can check even if an executable depends on its library" $ do
-            withDirectory "test/data/ghc-mod-check" $ do
+            withDirectory_ "test/data/ghc-mod-check" $ do
                 (strVer,_) <- getGHCVersion
                 cradle <- findCradle Nothing strVer
                 res <- checkSyntax defaultOptions cradle "main.hs"

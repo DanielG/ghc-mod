@@ -11,7 +11,7 @@ spec :: Spec
 spec = do
     describe "typeExpr" $ do
         it "shows types of the expression and its outers" $ do
-            withDirectory "test/data/ghc-mod-check" $ do
+            withDirectory_ "test/data/ghc-mod-check" $ do
                 (strVer,_) <- getGHCVersion
                 cradle <- findCradle Nothing strVer
                 res <- typeExpr defaultOptions cradle "Data.Foo" 9 5 "Data/Foo.hs"

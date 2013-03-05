@@ -69,7 +69,7 @@ data Cradle = Cradle {
   , cradleCabalDir    :: Maybe FilePath
   , cradleCabalFile   :: Maybe FilePath
   , cradlePackageConf :: Maybe FilePath
-  } deriving Show
+  } deriving (Eq, Show)
 
 ----------------------------------------------------------------
 
