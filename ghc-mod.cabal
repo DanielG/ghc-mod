@@ -28,6 +28,7 @@ Data-Files:             Makefile ghc.el ghc-func.el ghc-doc.el ghc-comp.el
 Extra-Source-Files:     ChangeLog
 			test/data/*.cabal
                         test/data/*.hs
+                        test/data/cabal-dev/packages-7.6.2.conf
                         test/data/ghc-mod-check/*.hs
                         test/data/ghc-mod-check/*.cabal
                         test/data/ghc-mod-check/Data/*.hs
@@ -39,6 +40,7 @@ Executable ghc-mod
                         CabalApi
                         Check
                         Cradle
+                        Debug
                         ErrMsg
                         Flag
                         GHCApi
