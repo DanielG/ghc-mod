@@ -20,7 +20,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defconst ghc-flymake-allowed-file-name-masks
-  '("\\.l?hs$" ghc-flymake-init))
+  '("\\.l?hs$" ghc-flymake-init nil ghc-emacs23-larter-hack))
 
 (defconst ghc-flymake-err-line-patterns
   '("^\\(.*\\):\\([0-9]+\\):\\([0-9]+\\):[ ]*\\(.+\\)" 1 2 3 4))
@@ -30,6 +30,21 @@
 
 (add-to-list 'flymake-err-line-patterns
 	     ghc-flymake-err-line-patterns)
+
+(defun ghc-emacs23-larter-hack (tmp-file)
+  (let ((real-name (flymake-get-real-file-name tmp-file))
+	(hack-name (flymake-get-real-file-name source-file-name)))
+    (unless (string= real-name hack-name)
+      ;; Change the local variable, line-err-info,
+      ;; in flymake-parse-err-lines.
+      (setq line-err-info
+	    (flymake-ler-make-ler
+	     nil
+	     1
+	     (flymake-ler-type line-err-info)
+	     (concat real-name ": " (flymake-ler-text line-err-info))
+	     (flymake-ler-full-file line-err-info))))
+    hack-name))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
