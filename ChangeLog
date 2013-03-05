@@ -1,6 +1,12 @@
+2013-03-05 v1.12.0
+
+	* "ghc-mod debug" to see which cabal file and sand box are used
+	* Fast "ghc-mod check" if Template Haskell is not used
+	* "ghc-mod brwose -d" displays more information (@eagletmt)
+
 2013-03-01 v1.11.5
 
-	* New option "-d" for "ghc-mod brouse" to show symbols with type
+	* New option "-d" for "ghc-mod browse" to show symbols with type
 	info (@moidex)
 
 2013-02-15 v1.11.4
