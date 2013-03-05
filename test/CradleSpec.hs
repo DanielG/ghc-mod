@@ -42,7 +42,7 @@ spec = do
                   }
 
         it "finds a sandbox if exists" $ do
-            withDirectory "/" $  \dir -> do
+            withDirectory "/" $ \dir -> do
                 res <- relativeCradle dir <$> findCradle (Just $ addTrailingPathSeparator dir ++ "test/data/cabal-dev") "7.6.2"
                 res `shouldBe` Cradle {
                     cradleCurrentDir = "/"
@@ -50,6 +50,10 @@ spec = do
                   , cradleCabalFile = Nothing
                   , cradlePackageConf = Just "test/data/cabal-dev/packages-7.6.2.conf"
                   }
+
+        it "throws an error if the sandbox does not exist" $ do
+            withDirectory_ "/" $
+                findCradle (Just "/") "7.4.1" `shouldThrow` anyIOException
 
 relativeCradle :: FilePath -> Cradle -> Cradle
 relativeCradle dir cradle = Cradle {
