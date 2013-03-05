@@ -75,7 +75,7 @@ initSession opt cmdOpts idirs mDepPkgs mLangExts logging file = do
         df1 <- modifyFlagsWithOpts df0 cmdOpts
         fast <- liftIO $ getFastCheck df0 file mLangExts
         let df2 = modifyFlags df1 idirs mDepPkgs fast (expandSplice opt)
-        df3 <- setGhcFlags df2 opt
+        df3 <- modifyFlagsWithOpts df2 $ ghcOpts opt
         liftIO $ setLogger logging df3
 
 ----------------------------------------------------------------
@@ -83,12 +83,12 @@ initSession opt cmdOpts idirs mDepPkgs mLangExts logging file = do
 initializeFlags :: Options -> Ghc ()
 initializeFlags opt = do
     dflags0 <- getSessionDynFlags
-    dflags1 <- setGhcFlags dflags0 opt
+    dflags1 <- modifyFlagsWithOpts dflags0 $ ghcOpts opt
     void $ setSessionDynFlags dflags1
 
 ----------------------------------------------------------------
 
-getHeaderExtension :: DynFlags -> FilePath -> IO [String]
+getHeaderExtension :: DynFlags -> FilePath -> IO [HeaderExt]
 getHeaderExtension dflags file = map unLoc <$> getOptionsFromFile dflags file
 
 ----------------------------------------------------------------
@@ -103,13 +103,6 @@ useTemplateHaskell mLangExts hdrExts = th1 || th2
   where
     th1 = "-XTemplateHaskell" `elem` hdrExts
     th2 = maybe False ("TemplateHaskell" `elem`) mLangExts
-
-----------------------------------------------------------------
-
-modifyFlagsWithOpts :: DynFlags -> [String] -> Ghc DynFlags
-modifyFlagsWithOpts dflags cmdOpts = do
-    (dflags',_,_) <- parseDynamicFlags dflags (map noLoc cmdOpts)
-    return dflags'
 
 ----------------------------------------------------------------
 
@@ -146,10 +139,11 @@ addDevPkgs df pkgs = df''
 
 ----------------------------------------------------------------
 
-setGhcFlags :: Monad m => DynFlags -> Options -> m DynFlags
-setGhcFlags flagset opt =
-  do (flagset',_,_) <- parseDynamicFlags flagset (map noLoc (ghcOpts opt))
-     return flagset'
+modifyFlagsWithOpts :: DynFlags -> [String] -> Ghc DynFlags
+modifyFlagsWithOpts dflags cmdOpts =
+    tfst <$> parseDynamicFlags dflags (map noLoc cmdOpts)
+  where
+    tfst (a,_,_) = a
 
 ----------------------------------------------------------------
 
