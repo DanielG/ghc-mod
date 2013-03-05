@@ -31,6 +31,8 @@
 (add-to-list 'flymake-err-line-patterns
 	     ghc-flymake-err-line-patterns)
 
+;; flymake of Emacs 23 or later does not display errors
+;; if they occurred in other files. So, let's cheat flymake.
 (defun ghc-emacs23-larter-hack (tmp-file)
   (let ((real-name (flymake-get-real-file-name tmp-file))
 	(hack-name (flymake-get-real-file-name source-file-name)))
