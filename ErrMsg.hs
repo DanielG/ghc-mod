@@ -14,6 +14,7 @@ import GHC
 import qualified Gap
 import HscTypes
 import Outputable
+import System.FilePath (normalise)
 
 ----------------------------------------------------------------
 
@@ -52,10 +53,10 @@ ppErrMsg err = ppMsg spn SevError msg defaultUserStyle ++ ext
 ppMsg :: SrcSpan -> Severity-> SDoc -> PprStyle -> String
 ppMsg spn sev msg stl = fromMaybe def $ do
     (line,col,_,_) <- Gap.getSrcSpan spn
-    file <- Gap.getSrcFile spn
+    file <- normalise <$> Gap.getSrcFile spn
     let severityCaption = Gap.showSeverityCaption sev
     return $ file ++ ":" ++ show line ++ ":"
-               ++ show col ++ ":" ++ severityCaption ++ cts ++ "\0"
+                  ++ show col ++ ":" ++ severityCaption ++ cts ++ "\0"
   where
     def = "ghc-mod:0:0:Probably mutual module import occurred\0"
     cts  = showMsg msg stl
