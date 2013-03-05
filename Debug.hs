@@ -26,8 +26,8 @@ debug opt cradle ver fileName = do
         "GHC version:         " ++ ver
       , "Current directory:   " ++ currentDir
       , "Cabal file:          " ++ cabalFile
-      , "GHC options:         " ++ intercalate " " gopts
-      , "Include directories: " ++ intercalate " " incDir
+      , "GHC options:         " ++ unwords gopts
+      , "Include directories: " ++ unwords incDir
       , "Dependent packages:  " ++ intercalate ", " pkgs
       , "Fast check:          " ++ if fast then "Yes" else "No"
       ]
