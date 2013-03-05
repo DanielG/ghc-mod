@@ -11,8 +11,8 @@ shouldContain containers element = do
 
 withDirectory_ :: FilePath -> IO a -> IO a
 withDirectory_ dir action = bracket getCurrentDirectory
-                                   setCurrentDirectory
-                                   (\_ -> setCurrentDirectory dir >> action)
+                                    setCurrentDirectory
+                                    (\_ -> setCurrentDirectory dir >> action)
 
 withDirectory :: FilePath -> (FilePath -> IO a) -> IO a
 withDirectory dir action = bracket getCurrentDirectory
