@@ -1,4 +1,4 @@
-{-# LANGUAGE OverloadedStrings, RecordWildCards #-}
+{-# LANGUAGE OverloadedStrings #-}
 
 module CabalApi (
     fromCabalFile
@@ -30,28 +30,24 @@ import Types
 
 fromCabalFile :: [GHCOption]
               -> Cradle
-              -> IO ([GHCOption]
-                    ,[IncludeDir]
-                    ,[Package]
-                    ,[LangExt])
-fromCabalFile ghcOptions cradle = do
-    cabal <- cabalParseFile cfile
-    let binfo@BuildInfo{..} = cabalBuildInfo cabal
-    let exts = map (("-X" ++) . display) $ usedExtensions binfo
-        lang = maybe "-XHaskell98" (("-X" ++) . display) defaultLanguage
-        libs = map ("-l" ++) extraLibs
-        libDirs = map ("-L" ++) extraLibDirs
-        gopts = ghcOptions ++ exts ++ [lang] ++ libs ++ libDirs
-        idirs = case hsSourceDirs of
-            []   -> [cdir,owdir]
-            dirs -> map (cdir </>) dirs ++ [owdir]
-    let depPkgs = removeMe cfile $ cabalAllDependPackages cabal
-        hdrExts = cabalAllExtentions cabal
-    return (gopts,idirs,depPkgs,hdrExts)
+              -> IO ([GHCOption],[IncludeDir],[Package],[LangExt])
+fromCabalFile ghcOptions cradle =
+    cookInfo ghcOptions cradle <$> cabalParseFile cfile
+  where
+    Just cfile = cradleCabalFile  cradle
+
+cookInfo :: [String] -> Cradle -> GenericPackageDescription
+            -> ([GHCOption],[IncludeDir],[Package],[LangExt])
+cookInfo ghcOptions cradle cabal = (gopts,idirs,depPkgs,hdrExts)
   where
     owdir      = cradleCurrentDir cradle
     Just cdir  = cradleCabalDir   cradle
     Just cfile = cradleCabalFile  cradle
+    binfo      = cabalBuildInfo cabal
+    gopts      = getGHCOptions ghcOptions binfo
+    idirs      = includeDirectroies cdir owdir $ hsSourceDirs binfo
+    depPkgs    = removeMe cfile $ cabalAllDependPackages cabal
+    hdrExts    = cabalAllExtentions cabal
 
 removeMe :: FilePath -> [String] -> [String]
 removeMe cabalfile = filter (/= me)
@@ -62,6 +58,16 @@ removeMe cabalfile = filter (/= me)
 
 cabalParseFile :: FilePath -> IO GenericPackageDescription
 cabalParseFile = readPackageDescription silent
+
+----------------------------------------------------------------
+
+getGHCOptions :: [String] -> BuildInfo -> [String]
+getGHCOptions ghcOptions binfo = ghcOptions ++ exts ++ [lang] ++ libs ++ libDirs
+  where
+    exts = map (("-X" ++) . display) $ usedExtensions binfo
+    lang = maybe "-XHaskell98" (("-X" ++) . display) $ defaultLanguage binfo
+    libs = map ("-l" ++) $ extraLibs binfo
+    libDirs = map ("-L" ++) $ extraLibDirs binfo
 
 ----------------------------------------------------------------
 
@@ -130,6 +136,12 @@ fromPackageDescription f1 f2 f3 f4 pd = lib ++ exe ++ tests ++ bench
     exe   = f2 . map snd . condExecutables $ pd
     tests = f3 . map snd . condTestSuites  $ pd
     bench = f4 . map snd . condBenchmarks  $ pd
+
+----------------------------------------------------------------
+
+includeDirectroies :: String -> String -> [FilePath] -> [String]
+includeDirectroies cdir owdir []   = uniqueAndSort [cdir,owdir]
+includeDirectroies cdir owdir dirs = uniqueAndSort (map (cdir </>) dirs ++ [owdir])
 
 ----------------------------------------------------------------
 
