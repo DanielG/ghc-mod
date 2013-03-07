@@ -40,7 +40,7 @@ findCradle Nothing strver = do
         Just (cdir,cfile) -> do
             let sbox = cdir </> "cabal-dev/"
                 pkgConf = packageConfName sbox strver
-            exist <- doesFileExist pkgConf
+            exist <- doesDirectoryExist pkgConf
             return Cradle {
                 cradleCurrentDir  = wdir
               , cradleCabalDir    = Just cdir
@@ -66,7 +66,7 @@ packageConfName path ver = path </> "packages-" ++ ver ++ ".conf"
 checkPackageConf :: FilePath -> String -> IO FilePath
 checkPackageConf path ver = do
     let conf = packageConfName path ver
-    exist <- doesFileExist conf
+    exist <- doesDirectoryExist conf
     if exist then
         return conf
       else
