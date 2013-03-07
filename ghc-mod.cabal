@@ -1,5 +1,5 @@
 Name:                   ghc-mod
-Version:                1.12.0
+Version:                1.12.1
 Author:                 Kazu Yamamoto <kazu@iij.ad.jp>
 Maintainer:             Kazu Yamamoto <kazu@iij.ad.jp>
 License:                BSD3
@@ -28,7 +28,7 @@ Data-Files:             Makefile ghc.el ghc-func.el ghc-doc.el ghc-comp.el
 Extra-Source-Files:     ChangeLog
 			test/data/*.cabal
                         test/data/*.hs
-                        test/data/cabal-dev/packages-7.6.2.conf
+                        test/data/cabal-dev/packages-7.6.2.conf/dummy
                         test/data/ghc-mod-check/*.hs
                         test/data/ghc-mod-check/*.cabal
                         test/data/ghc-mod-check/Data/*.hs
