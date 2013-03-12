@@ -3,9 +3,7 @@
 module Gap (
     Gap.ClsInst
   , mkTarget
-  , showDocForUser
-  , showDoc
-  , styleDoc
+  , withStyle
   , setLogAction
   , supportedExtensions
   , getSrcSpan
@@ -77,25 +75,11 @@ mkTarget tid allowObjCode = Target tid allowObjCode . (fmap . second) convert
 ----------------------------------------------------------------
 ----------------------------------------------------------------
 
-showDocForUser :: PrintUnqualified -> SDoc -> String
+withStyle :: DynFlags -> PprStyle -> SDoc -> Pretty.Doc
 #if __GLASGOW_HASKELL__ >= 706
-showDocForUser = showSDocForUser tracingDynFlags
+withStyle = withPprStyleDoc
 #else
-showDocForUser = showSDocForUser
-#endif
-
-showDoc :: SDoc -> String
-#if __GLASGOW_HASKELL__ >= 706
-showDoc = showSDoc tracingDynFlags
-#else
-showDoc = showSDoc
-#endif
-
-styleDoc :: PprStyle -> SDoc -> Pretty.Doc
-#if __GLASGOW_HASKELL__ >= 706
-styleDoc = withPprStyleDoc tracingDynFlags
-#else
-styleDoc = withPprStyleDoc
+withStyle _ = withPprStyleDoc
 #endif
 
 setLogAction :: DynFlags

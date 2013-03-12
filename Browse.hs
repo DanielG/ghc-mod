@@ -4,16 +4,16 @@ import Control.Applicative
 import Data.Char
 import Data.List
 import Data.Maybe (fromMaybe)
+import DataCon (dataConRepType)
+import Doc
 import GHC
 import GHCApi
-import Gap
 import Name
 import Outputable
 import TyCon
 import Type
 import Types
 import Var
-import DataCon (dataConRepType)
 
 ----------------------------------------------------------------
 
@@ -55,20 +55,21 @@ processModule minfo = mapM processName names
         tyInfo <- modInfoLookupName minfo nm
         -- If nothing found, load dependent module and lookup global
         tyResult <- maybe (inOtherModule nm) (return . Just) tyInfo
-        return $ fromMaybe (getOccString nm) (tyResult >>= showThing)
+        dflag <- getSessionDynFlags
+        return $ fromMaybe (getOccString nm) (tyResult >>= showThing dflag)
     inOtherModule :: Name -> Ghc (Maybe TyThing)
     inOtherModule nm = getModuleInfo (nameModule nm) >> lookupGlobalName nm
 
-showThing :: TyThing -> Maybe String
-showThing (AnId i)     = Just $ formatType varType i
-showThing (ADataCon d) = Just $ formatType dataConRepType d
-showThing (ATyCon t)   = unwords . toList <$> tyType t
+showThing :: DynFlags -> TyThing -> Maybe String
+showThing dflag (AnId i)     = Just $ formatType dflag varType i
+showThing dflag (ADataCon d) = Just $ formatType dflag dataConRepType d
+showThing _     (ATyCon t)   = unwords . toList <$> tyType t
   where
     toList t' = t' : getOccString t : map getOccString (tyConTyVars t)
-showThing _          = Nothing
+showThing _     _            = Nothing
 
-formatType :: NamedThing a => (a -> Type) -> a -> String
-formatType f x = getOccString x ++ " :: " ++ showOutputable (removeForAlls $ f x)
+formatType :: NamedThing a => DynFlags -> (a -> Type) -> a -> String
+formatType dflag f x = getOccString x ++ " :: " ++ showOutputable dflag (removeForAlls $ f x)
 
 tyType :: TyCon -> Maybe String
 tyType typ
@@ -92,5 +93,5 @@ removeForAlls' ty (Just (pre, ftype))
     | isPredTy pre        = mkFunTy pre (dropForAlls ftype)
     | otherwise           = ty
 
-showOutputable :: Outputable a => a -> String
-showOutputable = unwords . lines . showDocForUser neverQualify . ppr
+showOutputable :: Outputable a => DynFlags -> a -> String
+showOutputable dflag = unwords . lines . showUnqualifiedPage dflag . ppr

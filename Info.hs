@@ -12,6 +12,7 @@ import Data.Maybe
 import Data.Ord as O
 import Data.Time.Clock
 import Desugar
+import Doc
 import GHC
 import GHC.SYB.Utils
 import GHCApi
@@ -21,7 +22,6 @@ import HscTypes
 import NameSet
 import Outputable
 import PprTyThing
-import Pretty (showDocWith, Mode(OneLineMode))
 import TcHsSyn (hsPatType)
 import TcRnTypes
 import Types
@@ -81,11 +81,12 @@ typeOf opt cradle fileName modstr lineNo colNo =
       bts <- mapM (getType tcm) bs
       ets <- mapM (getType tcm) es
       pts <- mapM (getType tcm) ps
-      let sss = map toTup $ sortBy (cmp `on` fst) $ catMaybes $ concat [ets, bts, pts]
+      dflag <- getSessionDynFlags
+      let sss = map (toTup dflag) $ sortBy (cmp `on` fst) $ catMaybes $ concat [ets, bts, pts]
       return $ convert opt sss
 
-    toTup :: (SrcSpan, Type) -> ((Int,Int,Int,Int),String)
-    toTup (spn, typ) = (fourInts spn, pretty typ)
+    toTup :: DynFlags -> (SrcSpan, Type) -> ((Int,Int,Int,Int),String)
+    toTup dflag (spn, typ) = (fourInts spn, pretty dflag typ)
 
     fourInts :: SrcSpan -> (Int,Int,Int,Int)
     fourInts = fromMaybe (0,0,0,0) . Gap.getSrcSpan
@@ -105,8 +106,8 @@ listifySpans tcs lc = listifyStaged TypeChecker p tcs
 listifyStaged :: Typeable r => Stage -> (r -> Bool) -> GenericQ [r]
 listifyStaged s p = everythingStaged s (++) [] ([] `mkQ` (\x -> [x | p x]))
 
-pretty :: Type -> String
-pretty = showDocWith OneLineMode . Gap.styleDoc (mkUserStyle neverQualify AllTheWay) . pprTypeForUser False
+pretty :: DynFlags -> Type -> String
+pretty dflag = showUnqualifiedOneLine dflag . pprTypeForUser False
 
 ----------------------------------------------------------------
 -- from ghc/InteractiveUI.hs
@@ -116,8 +117,8 @@ infoThing str = do
     names <- parseName str
     mb_stuffs <- mapM getInfo names
     let filtered = filterOutChildren (\(t,_f,_i) -> t) (catMaybes mb_stuffs)
-    unqual <- getPrintUnqual
-    return $ Gap.showDocForUser unqual $ vcat (intersperse (text "") $ map (pprInfo False) filtered)
+    dflag <- getSessionDynFlags
+    return $ showUnqualifiedPage dflag $ vcat (intersperse (text "") $ map (pprInfo False) filtered)
 
 filterOutChildren :: (a -> TyThing) -> [a] -> [a]
 filterOutChildren get_thing xs
@@ -153,7 +154,8 @@ inModuleContext opt cradle fileName modstr action errmsg =
         doif setContextFromTarget action
     setTargetBuffer = do
         modgraph <- depanal [mkModuleName modstr] True
-        let imports = concatMap (map (Gap.showDoc . ppr . unLoc)) $
+        dflag <- getSessionDynFlags
+        let imports = concatMap (map (showQualifiedPage dflag . ppr . unLoc)) $
                       map ms_imps modgraph ++ map ms_srcimps modgraph
             moddef = "module " ++ sanitize modstr ++ " where"
             header = moddef : imports
