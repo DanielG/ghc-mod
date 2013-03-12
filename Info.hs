@@ -121,9 +121,9 @@ infoThing str = do
 
 filterOutChildren :: (a -> TyThing) -> [a] -> [a]
 filterOutChildren get_thing xs
-  = [x | x <- xs, not (getName (get_thing x) `elemNameSet` implicits)]
+    = [x | x <- xs, not (getName (get_thing x) `elemNameSet` implicits)]
   where
-      implicits = mkNameSet [getName t | x <- xs, t <- implicitTyThings (get_thing x)]
+    implicits = mkNameSet [getName t | x <- xs, t <- implicitTyThings (get_thing x)]
 
 pprInfo :: PrintExplicitForalls -> (TyThing, GHC.Fixity, [Gap.ClsInst]) -> SDoc
 pprInfo pefas (thing, fixity, insts)
@@ -132,8 +132,8 @@ pprInfo pefas (thing, fixity, insts)
    $$ vcat (map pprInstance insts)
   where
     show_fixity fx
-        | fx == defaultFixity = Outputable.empty
-        | otherwise           = ppr fx <+> ppr (getName thing)
+      | fx == defaultFixity = Outputable.empty
+      | otherwise           = ppr fx <+> ppr (getName thing)
 
 ----------------------------------------------------------------
 
