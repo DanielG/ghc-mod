@@ -8,7 +8,6 @@ module Gap (
   , supportedExtensions
   , getSrcSpan
   , getSrcFile
-  , renderMsg
   , setCtx
   , fOptions
   , toStringBuffer
@@ -124,17 +123,6 @@ getSrcFile (RealSrcSpan spn)       = Just . unpackFS . srcSpanFile $ spn
 getSrcFile spn | isGoodSrcSpan spn = Just . unpackFS . srcSpanFile $ spn
 #endif
 getSrcFile _ = Nothing
-
-----------------------------------------------------------------
-
-renderMsg :: SDoc -> PprStyle -> String
-#if __GLASGOW_HASKELL__ >= 706
-renderMsg d stl = renderWithStyle tracingDynFlags d stl
-#elif __GLASGOW_HASKELL__ >= 702
-renderMsg d stl = renderWithStyle d stl
-#else
-renderMsg d stl = Pretty.showDocWith PageMode $ d stl
-#endif
 
 ----------------------------------------------------------------
 

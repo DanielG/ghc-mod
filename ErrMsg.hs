@@ -8,6 +8,7 @@ import Bag
 import Control.Applicative
 import Data.IORef
 import Data.Maybe
+import Doc
 import DynFlags
 import ErrUtils
 import GHC
@@ -31,27 +32,29 @@ setLogger True  df = do
     let newdf = Gap.setLogAction df $ appendLog ref
     return (newdf, reverse <$> readIORef ref)
   where
-    appendLog ref _ sev src stl msg = modifyIORef ref (\ls -> ppMsg src sev msg stl : ls)
+    appendLog ref _ sev src _ msg = modifyIORef ref (\ls -> ppMsg src sev df msg : ls)
 
 ----------------------------------------------------------------
 
 handleErrMsg :: SourceError -> Ghc [String]
-handleErrMsg = return . errBagToStrList . srcErrorMessages
+handleErrMsg err = do
+    dflag <- getSessionDynFlags
+    return . errBagToStrList dflag . srcErrorMessages $ err
 
-errBagToStrList :: Bag ErrMsg -> [String]
-errBagToStrList = map ppErrMsg . reverse . bagToList
+errBagToStrList :: DynFlags -> Bag ErrMsg -> [String]
+errBagToStrList dflag = map (ppErrMsg dflag) . reverse . bagToList
 
 ----------------------------------------------------------------
 
-ppErrMsg :: ErrMsg -> String
-ppErrMsg err = ppMsg spn SevError msg defaultUserStyle ++ ext
+ppErrMsg :: DynFlags -> ErrMsg -> String
+ppErrMsg dflag err = ppMsg spn SevError dflag msg ++ ext
    where
      spn = head (errMsgSpans err)
      msg = errMsgShortDoc err
-     ext = showMsg (errMsgExtraInfo err) defaultUserStyle
+     ext = showMsg dflag (errMsgExtraInfo err)
 
-ppMsg :: SrcSpan -> Severity-> SDoc -> PprStyle -> String
-ppMsg spn sev msg stl = fromMaybe def $ do
+ppMsg :: SrcSpan -> Severity-> DynFlags -> SDoc -> String
+ppMsg spn sev dflag msg = fromMaybe def $ do
     (line,col,_,_) <- Gap.getSrcSpan spn
     file <- normalise <$> Gap.getSrcFile spn
     let severityCaption = Gap.showSeverityCaption sev
@@ -59,12 +62,12 @@ ppMsg spn sev msg stl = fromMaybe def $ do
                   ++ show col ++ ":" ++ severityCaption ++ cts ++ "\0"
   where
     def = "ghc-mod:0:0:Probably mutual module import occurred\0"
-    cts  = showMsg msg stl
+    cts  = showMsg dflag msg
 
 ----------------------------------------------------------------
 
-showMsg :: SDoc -> PprStyle -> String
-showMsg d stl = map toNull $ Gap.renderMsg d stl
+showMsg :: DynFlags -> SDoc -> String
+showMsg dflag sdoc = map toNull $ showQualifiedPage dflag sdoc
   where
     toNull '\n' = '\0'
     toNull x = x
