@@ -9,7 +9,7 @@ spec = do
     describe "cabalAllDependPackages" $ do
         it "extracts dependent packages" $ do
             pkgs <- cabalAllDependPackages <$> cabalParseFile "test/data/cabalapi.cabal"
-            pkgs `shouldBe` ["Cabal","base","containers","convertible","directory","filepath","ghc","ghc-paths","ghc-syb-utils","hlint","hspec","io-choice","old-time","process","regex-posix","syb","time","transformers"]
+            pkgs `shouldBe` ["Cabal","base","template-haskell"]
 
     describe "cabalBuildInfo" $ do
         it "extracts build info" $ do
