@@ -1,10 +1,12 @@
 module Debug (debugInfo) where
 
 import CabalApi
-import GHCApi
 import Control.Applicative
+import Control.Monad
 import Data.List (intercalate)
 import Data.Maybe
+import GHC
+import GHCApi
 import Prelude
 import Types
 
@@ -15,13 +17,16 @@ debugInfo opt cradle ver fileName = unlines <$> debug opt cradle ver fileName
 
 debug :: Options -> Cradle -> String -> String -> IO [String]
 debug opt cradle ver fileName = do
-    (gopts, incDir, pkgs, langext) <-
+    (gopts, incDir, pkgs) <-
         if cabal then
             fromCabalFile (ghcOpts opt) cradle
           else
-            return (ghcOpts opt, [], [], [])
-    dflags <- getDynamicFlags
-    fast <- getFastCheck dflags fileName (Just langext)
+            return (ghcOpts opt, [], [])
+    [fast] <- withGHC fileName $ do
+        void $ initializeFlagsWithCradle opt cradle gopts True
+        setTargetFile fileName
+        slow <- needsTemplateHaskell <$> depanal [] False
+        return [not slow]
     return [
         "GHC version:         " ++ ver
       , "Current directory:   " ++ currentDir

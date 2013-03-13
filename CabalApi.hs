@@ -5,14 +5,13 @@ module CabalApi (
   , cabalParseFile
   , cabalBuildInfo
   , cabalAllDependPackages
-  , cabalAllExtentions
   , getGHCVersion
   ) where
 
 import Control.Applicative
 import Control.Exception (throwIO)
 import Data.List (intercalate)
-import Data.Maybe (fromJust, maybeToList, mapMaybe)
+import Data.Maybe (fromJust, maybeToList)
 import Data.Set (fromList, toList)
 import Distribution.Package (Dependency(Dependency), PackageName(PackageName))
 import Distribution.PackageDescription
@@ -22,7 +21,6 @@ import Distribution.Simple.Program.Types (programName, programFindVersion)
 import Distribution.Text (display)
 import Distribution.Verbosity (silent)
 import Distribution.Version (versionBranch)
-import Language.Haskell.Extension (Extension(..))
 import System.FilePath
 import Types
 
@@ -30,15 +28,15 @@ import Types
 
 fromCabalFile :: [GHCOption]
               -> Cradle
-              -> IO ([GHCOption],[IncludeDir],[Package],[LangExt])
+              -> IO ([GHCOption],[IncludeDir],[Package])
 fromCabalFile ghcOptions cradle =
     cookInfo ghcOptions cradle <$> cabalParseFile cfile
   where
     Just cfile = cradleCabalFile  cradle
 
 cookInfo :: [String] -> Cradle -> GenericPackageDescription
-            -> ([GHCOption],[IncludeDir],[Package],[LangExt])
-cookInfo ghcOptions cradle cabal = (gopts,idirs,depPkgs,hdrExts)
+            -> ([GHCOption],[IncludeDir],[Package])
+cookInfo ghcOptions cradle cabal = (gopts,idirs,depPkgs)
   where
     owdir      = cradleCurrentDir cradle
     Just cdir  = cradleCabalDir   cradle
@@ -47,7 +45,6 @@ cookInfo ghcOptions cradle cabal = (gopts,idirs,depPkgs,hdrExts)
     gopts      = getGHCOptions ghcOptions binfo
     idirs      = includeDirectroies cdir owdir $ hsSourceDirs binfo
     depPkgs    = removeMe cfile $ cabalAllDependPackages cabal
-    hdrExts    = cabalAllExtentions cabal
 
 removeMe :: FilePath -> [String] -> [String]
 removeMe cabalfile = filter (/= me)
@@ -95,30 +92,6 @@ cabalAllDependency = fromPackageDescription getDeps getDeps getDeps getDeps
 
 getDependencyPackageName :: Dependency -> Package
 getDependencyPackageName (Dependency (PackageName nm) _) = nm
-
-----------------------------------------------------------------
-
-cabalAllExtentions :: GenericPackageDescription -> [LangExt]
-cabalAllExtentions pd = uniqueAndSort exts
-  where
-    buildInfos = cabalAllBuildInfos pd
-    eexts = concatMap oldExtensions buildInfos
-         ++ concatMap defaultExtensions buildInfos
-    exts  = mapMaybe getExtensionName eexts
-
-getExtensionName :: Extension -> Maybe LangExt
-getExtensionName (EnableExtension nm) = Just (display nm)
-getExtensionName _                    = Nothing
-
-----------------------------------------------------------------
-
-cabalAllBuildInfos :: GenericPackageDescription -> [BuildInfo]
-cabalAllBuildInfos = fromPackageDescription f1 f2 f3 f4
-  where
-    f1 = map (libBuildInfo       . condTreeData)
-    f2 = map (buildInfo          . condTreeData)
-    f3 = map (testBuildInfo      . condTreeData)
-    f4 = map (benchmarkBuildInfo . condTreeData)
 
 ----------------------------------------------------------------
 

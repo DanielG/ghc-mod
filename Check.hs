@@ -1,6 +1,7 @@
 module Check (checkSyntax) where
 
 import Control.Applicative
+import Control.Monad
 import CoreMonad
 import ErrMsg
 import Exception
@@ -20,9 +21,11 @@ check :: Options -> Cradle -> String -> IO [String]
 check opt cradle fileName = withGHC fileName $ checkIt `gcatch` handleErrMsg
   where
     checkIt = do
-        readLog <- initializeFlagsWithCradle opt cradle fileName options True
+        readLog <- initializeFlagsWithCradle opt cradle options True
         setTargetFile fileName
-        _ <- load LoadAllTargets
+        slow <- needsTemplateHaskell <$> depanal [] False
+        when slow setSlowDynFlags
+        void $ load LoadAllTargets
         liftIO readLog
     options
       | expandSplice opt = "-w:"   : ghcOpts opt

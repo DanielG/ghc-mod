@@ -76,5 +76,3 @@ data Cradle = Cradle {
 type GHCOption  = String
 type IncludeDir = FilePath
 type Package    = String
-type LangExt    = String
-type HeaderExt  = String

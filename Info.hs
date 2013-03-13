@@ -143,12 +143,12 @@ inModuleContext opt cradle fileName modstr action errmsg =
     withGHCDummyFile (valid ||> invalid ||> return errmsg)
   where
     valid = do
-        _ <- initializeFlagsWithCradle opt cradle fileName ["-w"] False
+        _ <- initializeFlagsWithCradle opt cradle ["-w"] False
         setTargetFile fileName
         _ <- load LoadAllTargets
         doif setContextFromTarget action
     invalid = do
-        _ <- initializeFlagsWithCradle opt cradle fileName ["-w"] False
+        _ <- initializeFlagsWithCradle opt cradle ["-w"] False
         setTargetBuffer
         _ <- load LoadAllTargets
         doif setContextFromTarget action
