@@ -3,7 +3,7 @@
 	* New logic to set "-fno-code" using "depanal"
 	* Cleaning up the code relating to Doc/SDoc
 
-2013-03-05 v1.12.1
+2013-03-07 v1.12.1
 
 	* Fixing a bug to find a sandbox.
 
