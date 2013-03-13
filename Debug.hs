@@ -1,4 +1,4 @@
-module Debug (debugInfo) where
+module Debug (debugInfo, debug) where
 
 import CabalApi
 import Control.Applicative
