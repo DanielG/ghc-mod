@@ -67,7 +67,7 @@ ppMsg spn sev dflag msg = fromMaybe def $ do
 ----------------------------------------------------------------
 
 showMsg :: DynFlags -> SDoc -> String
-showMsg dflag sdoc = map toNull $ showQualifiedPage dflag sdoc
+showMsg dflag sdoc = map toNull $ showUnqualifiedPage dflag sdoc
   where
     toNull '\n' = '\0'
     toNull x = x
