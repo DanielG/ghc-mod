@@ -4,6 +4,7 @@
 module Info (infoExpr, typeExpr) where
 
 import Control.Applicative
+import Control.Monad (when)
 import CoreUtils
 import Data.Function
 import Data.Generics
@@ -145,11 +146,15 @@ inModuleContext opt cradle fileName modstr action errmsg =
     valid = do
         _ <- initializeFlagsWithCradle opt cradle ["-w"] False
         setTargetFile fileName
+        slow <- needsTemplateHaskell <$> depanal [] False
+        when slow setSlowDynFlags
         _ <- load LoadAllTargets
         doif setContextFromTarget action
     invalid = do
         _ <- initializeFlagsWithCradle opt cradle ["-w"] False
         setTargetBuffer
+        slow <- needsTemplateHaskell <$> depanal [] False
+        when slow setSlowDynFlags
         _ <- load LoadAllTargets
         doif setContextFromTarget action
     setTargetBuffer = do
