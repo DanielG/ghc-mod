@@ -5,7 +5,7 @@ module GHCApi (
   , initializeFlagsWithCradle
   , setTargetFile
   , getDynamicFlags
-  , setSlowDynFlags
+  , checkSlowAndSet
   ) where
 
 import CabalApi
@@ -121,6 +121,15 @@ setFastOrNot dflags True = dflags {
 setSlowDynFlags :: Ghc ()
 setSlowDynFlags = (flip setFastOrNot False <$> getSessionDynFlags)
                   >>= void . setSessionDynFlags
+
+-- To check TH, a session module graph is necessary.
+-- "load" sets a session module graph using "depanal".
+-- But we have to set "-fno-code" to DynFlags before "load".
+-- So, this is necessary redundancy.
+checkSlowAndSet :: Ghc ()
+checkSlowAndSet = do
+    slow <- needsTemplateHaskell <$> depanal [] False
+    when slow setSlowDynFlags
 
 ----------------------------------------------------------------
 
