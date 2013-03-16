@@ -3,7 +3,7 @@ module CheckSpec where
 import CabalApi
 import Check
 import Cradle
-import Data.List (isSuffixOf)
+import Data.List (isSuffixOf, isInfixOf)
 import Expectation
 import Test.Hspec
 import Types
@@ -23,3 +23,11 @@ spec = do
                 cradle <- getGHCVersion >>= findCradle Nothing . fst
                 res <- checkSyntax defaultOptions cradle "test/Bar/Baz.hs"
                 res `shouldSatisfy` ("test/Foo.hs:3:1:Warning: Top-level binding with no type signature: foo :: [Char]\NUL\n" `isSuffixOf`)
+
+        it "can detect mutually imported modules" $ do
+            withDirectory_ "test/data" $ do
+                (strVer,_) <- getGHCVersion
+                cradle <- findCradle Nothing strVer
+                res <- checkSyntax defaultOptions cradle "Mutual1.hs"
+                res `shouldSatisfy` ("Module imports form a cycle" `isInfixOf`)
+            

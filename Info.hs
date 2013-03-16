@@ -144,13 +144,13 @@ inModuleContext opt cradle fileName modstr action errmsg =
     withGHCDummyFile (valid ||> invalid ||> return errmsg)
   where
     valid = do
-        void $ initializeFlagsWithCradle opt cradle ["-w"] False
+        void $ initializeFlagsWithCradle opt cradle ["-w:"] False
         setTargetFile fileName
         checkSlowAndSet
         void $ load LoadAllTargets
         doif setContextFromTarget action
     invalid = do
-        void $ initializeFlagsWithCradle opt cradle ["-w"] False
+        void $ initializeFlagsWithCradle opt cradle ["-w:"] False
         setTargetBuffer
         checkSlowAndSet
         void $ load LoadAllTargets

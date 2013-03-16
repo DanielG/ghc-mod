@@ -1,3 +1,5 @@
+{-# LANGUAGE BangPatterns #-}
+
 module ErrMsg (
     LogReader
   , setLogger
@@ -32,7 +34,9 @@ setLogger True  df = do
     let newdf = Gap.setLogAction df $ appendLog ref
     return (newdf, reverse <$> readIORef ref)
   where
-    appendLog ref _ sev src _ msg = modifyIORef ref (\ls -> ppMsg src sev df msg : ls)
+    appendLog ref _ sev src _ msg = do
+        let !l = ppMsg src sev df msg
+        modifyIORef ref (\ls -> l : ls)
 
 ----------------------------------------------------------------
 
@@ -54,15 +58,17 @@ ppErrMsg dflag err = ppMsg spn SevError dflag msg ++ ext
      ext = showMsg dflag (errMsgExtraInfo err)
 
 ppMsg :: SrcSpan -> Severity-> DynFlags -> SDoc -> String
-ppMsg spn sev dflag msg = fromMaybe def $ do
-    (line,col,_,_) <- Gap.getSrcSpan spn
-    file <- normalise <$> Gap.getSrcFile spn
-    let severityCaption = Gap.showSeverityCaption sev
-    return $ file ++ ":" ++ show line ++ ":"
-                  ++ show col ++ ":" ++ severityCaption ++ cts ++ "\0"
+ppMsg spn sev dflag msg = prefix ++ cts ++ "\0"
   where
-    def = "ghc-mod:0:0:Probably mutual module import occurred\0"
     cts  = showMsg dflag msg
+    defaultPrefix
+      | dopt Opt_D_dump_splices dflag = ""
+      | otherwise                     = "Dummy:0:0:"
+    prefix = fromMaybe defaultPrefix $ do
+        (line,col,_,_) <- Gap.getSrcSpan spn
+        file <- normalise <$> Gap.getSrcFile spn
+        let severityCaption = Gap.showSeverityCaption sev
+        return $ file ++ ":" ++ show line ++ ":" ++ show col ++ ":" ++ severityCaption
 
 ----------------------------------------------------------------
 
