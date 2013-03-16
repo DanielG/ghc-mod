@@ -33,6 +33,10 @@ Extra-Source-Files:     ChangeLog
                         test/data/ghc-mod-check/*.cabal
                         test/data/ghc-mod-check/Data/*.hs
                         test/data/subdir1/subdir2/dummy
+                        test/data/check-test-subdir/*.cabal
+                        test/data/check-test-subdir/test/*.hs
+                        test/data/check-test-subdir/test/Bar/*.hs
+                        test/data/check-test-subdir/src/Check/Test/*.hs
 Executable ghc-mod
   Default-Language:     Haskell2010
   Main-Is:              GHCMod.hs
