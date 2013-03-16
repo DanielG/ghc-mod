@@ -5,6 +5,7 @@ module CabalApi (
   , cabalParseFile
   , cabalBuildInfo
   , cabalAllDependPackages
+  , cabalAllSourceDirs
   , getGHCVersion
   ) where
 
@@ -43,7 +44,7 @@ cookInfo ghcOptions cradle cabal = (gopts,idirs,depPkgs)
     Just cfile = cradleCabalFile  cradle
     binfo      = cabalBuildInfo cabal
     gopts      = getGHCOptions ghcOptions binfo
-    idirs      = includeDirectroies cdir owdir $ hsSourceDirs binfo
+    idirs      = includeDirectroies cdir owdir $ cabalAllSourceDirs cabal
     depPkgs    = removeMe cfile $ cabalAllDependPackages cabal
 
 removeMe :: FilePath -> [String] -> [String]
@@ -78,6 +79,11 @@ cabalBuildInfo pd = fromJust $ fromLibrary pd <|> fromExecutable pd
     toMaybe (x:_) = Just x
 
 ----------------------------------------------------------------
+
+cabalAllSourceDirs :: GenericPackageDescription -> [FilePath]
+cabalAllSourceDirs = fromPackageDescription (f libBuildInfo) (f buildInfo) (f testBuildInfo) (f benchmarkBuildInfo)
+  where
+    f getBuildInfo = concatMap (hsSourceDirs . getBuildInfo . condTreeData)
 
 cabalAllDependPackages :: GenericPackageDescription -> [Package]
 cabalAllDependPackages pd = uniqueAndSort pkgs
