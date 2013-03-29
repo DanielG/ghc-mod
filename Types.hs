@@ -9,7 +9,7 @@ data Options = Options {
   , hlintOpts    :: [String]
   , ghcOpts      :: [String]
   , operators    :: Bool
-  , detailed :: Bool
+  , detailed     :: Bool
   , expandSplice :: Bool
   , sandbox      :: Maybe String
   }
@@ -20,7 +20,7 @@ defaultOptions = Options {
   , hlintOpts    = []
   , ghcOpts      = []
   , operators    = False
-  , detailed = False
+  , detailed     = False
   , expandSplice = False
   , sandbox      = Nothing
   }
@@ -61,3 +61,18 @@ quote x = "\"" ++ x ++ "\""
 
 addNewLine :: String -> String
 addNewLine = (++ "\n")
+
+----------------------------------------------------------------
+
+data Cradle = Cradle {
+    cradleCurrentDir  :: FilePath
+  , cradleCabalDir    :: Maybe FilePath
+  , cradleCabalFile   :: Maybe FilePath
+  , cradlePackageConf :: Maybe FilePath
+  } deriving (Eq, Show)
+
+----------------------------------------------------------------
+
+type GHCOption  = String
+type IncludeDir = FilePath
+type Package    = String

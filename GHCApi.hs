@@ -1,8 +1,19 @@
-module GHCApi where
+module GHCApi (
+    withGHC
+  , withGHCDummyFile
+  , initializeFlags
+  , initializeFlagsWithCradle
+  , setTargetFile
+  , getDynamicFlags
+  , checkSlowAndSet
+  ) where
 
+import CabalApi
 import Control.Applicative
 import Control.Exception
+import Control.Monad
 import CoreMonad
+import Data.Maybe (isJust)
 import DynFlags
 import ErrMsg
 import Exception
@@ -14,11 +25,11 @@ import Types
 
 ----------------------------------------------------------------
 
-withGHC :: Alternative m => Ghc (m a) -> IO (m a)
-withGHC = withGHC' "Dummy"
+withGHCDummyFile :: Alternative m => Ghc (m a) -> IO (m a)
+withGHCDummyFile = withGHC "Dummy"
 
-withGHC' :: Alternative m => FilePath -> Ghc (m a) -> IO (m a)
-withGHC' file body = ghandle ignore $ runGhc (Just libdir) $ do
+withGHC :: Alternative m => FilePath -> Ghc (m a) -> IO (m a)
+withGHC file body = ghandle ignore $ runGhc (Just libdir) $ do
     dflags <- getSessionDynFlags
     defaultCleanupHandler dflags body
   where
@@ -30,45 +41,103 @@ withGHC' file body = ghandle ignore $ runGhc (Just libdir) $ do
 
 ----------------------------------------------------------------
 
-initSession0 :: Options -> Ghc [PackageId]
-initSession0 opt = getSessionDynFlags >>=
-  (>>= setSessionDynFlags) . setGhcFlags opt
+importDirs :: [IncludeDir]
+importDirs = [".","..","../..","../../..","../../../..","../../../../.."]
 
-initSession :: Options -> [String] -> [FilePath] -> Maybe [String] -> Bool -> Ghc LogReader
-initSession opt cmdOpts idirs mayPkgs logging = do
-    dflags <- getSessionDynFlags
-    let opts = map noLoc cmdOpts
-    (dflags',_,_) <- parseDynamicFlags dflags opts
-    (dflags'',readLog) <- liftIO . (>>= setLogger logging)
-                          . setGhcFlags opt . setFlags opt dflags' idirs $ mayPkgs
-    _ <- setSessionDynFlags dflags''
-    return readLog
+initializeFlagsWithCradle :: Options -> Cradle -> [GHCOption] -> Bool -> Ghc LogReader
+initializeFlagsWithCradle opt cradle ghcOptions logging
+  | cabal     = do
+      (gopts,idirs,depPkgs) <- liftIO $ fromCabalFile ghcOptions cradle
+      initSession opt gopts idirs (Just depPkgs) logging
+  | otherwise =
+      initSession opt ghcOptions importDirs Nothing logging
+  where
+    cabal = isJust $ cradleCabalFile cradle
 
 ----------------------------------------------------------------
 
-setFlags :: Options -> DynFlags -> [FilePath] -> Maybe [String] -> DynFlags
-setFlags opt d idirs mayPkgs
-  | expandSplice opt = dopt_set d' Opt_D_dump_splices
-  | otherwise        = d'
+initSession :: Options
+            -> [GHCOption]
+            -> [IncludeDir]
+            -> Maybe [Package]
+            -> Bool
+            -> Ghc LogReader
+initSession opt cmdOpts idirs mDepPkgs logging = do
+    dflags0 <- getSessionDynFlags
+    (dflags1,readLog) <- setupDynamicFlags dflags0
+    _ <- setSessionDynFlags dflags1
+    return readLog
   where
-    d' = maySetExpose $ d {
-        importPaths = idirs
-      , ghcLink = LinkInMemory
-      , hscTarget = HscInterpreted
-      , flags = flags d
+    setupDynamicFlags df0 = do
+        df1 <- modifyFlagsWithOpts df0 cmdOpts
+        let fast = True
+        let df2 = modifyFlags df1 idirs mDepPkgs fast (expandSplice opt)
+        df3 <- modifyFlagsWithOpts df2 $ ghcOpts opt
+        liftIO $ setLogger logging df3
+
+----------------------------------------------------------------
+
+initializeFlags :: Options -> Ghc ()
+initializeFlags opt = do
+    dflags0 <- getSessionDynFlags
+    dflags1 <- modifyFlagsWithOpts dflags0 $ ghcOpts opt
+    void $ setSessionDynFlags dflags1
+
+----------------------------------------------------------------
+
+-- FIXME removing Options
+modifyFlags :: DynFlags -> [IncludeDir] -> Maybe [Package] -> Bool -> Bool -> DynFlags
+modifyFlags d0 idirs mDepPkgs fast splice
+  | splice    = setSplice d3
+  | otherwise = d3
+  where
+    d1 = d0 { importPaths = idirs }
+    d2 = setFastOrNot d1 fast
+    d3 = maybe d2 (addDevPkgs d2) mDepPkgs
+
+setSplice :: DynFlags -> DynFlags
+setSplice dflag = dopt_set dflag Opt_D_dump_splices
+
+addDevPkgs :: DynFlags -> [Package] -> DynFlags
+addDevPkgs df pkgs = df''
+  where
+    df' = dopt_set df Opt_HideAllPackages
+    df'' = df' {
+        packageFlags = map ExposePackage pkgs ++ packageFlags df
       }
-    -- Do hide-all only when depend packages specified
-    maySetExpose df = maybe df (\x -> (dopt_set df Opt_HideAllPackages) {
-                                   packageFlags = map ExposePackage x ++ packageFlags df
-                                   }) mayPkgs
 
-ghcPackage :: PackageFlag
-ghcPackage = ExposePackage "ghc"
+----------------------------------------------------------------
 
-setGhcFlags :: Monad m => Options -> DynFlags -> m DynFlags
-setGhcFlags opt flagset =
-  do (flagset',_,_) <- parseDynamicFlags flagset (map noLoc (ghcOpts opt))
-     return flagset'
+setFastOrNot :: DynFlags -> Bool -> DynFlags
+setFastOrNot dflags False = dflags {
+    ghcLink   = LinkInMemory
+  , hscTarget = HscInterpreted
+  }
+setFastOrNot dflags True = dflags {
+    ghcLink   = NoLink
+  , hscTarget = HscNothing
+  }
+
+setSlowDynFlags :: Ghc ()
+setSlowDynFlags = (flip setFastOrNot False <$> getSessionDynFlags)
+                  >>= void . setSessionDynFlags
+
+-- To check TH, a session module graph is necessary.
+-- "load" sets a session module graph using "depanal".
+-- But we have to set "-fno-code" to DynFlags before "load".
+-- So, this is necessary redundancy.
+checkSlowAndSet :: Ghc ()
+checkSlowAndSet = do
+    slow <- needsTemplateHaskell <$> depanal [] False
+    when slow setSlowDynFlags
+
+----------------------------------------------------------------
+
+modifyFlagsWithOpts :: DynFlags -> [String] -> Ghc DynFlags
+modifyFlagsWithOpts dflags cmdOpts =
+    tfst <$> parseDynamicFlags dflags (map noLoc cmdOpts)
+  where
+    tfst (a,_,_) = a
 
 ----------------------------------------------------------------
 
@@ -76,3 +145,8 @@ setTargetFile :: (GhcMonad m) => String -> m ()
 setTargetFile file = do
     target <- guessTarget file Nothing
     setTargets [target]
+
+----------------------------------------------------------------
+
+getDynamicFlags :: IO DynFlags
+getDynamicFlags = runGhc (Just libdir) getSessionDynFlags

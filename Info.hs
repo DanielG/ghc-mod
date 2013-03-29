@@ -3,8 +3,8 @@
 
 module Info (infoExpr, typeExpr) where
 
-import Cabal
 import Control.Applicative
+import Control.Monad (void)
 import CoreUtils
 import Data.Function
 import Data.Generics
@@ -13,6 +13,7 @@ import Data.Maybe
 import Data.Ord as O
 import Data.Time.Clock
 import Desugar
+import Doc
 import GHC
 import GHC.SYB.Utils
 import GHCApi
@@ -22,9 +23,8 @@ import HscTypes
 import NameSet
 import Outputable
 import PprTyThing
-import Pretty (showDocWith, Mode(OneLineMode))
-import TcRnTypes
 import TcHsSyn (hsPatType)
+import TcRnTypes
 import Types
 
 ----------------------------------------------------------------
@@ -34,12 +34,12 @@ type ModuleString = String
 
 ----------------------------------------------------------------
 
-infoExpr :: Options -> ModuleString -> Expression -> FilePath -> IO String
-infoExpr opt modstr expr file = (++ "\n") <$> info opt file modstr expr
+infoExpr :: Options -> Cradle -> ModuleString -> Expression -> FilePath -> IO String
+infoExpr opt cradle modstr expr file = (++ "\n") <$> info opt cradle file modstr expr
 
-info :: Options -> FilePath -> ModuleString -> FilePath -> IO String
-info opt fileName modstr expr =
-    inModuleContext opt fileName modstr exprToInfo "Cannot show info"
+info :: Options -> Cradle -> FilePath -> ModuleString -> FilePath -> IO String
+info opt cradle fileName modstr expr =
+    inModuleContext opt cradle fileName modstr exprToInfo "Cannot show info"
   where
     exprToInfo = infoThing expr
 
@@ -65,12 +65,12 @@ instance HasType (LHsBind Id) where
 instance HasType (LPat Id) where
     getType _ (L spn pat) = return $ Just (spn, hsPatType pat)
 
-typeExpr :: Options -> ModuleString -> Int -> Int -> FilePath -> IO String
-typeExpr opt modstr lineNo colNo file = Info.typeOf opt file modstr lineNo colNo
+typeExpr :: Options -> Cradle -> ModuleString -> Int -> Int -> FilePath -> IO String
+typeExpr opt cradle modstr lineNo colNo file = Info.typeOf opt cradle file modstr lineNo colNo
 
-typeOf :: Options -> FilePath -> ModuleString -> Int -> Int -> IO String
-typeOf opt fileName modstr lineNo colNo =
-    inModuleContext opt fileName modstr exprToType errmsg
+typeOf :: Options -> Cradle -> FilePath -> ModuleString -> Int -> Int -> IO String
+typeOf opt cradle fileName modstr lineNo colNo =
+    inModuleContext opt cradle fileName modstr exprToType errmsg
   where
     exprToType = do
       modSum <- getModSummary $ mkModuleName modstr
@@ -82,11 +82,12 @@ typeOf opt fileName modstr lineNo colNo =
       bts <- mapM (getType tcm) bs
       ets <- mapM (getType tcm) es
       pts <- mapM (getType tcm) ps
-      let sss = map toTup $ sortBy (cmp `on` fst) $ catMaybes $ concat [ets, bts, pts]
+      dflag <- getSessionDynFlags
+      let sss = map (toTup dflag) $ sortBy (cmp `on` fst) $ catMaybes $ concat [ets, bts, pts]
       return $ convert opt sss
 
-    toTup :: (SrcSpan, Type) -> ((Int,Int,Int,Int),String)
-    toTup (spn, typ) = (fourInts spn, pretty typ)
+    toTup :: DynFlags -> (SrcSpan, Type) -> ((Int,Int,Int,Int),String)
+    toTup dflag (spn, typ) = (fourInts spn, pretty dflag typ)
 
     fourInts :: SrcSpan -> (Int,Int,Int,Int)
     fourInts = fromMaybe (0,0,0,0) . Gap.getSrcSpan
@@ -106,8 +107,8 @@ listifySpans tcs lc = listifyStaged TypeChecker p tcs
 listifyStaged :: Typeable r => Stage -> (r -> Bool) -> GenericQ [r]
 listifyStaged s p = everythingStaged s (++) [] ([] `mkQ` (\x -> [x | p x]))
 
-pretty :: Type -> String
-pretty = showDocWith OneLineMode . Gap.styleDoc (mkUserStyle neverQualify AllTheWay) . pprTypeForUser False
+pretty :: DynFlags -> Type -> String
+pretty dflag = showUnqualifiedOneLine dflag . pprTypeForUser False
 
 ----------------------------------------------------------------
 -- from ghc/InteractiveUI.hs
@@ -117,14 +118,14 @@ infoThing str = do
     names <- parseName str
     mb_stuffs <- mapM getInfo names
     let filtered = filterOutChildren (\(t,_f,_i) -> t) (catMaybes mb_stuffs)
-    unqual <- getPrintUnqual
-    return $ Gap.showDocForUser unqual $ vcat (intersperse (text "") $ map (pprInfo False) filtered)
+    dflag <- getSessionDynFlags
+    return $ showUnqualifiedPage dflag $ vcat (intersperse (text "") $ map (pprInfo False) filtered)
 
 filterOutChildren :: (a -> TyThing) -> [a] -> [a]
 filterOutChildren get_thing xs
-  = [x | x <- xs, not (getName (get_thing x) `elemNameSet` implicits)]
+    = [x | x <- xs, not (getName (get_thing x) `elemNameSet` implicits)]
   where
-      implicits = mkNameSet [getName t | x <- xs, t <- implicitTyThings (get_thing x)]
+    implicits = mkNameSet [getName t | x <- xs, t <- implicitTyThings (get_thing x)]
 
 pprInfo :: PrintExplicitForalls -> (TyThing, GHC.Fixity, [Gap.ClsInst]) -> SDoc
 pprInfo pefas (thing, fixity, insts)
@@ -133,28 +134,31 @@ pprInfo pefas (thing, fixity, insts)
    $$ vcat (map pprInstance insts)
   where
     show_fixity fx
-        | fx == defaultFixity = Outputable.empty
-        | otherwise           = ppr fx <+> ppr (getName thing)
+      | fx == defaultFixity = Outputable.empty
+      | otherwise           = ppr fx <+> ppr (getName thing)
 
 ----------------------------------------------------------------
 
-inModuleContext :: Options -> FilePath -> ModuleString -> Ghc String -> String -> IO String
-inModuleContext opt fileName modstr action errmsg =
-    withGHC (valid ||> invalid ||> return errmsg)
+inModuleContext :: Options -> Cradle -> FilePath -> ModuleString -> Ghc String -> String -> IO String
+inModuleContext opt cradle fileName modstr action errmsg =
+    withGHCDummyFile (valid ||> invalid ||> return errmsg)
   where
     valid = do
-        (file,_) <- initializeGHC opt fileName ["-w"] False
-        setTargetFile file
-        _ <- load LoadAllTargets
+        void $ initializeFlagsWithCradle opt cradle ["-w:"] False
+        setTargetFile fileName
+        checkSlowAndSet
+        void $ load LoadAllTargets
         doif setContextFromTarget action
     invalid = do
-        _ <- initializeGHC opt fileName ["-w"] False
+        void $ initializeFlagsWithCradle opt cradle ["-w:"] False
         setTargetBuffer
-        _ <- load LoadAllTargets
+        checkSlowAndSet
+        void $ load LoadAllTargets
         doif setContextFromTarget action
     setTargetBuffer = do
         modgraph <- depanal [mkModuleName modstr] True
-        let imports = concatMap (map (Gap.showDoc . ppr . unLoc)) $
+        dflag <- getSessionDynFlags
+        let imports = concatMap (map (showQualifiedPage dflag . ppr . unLoc)) $
                       map ms_imps modgraph ++ map ms_srcimps modgraph
             moddef = "module " ++ sanitize modstr ++ " where"
             header = moddef : imports

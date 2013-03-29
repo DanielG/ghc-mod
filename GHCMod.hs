@@ -3,15 +3,17 @@
 module Main where
 
 import Browse
-import CabalDev (modifyOptions)
+import CabalApi
 import Check
 import Control.Applicative
 import Control.Exception
+import Cradle
 import Data.Typeable
 import Data.Version
+import Debug
+import Flag
 import Info
 import Lang
-import Flag
 import Lint
 import List
 import Paths_ghc_mod
@@ -36,6 +38,7 @@ usage =    "ghc-mod version " ++ showVersion version ++ "\n"
         ++ "\t ghc-mod browse" ++ ghcOptHelp ++ "[-l] [-o] [-d] <module> [<module> ...]\n"
         ++ "\t ghc-mod check" ++ ghcOptHelp ++ "<HaskellFile>\n"
         ++ "\t ghc-mod expand" ++ ghcOptHelp ++ "<HaskellFile>\n"
+        ++ "\t ghc-mod debug" ++ ghcOptHelp ++ "<HaskellFile>\n"
         ++ "\t ghc-mod info" ++ ghcOptHelp ++ "<HaskellFile> <module> <expression>\n"
         ++ "\t ghc-mod type" ++ ghcOptHelp ++ "<HaskellFile> <module> <line-no> <column-no>\n"
         ++ "\t ghc-mod lint [-h opt] <HaskellFile>\n"
@@ -86,16 +89,23 @@ main :: IO ()
 main = flip catches handlers $ do
     args <- getArgs
     let (opt',cmdArg) = parseArgs argspec args
-    opt <- modifyOptions opt'
-    res <- case safelist cmdArg 0 of
+    (strVer,ver) <- getGHCVersion
+    cradle <- findCradle (sandbox opt') strVer
+    let opt = adjustOpts opt' cradle ver
+        cmdArg0 = cmdArg !. 0
+        cmdArg1 = cmdArg !. 1
+        cmdArg2 = cmdArg !. 2
+        cmdArg3 = cmdArg !. 3
+        cmdArg4 = cmdArg !. 4
+    res <- case cmdArg0 of
       "browse" -> concat <$> mapM (browseModule opt) (tail cmdArg)
       "list"   -> listModules opt
-      "check"  -> withFile (checkSyntax opt) (safelist cmdArg 1)
-      "expand" -> withFile (checkSyntax opt { expandSplice = True })
-                           (safelist cmdArg 1)
-      "type"  -> withFile (typeExpr opt (safelist cmdArg 2) (read $ safelist cmdArg 3) (read $ safelist cmdArg 4)) (safelist cmdArg 1)
-      "info"   -> withFile (infoExpr opt (safelist cmdArg 2) (safelist cmdArg 3)) (safelist cmdArg 1)
-      "lint"   -> withFile (lintSyntax opt)  (safelist cmdArg 1)
+      "check"  -> withFile (checkSyntax opt cradle) cmdArg1
+      "expand" -> withFile (checkSyntax opt { expandSplice = True } cradle) cmdArg1
+      "debug"  -> withFile (debugInfo opt cradle strVer) cmdArg1
+      "type"   -> withFile (typeExpr opt cradle cmdArg2 (read cmdArg3) (read cmdArg4)) cmdArg1
+      "info"   -> withFile (infoExpr opt cradle cmdArg2 cmdArg3) cmdArg1
+      "lint"   -> withFile (lintSyntax opt) cmdArg1
       "lang"   -> listLanguages opt
       "flag"   -> listFlags opt
       "boot"   -> do
@@ -127,9 +137,16 @@ main = flip catches handlers $ do
         if exist
             then cmd file
             else throw (FileNotExist file)
-    safelist xs idx
+    xs !. idx
       | length xs <= idx = throw SafeList
       | otherwise = xs !! idx
+    adjustOpts opt cradle ver = case mPkgConf of
+            Nothing      -> opt
+            Just pkgConf -> opt {
+                ghcOpts = ghcPackageConfOptions ver pkgConf ++ ghcOpts opt
+              }
+      where
+        mPkgConf = cradlePackageConf cradle
 
 ----------------------------------------------------------------
 
@@ -144,3 +161,9 @@ preBrowsedModules = [
   , "Data.Maybe"
   , "System.IO"
   ]
+
+
+ghcPackageConfOptions :: Int -> String -> [String]
+ghcPackageConfOptions ver file
+  | ver >= 706 = ["-package-db",   file, "-no-user-package-conf"]
+  | otherwise  = ["-package-conf", file, "-no-user-package-conf"]

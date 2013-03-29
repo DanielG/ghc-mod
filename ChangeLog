@@ -1,0 +1,42 @@
+2013-0X-XX v1.12.3
+
+	* "ghc-mod info" and "ghc-mod type" also check Template Haskell.
+
+2013-03-13 v1.12.2
+
+	* New logic to set "-fno-code" using "depanal"
+	* Cleaning up the code relating to Doc/SDoc
+
+2013-03-07 v1.12.1
+
+	* Fixing a bug to find a sandbox.
+
+2013-03-05 v1.12.0
+
+	* "ghc-mod debug" to see which cabal file and sand box are used
+	* Fast "ghc-mod check" if Template Haskell is not used
+	* "ghc-mod brwose -d" displays more information (@eagletmt)
+
+2013-03-01 v1.11.5
+
+	* New option "-d" for "ghc-mod browse" to show symbols with type
+	info (@moidex)
+
+2013-02-15 v1.11.4
+
+	* Adding Hspec test suite
+	* Better way to show Extension (@eagletmt)
+	* Removing the library itself from Cabal dependencies
+
+2012-12-11 v1.11.3
+
+	* Display a filname instead of "Dummy" if an error occur
+
+2012-10-30 v1.11.2
+
+	* Extract dependencies from a Cabal file if exists and specify
+	  them to "ghc-mod check" (@khibino)
+
+2012-10-19 v1.11.1
+
+	* Supporting GHC 7.6.x (@cartazio, @dysinger, @ihameed)

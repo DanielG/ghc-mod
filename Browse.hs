@@ -4,9 +4,10 @@ import Control.Applicative
 import Data.Char
 import Data.List
 import Data.Maybe (fromMaybe)
+import DataCon (dataConRepType)
+import Doc
 import GHC
 import GHCApi
-import Gap
 import Name
 import Outputable
 import TyCon
@@ -32,11 +33,15 @@ browseModule opt mdlName = convert opt . format <$> browse opt mdlName
     formatOps' [] = error "formatOps'"
 
 browse :: Options -> String -> IO [String]
-browse opt mdlName = withGHC $ do
-    _ <- initSession0 opt
-    lookupModuleInfo >>= maybe (return []) (if detailed opt then processModule else return . processExports)
+browse opt mdlName = withGHCDummyFile $ do
+    initializeFlags opt
+    getModule >>= getModuleInfo >>= listExports
   where
-    lookupModuleInfo = findModule (mkModuleName mdlName) Nothing >>= getModuleInfo
+    getModule = findModule (mkModuleName mdlName) Nothing
+    listExports Nothing       = return []
+    listExports (Just mdinfo)
+      | detailed opt = processModule mdinfo
+      | otherwise    = return (processExports mdinfo)
 
 processExports :: ModuleInfo -> [String]
 processExports = map getOccString . modInfoExports
@@ -50,35 +55,43 @@ processModule minfo = mapM processName names
         tyInfo <- modInfoLookupName minfo nm
         -- If nothing found, load dependent module and lookup global
         tyResult <- maybe (inOtherModule nm) (return . Just) tyInfo
-        return $ fromMaybe (getOccString nm) (tyResult >>= showThing)
+        dflag <- getSessionDynFlags
+        return $ fromMaybe (getOccString nm) (tyResult >>= showThing dflag)
     inOtherModule :: Name -> Ghc (Maybe TyThing)
-    inOtherModule nm = do
-        _ <- getModuleInfo (nameModule nm) -- FIXME
-        lookupGlobalName nm
+    inOtherModule nm = getModuleInfo (nameModule nm) >> lookupGlobalName nm
 
-showThing :: TyThing -> Maybe String
-showThing (AnId i)   = Just $ getOccString i ++ " :: " ++ showOutputable (removeForAlls $ varType i)
-showThing (ATyCon t) = do
-    tyType' <- tyType t
-    return $ unwords $ [tyType', getOccString t] ++ map getOccString (tyConTyVars t)
+showThing :: DynFlags -> TyThing -> Maybe String
+showThing dflag (AnId i)     = Just $ formatType dflag varType i
+showThing dflag (ADataCon d) = Just $ formatType dflag dataConRepType d
+showThing _     (ATyCon t)   = unwords . toList <$> tyType t
   where
-    tyType :: TyCon -> Maybe String
-    tyType typ
-        | isAlgTyCon typ
-          && not (isNewTyCon typ)
-          && not (isClassTyCon typ) = Just "data"
-        | isNewTyCon typ            = Just "newtype"
-        | isClassTyCon typ          = Just "class"
-        | isSynTyCon typ            = Just "type"
-        | otherwise                 = Nothing
-showThing _ = Nothing
+    toList t' = t' : getOccString t : map getOccString (tyConTyVars t)
+showThing _     _            = Nothing
+
+formatType :: NamedThing a => DynFlags -> (a -> Type) -> a -> String
+formatType dflag f x = getOccString x ++ " :: " ++ showOutputable dflag (removeForAlls $ f x)
+
+tyType :: TyCon -> Maybe String
+tyType typ
+    | isAlgTyCon typ
+      && not (isNewTyCon typ)
+      && not (isClassTyCon typ) = Just "data"
+    | isNewTyCon typ            = Just "newtype"
+    | isClassTyCon typ          = Just "class"
+    | isSynTyCon typ            = Just "type"
+    | otherwise                 = Nothing
 
 removeForAlls :: Type -> Type
-removeForAlls ty = case splitFunTy_maybe ty' of
-    Nothing -> ty'
-    Just (pre, ftype) -> if isPredTy pre then mkFunTy pre (dropForAlls ftype) else ty'
+removeForAlls ty = removeForAlls' ty' tty'
   where
-    ty' = dropForAlls ty
+    ty'  = dropForAlls ty
+    tty' = splitFunTy_maybe ty'
 
-showOutputable :: Outputable a => a -> String
-showOutputable = unwords . lines . showDocForUser neverQualify . ppr
+removeForAlls' :: Type -> Maybe (Type, Type) -> Type
+removeForAlls' ty Nothing = ty
+removeForAlls' ty (Just (pre, ftype))
+    | isPredTy pre        = mkFunTy pre (dropForAlls ftype)
+    | otherwise           = ty
+
+showOutputable :: Outputable a => DynFlags -> a -> String
+showOutputable dflag = unwords . lines . showUnqualifiedPage dflag . ppr

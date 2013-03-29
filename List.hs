@@ -14,8 +14,8 @@ listModules :: Options -> IO String
 listModules opt = convert opt . nub . sort <$> list opt
 
 list :: Options -> IO [String]
-list opt = withGHC $ do
-    _ <- initSession0 opt
+list opt = withGHCDummyFile $ do
+    initializeFlags opt
     getExposedModules <$> getSessionDynFlags
   where
     getExposedModules = map moduleNameString

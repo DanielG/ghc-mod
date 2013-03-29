@@ -1,5 +1,5 @@
 Name:                   ghc-mod
-Version:                1.11.4
+Version:                1.12.3
 Author:                 Kazu Yamamoto <kazu@iij.ad.jp>
 Maintainer:             Kazu Yamamoto <kazu@iij.ad.jp>
 License:                BSD3
@@ -25,20 +25,27 @@ Data-Dir:               elisp
 Data-Files:             Makefile ghc.el ghc-func.el ghc-doc.el ghc-comp.el
                         ghc-flymake.el ghc-command.el ghc-info.el
                         ghc-ins-mod.el ghc-indent.el
-Extra-Source-Files:     test/data/*.cabal
+Extra-Source-Files:     ChangeLog
+			test/data/*.cabal
                         test/data/*.hs
+                        test/data/cabal-dev/packages-7.6.2.conf/dummy
                         test/data/ghc-mod-check/*.hs
                         test/data/ghc-mod-check/*.cabal
                         test/data/ghc-mod-check/Data/*.hs
                         test/data/subdir1/subdir2/dummy
+                        test/data/check-test-subdir/*.cabal
+                        test/data/check-test-subdir/test/*.hs
+                        test/data/check-test-subdir/test/Bar/*.hs
+                        test/data/check-test-subdir/src/Check/Test/*.hs
 Executable ghc-mod
   Default-Language:     Haskell2010
   Main-Is:              GHCMod.hs
   Other-Modules:        Browse
                         CabalApi
-                        Cabal
-                        CabalDev
                         Check
+                        Cradle
+                        Doc
+                        Debug
                         ErrMsg
                         Flag
                         GHCApi
@@ -64,7 +71,6 @@ Executable ghc-mod
                       , io-choice
                       , old-time
                       , process
-                      , regex-posix
                       , syb
                       , time
                       , transformers
@@ -76,9 +82,9 @@ Test-Suite spec
   Type:                 exitcode-stdio-1.0
   Other-Modules:        Expectation
                         BrowseSpec
-                        CabalSpec
                         CabalApiSpec
                         CheckSpec
+                        DebugSpec
                         FlagSpec
                         InfoSpec
                         LangSpec
@@ -97,7 +103,6 @@ Test-Suite spec
                       , io-choice
                       , old-time
                       , process
-                      , regex-posix
                       , syb
                       , time
                       , transformers

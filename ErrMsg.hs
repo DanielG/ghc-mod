@@ -1,3 +1,5 @@
+{-# LANGUAGE BangPatterns #-}
+
 module ErrMsg (
     LogReader
   , setLogger
@@ -8,12 +10,14 @@ import Bag
 import Control.Applicative
 import Data.IORef
 import Data.Maybe
+import Doc
 import DynFlags
 import ErrUtils
 import GHC
 import qualified Gap
 import HscTypes
 import Outputable
+import System.FilePath (normalise)
 
 ----------------------------------------------------------------
 
@@ -30,40 +34,46 @@ setLogger True  df = do
     let newdf = Gap.setLogAction df $ appendLog ref
     return (newdf, reverse <$> readIORef ref)
   where
-    appendLog ref _ sev src stl msg = modifyIORef ref (\ls -> ppMsg src sev msg stl : ls)
+    appendLog ref _ sev src _ msg = do
+        let !l = ppMsg src sev df msg
+        modifyIORef ref (\ls -> l : ls)
 
 ----------------------------------------------------------------
 
 handleErrMsg :: SourceError -> Ghc [String]
-handleErrMsg = return . errBagToStrList . srcErrorMessages
+handleErrMsg err = do
+    dflag <- getSessionDynFlags
+    return . errBagToStrList dflag . srcErrorMessages $ err
 
-errBagToStrList :: Bag ErrMsg -> [String]
-errBagToStrList = map ppErrMsg . reverse . bagToList
+errBagToStrList :: DynFlags -> Bag ErrMsg -> [String]
+errBagToStrList dflag = map (ppErrMsg dflag) . reverse . bagToList
 
 ----------------------------------------------------------------
 
-ppErrMsg :: ErrMsg -> String
-ppErrMsg err = ppMsg spn SevError msg defaultUserStyle ++ ext
+ppErrMsg :: DynFlags -> ErrMsg -> String
+ppErrMsg dflag err = ppMsg spn SevError dflag msg ++ ext
    where
      spn = head (errMsgSpans err)
      msg = errMsgShortDoc err
-     ext = showMsg (errMsgExtraInfo err) defaultUserStyle
+     ext = showMsg dflag (errMsgExtraInfo err)
 
-ppMsg :: SrcSpan -> Severity-> SDoc -> PprStyle -> String
-ppMsg spn sev msg stl = fromMaybe def $ do
-    (line,col,_,_) <- Gap.getSrcSpan spn
-    file <- Gap.getSrcFile spn
-    let severityCaption = Gap.showSeverityCaption sev
-    return $ file ++ ":" ++ show line ++ ":"
-               ++ show col ++ ":" ++ severityCaption ++ cts ++ "\0"
+ppMsg :: SrcSpan -> Severity-> DynFlags -> SDoc -> String
+ppMsg spn sev dflag msg = prefix ++ cts ++ "\0"
   where
-    def = "ghc-mod:0:0:Probably mutual module import occurred\0"
-    cts  = showMsg msg stl
+    cts  = showMsg dflag msg
+    defaultPrefix
+      | dopt Opt_D_dump_splices dflag = ""
+      | otherwise                     = "Dummy:0:0:"
+    prefix = fromMaybe defaultPrefix $ do
+        (line,col,_,_) <- Gap.getSrcSpan spn
+        file <- normalise <$> Gap.getSrcFile spn
+        let severityCaption = Gap.showSeverityCaption sev
+        return $ file ++ ":" ++ show line ++ ":" ++ show col ++ ":" ++ severityCaption
 
 ----------------------------------------------------------------
 
-showMsg :: SDoc -> PprStyle -> String
-showMsg d stl = map toNull $ Gap.renderMsg d stl
+showMsg :: DynFlags -> SDoc -> String
+showMsg dflag sdoc = map toNull $ showUnqualifiedPage dflag sdoc
   where
     toNull '\n' = '\0'
     toNull x = x
