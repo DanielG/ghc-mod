@@ -21,7 +21,7 @@ import Prelude
 import System.Console.GetOpt
 import System.Directory
 import System.Environment (getArgs)
-import System.IO (hPutStr, hPutStrLn, stderr)
+import System.IO (hPutStr, hPutStrLn, stdout, stderr, hSetEncoding, utf8)
 import Types
 
 ----------------------------------------------------------------
@@ -87,6 +87,7 @@ instance Exception GHCModError
 
 main :: IO ()
 main = flip catches handlers $ do
+    hSetEncoding stdout utf8
     args <- getArgs
     let (opt',cmdArg) = parseArgs argspec args
     (strVer,ver) <- getGHCVersion
