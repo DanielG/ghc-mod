@@ -87,7 +87,9 @@ instance Exception GHCModError
 
 main :: IO ()
 main = flip catches handlers $ do
+-- #if __GLASGOW_HASKELL__ >= 611
     hSetEncoding stdout utf8
+-- #endif
     args <- getArgs
     let (opt',cmdArg) = parseArgs argspec args
     (strVer,ver) <- getGHCVersion
