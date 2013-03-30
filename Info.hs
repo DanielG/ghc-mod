@@ -37,7 +37,7 @@ type ModuleString = String
 infoExpr :: Options -> Cradle -> ModuleString -> Expression -> FilePath -> IO String
 infoExpr opt cradle modstr expr file = (++ "\n") <$> info opt cradle file modstr expr
 
-info :: Options -> Cradle -> FilePath -> ModuleString -> FilePath -> IO String
+info :: Options -> Cradle -> FilePath -> ModuleString -> Expression -> IO String
 info opt cradle fileName modstr expr =
     inModuleContext opt cradle fileName modstr exprToInfo "Cannot show info"
   where
