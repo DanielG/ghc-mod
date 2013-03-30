@@ -31,6 +31,12 @@ spec = do
                 res `shouldBe` unlines ["3 8 3 16 \"String -> IO ()\"", "3 8 3 20 \"IO ()\"", "3 1 3 20 \"IO ()\""]
 
     describe "infoExpr" $ do
+        it "works for non-export functions" $ do
+            withDirectory_ "test/data" $ do
+                cradle <- getGHCVersion >>= findCradle Nothing . fst
+                res <- infoExpr defaultOptions cradle "Info" "fib" "Info.hs"
+                res `shouldSatisfy` ("fib :: Int -> Int" `isPrefixOf`)
+        
         it "works with a module using TemplateHaskell" $ do
             withDirectory_ "test/data" $ do
                 cradle <- getGHCVersion >>= findCradle Nothing . fst
