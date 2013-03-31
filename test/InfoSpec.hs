@@ -7,6 +7,8 @@ import Expectation
 import Info
 import Test.Hspec
 import Types
+import System.Process
+import System.Exit
 
 spec :: Spec
 spec = do
@@ -48,3 +50,7 @@ spec = do
                 cradle <- getGHCVersion >>= findCradle Nothing . fst
                 res <- infoExpr defaultOptions cradle "Main" "bar" "Main.hs"
                 res `shouldSatisfy` ("bar :: [Char]" `isPrefixOf`)
+
+        it "doesn't fail on unicode output" $ do
+            code <- rawSystem "dist/build/ghc-mod/ghc-mod" ["info", "test/data/Unicode.hs", "Unicode", "unicode"]
+            code `shouldSatisfy` (== ExitSuccess)

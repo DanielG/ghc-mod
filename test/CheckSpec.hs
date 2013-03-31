@@ -7,6 +7,7 @@ import Data.List (isSuffixOf, isInfixOf)
 import Expectation
 import Test.Hspec
 import Types
+import System.FilePath
 
 spec :: Spec
 spec = do
@@ -22,7 +23,7 @@ spec = do
             withDirectory_ "test/data/check-test-subdir" $ do
                 cradle <- getGHCVersion >>= findCradle Nothing . fst
                 res <- checkSyntax defaultOptions cradle "test/Bar/Baz.hs"
-                res `shouldSatisfy` ("test/Foo.hs:3:1:Warning: Top-level binding with no type signature: foo :: [Char]\NUL\n" `isSuffixOf`)
+                res `shouldSatisfy` (("test" </> "Foo.hs:3:1:Warning: Top-level binding with no type signature: foo :: [Char]\NUL\n") `isSuffixOf`)
 
         it "can detect mutually imported modules" $ do
             withDirectory_ "test/data" $ do
