@@ -76,3 +76,5 @@ data Cradle = Cradle {
 type GHCOption  = String
 type IncludeDir = FilePath
 type Package    = String
+
+data CheckSpeed = Slow | Fast

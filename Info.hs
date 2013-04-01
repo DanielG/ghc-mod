@@ -4,7 +4,7 @@
 module Info (infoExpr, typeExpr) where
 
 import Control.Applicative
-import Control.Monad (void)
+import Control.Monad (void, when)
 import CoreUtils
 import Data.Function
 import Data.Generics
@@ -32,6 +32,8 @@ import Types
 type Expression = String
 type ModuleString = String
 
+data Cmd = Info | Type deriving Eq
+
 ----------------------------------------------------------------
 
 infoExpr :: Options -> Cradle -> ModuleString -> Expression -> FilePath -> IO String
@@ -39,7 +41,7 @@ infoExpr opt cradle modstr expr file = (++ "\n") <$> info opt cradle file modstr
 
 info :: Options -> Cradle -> FilePath -> ModuleString -> Expression -> IO String
 info opt cradle fileName modstr expr =
-    inModuleContext opt cradle fileName modstr exprToInfo "Cannot show info"
+    inModuleContext Info opt cradle fileName modstr exprToInfo "Cannot show info"
   where
     exprToInfo = infoThing expr
 
@@ -70,7 +72,7 @@ typeExpr opt cradle modstr lineNo colNo file = Info.typeOf opt cradle file modst
 
 typeOf :: Options -> Cradle -> FilePath -> ModuleString -> Int -> Int -> IO String
 typeOf opt cradle fileName modstr lineNo colNo =
-    inModuleContext opt cradle fileName modstr exprToType errmsg
+    inModuleContext Type opt cradle fileName modstr exprToType errmsg
   where
     exprToType = do
       modSum <- getModSummary $ mkModuleName modstr
@@ -139,12 +141,13 @@ pprInfo pefas (thing, fixity, insts)
 
 ----------------------------------------------------------------
 
-inModuleContext :: Options -> Cradle -> FilePath -> ModuleString -> Ghc String -> String -> IO String
-inModuleContext opt cradle fileName modstr action errmsg =
+inModuleContext :: Cmd -> Options -> Cradle -> FilePath -> ModuleString -> Ghc String -> String -> IO String
+inModuleContext cmd opt cradle fileName modstr action errmsg =
     withGHCDummyFile (valid ||> invalid ||> return errmsg)
   where
     valid = do
         void $ initializeFlagsWithCradle opt cradle ["-w:"] False
+        when (cmd == Info) $ setSlowDynFlags
         setTargetFile fileName
         checkSlowAndSet
         void $ load LoadAllTargets

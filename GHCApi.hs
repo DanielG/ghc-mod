@@ -5,6 +5,7 @@ module GHCApi (
   , initializeFlagsWithCradle
   , setTargetFile
   , getDynamicFlags
+  , setSlowDynFlags
   , checkSlowAndSet
   ) where
 
@@ -70,8 +71,7 @@ initSession opt cmdOpts idirs mDepPkgs logging = do
   where
     setupDynamicFlags df0 = do
         df1 <- modifyFlagsWithOpts df0 cmdOpts
-        let fast = False
-        let df2 = modifyFlags df1 idirs mDepPkgs fast (expandSplice opt)
+        let df2 = modifyFlags df1 idirs mDepPkgs (expandSplice opt)
         df3 <- modifyFlagsWithOpts df2 $ ghcOpts opt
         liftIO $ setLogger logging df3
 
@@ -86,13 +86,13 @@ initializeFlags opt = do
 ----------------------------------------------------------------
 
 -- FIXME removing Options
-modifyFlags :: DynFlags -> [IncludeDir] -> Maybe [Package] -> Bool -> Bool -> DynFlags
-modifyFlags d0 idirs mDepPkgs fast splice
+modifyFlags :: DynFlags -> [IncludeDir] -> Maybe [Package] -> Bool -> DynFlags
+modifyFlags d0 idirs mDepPkgs splice
   | splice    = setSplice d3
   | otherwise = d3
   where
     d1 = d0 { importPaths = idirs }
-    d2 = setFastOrNot d1 fast
+    d2 = setFastOrNot d1 Fast
     d3 = maybe d2 (addDevPkgs d2) mDepPkgs
 
 setSplice :: DynFlags -> DynFlags
@@ -108,18 +108,18 @@ addDevPkgs df pkgs = df''
 
 ----------------------------------------------------------------
 
-setFastOrNot :: DynFlags -> Bool -> DynFlags
-setFastOrNot dflags False = dflags {
+setFastOrNot :: DynFlags -> CheckSpeed -> DynFlags
+setFastOrNot dflags Slow = dflags {
     ghcLink   = LinkInMemory
   , hscTarget = HscInterpreted
   }
-setFastOrNot dflags True = dflags {
+setFastOrNot dflags Fast = dflags {
     ghcLink   = NoLink
   , hscTarget = HscNothing
   }
 
 setSlowDynFlags :: Ghc ()
-setSlowDynFlags = (flip setFastOrNot False <$> getSessionDynFlags)
+setSlowDynFlags = (flip setFastOrNot Slow <$> getSessionDynFlags)
                   >>= void . setSessionDynFlags
 
 -- To check TH, a session module graph is necessary.
