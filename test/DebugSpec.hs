@@ -21,3 +21,6 @@ spec = do
             checkFast "Main.hs" "Fast check:          No"
             checkFast "Foo.hs"  "Fast check:          Yes"
             checkFast "Bar.hs"  "Fast check:          No"
+
+        it "can check QuasiQuotes" $ do
+            checkFast "Baz.hs"  "Fast check:          No"

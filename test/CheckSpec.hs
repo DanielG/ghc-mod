@@ -3,7 +3,7 @@ module CheckSpec where
 import CabalApi
 import Check
 import Cradle
-import Data.List (isSuffixOf, isInfixOf)
+import Data.List (isSuffixOf, isInfixOf, isPrefixOf)
 import Expectation
 import Test.Hspec
 import Types
@@ -31,3 +31,9 @@ spec = do
                 cradle <- findCradle Nothing strVer
                 res <- checkSyntax defaultOptions cradle "Mutual1.hs"
                 res `shouldSatisfy` ("Module imports form a cycle" `isInfixOf`)
+
+        it "can check a module using QuasiQuotes" $ do
+            withDirectory_ "test/data" $ do
+                cradle <- getGHCVersion >>= findCradle Nothing . fst
+                res <- checkSyntax defaultOptions cradle "Baz.hs"
+                res `shouldSatisfy` ("Baz.hs:5:1:Warning:" `isPrefixOf`)
