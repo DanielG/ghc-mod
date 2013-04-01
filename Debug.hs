@@ -25,8 +25,7 @@ debug opt cradle ver fileName = do
     [fast] <- withGHC fileName $ do
         void $ initializeFlagsWithCradle opt cradle gopts True
         setTargetFile fileName
-        slow <- needsTemplateHaskell <$> depanal [] False
-        return [not slow]
+        pure . canCheckFast <$> depanal [] False
     return [
         "GHC version:         " ++ ver
       , "Current directory:   " ++ currentDir
