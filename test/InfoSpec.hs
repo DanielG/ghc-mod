@@ -38,7 +38,7 @@ spec = do
                 cradle <- getGHCVersion >>= findCradle Nothing . fst
                 res <- infoExpr defaultOptions cradle "Info" "fib" "Info.hs"
                 res `shouldSatisfy` ("fib :: Int -> Int" `isPrefixOf`)
-        
+
         it "works with a module using TemplateHaskell" $ do
             withDirectory_ "test/data" $ do
                 cradle <- getGHCVersion >>= findCradle Nothing . fst

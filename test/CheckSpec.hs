@@ -31,4 +31,3 @@ spec = do
                 cradle <- findCradle Nothing strVer
                 res <- checkSyntax defaultOptions cradle "Mutual1.hs"
                 res `shouldSatisfy` ("Module imports form a cycle" `isInfixOf`)
-            
