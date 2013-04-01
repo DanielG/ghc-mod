@@ -38,7 +38,7 @@ findCradle Nothing strver = do
           , cradlePackageConf = Nothing
           }
         Just (cdir,cfile) -> do
-            let sbox = cdir </> "cabal-dev/"
+            let sbox = cdir </> "cabal-dev"
                 pkgConf = packageConfName sbox strver
             exist <- doesDirectoryExist pkgConf
             return Cradle {
