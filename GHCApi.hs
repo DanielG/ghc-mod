@@ -7,6 +7,7 @@ module GHCApi (
   , getDynamicFlags
   , setSlowDynFlags
   , checkSlowAndSet
+  , canCheckFast
   ) where
 
 import CabalApi
@@ -128,8 +129,8 @@ setSlowDynFlags = (flip setFastOrNot Slow <$> getSessionDynFlags)
 -- So, this is necessary redundancy.
 checkSlowAndSet :: Ghc ()
 checkSlowAndSet = do
-    slow <- needsTemplateHaskell <$> depanal [] False
-    when slow setSlowDynFlags
+    fast <- canCheckFast <$> depanal [] False
+    unless fast setSlowDynFlags
 
 ----------------------------------------------------------------
 
@@ -150,3 +151,9 @@ setTargetFile file = do
 
 getDynamicFlags :: IO DynFlags
 getDynamicFlags = runGhc (Just libdir) getSessionDynFlags
+
+canCheckFast :: ModuleGraph -> Bool
+canCheckFast = not . any (hasTHorQQ . ms_hspp_opts)
+  where
+    hasTHorQQ :: DynFlags -> Bool
+    hasTHorQQ dflags = any (\opt -> xopt opt dflags) [Opt_TemplateHaskell, Opt_QuasiQuotes]
