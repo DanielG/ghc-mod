@@ -78,7 +78,7 @@
 	  (errs (ghc-flymake-err-list)))
       (ghc-display
        nil
-       (lambda (&rest ignore)
+       (lambda ()
 	 (insert title "\n\n")
 	 (mapc (lambda (x) (insert x "\n")) errs))))))
 
