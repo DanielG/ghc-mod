@@ -46,25 +46,28 @@ withGHC file body = ghandle ignore $ runGhc (Just libdir) $ do
 importDirs :: [IncludeDir]
 importDirs = [".","..","../..","../../..","../../../..","../../../../.."]
 
+data Build = CabalPkg | SingleFile deriving Eq
+
 initializeFlagsWithCradle :: Options -> Cradle -> [GHCOption] -> Bool -> Ghc LogReader
 initializeFlagsWithCradle opt cradle ghcOptions logging
   | cabal     = do
       (gopts,idirs,depPkgs) <- liftIO $ fromCabalFile ghcOptions cradle
-      initSession opt gopts idirs (Just depPkgs) logging
+      initSession CabalPkg opt gopts idirs (Just depPkgs) logging
   | otherwise =
-      initSession opt ghcOptions importDirs Nothing logging
+      initSession SingleFile opt ghcOptions importDirs Nothing logging
   where
     cabal = isJust $ cradleCabalFile cradle
 
 ----------------------------------------------------------------
 
-initSession :: Options
+initSession :: Build
+            -> Options
             -> [GHCOption]
             -> [IncludeDir]
             -> Maybe [Package]
             -> Bool
             -> Ghc LogReader
-initSession opt cmdOpts idirs mDepPkgs logging = do
+initSession build opt cmdOpts idirs mDepPkgs logging = do
     dflags0 <- getSessionDynFlags
     (dflags1,readLog) <- setupDynamicFlags dflags0
     _ <- setSessionDynFlags dflags1
@@ -72,7 +75,7 @@ initSession opt cmdOpts idirs mDepPkgs logging = do
   where
     setupDynamicFlags df0 = do
         df1 <- modifyFlagsWithOpts df0 cmdOpts
-        let df2 = modifyFlags df1 idirs mDepPkgs (expandSplice opt)
+        let df2 = modifyFlags df1 idirs mDepPkgs (expandSplice opt) build
         df3 <- modifyFlagsWithOpts df2 $ ghcOpts opt
         liftIO $ setLogger logging df3
 
@@ -87,14 +90,19 @@ initializeFlags opt = do
 ----------------------------------------------------------------
 
 -- FIXME removing Options
-modifyFlags :: DynFlags -> [IncludeDir] -> Maybe [Package] -> Bool -> DynFlags
-modifyFlags d0 idirs mDepPkgs splice
-  | splice    = setSplice d3
-  | otherwise = d3
+modifyFlags :: DynFlags -> [IncludeDir] -> Maybe [Package] -> Bool -> Build -> DynFlags
+modifyFlags d0 idirs mDepPkgs splice build
+  | splice    = setSplice d4
+  | otherwise = d4
   where
     d1 = d0 { importPaths = idirs }
     d2 = setFastOrNot d1 Fast
     d3 = maybe d2 (addDevPkgs d2) mDepPkgs
+    d4 | build == CabalPkg = setCabalPkg d3
+       | otherwise         = d3
+
+setCabalPkg :: DynFlags -> DynFlags
+setCabalPkg dflag = dopt_set dflag Opt_BuildingCabalPackage
 
 setSplice :: DynFlags -> DynFlags
 setSplice dflag = dopt_set dflag Opt_D_dump_splices
