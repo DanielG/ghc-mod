@@ -12,7 +12,7 @@ module CabalApi (
 import Control.Applicative
 import Control.Exception (throwIO)
 import Data.List (intercalate)
-import Data.Maybe (fromJust, maybeToList)
+import Data.Maybe (fromJust, maybeToList, listToMaybe)
 import Data.Set (fromList, toList)
 import Distribution.Package (Dependency(Dependency), PackageName(PackageName))
 import Distribution.PackageDescription
@@ -74,9 +74,7 @@ cabalBuildInfo :: GenericPackageDescription -> BuildInfo
 cabalBuildInfo pd = fromJust $ fromLibrary pd <|> fromExecutable pd
   where
     fromLibrary c     = libBuildInfo . condTreeData <$> condLibrary c
-    fromExecutable c  = buildInfo . condTreeData . snd <$> toMaybe (condExecutables c)
-    toMaybe []    = Nothing
-    toMaybe (x:_) = Just x
+    fromExecutable c  = buildInfo . condTreeData . snd <$> listToMaybe (condExecutables c)
 
 ----------------------------------------------------------------
 
