@@ -16,15 +16,15 @@ findCradle (Just sbox) strver = do
     cfiles <- cabalDir wdir
     return $ case cfiles of
         Nothing -> Cradle {
-            cradleCurrentDir      = wdir
-          , cradleCabalDir        = Nothing
-          , cradleCabalFile       = Nothing
+            cradleCurrentDir  = wdir
+          , cradleCabalDir    = Nothing
+          , cradleCabalFile   = Nothing
           , cradlePackageConf = Just pkgConf
           }
         Just (cdir,cfile) -> Cradle {
-            cradleCurrentDir      = wdir
-          , cradleCabalDir        = Just cdir
-          , cradleCabalFile       = Just cfile
+            cradleCurrentDir  = wdir
+          , cradleCabalDir    = Just cdir
+          , cradleCabalFile   = Just cfile
           , cradlePackageConf = Just pkgConf
           }
 findCradle Nothing strver = do
