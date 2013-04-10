@@ -12,7 +12,7 @@ module CabalApi (
 import Control.Applicative
 import Control.Exception (throwIO)
 import Data.List (intercalate)
-import Data.Maybe (maybeToList, listToMaybe, fromMaybe)
+import Data.Maybe (maybeToList, listToMaybe, fromJust)
 import Data.Set (fromList, toList)
 import Distribution.Package (Dependency(Dependency), PackageName(PackageName))
 import Distribution.PackageDescription
@@ -71,7 +71,7 @@ getGHCOptions ghcOptions binfo = ghcOptions ++ exts ++ [lang] ++ libs ++ libDirs
 
 -- Causes error, catched in the upper function.
 cabalBuildInfo :: GenericPackageDescription -> BuildInfo
-cabalBuildInfo pd = fromMaybe emptyBuildInfo $ fromLibrary pd <|> fromExecutable pd
+cabalBuildInfo pd = fromJust $ fromLibrary pd <|> fromExecutable pd
   where
     fromLibrary c     = libBuildInfo . condTreeData <$> condLibrary c
     fromExecutable c  = buildInfo . condTreeData . snd <$> listToMaybe (condExecutables c)

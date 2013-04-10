@@ -1,3 +1,5 @@
+{-# LANGUAGE ScopedTypeVariables #-}
+
 module GHCApi (
     withGHC
   , withGHCDummyFile
@@ -50,13 +52,17 @@ data Build = CabalPkg | SingleFile deriving Eq
 
 initializeFlagsWithCradle :: Options -> Cradle -> [GHCOption] -> Bool -> Ghc LogReader
 initializeFlagsWithCradle opt cradle ghcOptions logging
-  | cabal     = do
-      (gopts,idirs,depPkgs) <- liftIO $ fromCabalFile ghcOptions cradle
-      initSession CabalPkg opt gopts idirs (Just depPkgs) logging
-  | otherwise =
-      initSession SingleFile opt ghcOptions importDirs Nothing logging
+  | cabal     = withCabal `gcatch` fallback
+  | otherwise = withoutCabal
   where
     cabal = isJust $ cradleCabalFile cradle
+    withCabal = do
+        (gopts,idirs,depPkgs) <- liftIO $ fromCabalFile ghcOptions cradle
+        initSession CabalPkg opt gopts idirs (Just depPkgs) logging
+    withoutCabal =
+        initSession SingleFile opt ghcOptions importDirs Nothing logging
+    fallback :: SomeException -> Ghc LogReader
+    fallback _ = withoutCabal
 
 ----------------------------------------------------------------
 
