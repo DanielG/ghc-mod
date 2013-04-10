@@ -170,4 +170,4 @@ canCheckFast :: ModuleGraph -> Bool
 canCheckFast = not . any (hasTHorQQ . ms_hspp_opts)
   where
     hasTHorQQ :: DynFlags -> Bool
-    hasTHorQQ dflags = any (\opt -> xopt opt dflags) [Opt_TemplateHaskell, Opt_QuasiQuotes]
+    hasTHorQQ dflags = any (`xopt` dflags) [Opt_TemplateHaskell, Opt_QuasiQuotes]

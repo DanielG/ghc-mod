@@ -73,8 +73,8 @@ getGHCOptions ghcOptions binfo = ghcOptions ++ exts ++ [lang] ++ libs ++ libDirs
 cabalBuildInfo :: GenericPackageDescription -> BuildInfo
 cabalBuildInfo pd = fromJust $ fromLibrary pd <|> fromExecutable pd
   where
-    fromLibrary c     = libBuildInfo . condTreeData <$> condLibrary c
-    fromExecutable c  = buildInfo . condTreeData . snd <$> listToMaybe (condExecutables c)
+    fromLibrary c    = libBuildInfo . condTreeData <$> condLibrary c
+    fromExecutable c = buildInfo . condTreeData . snd <$> listToMaybe (condExecutables c)
 
 ----------------------------------------------------------------
 
