@@ -1,7 +1,7 @@
 2013-04-02 v1.12.4
 
 	* C-M-d on Emacs now can browse functions and types.
-	* Checking "QuasiQuotes" as well ass "TemplateHaskell". (@eagletmt)
+	* Checking "QuasiQuotes" as well as "TemplateHaskell". (@eagletmt)
 	* "ghc-mod info" can display info of non-exported functions.
 	  (@mvoidex)
 
