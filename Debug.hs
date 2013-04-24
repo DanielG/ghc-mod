@@ -19,7 +19,7 @@ debug :: Options -> Cradle -> String -> String -> IO [String]
 debug opt cradle ver fileName = do
     (gopts, incDir, pkgs) <-
         if cabal then
-            fromCabalFile (ghcOpts opt) cradle
+            fromCabalFile (ghcOpts opt) cradle -- FIXME
           else
             return (ghcOpts opt, [], [])
     [fast] <- withGHC fileName $ do

@@ -1,6 +1,5 @@
-% ghcmodHappyHaskellProgram-Kg.tex
 \begin{hcarentry}[updated]{ghc-mod --- Happy Haskell Programming}
-\report{Kazu Yamamoto}%11/12
+\report{Kazu Yamamoto}
 \status{open source, actively developed}
 \makeheader
 
@@ -28,7 +27,14 @@ There are two Vim plugins:
 \item syntastic
 \end{itemize}
 
-{\tt ghc-mod} now supports GHC 7.6.
+Here are new features:
+
+\begin{itemize}
+\item {\tt ghc-mod} now analyses library dependencies from a cabal file.
+\item The ``{\tt check}'' subcommand became faster than before unless Template Haskell is used. 
+\item The ``{\tt debug}'' subcommand is provided.
+\item The ``{\tt browse}' subcommand displays more information on functions etc if the ``{\tt -d}'' option is specified.
+\end{itemize}
 
 \FurtherReading
   \url{http://www.mew.org/~kazu/proj/ghc-mod/en/}
