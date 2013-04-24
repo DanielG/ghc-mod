@@ -1,0 +1,35 @@
+% ghcmodHappyHaskellProgram-Kg.tex
+\begin{hcarentry}[updated]{ghc-mod --- Happy Haskell Programming}
+\report{Kazu Yamamoto}%11/12
+\status{open source, actively developed}
+\makeheader
+
+{\tt ghc-mod} is a backend command to enrich Haskell programming on editors including Emacs and Vim. The ghc-mod package on Hackage includes the {\tt ghc-mod} command and Emacs front-end. 
+
+Emacs front-end provides the following features:
+
+\begin{description}
+\item[Completion] You can complete a name of keyword, module, class, function, types, language extensions, etc.
+
+\item[Code template] You can insert a code template according to the position of the cursor. For instance, ``module Foo where'' is inserted in the beginning of a buffer.
+
+\item[Syntax check] Code lines with error messages are automatically highlighted thanks to flymake. You can display the error message of the current line in another window. {\tt hlint} %\cref{hlint} 
+can be used instead of GHC to check Haskell syntax. 
+
+\item[Document browsing] You can browse the module document of the current line either locally or on Hackage.
+
+\item[Expression type] You can display the type/information of the expression on the cursor. 
+\end{description}
+
+There are two Vim plugins:
+
+\begin{itemize}
+\item ghcmod-vim
+\item syntastic
+\end{itemize}
+
+{\tt ghc-mod} now supports GHC 7.6.
+
+\FurtherReading
+  \url{http://www.mew.org/~kazu/proj/ghc-mod/en/}
+\end{hcarentry}
