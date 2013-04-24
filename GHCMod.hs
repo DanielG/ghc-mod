@@ -168,5 +168,5 @@ preBrowsedModules = [
 
 ghcPackageConfOptions :: Int -> String -> [String]
 ghcPackageConfOptions ver file
-  | ver >= 706 = ["-package-db",   file, "-no-user-package-conf"]
+  | ver >= 706 = ["-package-db",   file, "-no-user-package-db"]
   | otherwise  = ["-package-conf", file, "-no-user-package-conf"]
