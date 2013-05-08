@@ -61,7 +61,7 @@ initializeFlagsWithCradle opt cradle ghcOptions logging
         initSession CabalPkg opt gopts idirs (Just depPkgs) logging
     withoutCabal =
         initSession SingleFile opt ghcOptions importDirs Nothing logging
-    fallback :: SomeException -> Ghc LogReader
+    fallback :: BrokenCabalFile -> Ghc LogReader
     fallback _ = withoutCabal
 
 ----------------------------------------------------------------

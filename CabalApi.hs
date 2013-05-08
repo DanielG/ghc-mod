@@ -12,7 +12,7 @@ module CabalApi (
 import Control.Applicative
 import Control.Exception (throwIO)
 import Data.List (intercalate)
-import Data.Maybe (maybeToList, listToMaybe, fromJust)
+import Data.Maybe (maybeToList, listToMaybe)
 import Data.Set (fromList, toList)
 import Distribution.Package (Dependency(Dependency), PackageName(PackageName))
 import Distribution.PackageDescription
@@ -30,19 +30,21 @@ import Types
 fromCabalFile :: [GHCOption]
               -> Cradle
               -> IO ([GHCOption],[IncludeDir],[Package])
-fromCabalFile ghcOptions cradle =
-    cookInfo ghcOptions cradle <$> cabalParseFile cfile
+fromCabalFile ghcOptions cradle = do
+    cabal <- cabalParseFile cfile
+    case cabalBuildInfo cabal of
+        Nothing    -> throwIO BrokenCabalFile
+        Just binfo -> return $ cookInfo ghcOptions cradle cabal binfo
   where
-    Just cfile = cradleCabalFile  cradle
+    Just cfile = cradleCabalFile cradle
 
-cookInfo :: [String] -> Cradle -> GenericPackageDescription
-            -> ([GHCOption],[IncludeDir],[Package])
-cookInfo ghcOptions cradle cabal = (gopts,idirs,depPkgs)
+cookInfo :: [String] -> Cradle -> GenericPackageDescription -> BuildInfo
+         -> ([GHCOption],[IncludeDir],[Package])
+cookInfo ghcOptions cradle cabal binfo = (gopts,idirs,depPkgs)
   where
     owdir      = cradleCurrentDir cradle
     Just cdir  = cradleCabalDir   cradle
     Just cfile = cradleCabalFile  cradle
-    binfo      = cabalBuildInfo cabal
     gopts      = getGHCOptions ghcOptions binfo
     idirs      = includeDirectories cdir owdir $ cabalAllSourceDirs cabal
     depPkgs    = removeMe cfile $ cabalAllDependPackages cabal
@@ -70,8 +72,8 @@ getGHCOptions ghcOptions binfo = ghcOptions ++ exts ++ [lang] ++ libs ++ libDirs
 ----------------------------------------------------------------
 
 -- Causes error, catched in the upper function.
-cabalBuildInfo :: GenericPackageDescription -> BuildInfo
-cabalBuildInfo pd = fromJust $ fromLibrary pd <|> fromExecutable pd
+cabalBuildInfo :: GenericPackageDescription -> Maybe BuildInfo
+cabalBuildInfo pd = fromLibrary pd <|> fromExecutable pd
   where
     fromLibrary c    = libBuildInfo . condTreeData <$> condLibrary c
     fromExecutable c = buildInfo . condTreeData . snd <$> listToMaybe (condExecutables c)
