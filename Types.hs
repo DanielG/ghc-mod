@@ -1,10 +1,6 @@
 {-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE DeriveDataTypeable #-}
 
 module Types where
-
-import Control.Exception as E
-import Data.Typeable
 
 data OutputStyle = LispStyle | PlainStyle
 
@@ -82,9 +78,3 @@ type IncludeDir = FilePath
 type Package    = String
 
 data CheckSpeed = Slow | Fast
-
-----------------------------------------------------------------
-
-data BrokenCabalFile = BrokenCabalFile deriving (Show, Typeable)
-
-instance Exception BrokenCabalFile

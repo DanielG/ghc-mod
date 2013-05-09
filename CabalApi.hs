@@ -33,7 +33,7 @@ fromCabalFile :: [GHCOption]
 fromCabalFile ghcOptions cradle = do
     cabal <- cabalParseFile cfile
     case cabalBuildInfo cabal of
-        Nothing    -> throwIO BrokenCabalFile
+        Nothing    -> throwIO $ userError "cabal file is broken"
         Just binfo -> return $ cookInfo ghcOptions cradle cabal binfo
   where
     Just cfile = cradleCabalFile cradle

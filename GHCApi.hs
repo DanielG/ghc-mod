@@ -22,6 +22,7 @@ import DynFlags
 import ErrMsg
 import Exception
 import GHC
+import GHCChoice
 import GHC.Paths (libdir)
 import System.Exit
 import System.IO
@@ -52,7 +53,7 @@ data Build = CabalPkg | SingleFile deriving Eq
 
 initializeFlagsWithCradle :: Options -> Cradle -> [GHCOption] -> Bool -> Ghc LogReader
 initializeFlagsWithCradle opt cradle ghcOptions logging
-  | cabal     = withCabal `gcatch` fallback
+  | cabal     = withCabal ||> withoutCabal
   | otherwise = withoutCabal
   where
     cabal = isJust $ cradleCabalFile cradle
@@ -61,8 +62,6 @@ initializeFlagsWithCradle opt cradle ghcOptions logging
         initSession CabalPkg opt gopts idirs (Just depPkgs) logging
     withoutCabal =
         initSession SingleFile opt ghcOptions importDirs Nothing logging
-    fallback :: BrokenCabalFile -> Ghc LogReader
-    fallback _ = withoutCabal
 
 ----------------------------------------------------------------
 

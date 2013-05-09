@@ -1,10 +1,8 @@
- {-# LANGUAGE TemplateHaskell #-}
-
 module Debug (debugInfo, debug) where
 
 import CabalApi
 import Control.Applicative
-import Control.Exception.IOChoice.TH
+import Control.Exception.IOChoice
 import Control.Monad
 import Data.List (intercalate)
 import Data.Maybe
@@ -15,11 +13,6 @@ import Types
 
 ----------------------------------------------------------------
 
-(||>>) :: IO a -> IO a -> IO a
-(||>>) = $(newIOChoice [''BrokenCabalFile])
-
-----------------------------------------------------------------
-
 debugInfo :: Options -> Cradle -> String -> String -> IO String
 debugInfo opt cradle ver fileName = unlines <$> debug opt cradle ver fileName
 
@@ -27,7 +20,7 @@ debug :: Options -> Cradle -> String -> String -> IO [String]
 debug opt cradle ver fileName = do
     (gopts, incDir, pkgs) <-
         if cabal then
-            fromCabalFile (ghcOpts opt) cradle ||>> return (ghcOpts opt, [], [])
+            fromCabalFile (ghcOpts opt) cradle ||> return (ghcOpts opt, [], [])
           else
             return (ghcOpts opt, [], [])
     [fast] <- withGHC fileName $ do
