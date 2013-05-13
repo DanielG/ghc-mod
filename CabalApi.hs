@@ -42,11 +42,11 @@ cookInfo :: [String] -> Cradle -> GenericPackageDescription -> BuildInfo
          -> ([GHCOption],[IncludeDir],[Package])
 cookInfo ghcOptions cradle cabal binfo = (gopts,idirs,depPkgs)
   where
-    owdir      = cradleCurrentDir cradle
+    wdir       = cradleCurrentDir cradle
     Just cdir  = cradleCabalDir   cradle
     Just cfile = cradleCabalFile  cradle
     gopts      = getGHCOptions ghcOptions binfo
-    idirs      = includeDirectories cdir owdir $ cabalAllSourceDirs cabal
+    idirs      = includeDirectories cdir wdir $ cabalAllSourceDirs cabal
     depPkgs    = removeMe cfile $ cabalAllDependPackages cabal
 
 removeMe :: FilePath -> [String] -> [String]
@@ -119,8 +119,8 @@ fromPackageDescription f1 f2 f3 f4 pd = lib ++ exe ++ tests ++ bench
 ----------------------------------------------------------------
 
 includeDirectories :: String -> String -> [FilePath] -> [String]
-includeDirectories cdir owdir []   = uniqueAndSort [cdir,owdir]
-includeDirectories cdir owdir dirs = uniqueAndSort (map (cdir </>) dirs ++ [owdir])
+includeDirectories cdir wdir []   = uniqueAndSort [cdir,wdir]
+includeDirectories cdir wdir dirs = uniqueAndSort (map (cdir </>) dirs ++ [cdir,wdir])
 
 ----------------------------------------------------------------
 
