@@ -1,6 +1,6 @@
 {-# LANGUAGE BangPatterns #-}
 
-module ErrMsg (
+module Language.Haskell.GhcMod.ErrMsg (
     LogReader
   , setLogger
   , handleErrMsg
@@ -10,12 +10,12 @@ import Bag
 import Control.Applicative
 import Data.IORef
 import Data.Maybe
-import Doc
 import DynFlags
 import ErrUtils
 import GHC
-import qualified Gap
 import HscTypes
+import Language.Haskell.GhcMod.Doc
+import qualified Language.Haskell.GhcMod.Gap as Gap
 import Outputable
 import System.FilePath (normalise)
 

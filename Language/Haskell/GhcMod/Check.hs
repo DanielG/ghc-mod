@@ -1,14 +1,14 @@
-module Check (checkSyntax) where
+module Language.Haskell.GhcMod.Check (checkSyntax) where
 
 import Control.Applicative
 import Control.Monad
 import CoreMonad
-import ErrMsg
 import Exception
 import GHC
-import GHCApi
+import Language.Haskell.GhcMod.ErrMsg
+import Language.Haskell.GhcMod.GHCApi
+import Language.Haskell.GhcMod.Types
 import Prelude
-import Types
 
 ----------------------------------------------------------------
 

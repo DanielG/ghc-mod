@@ -1,6 +1,6 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 
-module GHCChoice where
+module Language.Haskell.GhcMod.GHCChoice where
 
 import Control.Exception
 import CoreMonad

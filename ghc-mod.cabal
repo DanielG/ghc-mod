@@ -1,5 +1,5 @@
 Name:                   ghc-mod
-Version:                1.12.5
+Version:                2.0.0
 Author:                 Kazu Yamamoto <kazu@iij.ad.jp>
 Maintainer:             Kazu Yamamoto <kazu@iij.ad.jp>
 License:                BSD3
@@ -37,27 +37,27 @@ Extra-Source-Files:     ChangeLog
                         test/data/check-test-subdir/test/*.hs
                         test/data/check-test-subdir/test/Bar/*.hs
                         test/data/check-test-subdir/src/Check/Test/*.hs
-Executable ghc-mod
+
+Library
   Default-Language:     Haskell2010
-  Main-Is:              GHCMod.hs
-  Other-Modules:        Browse
-                        CabalApi
-                        Check
-                        Cradle
-                        Doc
-                        Debug
-                        ErrMsg
-                        Flag
-                        GHCApi
-                        GHCChoice
-                        Gap
-                        Info
-                        Lang
-                        Lint
-                        List
-                        Paths_ghc_mod
-                        Types
   GHC-Options:          -Wall
+  Exposed-Modules:      Language.Haskell.GhcMod
+  Other-Modules:        Language.Haskell.GhcMod.Browse
+                        Language.Haskell.GhcMod.CabalApi
+                        Language.Haskell.GhcMod.Check
+                        Language.Haskell.GhcMod.Cradle
+                        Language.Haskell.GhcMod.Doc
+                        Language.Haskell.GhcMod.Debug
+                        Language.Haskell.GhcMod.ErrMsg
+                        Language.Haskell.GhcMod.Flag
+                        Language.Haskell.GhcMod.GHCApi
+                        Language.Haskell.GhcMod.GHCChoice
+                        Language.Haskell.GhcMod.Gap
+                        Language.Haskell.GhcMod.Info
+                        Language.Haskell.GhcMod.Lang
+                        Language.Haskell.GhcMod.Lint
+                        Language.Haskell.GhcMod.List
+                        Language.Haskell.GhcMod.Types
   Build-Depends:        base >= 4.0 && < 5
                       , Cabal >= 1.10
                       , containers
@@ -74,6 +74,18 @@ Executable ghc-mod
                       , syb
                       , time
                       , transformers
+
+Executable ghc-mod
+  Default-Language:     Haskell2010
+  Main-Is:              GHCMod.hs
+  Other-Modules:        Paths_ghc_mod
+  GHC-Options:          -Wall
+  HS-Source-Dirs:       src
+  Build-Depends:        base >= 4.0 && < 5
+                      , directory
+                      , filepath
+                      , ghc
+                      , ghc-mod
 
 Test-Suite spec
   Default-Language:     Haskell2010

@@ -1,18 +1,18 @@
-module Browse (browseModule) where
+module Language.Haskell.GhcMod.Browse (browseModule) where
 
 import Control.Applicative
 import Data.Char
 import Data.List
 import Data.Maybe (fromMaybe)
 import DataCon (dataConRepType)
-import Doc
 import GHC
-import GHCApi
+import Language.Haskell.GhcMod.Doc
+import Language.Haskell.GhcMod.GHCApi
+import Language.Haskell.GhcMod.Types
 import Name
 import Outputable
 import TyCon
 import Type
-import Types
 import Var
 
 ----------------------------------------------------------------

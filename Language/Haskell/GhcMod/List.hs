@@ -1,11 +1,11 @@
-module List (listModules) where
+module Language.Haskell.GhcMod.List (listModules) where
 
 import Control.Applicative
 import Data.List
 import GHC
-import GHCApi
+import Language.Haskell.GhcMod.GHCApi
+import Language.Haskell.GhcMod.Types
 import Packages
-import Types
 import UniqFM
 
 ----------------------------------------------------------------

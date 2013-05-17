@@ -1,6 +1,6 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 
-module GHCApi (
+module Language.Haskell.GhcMod.GHCApi (
     withGHC
   , withGHCDummyFile
   , initializeFlags
@@ -12,21 +12,21 @@ module GHCApi (
   , canCheckFast
   ) where
 
-import CabalApi
 import Control.Applicative
 import Control.Exception
 import Control.Monad
 import CoreMonad
 import Data.Maybe (isJust)
 import DynFlags
-import ErrMsg
 import Exception
 import GHC
-import GHCChoice
 import GHC.Paths (libdir)
+import Language.Haskell.GhcMod.CabalApi
+import Language.Haskell.GhcMod.ErrMsg
+import Language.Haskell.GhcMod.GHCChoice
+import Language.Haskell.GhcMod.Types
 import System.Exit
 import System.IO
-import Types
 
 ----------------------------------------------------------------
 

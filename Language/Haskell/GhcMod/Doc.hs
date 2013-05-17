@@ -1,7 +1,7 @@
-module Doc where
+module Language.Haskell.GhcMod.Doc where
 
 import DynFlags (DynFlags)
-import Gap (withStyle)
+import Language.Haskell.GhcMod.Gap (withStyle)
 import Outputable
 import Pretty
 

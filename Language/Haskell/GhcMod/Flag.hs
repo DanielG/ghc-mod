@@ -1,9 +1,9 @@
 {-# LANGUAGE CPP #-}
 
-module Flag where
+module Language.Haskell.GhcMod.Flag where
 
-import Types
-import qualified Gap
+import qualified Language.Haskell.GhcMod.Gap as Gap
+import Language.Haskell.GhcMod.Types
 
 listFlags :: Options -> IO String
 listFlags opt = return $ convert opt [ "-f" ++ prefix ++ option

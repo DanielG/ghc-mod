@@ -2,27 +2,17 @@
 
 module Main where
 
-import Browse
-import CabalApi
-import Check
 import Control.Applicative
 import Control.Exception
-import Cradle
 import Data.Typeable
 import Data.Version
-import Debug
-import Flag
-import Info
-import Lang
-import Lint
-import List
+import Language.Haskell.GhcMod
 import Paths_ghc_mod
 import Prelude
 import System.Console.GetOpt
 import System.Directory
 import System.Environment (getArgs)
 import System.IO (hPutStr, hPutStrLn, stdout, stderr, hSetEncoding, utf8)
-import Types
 
 ----------------------------------------------------------------
 

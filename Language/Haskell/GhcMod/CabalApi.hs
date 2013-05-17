@@ -1,6 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-module CabalApi (
+module Language.Haskell.GhcMod.CabalApi (
     fromCabalFile
   , cabalParseFile
   , cabalBuildInfo
@@ -22,8 +22,8 @@ import Distribution.Simple.Program.Types (programName, programFindVersion)
 import Distribution.Text (display)
 import Distribution.Verbosity (silent)
 import Distribution.Version (versionBranch)
+import Language.Haskell.GhcMod.Types
 import System.FilePath
-import Types
 
 ----------------------------------------------------------------
 

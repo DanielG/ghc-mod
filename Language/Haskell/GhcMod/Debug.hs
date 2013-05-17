@@ -1,15 +1,15 @@
-module Debug (debugInfo, debug) where
+module Language.Haskell.GhcMod.Debug (debugInfo, debug) where
 
-import CabalApi
 import Control.Applicative
 import Control.Exception.IOChoice
 import Control.Monad
 import Data.List (intercalate)
 import Data.Maybe
 import GHC
-import GHCApi
+import Language.Haskell.GhcMod.CabalApi
+import Language.Haskell.GhcMod.GHCApi
+import Language.Haskell.GhcMod.Types
 import Prelude
-import Types
 
 ----------------------------------------------------------------
 

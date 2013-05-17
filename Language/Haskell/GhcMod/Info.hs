@@ -1,7 +1,7 @@
 {-# LANGUAGE TupleSections, FlexibleInstances, TypeSynonymInstances #-}
 {-# LANGUAGE Rank2Types #-}
 
-module Info (infoExpr, typeExpr) where
+module Language.Haskell.GhcMod.Info (infoExpr, typeExpr) where
 
 import Control.Applicative
 import Control.Monad (void, when)
@@ -13,19 +13,19 @@ import Data.Maybe
 import Data.Ord as O
 import Data.Time.Clock
 import Desugar
-import Doc
 import GHC
 import GHC.SYB.Utils
-import GHCApi
-import GHCChoice
-import qualified Gap
 import HscTypes
+import Language.Haskell.GhcMod.Doc
+import Language.Haskell.GhcMod.GHCApi
+import Language.Haskell.GhcMod.GHCChoice
+import qualified Language.Haskell.GhcMod.Gap as Gap
+import Language.Haskell.GhcMod.Types
 import NameSet
 import Outputable
 import PprTyThing
 import TcHsSyn (hsPatType)
 import TcRnTypes
-import Types
 
 ----------------------------------------------------------------
 
@@ -68,7 +68,7 @@ instance HasType (LPat Id) where
     getType _ (L spn pat) = return $ Just (spn, hsPatType pat)
 
 typeExpr :: Options -> Cradle -> ModuleString -> Int -> Int -> FilePath -> IO String
-typeExpr opt cradle modstr lineNo colNo file = Info.typeOf opt cradle file modstr lineNo colNo
+typeExpr opt cradle modstr lineNo colNo file = Language.Haskell.GhcMod.Info.typeOf opt cradle file modstr lineNo colNo
 
 typeOf :: Options -> Cradle -> FilePath -> ModuleString -> Int -> Int -> IO String
 typeOf opt cradle fileName modstr lineNo colNo =

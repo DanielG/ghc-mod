@@ -1,12 +1,12 @@
-module Cradle (findCradle) where
+module Language.Haskell.GhcMod.Cradle (findCradle) where
 
 import Control.Applicative ((<$>))
 import Control.Exception (throwIO)
 import Control.Monad
 import Data.List (isSuffixOf)
+import Language.Haskell.GhcMod.Types
 import System.Directory
 import System.FilePath ((</>),takeDirectory)
-import Types
 
 -- An error would be thrown
 findCradle :: Maybe FilePath -> String -> IO Cradle

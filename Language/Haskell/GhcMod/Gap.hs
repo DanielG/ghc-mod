@@ -1,7 +1,7 @@
 {-# LANGUAGE CPP #-}
 
-module Gap (
-    Gap.ClsInst
+module Language.Haskell.GhcMod.Gap (
+    Language.Haskell.GhcMod.Gap.ClsInst
   , mkTarget
   , withStyle
   , setLogAction
@@ -26,7 +26,7 @@ import DynFlags
 import ErrUtils
 import FastString
 import GHC
-import GHCChoice
+import Language.Haskell.GhcMod.GHCChoice
 import Outputable
 import StringBuffer
 

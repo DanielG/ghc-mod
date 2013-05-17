@@ -1,9 +1,9 @@
-module Lint where
+module Language.Haskell.GhcMod.Lint where
 
 import Control.Applicative
 import Data.List
+import Language.Haskell.GhcMod.Types
 import Language.Haskell.HLint
-import Types
 
 lintSyntax :: Options -> String -> IO String
 lintSyntax opt file = pack <$> lint opt file

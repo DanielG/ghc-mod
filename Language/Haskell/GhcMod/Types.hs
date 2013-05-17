@@ -1,6 +1,6 @@
 {-# LANGUAGE FlexibleInstances #-}
 
-module Types where
+module Language.Haskell.GhcMod.Types where
 
 data OutputStyle = LispStyle | PlainStyle
 
