@@ -1,4 +1,4 @@
-module Language.Haskell.GhcMod.List (listModules) where
+module Language.Haskell.GhcMod.List (listModules, list) where
 
 import Control.Applicative
 import Data.List
@@ -10,11 +10,11 @@ import UniqFM
 
 ----------------------------------------------------------------
 
-listModules :: Options -> IO String
+listModules :: Options -> Ghc String
 listModules opt = convert opt . nub . sort <$> list opt
 
-list :: Options -> IO [String]
-list opt = withGHCDummyFile $ do
+list :: Options -> Ghc [String]
+list opt = do
     initializeFlags opt
     getExposedModules <$> getSessionDynFlags
   where
