@@ -1,4 +1,4 @@
-module Language.Haskell.GhcMod.Browse (browseModule) where
+module Language.Haskell.GhcMod.Browse (browseModule, browse) where
 
 import Control.Applicative
 import Data.Char
@@ -17,7 +17,7 @@ import Var
 
 ----------------------------------------------------------------
 
-browseModule :: Options -> String -> IO String
+browseModule :: Options -> String -> Ghc String
 browseModule opt mdlName = convert opt . format <$> browse opt mdlName
   where
     format
@@ -32,8 +32,8 @@ browseModule opt mdlName = convert opt . format <$> browse opt mdlName
         (name, tail_) = break isSpace x
     formatOps' [] = error "formatOps'"
 
-browse :: Options -> String -> IO [String]
-browse opt mdlName = withGHCDummyFile $ do
+browse :: Options -> String -> Ghc [String]
+browse opt mdlName = do
     initializeFlags opt
     getModule >>= getModuleInfo >>= listExports
   where

@@ -1,4 +1,4 @@
-module Language.Haskell.GhcMod.Check (checkSyntax) where
+module Language.Haskell.GhcMod.Check (checkSyntax, check) where
 
 import Control.Applicative
 import Control.Monad
@@ -12,13 +12,13 @@ import Prelude
 
 ----------------------------------------------------------------
 
-checkSyntax :: Options -> Cradle -> String -> IO String
+checkSyntax :: Options -> Cradle -> String -> Ghc String
 checkSyntax opt cradle file = unlines <$> check opt cradle file
 
 ----------------------------------------------------------------
 
-check :: Options -> Cradle -> String -> IO [String]
-check opt cradle fileName = withGHC fileName $ checkIt `gcatch` handleErrMsg
+check :: Options -> Cradle -> String -> Ghc [String]
+check opt cradle fileName = checkIt `gcatch` handleErrMsg
   where
     checkIt = do
         readLog <- initializeFlagsWithCradle opt cradle options True

@@ -6,6 +6,7 @@ import Control.Monad
 import Data.List (intercalate)
 import Data.Maybe
 import GHC
+import GhcMonad (liftIO)
 import Language.Haskell.GhcMod.CabalApi
 import Language.Haskell.GhcMod.GHCApi
 import Language.Haskell.GhcMod.Types
@@ -13,17 +14,17 @@ import Prelude
 
 ----------------------------------------------------------------
 
-debugInfo :: Options -> Cradle -> String -> String -> IO String
+debugInfo :: Options -> Cradle -> String -> String -> Ghc String
 debugInfo opt cradle ver fileName = unlines <$> debug opt cradle ver fileName
 
-debug :: Options -> Cradle -> String -> String -> IO [String]
+debug :: Options -> Cradle -> String -> String -> Ghc [String]
 debug opt cradle ver fileName = do
     (gopts, incDir, pkgs) <-
         if cabal then
-            fromCabalFile (ghcOpts opt) cradle ||> return (ghcOpts opt, [], [])
+            liftIO $ fromCabalFile (ghcOpts opt) cradle ||> return (ghcOpts opt, [], [])
           else
             return (ghcOpts opt, [], [])
-    [fast] <- withGHC fileName $ do
+    [fast] <- do
         void $ initializeFlagsWithCradle opt cradle gopts True
         setTargetFile fileName
         pure . canCheckFast <$> depanal [] False

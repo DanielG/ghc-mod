@@ -1,13 +1,13 @@
 {-# LANGUAGE TupleSections, FlexibleInstances, TypeSynonymInstances #-}
 {-# LANGUAGE Rank2Types #-}
 
-module Language.Haskell.GhcMod.Info (infoExpr, typeExpr) where
+module Language.Haskell.GhcMod.Info (infoExpr, info, typeExpr, typeOf) where
 
 import Control.Applicative
 import Control.Monad (void, when)
 import CoreUtils
 import Data.Function
-import Data.Generics
+import Data.Generics hiding (typeOf)
 import Data.List
 import Data.Maybe
 import Data.Ord as O
@@ -36,10 +36,10 @@ data Cmd = Info | Type deriving Eq
 
 ----------------------------------------------------------------
 
-infoExpr :: Options -> Cradle -> ModuleString -> Expression -> FilePath -> IO String
+infoExpr :: Options -> Cradle -> ModuleString -> Expression -> FilePath -> Ghc String
 infoExpr opt cradle modstr expr file = (++ "\n") <$> info opt cradle file modstr expr
 
-info :: Options -> Cradle -> FilePath -> ModuleString -> Expression -> IO String
+info :: Options -> Cradle -> FilePath -> ModuleString -> Expression -> Ghc String
 info opt cradle fileName modstr expr =
     inModuleContext Info opt cradle fileName modstr exprToInfo "Cannot show info"
   where
@@ -67,10 +67,10 @@ instance HasType (LHsBind Id) where
 instance HasType (LPat Id) where
     getType _ (L spn pat) = return $ Just (spn, hsPatType pat)
 
-typeExpr :: Options -> Cradle -> ModuleString -> Int -> Int -> FilePath -> IO String
-typeExpr opt cradle modstr lineNo colNo file = Language.Haskell.GhcMod.Info.typeOf opt cradle file modstr lineNo colNo
+typeExpr :: Options -> Cradle -> ModuleString -> Int -> Int -> FilePath -> Ghc String
+typeExpr opt cradle modstr lineNo colNo file = typeOf opt cradle file modstr lineNo colNo
 
-typeOf :: Options -> Cradle -> FilePath -> ModuleString -> Int -> Int -> IO String
+typeOf :: Options -> Cradle -> FilePath -> ModuleString -> Int -> Int -> Ghc String
 typeOf opt cradle fileName modstr lineNo colNo =
     inModuleContext Type opt cradle fileName modstr exprToType errmsg
   where
@@ -141,9 +141,9 @@ pprInfo pefas (thing, fixity, insts)
 
 ----------------------------------------------------------------
 
-inModuleContext :: Cmd -> Options -> Cradle -> FilePath -> ModuleString -> Ghc String -> String -> IO String
+inModuleContext :: Cmd -> Options -> Cradle -> FilePath -> ModuleString -> Ghc String -> String -> Ghc String
 inModuleContext cmd opt cradle fileName modstr action errmsg =
-    withGHCDummyFile (valid ||> invalid ||> return errmsg)
+    valid ||> invalid ||> return errmsg
   where
     valid = do
         void $ initializeFlagsWithCradle opt cradle ["-w:"] False
