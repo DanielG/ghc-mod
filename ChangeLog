@@ -1,3 +1,9 @@
+2013-05-XX v2.0.0
+	* ghc-mod also provides a library (Language.Haskell.GhcMod)
+
+2013-05-13 v1.12.5
+	* A bug fix for the case where a cabal file is broken.
+
 2013-04-02 v1.12.4
 
 	* C-M-d on Emacs now can browse functions and types.
