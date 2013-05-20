@@ -15,10 +15,11 @@
 (defun ghc-browse-document (&optional haskell-org)
   (interactive "P")
   (let ((mod0 (ghc-extract-module))
-	(expr (ghc-things-at-point)))
+	(expr0 (ghc-things-at-point)))
     (cond
-     ((and (not mod0) expr)
-      (let* ((info (ghc-get-info expr))
+     ((and (not mod0) expr0)
+      (let* ((expr (ghc-read-expression expr0))
+	     (info (ghc-get-info expr0))
 	     (mod (ghc-extact-module-from-info info))
 	     (pkg (ghc-resolve-package-name mod)))
 	(if (and pkg mod)
@@ -104,6 +105,9 @@
 
 (defun ghc-read-module-name (def)
   (read-from-minibuffer "Module name: " def ghc-input-map))
+
+(defun ghc-read-expression (def)
+  (read-from-minibuffer "Expression: " def ghc-input-map))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
