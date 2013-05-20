@@ -1,8 +1,7 @@
 module LintSpec where
 
+import Language.Haskell.GhcMod
 import Test.Hspec
-import Lint
-import Types
 
 spec :: Spec
 spec = do

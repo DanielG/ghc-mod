@@ -14,10 +14,10 @@ import Prelude
 
 ----------------------------------------------------------------
 
-debugInfo :: Options -> Cradle -> String -> String -> Ghc String
-debugInfo opt cradle ver fileName = unlines <$> debug opt cradle ver fileName
+debugInfo :: Options -> Cradle -> String -> FilePath -> IO String
+debugInfo opt cradle ver fileName = unlines <$> withGHC fileName (debug opt cradle ver fileName)
 
-debug :: Options -> Cradle -> String -> String -> Ghc [String]
+debug :: Options -> Cradle -> String -> FilePath -> Ghc [String]
 debug opt cradle ver fileName = do
     (gopts, incDir, pkgs) <-
         if cabal then

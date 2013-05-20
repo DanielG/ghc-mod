@@ -36,8 +36,8 @@ data Cmd = Info | Type deriving Eq
 
 ----------------------------------------------------------------
 
-infoExpr :: Options -> Cradle -> ModuleString -> Expression -> FilePath -> Ghc String
-infoExpr opt cradle modstr expr file = (++ "\n") <$> info opt cradle file modstr expr
+infoExpr :: Options -> Cradle -> ModuleString -> Expression -> FilePath -> IO String
+infoExpr opt cradle modstr expr file = (++ "\n") <$> withGHCDummyFile (info opt cradle file modstr expr)
 
 info :: Options -> Cradle -> FilePath -> ModuleString -> Expression -> Ghc String
 info opt cradle fileName modstr expr =
@@ -67,8 +67,8 @@ instance HasType (LHsBind Id) where
 instance HasType (LPat Id) where
     getType _ (L spn pat) = return $ Just (spn, hsPatType pat)
 
-typeExpr :: Options -> Cradle -> ModuleString -> Int -> Int -> FilePath -> Ghc String
-typeExpr opt cradle modstr lineNo colNo file = typeOf opt cradle file modstr lineNo colNo
+typeExpr :: Options -> Cradle -> ModuleString -> Int -> Int -> FilePath -> IO String
+typeExpr opt cradle modstr lineNo colNo file = withGHCDummyFile $ typeOf opt cradle file modstr lineNo colNo
 
 typeOf :: Options -> Cradle -> FilePath -> ModuleString -> Int -> Int -> Ghc String
 typeOf opt cradle fileName modstr lineNo colNo =

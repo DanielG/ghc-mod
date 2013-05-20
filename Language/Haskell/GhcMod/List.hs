@@ -10,8 +10,8 @@ import UniqFM
 
 ----------------------------------------------------------------
 
-listModules :: Options -> Ghc String
-listModules opt = convert opt . nub . sort <$> list opt
+listModules :: Options -> IO String
+listModules opt = convert opt . nub . sort <$> withGHCDummyFile (list opt)
 
 list :: Options -> Ghc [String]
 list opt = do

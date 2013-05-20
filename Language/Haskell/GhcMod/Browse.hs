@@ -17,8 +17,8 @@ import Var
 
 ----------------------------------------------------------------
 
-browseModule :: Options -> String -> Ghc String
-browseModule opt mdlName = convert opt . format <$> browse opt mdlName
+browseModule :: Options -> String -> IO String
+browseModule opt mdlName = convert opt . format <$> withGHCDummyFile (browse opt mdlName)
   where
     format
       | operators opt = formatOps

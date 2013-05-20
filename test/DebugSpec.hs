@@ -1,18 +1,15 @@
 module DebugSpec where
 
-import CabalApi
-import Cradle
-import Debug
 import Expectation
+import Language.Haskell.GhcMod
 import Test.Hspec
-import Types
 
 checkFast :: String -> String -> IO ()
 checkFast file ans = withDirectory_ "test/data" $ do
     (strVer,_) <- getGHCVersion
     cradle <- findCradle Nothing strVer
-    res <- debug defaultOptions cradle strVer file
-    res `shouldContain` ans
+    res <- debugInfo defaultOptions cradle strVer file
+    lines res `shouldContain` ans
 
 spec :: Spec
 spec = do

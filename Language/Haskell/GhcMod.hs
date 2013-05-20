@@ -1,22 +1,33 @@
 module Language.Haskell.GhcMod (
-    browseModule
-  , checkSyntax
-  , check
-  , module Language.Haskell.GhcMod.Cradle
-  , debugInfo
-  , debug
-  , infoExpr
-  , info
-  , typeExpr
-  , typeOf
-  , listLanguages
-  , lintSyntax
-  , listModules
-  , module Language.Haskell.GhcMod.Types
-  , listFlags
+  -- * Cradle
+    Cradle(..)
+  , findCradle
+  -- * GHC version
   , getGHCVersion
-  , withGHCDummyFile
+  -- * Options
+  , Options(..)
+  , OutputStyle(..)
+  , defaultOptions
+  -- * 'IO' utilities
+  , browseModule
+  , checkSyntax
+  , debugInfo
+  , infoExpr
+  , typeExpr
+  , listModules
+  , listLanguages
+  , listFlags
+  , lintSyntax
+  -- * Converting the 'Ghc' monad to the 'IO' monad
   , withGHC
+  , withGHCDummyFile
+  -- * 'Ghc' utilities
+  , browse
+  , check
+  , debug
+  , info
+  , typeOf
+  , list
   ) where
 
 import Language.Haskell.GhcMod.Browse

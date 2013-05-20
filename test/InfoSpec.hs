@@ -1,14 +1,11 @@
 module InfoSpec where
 
-import CabalApi
-import Cradle
 import Data.List (isPrefixOf)
 import Expectation
-import Info
-import Test.Hspec
-import Types
-import System.Process
+import Language.Haskell.GhcMod
 import System.Exit
+import System.Process
+import Test.Hspec
 
 spec :: Spec
 spec = do

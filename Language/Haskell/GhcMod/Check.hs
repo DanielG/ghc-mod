@@ -12,12 +12,12 @@ import Prelude
 
 ----------------------------------------------------------------
 
-checkSyntax :: Options -> Cradle -> String -> Ghc String
-checkSyntax opt cradle file = unlines <$> check opt cradle file
+checkSyntax :: Options -> Cradle -> FilePath -> IO String
+checkSyntax opt cradle file = unlines <$> withGHC file (check opt cradle file)
 
 ----------------------------------------------------------------
 
-check :: Options -> Cradle -> String -> Ghc [String]
+check :: Options -> Cradle -> FilePath -> Ghc [String]
 check opt cradle fileName = checkIt `gcatch` handleErrMsg
   where
     checkIt = do

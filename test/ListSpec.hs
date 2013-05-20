@@ -1,10 +1,9 @@
 module ListSpec where
 
 import Control.Applicative
-import Test.Hspec
 import Expectation
-import List
-import Types
+import Language.Haskell.GhcMod
+import Test.Hspec
 
 spec :: Spec
 spec = do

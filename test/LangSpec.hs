@@ -1,10 +1,9 @@
 module LangSpec where
 
 import Control.Applicative
-import Test.Hspec
 import Expectation
-import Lang
-import Types
+import Language.Haskell.GhcMod
+import Test.Hspec
 
 spec :: Spec
 spec = do

@@ -1,13 +1,12 @@
 module CradleSpec where
 
 import Control.Applicative
-import Cradle
 import Data.List (isPrefixOf)
 import Expectation
+import Language.Haskell.GhcMod
+import System.Directory (canonicalizePath)
 import System.FilePath (addTrailingPathSeparator, (</>))
 import Test.Hspec
-import Types
-import System.Directory (canonicalizePath)
 
 spec :: Spec
 spec = do

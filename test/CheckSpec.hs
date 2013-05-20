@@ -1,13 +1,10 @@
 module CheckSpec where
 
-import CabalApi
-import Check
-import Cradle
 import Data.List (isSuffixOf, isInfixOf, isPrefixOf)
 import Expectation
-import Test.Hspec
-import Types
+import Language.Haskell.GhcMod
 import System.FilePath
+import Test.Hspec
 
 spec :: Spec
 spec = do

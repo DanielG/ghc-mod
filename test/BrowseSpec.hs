@@ -1,10 +1,9 @@
 module BrowseSpec where
 
 import Control.Applicative
-import Test.Hspec
-import Browse
 import Expectation
-import Types
+import Language.Haskell.GhcMod
+import Test.Hspec
 
 spec :: Spec
 spec = do

@@ -1,8 +1,8 @@
 module CabalApiSpec where
 
 import Control.Applicative
+import Language.Haskell.GhcMod.CabalApi
 import Test.Hspec
-import CabalApi
 
 spec :: Spec
 spec = do

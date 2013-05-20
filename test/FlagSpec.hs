@@ -1,10 +1,9 @@
 module FlagSpec where
 
 import Control.Applicative
-import Test.Hspec
 import Expectation
-import Flag
-import Types
+import Language.Haskell.GhcMod
+import Test.Hspec
 
 spec :: Spec
 spec = do

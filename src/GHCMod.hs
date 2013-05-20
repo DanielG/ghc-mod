@@ -91,21 +91,21 @@ main = flip catches handlers $ do
         cmdArg3 = cmdArg !. 3
         cmdArg4 = cmdArg !. 4
     res <- case cmdArg0 of
-      "browse" -> withGHCDummyFile $ concat <$> mapM (browseModule opt) (tail cmdArg)
-      "list"   -> withGHCDummyFile $ listModules opt
-      "check"  -> withGHCFile (checkSyntax opt cradle) cmdArg1
-      "expand" -> withGHCFile (checkSyntax opt { expandSplice = True } cradle) cmdArg1
-      "debug"  -> withGHCFile (debugInfo opt cradle strVer) cmdArg1
-      "type"   -> withGHCFile (typeExpr opt cradle cmdArg2 (read cmdArg3) (read cmdArg4)) cmdArg1
-      "info"   -> withGHCFile (infoExpr opt cradle cmdArg2 cmdArg3) cmdArg1
+      "browse" -> concat <$> mapM (browseModule opt) (tail cmdArg)
+      "list"   -> listModules opt
+      "check"  -> checkSyntax opt cradle cmdArg1
+      "expand" -> checkSyntax opt { expandSplice = True } cradle cmdArg1
+      "debug"  -> debugInfo opt cradle strVer cmdArg1
+      "type"   -> typeExpr opt cradle cmdArg2 (read cmdArg3) (read cmdArg4) cmdArg1
+      "info"   -> infoExpr opt cradle cmdArg2 cmdArg3 cmdArg1
       "lint"   -> withFile (lintSyntax opt) cmdArg1
       "lang"   -> listLanguages opt
       "flag"   -> listFlags opt
       "boot"   -> do
-         mods  <- withGHCDummyFile $ listModules opt
+         mods  <- listModules opt
          langs <- listLanguages opt
          flags <- listFlags opt
-         pre   <- withGHCDummyFile $ concat <$> mapM (browseModule opt) preBrowsedModules
+         pre   <- concat <$> mapM (browseModule opt) preBrowsedModules
          return $ mods ++ langs ++ flags ++ pre
       cmd      -> throw (NoSuchCommand cmd)
     putStr res
@@ -130,7 +130,6 @@ main = flip catches handlers $ do
         if exist
             then cmd file
             else throw (FileNotExist file)
-    withGHCFile cmd = withFile (\f -> withGHC f (cmd f))
     xs !. idx
       | length xs <= idx = throw SafeList
       | otherwise = xs !! idx
