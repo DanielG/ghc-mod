@@ -21,3 +21,12 @@ $(TEMPFILE):
 
 clean:
 	rm -f *.elc $(TEMPFILE)
+
+VERSION = `grep version ghc.el | sed -e 's/[^0-9\.]//g'`
+
+bump:
+	echo "(define-package\n  \"ghc-mod\"\n  $(VERSION)\n  \"Sub mode for Haskell mode\"\n  nil)" > ghc-pkg.el
+
+archive:
+	git archive master -o ~/ghc-$(VERSION).tar --prefix=ghc-$(VERSION)/
+	gzip ~/ghc-$(VERSION).tar
