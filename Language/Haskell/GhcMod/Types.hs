@@ -2,18 +2,24 @@
 
 module Language.Haskell.GhcMod.Types where
 
-data OutputStyle = LispStyle | PlainStyle
+-- | Output style.
+data OutputStyle = LispStyle  -- ^ S expression style
+                 | PlainStyle -- ^ Plain textstyle
 
 data Options = Options {
     outputStyle  :: OutputStyle
   , hlintOpts    :: [String]
   , ghcOpts      :: [String]
   , operators    :: Bool
+  -- | If 'True', 'browse' also returns types.
   , detailed     :: Bool
+  -- | Whether or not Template Haskell should be expanded.
   , expandSplice :: Bool
-  , sandbox      :: Maybe String
+  -- | The sandbox directory.
+  , sandbox      :: Maybe FilePath
   }
 
+-- | A default 'Options'.
 defaultOptions :: Options
 defaultOptions = Options {
     outputStyle  = PlainStyle
@@ -64,10 +70,15 @@ addNewLine = (++ "\n")
 
 ----------------------------------------------------------------
 
+-- | The environment where this library is used
 data Cradle = Cradle {
+  -- | The directory where this library is executed
     cradleCurrentDir  :: FilePath
+  -- | The directory where a cabal file is found
   , cradleCabalDir    :: Maybe FilePath
+  -- | The file name of the found cabal file
   , cradleCabalFile   :: Maybe FilePath
+  -- | The sandbox directory (e.g. \"\/foo\/bar\/packages-\<ver\>.conf/\")
   , cradlePackageConf :: Maybe FilePath
   } deriving (Eq, Show)
 
@@ -76,5 +87,14 @@ data Cradle = Cradle {
 type GHCOption  = String
 type IncludeDir = FilePath
 type Package    = String
+
+-- | GHC version in 'String'
+type GHCVersion = String
+
+-- | Haskell expression
+type Expression = String
+
+-- | Module name
+type ModuleString = String
 
 data CheckSpeed = Slow | Fast

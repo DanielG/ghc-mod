@@ -17,7 +17,11 @@ import Var
 
 ----------------------------------------------------------------
 
-browseModule :: Options -> String -> IO String
+-- | Getting functions, classes, etc from a module.
+--   If 'detailed' is 'True', their types are also obtained.
+browseModule :: Options
+             -> ModuleString -- ^ A module name. (e.g. \"Data.List\")
+             -> IO String
 browseModule opt mdlName = convert opt . format <$> withGHCDummyFile (browse opt mdlName)
   where
     format
@@ -32,7 +36,11 @@ browseModule opt mdlName = convert opt . format <$> withGHCDummyFile (browse opt
         (name, tail_) = break isSpace x
     formatOps' [] = error "formatOps'"
 
-browse :: Options -> String -> Ghc [String]
+-- | Getting functions, classes, etc from a module.
+--   If 'detailed' is 'True', their types are also obtained.
+browse :: Options
+       -> ModuleString -- ^ A module name. (e.g. \"Data.List\")
+       -> Ghc [String]
 browse opt mdlName = do
     initializeFlags opt
     getModule >>= getModuleInfo >>= listExports

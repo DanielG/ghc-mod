@@ -8,8 +8,11 @@ import Language.Haskell.GhcMod.Types
 import System.Directory
 import System.FilePath ((</>),takeDirectory)
 
--- An error would be thrown
-findCradle :: Maybe FilePath -> String -> IO Cradle
+-- | Finding 'Cradle'.
+--   An error would be thrown.
+findCradle :: Maybe FilePath -- ^ A 'FilePath' for a sandbox
+           -> GHCVersion
+           -> IO Cradle
 findCradle (Just sbox) strver = do
     pkgConf <- checkPackageConf sbox strver
     wdir <- getCurrentDirectory

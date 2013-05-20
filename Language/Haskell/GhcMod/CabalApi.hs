@@ -129,7 +129,8 @@ uniqueAndSort = toList . fromList
 
 ----------------------------------------------------------------
 
-getGHCVersion :: IO (String, Int)
+-- | Getting GHC version. 7.6.3 becames 706 in the second of the result.
+getGHCVersion :: IO (GHCVersion, Int)
 getGHCVersion = ghcVer >>= toTupple
   where
     ghcVer = programFindVersion ghcProgram silent (programName ghcProgram)

@@ -3,31 +3,35 @@ module Language.Haskell.GhcMod (
     Cradle(..)
   , findCradle
   -- * GHC version
+  , GHCVersion
   , getGHCVersion
   -- * Options
   , Options(..)
   , OutputStyle(..)
   , defaultOptions
+  -- * Types
+  , ModuleString
+  , Expression
   -- * 'IO' utilities
   , browseModule
   , checkSyntax
-  , debugInfo
+  , lintSyntax
   , infoExpr
   , typeExpr
   , listModules
   , listLanguages
   , listFlags
-  , lintSyntax
+  , debugInfo
   -- * Converting the 'Ghc' monad to the 'IO' monad
   , withGHC
   , withGHCDummyFile
   -- * 'Ghc' utilities
   , browse
   , check
-  , debug
   , info
   , typeOf
-  , list
+  , listMods
+  , debug
   ) where
 
 import Language.Haskell.GhcMod.Browse

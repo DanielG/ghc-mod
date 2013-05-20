@@ -1,7 +1,12 @@
 {-# LANGUAGE TupleSections, FlexibleInstances, TypeSynonymInstances #-}
 {-# LANGUAGE Rank2Types #-}
 
-module Language.Haskell.GhcMod.Info (infoExpr, info, typeExpr, typeOf) where
+module Language.Haskell.GhcMod.Info (
+    infoExpr
+  , info
+  , typeExpr
+  , typeOf
+  ) where
 
 import Control.Applicative
 import Control.Monad (void, when)
@@ -29,19 +34,28 @@ import TcRnTypes
 
 ----------------------------------------------------------------
 
-type Expression = String
-type ModuleString = String
-
 data Cmd = Info | Type deriving Eq
 
 ----------------------------------------------------------------
 
-infoExpr :: Options -> Cradle -> ModuleString -> Expression -> FilePath -> IO String
-infoExpr opt cradle modstr expr file = (++ "\n") <$> withGHCDummyFile (info opt cradle file modstr expr)
+-- | Obtaining information of a target expression. (GHCi's info:)
+infoExpr :: Options
+         -> Cradle
+         -> FilePath     -- ^ A target file
+         -> ModuleString -- ^ A module name
+         -> Expression   -- ^ A Haskell expression
+         -> IO String
+infoExpr opt cradle file modstr expr = (++ "\n") <$> withGHCDummyFile (info opt cradle file modstr expr)
 
-info :: Options -> Cradle -> FilePath -> ModuleString -> Expression -> Ghc String
-info opt cradle fileName modstr expr =
-    inModuleContext Info opt cradle fileName modstr exprToInfo "Cannot show info"
+-- | Obtaining information of a target expression. (GHCi's info:)
+info :: Options
+     -> Cradle
+     -> FilePath     -- ^ A target file
+     -> ModuleString -- ^ A module name
+     -> Expression   -- ^ A Haskell expression
+     -> Ghc String
+info opt cradle file modstr expr =
+    inModuleContext Info opt cradle file modstr exprToInfo "Cannot show info"
   where
     exprToInfo = infoThing expr
 
@@ -67,12 +81,28 @@ instance HasType (LHsBind Id) where
 instance HasType (LPat Id) where
     getType _ (L spn pat) = return $ Just (spn, hsPatType pat)
 
-typeExpr :: Options -> Cradle -> ModuleString -> Int -> Int -> FilePath -> IO String
-typeExpr opt cradle modstr lineNo colNo file = withGHCDummyFile $ typeOf opt cradle file modstr lineNo colNo
+----------------------------------------------------------------
 
-typeOf :: Options -> Cradle -> FilePath -> ModuleString -> Int -> Int -> Ghc String
-typeOf opt cradle fileName modstr lineNo colNo =
-    inModuleContext Type opt cradle fileName modstr exprToType errmsg
+-- | Obtaining type of a target expression. (GHCi's type:)
+typeExpr :: Options
+         -> Cradle
+         -> FilePath     -- ^ A target file
+         -> ModuleString -- ^ A odule name
+         -> Int          -- ^ Line number
+         -> Int          -- ^ Column number
+         -> IO String
+typeExpr opt cradle file modstr lineNo colNo = withGHCDummyFile $ typeOf opt cradle file modstr lineNo colNo
+
+-- | Obtaining type of a target expression. (GHCi's type:)
+typeOf :: Options
+       -> Cradle
+       -> FilePath     -- ^ A target file
+       -> ModuleString -- ^ A odule name
+       -> Int          -- ^ Line number
+       -> Int          -- ^ Column number
+       -> Ghc String
+typeOf opt cradle file modstr lineNo colNo =
+    inModuleContext Type opt cradle file modstr exprToType errmsg
   where
     exprToType = do
       modSum <- getModSummary $ mkModuleName modstr
@@ -142,13 +172,13 @@ pprInfo pefas (thing, fixity, insts)
 ----------------------------------------------------------------
 
 inModuleContext :: Cmd -> Options -> Cradle -> FilePath -> ModuleString -> Ghc String -> String -> Ghc String
-inModuleContext cmd opt cradle fileName modstr action errmsg =
+inModuleContext cmd opt cradle file modstr action errmsg =
     valid ||> invalid ||> return errmsg
   where
     valid = do
         void $ initializeFlagsWithCradle opt cradle ["-w:"] False
         when (cmd == Info) setSlowDynFlags
-        setTargetFile fileName
+        setTargetFile file
         checkSlowAndSet
         void $ load LoadAllTargets
         doif setContextFromTarget action

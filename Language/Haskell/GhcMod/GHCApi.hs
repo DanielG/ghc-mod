@@ -30,10 +30,15 @@ import System.IO
 
 ----------------------------------------------------------------
 
-withGHCDummyFile :: Alternative m => Ghc (m a) -> IO (m a)
+-- | Converting the 'Ghc' monad to the 'IO' monad.
+withGHCDummyFile :: Alternative m => Ghc (m a) -- ^ 'Ghc' actions created by the Ghc utilities
+                                  -> IO (m a)
 withGHCDummyFile = withGHC "Dummy"
 
-withGHC :: Alternative m => FilePath -> Ghc (m a) -> IO (m a)
+-- | Converting the 'Ghc' monad to the 'IO' monad.
+withGHC :: Alternative m => FilePath  -- ^ A target file displayed in an error message
+                         -> Ghc (m a) -- ^ 'Ghc' actions created by the Ghc utilities
+                         -> IO (m a)
 withGHC file body = ghandle ignore $ runGhc (Just libdir) $ do
     dflags <- getSessionDynFlags
     defaultCleanupHandler dflags body

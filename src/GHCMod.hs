@@ -96,8 +96,8 @@ main = flip catches handlers $ do
       "check"  -> checkSyntax opt cradle cmdArg1
       "expand" -> checkSyntax opt { expandSplice = True } cradle cmdArg1
       "debug"  -> debugInfo opt cradle strVer cmdArg1
-      "type"   -> typeExpr opt cradle cmdArg2 (read cmdArg3) (read cmdArg4) cmdArg1
-      "info"   -> infoExpr opt cradle cmdArg2 cmdArg3 cmdArg1
+      "type"   -> typeExpr opt cradle cmdArg1 cmdArg2 (read cmdArg3) (read cmdArg4)
+      "info"   -> infoExpr opt cradle cmdArg1 cmdArg2 cmdArg3
       "lint"   -> withFile (lintSyntax opt) cmdArg1
       "lang"   -> listLanguages opt
       "flag"   -> listFlags opt

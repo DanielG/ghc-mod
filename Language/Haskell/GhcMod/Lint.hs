@@ -5,10 +5,16 @@ import Data.List
 import Language.Haskell.GhcMod.Types
 import Language.Haskell.HLint
 
-lintSyntax :: Options -> String -> IO String
+-- | Checking syntax of a target file using hlint.
+--   Warnings and errors are returned.
+lintSyntax :: Options
+           -> FilePath  -- ^ A target file.
+           -> IO String
 lintSyntax opt file = pack <$> lint opt file
   where
     pack = unlines . map (intercalate "\0" . lines)
 
-lint :: Options -> String -> IO [String]
+lint :: Options
+     -> FilePath    -- ^ A target file.
+     -> IO [String]
 lint opt file = map show <$> hlint ([file, "--quiet"] ++ hlintOpts opt)
