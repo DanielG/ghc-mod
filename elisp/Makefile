@@ -29,4 +29,3 @@ bump:
 
 archive:
 	git archive master -o ~/ghc-$(VERSION).tar --prefix=ghc-$(VERSION)/
-	gzip ~/ghc-$(VERSION).tar
