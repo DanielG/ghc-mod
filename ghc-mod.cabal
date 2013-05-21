@@ -5,26 +5,24 @@ Maintainer:             Kazu Yamamoto <kazu@iij.ad.jp>
 License:                BSD3
 License-File:           LICENSE
 Homepage:               http://www.mew.org/~kazu/proj/ghc-mod/
-Synopsis:               Happy Haskell programming on Emacs/Vim
-Description:            This packages includes Elisp files
-			and a Haskell command, "ghc-mod".
-			"ghc*.el" enable completion of
-			Haskell symbols on Emacs.
-                        Flymake is also integrated.
-			"ghc-mod" is a backend of "ghc*.el".
-			It lists up all installed modules
-                        or extracts names of functions, classes,
-                        and data declarations.
-                        To use "ghc-mod" on Vim,
-                        see <https://github.com/eagletmt/ghcmod-vim> or
-                        <https://github.com/scrooloose/syntastic>
+Synopsis:               Happy Haskell Programming
+Description:            The ghc-mod command is a backend command to enrich
+                        Haskell programming on editors including
+                        Emacs, Vim, and Sublime.
+                        The ghc-mod command is based on ghc-mod library
+                        which is a wrapper of GHC API.
+                        This package includes the ghc-mod command,
+                        the ghc-mod library, and "Emacs front-end
+                        (for historical reasons).
+                        For more information, please see ts home page.
+
 Category:               Development
 Cabal-Version:          >= 1.10
 Build-Type:             Simple
 Data-Dir:               elisp
 Data-Files:             Makefile ghc.el ghc-func.el ghc-doc.el ghc-comp.el
                         ghc-flymake.el ghc-command.el ghc-info.el
-                        ghc-ins-mod.el ghc-indent.el
+                        ghc-ins-mod.el ghc-indent.el ghc-pkg.el
 Extra-Source-Files:     ChangeLog
 			test/data/*.cabal
                         test/data/*.hs
