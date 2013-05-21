@@ -1,3 +1,5 @@
+-- | The ghc-mod library.
+
 module Language.Haskell.GhcMod (
   -- * Cradle
     Cradle(..)

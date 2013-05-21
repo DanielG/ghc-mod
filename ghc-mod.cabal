@@ -12,7 +12,7 @@ Description:            The ghc-mod command is a backend command to enrich
                         The ghc-mod command is based on ghc-mod library
                         which is a wrapper of GHC API.
                         This package includes the ghc-mod command,
-                        the ghc-mod library, and "Emacs front-end
+                        the ghc-mod library, and Emacs front-end
                         (for historical reasons).
                         For more information, please see ts home page.
 
