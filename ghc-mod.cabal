@@ -14,7 +14,7 @@ Description:            The ghc-mod command is a backend command to enrich
                         This package includes the ghc-mod command,
                         the ghc-mod library, and Emacs front-end
                         (for historical reasons).
-                        For more information, please see ts home page.
+                        For more information, please see its home page.
 
 Category:               Development
 Cabal-Version:          >= 1.10
