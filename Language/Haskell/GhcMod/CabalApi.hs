@@ -71,7 +71,6 @@ getGHCOptions ghcOptions binfo = ghcOptions ++ exts ++ [lang] ++ libs ++ libDirs
 
 ----------------------------------------------------------------
 
--- Causes error, catched in the upper function.
 cabalBuildInfo :: GenericPackageDescription -> Maybe BuildInfo
 cabalBuildInfo pd = fromLibrary pd <|> fromExecutable pd
   where
