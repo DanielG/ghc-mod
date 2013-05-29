@@ -3,25 +3,27 @@
 module Language.Haskell.GhcMod.CabalApi (
     fromCabalFile
   , cabalParseFile
-  , cabalBuildInfo
   , cabalAllDependPackages
   , cabalAllSourceDirs
   , getGHCVersion
   ) where
 
-import Control.Applicative
+import Control.Applicative ((<$>))
 import Control.Exception (throwIO)
 import Data.List (intercalate)
-import Data.Maybe (maybeToList, listToMaybe)
+import Data.Maybe (maybeToList)
 import Data.Set (fromList, toList)
 import Distribution.Package (Dependency(Dependency), PackageName(PackageName))
 import Distribution.PackageDescription
+import Distribution.PackageDescription.Configuration (finalizePackageDescription)
 import Distribution.PackageDescription.Parse (readPackageDescription)
+import Distribution.Simple.Compiler (CompilerId(..), CompilerFlavor(..))
 import Distribution.Simple.Program (ghcProgram)
 import Distribution.Simple.Program.Types (programName, programFindVersion)
+import Distribution.System (buildPlatform)
 import Distribution.Text (display)
 import Distribution.Verbosity (silent)
-import Distribution.Version (versionBranch)
+import Distribution.Version (versionBranch, Version)
 import Language.Haskell.GhcMod.Types
 import System.FilePath
 
@@ -32,32 +34,42 @@ fromCabalFile :: [GHCOption]
               -> IO ([GHCOption],[IncludeDir],[Package])
 fromCabalFile ghcOptions cradle = do
     cabal <- cabalParseFile cfile
-    case cabalBuildInfo cabal of
-        Nothing    -> throwIO $ userError "cabal file is broken"
-        Just binfo -> return $ cookInfo ghcOptions cradle cabal binfo
+    return $ cookInfo ghcOptions cradle cabal
   where
     Just cfile = cradleCabalFile cradle
 
-cookInfo :: [String] -> Cradle -> GenericPackageDescription -> BuildInfo
+cookInfo :: [String] -> Cradle -> PackageDescription
          -> ([GHCOption],[IncludeDir],[Package])
-cookInfo ghcOptions cradle cabal binfo = (gopts,idirs,depPkgs)
+cookInfo ghcOptions cradle cabal = (gopts,idirs,depPkgs)
   where
     wdir       = cradleCurrentDir cradle
     Just cdir  = cradleCabalDir   cradle
     Just cfile = cradleCabalFile  cradle
-    gopts      = getGHCOptions ghcOptions binfo
-    idirs      = includeDirectories cdir wdir $ cabalAllSourceDirs cabal
-    depPkgs    = removeMe cfile $ cabalAllDependPackages cabal
+    buildInfos = cabalAllBuildInfo cabal
+    gopts      = getGHCOptions ghcOptions $ head buildInfos -- FIXME
+    idirs      = includeDirectories cdir wdir $ cabalAllSourceDirs buildInfos
+    depPkgs    = removeMe cfile $ cabalAllDependPackages buildInfos
 
 removeMe :: FilePath -> [String] -> [String]
 removeMe cabalfile = filter (/= me)
   where
     me = dropExtension $ takeFileName cabalfile
 
+includeDirectories :: String -> String -> [FilePath] -> [String]
+includeDirectories cdir wdir []   = uniqueAndSort [cdir,wdir]
+includeDirectories cdir wdir dirs = uniqueAndSort (map (cdir </>) dirs ++ [cdir,wdir])
+
 ----------------------------------------------------------------
 
-cabalParseFile :: FilePath -> IO GenericPackageDescription
-cabalParseFile = readPackageDescription silent
+cabalParseFile :: FilePath -> IO PackageDescription
+cabalParseFile file = do
+    cid <- getGHCId
+    epgd <- readPackageDescription silent file
+    case toPkgDesc cid epgd of
+        Left _       -> throwIO $ userError "cabal file is broken"
+        Right (pd,_) -> return pd -- FIXME check empty
+  where
+    toPkgDesc cid = finalizePackageDescription [] (const True) buildPlatform cid []
 
 ----------------------------------------------------------------
 
@@ -71,55 +83,26 @@ getGHCOptions ghcOptions binfo = ghcOptions ++ exts ++ [lang] ++ libs ++ libDirs
 
 ----------------------------------------------------------------
 
-cabalBuildInfo :: GenericPackageDescription -> Maybe BuildInfo
-cabalBuildInfo pd = fromLibrary pd <|> fromExecutable pd
+cabalAllBuildInfo :: PackageDescription -> [BuildInfo]
+cabalAllBuildInfo pd = libBI ++ execBI ++ testBI ++ benchBI
   where
-    fromLibrary c    = libBuildInfo . condTreeData <$> condLibrary c
-    fromExecutable c = buildInfo . condTreeData . snd <$> listToMaybe (condExecutables c)
+    libBI   = map libBuildInfo       $ maybeToList $ library pd
+    execBI  = map buildInfo          $ executables pd
+    testBI  = map testBuildInfo      $ testSuites pd
+    benchBI = map benchmarkBuildInfo $ benchmarks pd
 
 ----------------------------------------------------------------
 
-cabalAllSourceDirs :: GenericPackageDescription -> [FilePath]
-cabalAllSourceDirs = fromPackageDescription (f libBuildInfo) (f buildInfo) (f testBuildInfo) (f benchmarkBuildInfo)
-  where
-    f getBuildInfo = concatMap (hsSourceDirs . getBuildInfo . condTreeData)
-
-cabalAllDependPackages :: GenericPackageDescription -> [Package]
-cabalAllDependPackages pd = uniqueAndSort pkgs
-  where
-    pkgs = map getDependencyPackageName $ cabalAllDependency pd
-
-cabalAllDependency :: GenericPackageDescription -> [Dependency]
-cabalAllDependency = fromPackageDescription getDeps getDeps getDeps getDeps
-  where
-    getDeps :: [Tree a] -> [Dependency]
-    getDeps = concatMap condTreeConstraints
-
-getDependencyPackageName :: Dependency -> Package
-getDependencyPackageName (Dependency (PackageName nm) _) = nm
+cabalAllSourceDirs :: [BuildInfo] -> [FilePath]
+cabalAllSourceDirs bis = uniqueAndSort $ concatMap hsSourceDirs bis
 
 ----------------------------------------------------------------
 
-type Tree = CondTree ConfVar [Dependency]
-
-fromPackageDescription :: ([Tree Library]    -> [a])
-                       -> ([Tree Executable] -> [a])
-                       -> ([Tree TestSuite]  -> [a])
-                       -> ([Tree Benchmark]  -> [a])
-                       -> GenericPackageDescription
-                       -> [a]
-fromPackageDescription f1 f2 f3 f4 pd = lib ++ exe ++ tests ++ bench
+cabalAllDependPackages :: [BuildInfo] -> [Package]
+cabalAllDependPackages bis = uniqueAndSort $ pkgs
   where
-    lib   = f1 . maybeToList . condLibrary $ pd
-    exe   = f2 . map snd . condExecutables $ pd
-    tests = f3 . map snd . condTestSuites  $ pd
-    bench = f4 . map snd . condBenchmarks  $ pd
-
-----------------------------------------------------------------
-
-includeDirectories :: String -> String -> [FilePath] -> [String]
-includeDirectories cdir wdir []   = uniqueAndSort [cdir,wdir]
-includeDirectories cdir wdir dirs = uniqueAndSort (map (cdir </>) dirs ++ [cdir,wdir])
+    pkgs = map getDependencyPackageName $ concatMap targetBuildDepends bis
+    getDependencyPackageName (Dependency (PackageName nm) _) = nm
 
 ----------------------------------------------------------------
 
@@ -130,14 +113,22 @@ uniqueAndSort = toList . fromList
 
 -- | Getting GHC version. 7.6.3 becames 706 in the second of the result.
 getGHCVersion :: IO (GHCVersion, Int)
-getGHCVersion = ghcVer >>= toTupple
+getGHCVersion = toTupple <$> getGHC
   where
-    ghcVer = programFindVersion ghcProgram silent (programName ghcProgram)
-    toTupple Nothing  = throwIO $ userError "ghc not found"
-    toTupple (Just v)
-      | length vs < 2 = return (verstr, 0)
-      | otherwise     = return (verstr, ver)
+    toTupple v
+      | length vs < 2 = (verstr, 0)
+      | otherwise     = (verstr, ver)
       where
         vs = versionBranch v
         ver = (vs !! 0) * 100 + (vs !! 1)
         verstr = intercalate "." . map show $ vs
+
+getGHCId :: IO CompilerId
+getGHCId = CompilerId GHC <$> getGHC
+
+getGHC :: IO Version
+getGHC = do
+    mv <- programFindVersion ghcProgram silent (programName ghcProgram)
+    case mv of
+        Nothing -> throwIO $ userError "ghc not found"
+        Just v  -> return $ v
