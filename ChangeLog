@@ -1,3 +1,7 @@
+2013-05-30 v2.0.1
+	* Using finalizePackageDescription to enable "if else" in a cabal
+	file.
+
 2013-05-21 v2.0.0
 	* ghc-mod also provides a library (Language.Haskell.GhcMod)
 
