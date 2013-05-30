@@ -2,9 +2,10 @@
 
 module Language.Haskell.GhcMod.CabalApi (
     fromCabalFile
-  , cabalParseFile
+  , parseCabalFile
   , cabalAllDependPackages
   , cabalAllSourceDirs
+  , cabalAllBuildInfo
   , getGHCVersion
   ) where
 
@@ -13,7 +14,9 @@ import Control.Exception (throwIO)
 import Data.List (intercalate)
 import Data.Maybe (maybeToList)
 import Data.Set (fromList, toList)
-import Distribution.Package (Dependency(Dependency), PackageName(PackageName))
+import Distribution.Package (Dependency(Dependency)
+                           , PackageName(PackageName)
+                           , PackageIdentifier(pkgName))
 import Distribution.PackageDescription
 import Distribution.PackageDescription.Configuration (finalizePackageDescription)
 import Distribution.PackageDescription.Parse (readPackageDescription)
@@ -33,7 +36,7 @@ fromCabalFile :: [GHCOption]
               -> Cradle
               -> IO ([GHCOption],[IncludeDir],[Package])
 fromCabalFile ghcOptions cradle = do
-    cabal <- cabalParseFile cfile
+    cabal <- parseCabalFile cfile
     return $ cookInfo ghcOptions cradle cabal
   where
     Just cfile = cradleCabalFile cradle
@@ -46,7 +49,7 @@ cookInfo ghcOptions cradle cabal = (gopts,idirs,depPkgs)
     Just cdir  = cradleCabalDir   cradle
     Just cfile = cradleCabalFile  cradle
     buildInfos = cabalAllBuildInfo cabal
-    gopts      = getGHCOptions ghcOptions $ head buildInfos -- FIXME
+    gopts      = getGHCOptions ghcOptions $ head buildInfos
     idirs      = includeDirectories cdir wdir $ cabalAllSourceDirs buildInfos
     depPkgs    = removeMe cfile $ cabalAllDependPackages buildInfos
 
@@ -61,15 +64,20 @@ includeDirectories cdir wdir dirs = uniqueAndSort (map (cdir </>) dirs ++ [cdir,
 
 ----------------------------------------------------------------
 
-cabalParseFile :: FilePath -> IO PackageDescription
-cabalParseFile file = do
+parseCabalFile :: FilePath -> IO PackageDescription
+parseCabalFile file = do
     cid <- getGHCId
     epgd <- readPackageDescription silent file
     case toPkgDesc cid epgd of
-        Left _       -> throwIO $ userError "cabal file is broken"
-        Right (pd,_) -> return pd -- FIXME check empty
+        Left deps    -> throwIO $ userError $ show deps ++ " are not installed"
+        Right (pd,_) -> if nullPkg pd
+                        then throwIO $ userError $ file ++ " is broken"
+                        else return pd
   where
     toPkgDesc cid = finalizePackageDescription [] (const True) buildPlatform cid []
+    nullPkg pd = name == ""
+      where
+        PackageName name = pkgName (package pd)
 
 ----------------------------------------------------------------
 
