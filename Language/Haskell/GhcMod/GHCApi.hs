@@ -1,4 +1,5 @@
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE CPP #-}
 
 module Language.Haskell.GhcMod.GHCApi (
     withGHC
@@ -112,7 +113,11 @@ modifyFlags d0 idirs mDepPkgs splice build
        | otherwise         = d3
 
 setCabalPkg :: DynFlags -> DynFlags
+#if __GLASGOW_HASKELL__ >= 707
+setCabalPkg dflag = gopt_set dflag Opt_BuildingCabalPackage
+#else
 setCabalPkg dflag = dopt_set dflag Opt_BuildingCabalPackage
+#endif
 
 setSplice :: DynFlags -> DynFlags
 setSplice dflag = dopt_set dflag Opt_D_dump_splices
@@ -120,7 +125,11 @@ setSplice dflag = dopt_set dflag Opt_D_dump_splices
 addDevPkgs :: DynFlags -> [Package] -> DynFlags
 addDevPkgs df pkgs = df''
   where
+#if __GLASGOW_HASKELL__ >= 707
+    df' = gopt_set df Opt_HideAllPackages
+#else    
     df' = dopt_set df Opt_HideAllPackages
+#endif          
     df'' = df' {
         packageFlags = map ExposePackage pkgs ++ packageFlags df
       }
