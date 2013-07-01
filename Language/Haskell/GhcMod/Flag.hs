@@ -1,5 +1,3 @@
-{-# LANGUAGE CPP #-}
-
 module Language.Haskell.GhcMod.Flag where
 
 import qualified Language.Haskell.GhcMod.Gap as Gap
