@@ -1,5 +1,4 @@
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE CPP #-}
 
 module Language.Haskell.GhcMod.GHCApi (
     withGHC
@@ -26,6 +25,7 @@ import Language.Haskell.GhcMod.CabalApi
 import Language.Haskell.GhcMod.ErrMsg
 import Language.Haskell.GhcMod.GHCChoice
 import Language.Haskell.GhcMod.Types
+import qualified Language.Haskell.GhcMod.Gap as Gap
 import System.Exit
 import System.IO
 
@@ -108,31 +108,12 @@ modifyFlags d0 idirs mDepPkgs splice build
   where
     d1 = d0 { importPaths = idirs }
     d2 = setFastOrNot d1 Fast
-    d3 = maybe d2 (addDevPkgs d2) mDepPkgs
-    d4 | build == CabalPkg = setCabalPkg d3
+    d3 = maybe d2 (Gap.addDevPkgs d2) mDepPkgs
+    d4 | build == CabalPkg = Gap.setCabalPkg d3
        | otherwise         = d3
-
-setCabalPkg :: DynFlags -> DynFlags
-#if __GLASGOW_HASKELL__ >= 707
-setCabalPkg dflag = gopt_set dflag Opt_BuildingCabalPackage
-#else
-setCabalPkg dflag = dopt_set dflag Opt_BuildingCabalPackage
-#endif
 
 setSplice :: DynFlags -> DynFlags
 setSplice dflag = dopt_set dflag Opt_D_dump_splices
-
-addDevPkgs :: DynFlags -> [Package] -> DynFlags
-addDevPkgs df pkgs = df''
-  where
-#if __GLASGOW_HASKELL__ >= 707
-    df' = gopt_set df Opt_HideAllPackages
-#else    
-    df' = dopt_set df Opt_HideAllPackages
-#endif          
-    df'' = df' {
-        packageFlags = map ExposePackage pkgs ++ packageFlags df
-      }
 
 ----------------------------------------------------------------
 
