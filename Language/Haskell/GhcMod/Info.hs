@@ -25,8 +25,8 @@ import Language.Haskell.GhcMod.Doc
 import Language.Haskell.GhcMod.GHCApi
 import Language.Haskell.GhcMod.GHCChoice
 import qualified Language.Haskell.GhcMod.Gap as Gap
+import Language.Haskell.GhcMod.Gap (HasType(..))
 import Language.Haskell.GhcMod.Types
-import NameSet
 import Outputable
 import PprTyThing
 import TcHsSyn (hsPatType)
@@ -57,12 +57,9 @@ info :: Options
 info opt cradle file modstr expr =
     inModuleContext Info opt cradle file modstr exprToInfo "Cannot show info"
   where
-    exprToInfo = infoThing expr
+    exprToInfo = Gap.infoThing expr
 
 ----------------------------------------------------------------
-
-class HasType a where
-    getType :: GhcMonad m => TypecheckedModule -> a -> m (Maybe (SrcSpan, Type))
 
 instance HasType (LHsExpr Id) where
     getType tcm e = do
@@ -73,10 +70,6 @@ instance HasType (LHsExpr Id) where
         modu = ms_mod $ pm_mod_summary $ tm_parsed_module tcm
         rn_env = tcg_rdr_env $ fst $ tm_internals_ tcm
         ty_env = tcg_type_env $ fst $ tm_internals_ tcm
-
-instance HasType (LHsBind Id) where
-    getType _ (L spn FunBind{fun_matches = MatchGroup _ typ}) = return $ Just (spn, typ)
-    getType _ _ = return Nothing
 
 instance HasType (LPat Id) where
     getType _ (L spn pat) = return $ Just (spn, hsPatType pat)
@@ -141,33 +134,6 @@ listifyStaged s p = everythingStaged s (++) [] ([] `mkQ` (\x -> [x | p x]))
 
 pretty :: DynFlags -> Type -> String
 pretty dflag = showUnqualifiedOneLine dflag . pprTypeForUser False
-
-----------------------------------------------------------------
--- from ghc/InteractiveUI.hs
-
-infoThing :: String -> Ghc String
-infoThing str = do
-    names <- parseName str
-    mb_stuffs <- mapM getInfo names
-    let filtered = filterOutChildren (\(t,_f,_i) -> t) (catMaybes mb_stuffs)
-    dflag <- getSessionDynFlags
-    return $ showUnqualifiedPage dflag $ vcat (intersperse (text "") $ map (pprInfo False) filtered)
-
-filterOutChildren :: (a -> TyThing) -> [a] -> [a]
-filterOutChildren get_thing xs
-    = [x | x <- xs, not (getName (get_thing x) `elemNameSet` implicits)]
-  where
-    implicits = mkNameSet [getName t | x <- xs, t <- implicitTyThings (get_thing x)]
-
-pprInfo :: PrintExplicitForalls -> (TyThing, GHC.Fixity, [Gap.ClsInst]) -> SDoc
-pprInfo pefas (thing, fixity, insts)
-    = pprTyThingInContextLoc pefas thing
-   $$ show_fixity fixity
-   $$ vcat (map pprInstance insts)
-  where
-    show_fixity fx
-      | fx == defaultFixity = Outputable.empty
-      | otherwise           = ppr fx <+> ppr (getName thing)
 
 ----------------------------------------------------------------
 

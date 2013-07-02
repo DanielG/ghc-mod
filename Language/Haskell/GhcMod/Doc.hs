@@ -1,21 +1,15 @@
 module Language.Haskell.GhcMod.Doc where
 
 import DynFlags (DynFlags)
-import Language.Haskell.GhcMod.Gap (withStyle)
+import Language.Haskell.GhcMod.Gap (withStyle, styleUnqualified)
 import Outputable
 import Pretty
 
 styleQualified :: PprStyle
 styleQualified = mkUserStyle alwaysQualify AllTheWay
 
-styleUnqualified :: PprStyle
-styleUnqualified = mkUserStyle neverQualify AllTheWay
-
 showQualifiedPage :: DynFlags -> SDoc -> String
 showQualifiedPage dflag = showDocWith PageMode . withStyle dflag styleQualified
-
-showUnqualifiedPage :: DynFlags -> SDoc -> String
-showUnqualifiedPage dflag = showDocWith PageMode . withStyle dflag styleUnqualified
 
 showQualifiedOneLine :: DynFlags -> SDoc -> String
 showQualifiedOneLine dflag = showDocWith OneLineMode . withStyle dflag styleQualified
