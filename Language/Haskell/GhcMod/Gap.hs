@@ -35,7 +35,6 @@ import Data.Maybe
 import DynFlags
 import ErrUtils
 import FastString
-import GHC hiding (ClsInst)
 import Language.Haskell.GhcMod.GHCChoice
 import Language.Haskell.GhcMod.Types
 import Outputable
@@ -50,7 +49,13 @@ import qualified Pretty
 import qualified StringBuffer as SB
 #if __GLASGOW_HASKELL__ >= 707
 import FamInstEnv
-#endif  
+#endif
+
+#if __GLASGOW_HASKELL__ >= 706
+import GHC hiding (ClsInst)
+#else
+import GHC hiding (Instance)
+#endif
 
 #if __GLASGOW_HASKELL__ >= 702
 import CoreMonad (liftIO)
