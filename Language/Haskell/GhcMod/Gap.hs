@@ -36,7 +36,7 @@ import DynFlags
 import ErrUtils
 import FastString
 import Language.Haskell.GhcMod.GHCChoice
-import Language.Haskell.GhcMod.Types
+import Language.Haskell.GhcMod.Types hiding (convert)
 import Outputable
 import StringBuffer
 import TcType
@@ -66,7 +66,7 @@ import Pretty
 
 
 #if __GLASGOW_HASKELL__ < 706
-import Control.Arrow
+import Control.Arrow hiding ((<+>))
 import Data.Convertible
 #endif
 
