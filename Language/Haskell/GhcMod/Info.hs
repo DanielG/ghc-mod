@@ -1,5 +1,6 @@
 {-# LANGUAGE TupleSections, FlexibleInstances, TypeSynonymInstances #-}
 {-# LANGUAGE Rank2Types #-}
+{-# OPTIONS_GHC -fno-warn-orphans #-}
 
 module Language.Haskell.GhcMod.Info (
     infoExpr

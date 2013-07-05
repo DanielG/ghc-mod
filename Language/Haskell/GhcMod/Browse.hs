@@ -6,7 +6,6 @@ import Data.List
 import Data.Maybe (fromMaybe)
 import DataCon (dataConRepType)
 import GHC
-import Language.Haskell.GhcMod.Doc
 import qualified Language.Haskell.GhcMod.Gap as Gap
 import Language.Haskell.GhcMod.GHCApi
 import Language.Haskell.GhcMod.Types

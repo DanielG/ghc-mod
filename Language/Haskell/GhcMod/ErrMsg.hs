@@ -14,7 +14,6 @@ import DynFlags
 import ErrUtils
 import GHC
 import HscTypes
-import Language.Haskell.GhcMod.Doc
 import qualified Language.Haskell.GhcMod.Gap as Gap
 import Outputable
 import System.FilePath (normalise)
