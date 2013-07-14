@@ -4,8 +4,6 @@ module Language.Haskell.GhcMod.Gap (
     Language.Haskell.GhcMod.Gap.ClsInst
   , mkTarget
   , withStyle
-  , styleUnqualified
-  , showUnqualifiedPage
   , setLogAction
   , supportedExtensions
   , getSrcSpan
@@ -29,20 +27,20 @@ module Language.Haskell.GhcMod.Gap (
 
 import Control.Applicative hiding (empty)
 import Control.Monad
-import Data.Time.Clock
 import Data.List
 import Data.Maybe
+import Data.Time.Clock
 import DynFlags
 import ErrUtils
 import FastString
+import HscTypes
 import Language.Haskell.GhcMod.GHCChoice
 import Language.Haskell.GhcMod.Types hiding (convert)
+import NameSet
 import Outputable
+import PprTyThing
 import StringBuffer
 import TcType
-import NameSet
-import HscTypes
-import PprTyThing
 
 import qualified InstEnv
 import qualified Pretty
@@ -69,14 +67,6 @@ import Pretty
 import Control.Arrow hiding ((<+>))
 import Data.Convertible
 #endif
-
-{-
-pretty :: Outputable a => a -> String
-pretty = showSDocForUser neverQualify . ppr
-
-debug :: Outputable a => a -> b -> b
-debug x v = trace (pretty x) v
--}
 
 ----------------------------------------------------------------
 ----------------------------------------------------------------
@@ -113,16 +103,6 @@ setLogAction df f =
 #else
     df { log_action = f df }
 #endif
-
-----------------------------------------------------------------
-----------------------------------------------------------------
-
-showUnqualifiedPage :: DynFlags -> SDoc -> String
-showUnqualifiedPage dflag = Pretty.showDocWith Pretty.PageMode
-                          . withStyle dflag styleUnqualified
-
-styleUnqualified :: PprStyle
-styleUnqualified = mkUserStyle neverQualify AllTheWay
 
 ----------------------------------------------------------------
 ----------------------------------------------------------------
@@ -231,9 +211,9 @@ addDevPkgs df pkgs = df''
   where
 #if __GLASGOW_HASKELL__ >= 707
     df' = gopt_set df Opt_HideAllPackages
-#else    
+#else
     df' = dopt_set df Opt_HideAllPackages
-#endif          
+#endif
     df'' = df' {
         packageFlags = map ExposePackage pkgs ++ packageFlags df
       }
@@ -249,9 +229,9 @@ instance HasType (LHsBind Id) where
 #if __GLASGOW_HASKELL__ >= 707
     getType _ (L spn FunBind{fun_matches = MG _ in_tys out_typ}) = return $ Just (spn, typ)
       where typ = mkFunTys in_tys out_typ
-#else    
+#else
     getType _ (L spn FunBind{fun_matches = MatchGroup _ typ}) = return $ Just (spn, typ)
-#endif                                                                
+#endif
     getType _ _ = return Nothing
 
 ----------------------------------------------------------------
@@ -264,19 +244,17 @@ filterOutChildren get_thing xs
   where
     implicits = mkNameSet [getName t | x <- xs, t <- implicitTyThings (get_thing x)]
 
-
-infoThing :: String -> Ghc String
+infoThing :: String -> Ghc SDoc
 infoThing str = do
     names <- parseName str
 #if __GLASGOW_HASKELL__ >= 707
     mb_stuffs <- mapM (getInfo False) names
     let filtered = filterOutChildren (\(t,_f,_i,_fam) -> t) (catMaybes mb_stuffs)
-#else    
+#else
     mb_stuffs <- mapM getInfo names
     let filtered = filterOutChildren (\(t,_f,_i) -> t) (catMaybes mb_stuffs)
 #endif
-    dflag <- getSessionDynFlags
-    return $ showUnqualifiedPage dflag $ vcat (intersperse (text "") $ map (pprInfo False) filtered)
+    return $ vcat (intersperse (text "") $ map (pprInfo False) filtered)
 
 #if __GLASGOW_HASKELL__ >= 707
 pprInfo :: PrintExplicitForalls -> (TyThing, GHC.Fixity, [ClsInst], [FamInst]) -> SDoc
@@ -289,7 +267,7 @@ pprInfo pefas (thing, fixity, insts, famInsts)
     show_fixity fx
       | fx == defaultFixity = Outputable.empty
       | otherwise           = ppr fx <+> ppr (getName thing)
-#else    
+#else
 pprInfo :: PrintExplicitForalls -> (TyThing, GHC.Fixity, [ClsInst]) -> SDoc
 pprInfo pefas (thing, fixity, insts)
     = pprTyThingInContextLoc pefas thing

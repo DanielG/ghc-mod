@@ -14,6 +14,7 @@ import DynFlags
 import ErrUtils
 import GHC
 import HscTypes
+import Language.Haskell.GhcMod.Doc (showUnqualifiedPage)
 import qualified Language.Haskell.GhcMod.Gap as Gap
 import Outputable
 import System.FilePath (normalise)
@@ -72,7 +73,7 @@ ppMsg spn sev dflag msg = prefix ++ cts ++ "\0"
 ----------------------------------------------------------------
 
 showMsg :: DynFlags -> SDoc -> String
-showMsg dflag sdoc = map toNull $ Gap.showUnqualifiedPage dflag sdoc
+showMsg dflag sdoc = map toNull $ showUnqualifiedPage dflag sdoc
   where
     toNull '\n' = '\0'
     toNull x = x

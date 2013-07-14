@@ -6,7 +6,7 @@ import Data.List
 import Data.Maybe (fromMaybe)
 import DataCon (dataConRepType)
 import GHC
-import qualified Language.Haskell.GhcMod.Gap as Gap
+import Language.Haskell.GhcMod.Doc (showUnqualifiedPage)
 import Language.Haskell.GhcMod.GHCApi
 import Language.Haskell.GhcMod.Types
 import Name
@@ -102,4 +102,4 @@ removeForAlls' ty (Just (pre, ftype))
     | otherwise           = ty
 
 showOutputable :: Outputable a => DynFlags -> a -> String
-showOutputable dflag = unwords . lines . Gap.showUnqualifiedPage dflag . ppr
+showOutputable dflag = unwords . lines . showUnqualifiedPage dflag . ppr

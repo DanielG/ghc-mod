@@ -58,7 +58,10 @@ info :: Options
 info opt cradle file modstr expr =
     inModuleContext Info opt cradle file modstr exprToInfo "Cannot show info"
   where
-    exprToInfo = Gap.infoThing expr
+    exprToInfo = do
+        dflag <- getSessionDynFlags
+        sdoc <- Gap.infoThing expr
+        return $ showUnqualifiedPage dflag sdoc
 
 ----------------------------------------------------------------
 
