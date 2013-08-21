@@ -71,6 +71,7 @@ parseArgs spec argv
 ----------------------------------------------------------------
 
 data GHCModError = SafeList
+                 | TooManyArguments String
                  | NoSuchCommand String
                  | CmdArg [String]
                  | FileNotExist String deriving (Show, Typeable)
@@ -94,15 +95,19 @@ main = flip catches handlers $ do
         cmdArg2 = cmdArg !. 2
         cmdArg3 = cmdArg !. 3
         cmdArg4 = cmdArg !. 4
+        remainingArgs = tail cmdArg
+        nArgs n f = if length remainingArgs == n
+                        then f
+                        else throw (TooManyArguments cmdArg0)
     res <- case cmdArg0 of
-      "browse" -> concat <$> mapM (browseModule opt) (tail cmdArg)
+      "browse" -> concat <$> mapM (browseModule opt) remainingArgs
       "list"   -> listModules opt
-      "check"  -> checkSyntax opt cradle cmdArg1
-      "expand" -> checkSyntax opt { expandSplice = True } cradle cmdArg1
-      "debug"  -> debugInfo opt cradle strVer cmdArg1
-      "type"   -> typeExpr opt cradle cmdArg1 cmdArg2 (read cmdArg3) (read cmdArg4)
-      "info"   -> infoExpr opt cradle cmdArg1 cmdArg2 cmdArg3
-      "lint"   -> withFile (lintSyntax opt) cmdArg1
+      "check"  -> nArgs 1 $ checkSyntax opt cradle cmdArg1
+      "expand" -> nArgs 1 $ checkSyntax opt { expandSplice = True } cradle cmdArg1
+      "debug"  -> nArgs 1 $ debugInfo opt cradle strVer cmdArg1
+      "type"   -> nArgs 4 $ typeExpr opt cradle cmdArg1 cmdArg2 (read cmdArg3) (read cmdArg4)
+      "info"   -> nArgs 3 infoExpr opt cradle cmdArg1 cmdArg2 cmdArg3
+      "lint"   -> nArgs 1 withFile (lintSyntax opt) cmdArg1
       "lang"   -> listLanguages opt
       "flag"   -> listFlags opt
       "boot"   -> do
@@ -121,6 +126,9 @@ main = flip catches handlers $ do
     handler1 = print -- for debug
     handler2 :: GHCModError -> IO ()
     handler2 SafeList = printUsage
+    handler2 (TooManyArguments cmd) = do
+        hPutStrLn stderr $ "\"" ++ cmd ++ "\": Too many arguments"
+        printUsage
     handler2 (NoSuchCommand cmd) = do
         hPutStrLn stderr $ "\"" ++ cmd ++ "\" not supported"
         printUsage
