@@ -4,6 +4,7 @@ module Main where
 
 import Control.Applicative
 import Control.Exception
+import Control.Monad
 import Data.Typeable
 import Data.Version
 import Language.Haskell.GhcMod
@@ -27,8 +28,8 @@ usage =    "ghc-mod version " ++ showVersion version ++ "\n"
         ++ "\t ghc-mod lang [-l]\n"
         ++ "\t ghc-mod flag [-l]\n"
         ++ "\t ghc-mod browse" ++ ghcOptHelp ++ "[-l] [-o] [-d] <module> [<module> ...]\n"
-        ++ "\t ghc-mod check" ++ ghcOptHelp ++ "<HaskellFile>\n"
-        ++ "\t ghc-mod expand" ++ ghcOptHelp ++ "<HaskellFile>\n"
+        ++ "\t ghc-mod check" ++ ghcOptHelp ++ "<HaskellFiles...>\n"
+        ++ "\t ghc-mod expand" ++ ghcOptHelp ++ "<HaskellFiles...>\n"
         ++ "\t ghc-mod debug" ++ ghcOptHelp ++ "<HaskellFile>\n"
         ++ "\t ghc-mod info" ++ ghcOptHelp ++ "<HaskellFile> <module> <expression>\n"
         ++ "\t ghc-mod type" ++ ghcOptHelp ++ "<HaskellFile> <module> <line-no> <column-no>\n"
@@ -102,8 +103,8 @@ main = flip catches handlers $ do
     res <- case cmdArg0 of
       "browse" -> concat <$> mapM (browseModule opt) remainingArgs
       "list"   -> listModules opt
-      "check"  -> nArgs 1 $ checkSyntax opt cradle cmdArg1
-      "expand" -> nArgs 1 $ checkSyntax opt { expandSplice = True } cradle cmdArg1
+      "check"  -> checkSyntax opt cradle remainingArgs
+      "expand" -> checkSyntax opt { expandSplice = True } cradle remainingArgs
       "debug"  -> nArgs 1 $ debugInfo opt cradle strVer cmdArg1
       "type"   -> nArgs 4 $ typeExpr opt cradle cmdArg1 cmdArg2 (read cmdArg3) (read cmdArg4)
       "info"   -> nArgs 3 infoExpr opt cradle cmdArg1 cmdArg2 cmdArg3

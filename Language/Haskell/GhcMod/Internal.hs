@@ -5,7 +5,7 @@ module Language.Haskell.GhcMod.Internal (
     LogReader
   , GHCOption
   , initializeFlagsWithCradle
-  , setTargetFile
+  , setTargetFiles
   , checkSlowAndSet
   , getDynamicFlags
   ) where
