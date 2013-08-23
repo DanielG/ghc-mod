@@ -111,6 +111,7 @@ main = flip catches handlers $ do
          flags <- listFlags opt
          pre   <- concat <$> mapM (browseModule opt) preBrowsedModules
          return $ mods ++ langs ++ flags ++ pre
+      "help"   -> return $ usageInfo usage argspec
       cmd      -> throw (NoSuchCommand cmd)
     putStr res
   where
