@@ -11,7 +11,7 @@ spec :: Spec
 spec = do
     describe "parseCabalFile" $ do
         it "throws an exception if the cabal file is broken" $ do
-            parseCabalFile "test/data/broken-cabal/broken.cabal" `shouldThrow` (\(e::IOException) -> True)
+            parseCabalFile "test/data/broken-cabal/broken.cabal" `shouldThrow` (\(_::IOException) -> True)
 
     describe "cabalAllDependPackages" $ do
         it "extracts dependent packages" $ do
