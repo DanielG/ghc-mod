@@ -12,6 +12,7 @@ import Prelude
 import System.Console.GetOpt
 import System.Directory
 import System.Environment (getArgs)
+import System.Exit (exitFailure)
 import System.IO (hPutStr, hPutStrLn, stdout, stderr, hSetEncoding, utf8)
 
 ----------------------------------------------------------------
@@ -113,7 +114,8 @@ main = flip catches handlers $ do
       cmd      -> throw (NoSuchCommand cmd)
     putStr res
   where
-    handlers = [Handler handler1, Handler handler2]
+    handlers = [Handler (handleThenExit handler1), Handler (handleThenExit handler2)]
+    handleThenExit handler = \e -> handler e >> exitFailure
     handler1 :: ErrorCall -> IO ()
     handler1 = print -- for debug
     handler2 :: GHCModError -> IO ()
