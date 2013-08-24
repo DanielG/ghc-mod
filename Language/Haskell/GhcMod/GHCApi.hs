@@ -57,9 +57,9 @@ importDirs = [".","..","../..","../../..","../../../..","../../../../.."]
 
 data Build = CabalPkg | SingleFile deriving Eq
 
-initializeFlagsWithCradle :: Options -> Cradle -> [GHCOption] -> Bool -> Ghc LogReader
+initializeFlagsWithCradle :: GhcMonad m =>  Options -> Cradle -> [GHCOption] -> Bool -> m LogReader
 initializeFlagsWithCradle opt cradle ghcOptions logging
-  | cabal     = withCabal ||> withoutCabal
+  | cabal     = withCabal |||> withoutCabal
   | otherwise = withoutCabal
   where
     cabal = isJust $ cradleCabalFile cradle
@@ -71,13 +71,13 @@ initializeFlagsWithCradle opt cradle ghcOptions logging
 
 ----------------------------------------------------------------
 
-initSession :: Build
+initSession :: GhcMonad m => Build
             -> Options
             -> [GHCOption]
             -> [IncludeDir]
             -> Maybe [Package]
             -> Bool
-            -> Ghc LogReader
+            -> m LogReader
 initSession build opt cmdOpts idirs mDepPkgs logging = do
     dflags0 <- getSessionDynFlags
     (dflags1,readLog) <- setupDynamicFlags dflags0
@@ -92,7 +92,7 @@ initSession build opt cmdOpts idirs mDepPkgs logging = do
 
 ----------------------------------------------------------------
 
-initializeFlags :: Options -> Ghc ()
+initializeFlags :: GhcMonad m => Options -> m ()
 initializeFlags opt = do
     dflags0 <- getSessionDynFlags
     dflags1 <- modifyFlagsWithOpts dflags0 $ ghcOpts opt
@@ -127,7 +127,7 @@ setFastOrNot dflags Fast = dflags {
   , hscTarget = HscNothing
   }
 
-setSlowDynFlags :: Ghc ()
+setSlowDynFlags :: GhcMonad m => m ()
 setSlowDynFlags = (flip setFastOrNot Slow <$> getSessionDynFlags)
                   >>= void . setSessionDynFlags
 
@@ -135,14 +135,14 @@ setSlowDynFlags = (flip setFastOrNot Slow <$> getSessionDynFlags)
 -- "load" sets a session module graph using "depanal".
 -- But we have to set "-fno-code" to DynFlags before "load".
 -- So, this is necessary redundancy.
-checkSlowAndSet :: Ghc ()
+checkSlowAndSet :: GhcMonad m => m ()
 checkSlowAndSet = do
     fast <- canCheckFast <$> depanal [] False
     unless fast setSlowDynFlags
 
 ----------------------------------------------------------------
 
-modifyFlagsWithOpts :: DynFlags -> [String] -> Ghc DynFlags
+modifyFlagsWithOpts :: GhcMonad m => DynFlags -> [String] -> m DynFlags
 modifyFlagsWithOpts dflags cmdOpts =
     tfst <$> parseDynamicFlags dflags (map noLoc cmdOpts)
   where
