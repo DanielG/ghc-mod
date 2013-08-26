@@ -57,6 +57,9 @@ importDirs = [".","..","../..","../../..","../../../..","../../../../.."]
 
 data Build = CabalPkg | SingleFile deriving Eq
 
+-- | Initialize the 'DynFlags' relating to the compilation of a single
+-- file or GHC session according to the 'Cradle' and 'Options'
+-- provided.
 initializeFlagsWithCradle :: GhcMonad m =>  Options -> Cradle -> [GHCOption] -> Bool -> m LogReader
 initializeFlagsWithCradle opt cradle ghcOptions logging
   | cabal     = withCabal |||> withoutCabal
@@ -131,7 +134,7 @@ setSlowDynFlags :: GhcMonad m => m ()
 setSlowDynFlags = (flip setFastOrNot Slow <$> getSessionDynFlags)
                   >>= void . setSessionDynFlags
 
--- To check TH, a session module graph is necessary.
+-- | To check TH, a session module graph is necessary.
 -- "load" sets a session module graph using "depanal".
 -- But we have to set "-fno-code" to DynFlags before "load".
 -- So, this is necessary redundancy.
@@ -150,6 +153,7 @@ modifyFlagsWithOpts dflags cmdOpts =
 
 ----------------------------------------------------------------
 
+-- | Set the file that GHC will load / compile
 setTargetFile :: (GhcMonad m) => String -> m ()
 setTargetFile file = do
     target <- guessTarget file Nothing
@@ -157,6 +161,7 @@ setTargetFile file = do
 
 ----------------------------------------------------------------
 
+-- | Return the 'DynFlags' currently in use in the GHC session
 getDynamicFlags :: IO DynFlags
 getDynamicFlags = runGhc (Just libdir) getSessionDynFlags
 

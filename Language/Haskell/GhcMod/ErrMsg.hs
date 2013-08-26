@@ -21,6 +21,7 @@ import System.FilePath (normalise)
 
 ----------------------------------------------------------------
 
+-- | A means to read the log
 type LogReader = IO [String]
 
 ----------------------------------------------------------------

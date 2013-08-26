@@ -84,7 +84,9 @@ data Cradle = Cradle {
 
 ----------------------------------------------------------------
 
+-- | A single GHC option, as it would appear on the command line
 type GHCOption  = String
+
 type IncludeDir = FilePath
 type Package    = String
 
