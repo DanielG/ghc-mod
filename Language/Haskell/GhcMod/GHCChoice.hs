@@ -12,6 +12,9 @@ import GHC
 (||>) :: Ghc a -> Ghc a -> Ghc a
 x ||> y = x `gcatch` (\(_ :: IOException) -> y)
 
+(|||>) :: GhcMonad m => m a -> m a -> m a
+x |||> y = x `gcatch` (\(_ :: IOException) -> y)
+
 ----------------------------------------------------------------
 
 {-| Go to the next 'Ghc' monad by throwing 'AltGhcgoNext'.
