@@ -6,29 +6,33 @@ module Language.Haskell.GhcMod.Types where
 data OutputStyle = LispStyle  -- ^ S expression style
                  | PlainStyle -- ^ Plain textstyle
 
+newtype LineSeparator = LineSeparator String
+
 data Options = Options {
-    outputStyle  :: OutputStyle
-  , hlintOpts    :: [String]
-  , ghcOpts      :: [String]
-  , operators    :: Bool
+    outputStyle   :: OutputStyle
+  , hlintOpts     :: [String]
+  , ghcOpts       :: [String]
+  , operators     :: Bool
   -- | If 'True', 'browse' also returns types.
-  , detailed     :: Bool
+  , detailed      :: Bool
   -- | Whether or not Template Haskell should be expanded.
-  , expandSplice :: Bool
+  , expandSplice  :: Bool
   -- | The sandbox directory.
-  , sandbox      :: Maybe FilePath
+  , sandbox       :: Maybe FilePath
+  , lineSeparator :: LineSeparator
   }
 
 -- | A default 'Options'.
 defaultOptions :: Options
 defaultOptions = Options {
-    outputStyle  = PlainStyle
-  , hlintOpts    = []
-  , ghcOpts      = []
-  , operators    = False
-  , detailed     = False
-  , expandSplice = False
-  , sandbox      = Nothing
+    outputStyle   = PlainStyle
+  , hlintOpts     = []
+  , ghcOpts       = []
+  , operators     = False
+  , detailed      = False
+  , expandSplice  = False
+  , sandbox       = Nothing
+  , lineSeparator = LineSeparator "\0"
   }
 
 ----------------------------------------------------------------

@@ -87,11 +87,12 @@ initSession build opt cmdOpts idirs mDepPkgs logging = do
     _ <- setSessionDynFlags dflags1
     return readLog
   where
+    ls = lineSeparator opt
     setupDynamicFlags df0 = do
         df1 <- modifyFlagsWithOpts df0 cmdOpts
         let df2 = modifyFlags df1 idirs mDepPkgs (expandSplice opt) build
         df3 <- modifyFlagsWithOpts df2 $ ghcOpts opt
-        liftIO $ setLogger logging df3
+        liftIO $ setLogger logging df3 ls
 
 ----------------------------------------------------------------
 

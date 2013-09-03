@@ -12,7 +12,8 @@ lintSyntax :: Options
            -> IO String
 lintSyntax opt file = pack <$> lint opt file
   where
-    pack = unlines . map (intercalate "\0" . lines)
+    LineSeparator lsep = lineSeparator opt
+    pack = unlines . map (intercalate lsep . lines)
 
 lint :: Options
      -> FilePath    -- ^ A target file.

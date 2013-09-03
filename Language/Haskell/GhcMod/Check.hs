@@ -28,7 +28,7 @@ check :: Options
       -> Cradle
       -> FilePath  -- ^ A target file
       -> Ghc [String]
-check opt cradle fileName = checkIt `gcatch` handleErrMsg
+check opt cradle fileName = checkIt `gcatch` handleErrMsg ls
   where
     checkIt = do
         readLog <- initializeFlagsWithCradle opt cradle options True
@@ -39,3 +39,4 @@ check opt cradle fileName = checkIt `gcatch` handleErrMsg
     options
       | expandSplice opt = "-w:"   : ghcOpts opt
       | otherwise        = "-Wall" : ghcOpts opt
+    ls = lineSeparator opt
