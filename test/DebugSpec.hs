@@ -1,8 +1,9 @@
 module DebugSpec where
 
-import Expectation
 import Language.Haskell.GhcMod
 import Test.Hspec
+
+import Dir
 
 checkFast :: String -> String -> IO ()
 checkFast file ans = withDirectory_ "test/data" $ do

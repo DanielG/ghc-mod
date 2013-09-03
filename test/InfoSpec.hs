@@ -1,11 +1,12 @@
 module InfoSpec where
 
 import Data.List (isPrefixOf)
-import Expectation
 import Language.Haskell.GhcMod
 import System.Exit
 import System.Process
 import Test.Hspec
+
+import Dir
 
 spec :: Spec
 spec = do

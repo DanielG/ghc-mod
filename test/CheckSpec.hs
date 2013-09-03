@@ -1,10 +1,11 @@
 module CheckSpec where
 
 import Data.List (isSuffixOf, isInfixOf, isPrefixOf)
-import Expectation
 import Language.Haskell.GhcMod
 import System.FilePath
 import Test.Hspec
+
+import Dir
 
 spec :: Spec
 spec = do

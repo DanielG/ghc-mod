@@ -1,4 +1,4 @@
-module Expectation where
+module Dir where
 
 import System.Directory
 import Control.Exception as E

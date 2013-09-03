@@ -90,7 +90,7 @@ Test-Suite spec
   Main-Is:              Spec.hs
   Hs-Source-Dirs:       test, .
   Type:                 exitcode-stdio-1.0
-  Other-Modules:        Expectation
+  Other-Modules:        Dir
                         BrowseSpec
                         CabalApiSpec
                         CheckSpec
