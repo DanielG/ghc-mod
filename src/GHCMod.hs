@@ -56,6 +56,9 @@ argspec = [ Option "l" ["tolisp"]
           , Option "s" ["sandbox"]
             (ReqArg (\s opts -> opts { sandbox = Just s }) "path")
             "specify cabal-dev sandbox (default 'cabal-dev`)"
+          , Option "b" ["boundary"]
+            (ReqArg (\s opts -> opts { lineSeparator = LineSeparator s }) "sep")
+            "specify line separator (default is Nul string)"
           ]
 
 parseArgs :: [OptDescr (Options -> Options)] -> [String] -> (Options, [String])
