@@ -5,7 +5,7 @@ module Language.Haskell.GhcMod.GHCApi (
   , withGHCDummyFile
   , initializeFlags
   , initializeFlagsWithCradle
-  , setTargetFile
+  , setTargetFiles
   , getDynamicFlags
   , setSlowDynFlags
   , checkSlowAndSet
@@ -154,11 +154,12 @@ modifyFlagsWithOpts dflags cmdOpts =
 
 ----------------------------------------------------------------
 
--- | Set the file that GHC will load / compile
-setTargetFile :: (GhcMonad m) => String -> m ()
-setTargetFile file = do
-    target <- guessTarget file Nothing
-    setTargets [target]
+-- | Set the files that GHC will load / compile
+setTargetFiles :: (GhcMonad m) => [String] -> m ()
+setTargetFiles [] = error "ghc-mod: setTargetFiles: No target files given"
+setTargetFiles files = do
+    targets <- forM files $ \file -> guessTarget file Nothing
+    setTargets targets
 
 ----------------------------------------------------------------
 

@@ -148,7 +148,7 @@ inModuleContext cmd opt cradle file modstr action errmsg =
     valid = do
         void $ initializeFlagsWithCradle opt cradle ["-w:"] False
         when (cmd == Info) setSlowDynFlags
-        setTargetFile file
+        setTargetFiles [file]
         checkSlowAndSet
         void $ load LoadAllTargets
         doif setContextFromTarget action
