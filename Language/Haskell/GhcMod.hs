@@ -9,6 +9,7 @@ module Language.Haskell.GhcMod (
   , getGHCVersion
   -- * Options
   , Options(..)
+  , LineSeparator(..)
   , OutputStyle(..)
   , defaultOptions
   -- * Types
