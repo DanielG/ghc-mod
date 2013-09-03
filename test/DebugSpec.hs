@@ -9,7 +9,7 @@ checkFast file ans = withDirectory_ "test/data" $ do
     (strVer,_) <- getGHCVersion
     cradle <- findCradle Nothing strVer
     res <- debugInfo defaultOptions cradle strVer file
-    lines res `shouldContain` ans
+    lines res `shouldContain` [ans]
 
 spec :: Spec
 spec = do

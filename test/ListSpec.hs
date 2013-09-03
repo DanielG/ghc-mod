@@ -1,7 +1,6 @@
 module ListSpec where
 
 import Control.Applicative
-import Expectation
 import Language.Haskell.GhcMod
 import Test.Hspec
 
@@ -10,4 +9,4 @@ spec = do
     describe "listModules" $ do
         it "lists up module names" $ do
             modules <- lines <$> listModules defaultOptions
-            modules `shouldContain` "Data.Map"
+            modules `shouldContain` ["Data.Map"]

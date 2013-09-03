@@ -1,7 +1,6 @@
 module FlagSpec where
 
 import Control.Applicative
-import Expectation
 import Language.Haskell.GhcMod
 import Test.Hspec
 
@@ -10,4 +9,4 @@ spec = do
     describe "listFlags" $ do
         it "lists up GHC flags" $ do
             flags <- lines <$> listFlags defaultOptions
-            flags `shouldContain` "-fno-warn-orphans"
+            flags `shouldContain` ["-fno-warn-orphans"]

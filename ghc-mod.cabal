@@ -116,7 +116,7 @@ Test-Suite spec
                       , syb
                       , time
                       , transformers
-                      , hspec
+                      , hspec >= 1.7.1
 
 Source-Repository head
   Type:                 git

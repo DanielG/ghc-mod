@@ -1,7 +1,6 @@
 module LangSpec where
 
 import Control.Applicative
-import Expectation
 import Language.Haskell.GhcMod
 import Test.Hspec
 
@@ -10,4 +9,4 @@ spec = do
     describe "listLanguages" $ do
         it "lists up language extensions" $ do
             exts <- lines <$> listLanguages defaultOptions
-            exts `shouldContain` "OverloadedStrings"
+            exts `shouldContain` ["OverloadedStrings"]
