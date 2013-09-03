@@ -40,6 +40,7 @@ Library
   Default-Language:     Haskell2010
   GHC-Options:          -Wall
   Exposed-Modules:      Language.Haskell.GhcMod
+                        Language.Haskell.GhcMod.Internal
   Other-Modules:        Language.Haskell.GhcMod.Browse
                         Language.Haskell.GhcMod.CabalApi
                         Language.Haskell.GhcMod.Check
