@@ -36,7 +36,7 @@ debug opt cradle ver fileName = do
             return (ghcOpts opt, [], [])
     [fast] <- do
         void $ initializeFlagsWithCradle opt cradle gopts True
-        setTargetFile fileName
+        setTargetFiles [fileName]
         pure . canCheckFast <$> depanal [] False
     return [
         "GHC version:         " ++ ver
