@@ -1,3 +1,13 @@
+2013-09-04 v2.1.1
+	* Supporting multiple target files. (@nh2)
+
+2013-09-03 v2.1.1
+	* A bug fix for library dependency.
+
+2013-09-03 v2.1.0
+	* Exporting Language.Haskell.GhcMod.Internal. (@alanz)
+	* Supporting GHC 7.7. (@co-dan)
+
 2013-05-30 v2.0.3
 	* Using finalizePackageDescription to enable "if else" in a cabal
 	file.
