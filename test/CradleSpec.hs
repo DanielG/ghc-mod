@@ -35,23 +35,23 @@ spec = do
 
         it "finds a sandbox" $ do
             withDirectory "test/data/subdir1/subdir2" $ \dir -> do
-                res <- relativeCradle dir <$> findCradle Nothing "7.6.2"
+                res <- relativeCradle dir <$> findCradle Nothing "7.6.3"
                 res `shouldBe` Cradle {
                     cradleCurrentDir = "test" </> "data" </> "subdir1" </> "subdir2"
                   , cradleCabalDir = Just ("test" </> "data")
                   , cradleCabalFile = Just ("test" </> "data" </> "cabalapi.cabal")
-                  , cradlePackageConf = Just ("test" </> "data" </> "cabal-dev" </> "packages-7.6.2.conf")
+                  , cradlePackageConf = Just ("test" </> "data" </> ".cabal-sandbox" </> "i386-osx-ghc-7.6.3-packages.conf.d")
                   }
 
         it "finds a sandbox if exists" $ do
             withDirectory "/" $ \dir -> do
                 curDir <- canonicalizePath "/"
-                res <- relativeCradle dir <$> findCradle (Just $ addTrailingPathSeparator dir ++ ("test" </> "data" </> "cabal-dev")) "7.6.2"
+                res <- relativeCradle dir <$> findCradle (Just $ addTrailingPathSeparator dir ++ ("test" </> "data" </> ".cabal-sandbox")) "7.6.3"
                 res `shouldBe` Cradle {
                     cradleCurrentDir = curDir
                   , cradleCabalDir = Nothing
                   , cradleCabalFile = Nothing
-                  , cradlePackageConf = Just ("test" </> "data" </> "cabal-dev" </> "packages-7.6.2.conf")
+                  , cradlePackageConf = Just ("test" </> "data" </> ".cabal-sandbox" </> "i386-osx-ghc-7.6.3-packages.conf.d")
                   }
 
         it "throws an error if the sandbox does not exist" $ do
