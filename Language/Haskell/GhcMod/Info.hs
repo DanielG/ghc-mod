@@ -42,18 +42,18 @@ data Cmd = Info | Type deriving Eq
 -- | Obtaining information of a target expression. (GHCi's info:)
 infoExpr :: Options
          -> Cradle
-         -> FilePath     -- ^ A target file
-         -> ModuleString -- ^ A module name
-         -> Expression   -- ^ A Haskell expression
+         -> FilePath     -- ^ A target file.
+         -> ModuleString -- ^ A module name.
+         -> Expression   -- ^ A Haskell expression.
          -> IO String
 infoExpr opt cradle file modstr expr = (++ "\n") <$> withGHCDummyFile (info opt cradle file modstr expr)
 
 -- | Obtaining information of a target expression. (GHCi's info:)
 info :: Options
      -> Cradle
-     -> FilePath     -- ^ A target file
-     -> ModuleString -- ^ A module name
-     -> Expression   -- ^ A Haskell expression
+     -> FilePath     -- ^ A target file.
+     -> ModuleString -- ^ A module name.
+     -> Expression   -- ^ A Haskell expression.
      -> Ghc String
 info opt cradle file modstr expr =
     inModuleContext Info opt cradle file modstr exprToInfo "Cannot show info"
@@ -83,20 +83,20 @@ instance HasType (LPat Id) where
 -- | Obtaining type of a target expression. (GHCi's type:)
 typeExpr :: Options
          -> Cradle
-         -> FilePath     -- ^ A target file
-         -> ModuleString -- ^ A odule name
-         -> Int          -- ^ Line number
-         -> Int          -- ^ Column number
+         -> FilePath     -- ^ A target file.
+         -> ModuleString -- ^ A odule name.
+         -> Int          -- ^ Line number.
+         -> Int          -- ^ Column number.
          -> IO String
 typeExpr opt cradle file modstr lineNo colNo = withGHCDummyFile $ typeOf opt cradle file modstr lineNo colNo
 
 -- | Obtaining type of a target expression. (GHCi's type:)
 typeOf :: Options
        -> Cradle
-       -> FilePath     -- ^ A target file
-       -> ModuleString -- ^ A odule name
-       -> Int          -- ^ Line number
-       -> Int          -- ^ Column number
+       -> FilePath     -- ^ A target file.
+       -> ModuleString -- ^ A odule name.
+       -> Int          -- ^ Line number.
+       -> Int          -- ^ Column number.
        -> Ghc String
 typeOf opt cradle file modstr lineNo colNo =
     inModuleContext Type opt cradle file modstr exprToType errmsg

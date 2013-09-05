@@ -32,13 +32,13 @@ import System.IO
 ----------------------------------------------------------------
 
 -- | Converting the 'Ghc' monad to the 'IO' monad.
-withGHCDummyFile :: Alternative m => Ghc (m a) -- ^ 'Ghc' actions created by the Ghc utilities
+withGHCDummyFile :: Alternative m => Ghc (m a) -- ^ 'Ghc' actions created by the Ghc utilities.
                                   -> IO (m a)
 withGHCDummyFile = withGHC "Dummy"
 
 -- | Converting the 'Ghc' monad to the 'IO' monad.
-withGHC :: Alternative m => FilePath  -- ^ A target file displayed in an error message
-                         -> Ghc (m a) -- ^ 'Ghc' actions created by the Ghc utilities
+withGHC :: Alternative m => FilePath  -- ^ A target file displayed in an error message.
+                         -> Ghc (m a) -- ^ 'Ghc' actions created by the Ghc utilities.
                          -> IO (m a)
 withGHC file body = ghandle ignore $ runGhc (Just libdir) $ do
     dflags <- getSessionDynFlags
@@ -154,7 +154,7 @@ modifyFlagsWithOpts dflags cmdOpts =
 
 ----------------------------------------------------------------
 
--- | Set the files that GHC will load / compile
+-- | Set the files that GHC will load / compile.
 setTargetFiles :: (GhcMonad m) => [String] -> m ()
 setTargetFiles [] = error "ghc-mod: setTargetFiles: No target files given"
 setTargetFiles files = do
@@ -163,7 +163,7 @@ setTargetFiles files = do
 
 ----------------------------------------------------------------
 
--- | Return the 'DynFlags' currently in use in the GHC session
+-- | Return the 'DynFlags' currently in use in the GHC session.
 getDynamicFlags :: IO DynFlags
 getDynamicFlags = runGhc (Just libdir) getSessionDynFlags
 

@@ -3,15 +3,17 @@
 module Language.Haskell.GhcMod.Types where
 
 -- | Output style.
-data OutputStyle = LispStyle  -- ^ S expression style
-                 | PlainStyle -- ^ Plain textstyle
+data OutputStyle = LispStyle  -- ^ S expression style.
+                 | PlainStyle -- ^ Plain textstyle.
 
+-- | The type for line separator. Historically, a Null string is used.
 newtype LineSeparator = LineSeparator String
 
 data Options = Options {
     outputStyle   :: OutputStyle
   , hlintOpts     :: [String]
   , ghcOpts       :: [String]
+  -- | If 'True', 'browse' also returns operators.
   , operators     :: Bool
   -- | If 'True', 'browse' also returns types.
   , detailed      :: Bool
@@ -19,6 +21,7 @@ data Options = Options {
   , expandSplice  :: Bool
   -- | The sandbox directory.
   , sandbox       :: Maybe FilePath
+  -- | Line separator string.
   , lineSeparator :: LineSeparator
   }
 
@@ -74,33 +77,33 @@ addNewLine = (++ "\n")
 
 ----------------------------------------------------------------
 
--- | The environment where this library is used
+-- | The environment where this library is used.
 data Cradle = Cradle {
-  -- | The directory where this library is executed
+  -- | The directory where this library is executed.
     cradleCurrentDir  :: FilePath
-  -- | The directory where a cabal file is found
+  -- | The directory where a cabal file is found.
   , cradleCabalDir    :: Maybe FilePath
-  -- | The file name of the found cabal file
+  -- | The file name of the found cabal file.
   , cradleCabalFile   :: Maybe FilePath
-  -- | The sandbox directory (e.g. \"\/foo\/bar\/packages-\<ver\>.conf/\")
+  -- | The sandbox directory. (e.g. \"\/foo\/bar\/packages-\<ver\>.conf/\")
   , cradlePackageConf :: Maybe FilePath
   } deriving (Eq, Show)
 
 ----------------------------------------------------------------
 
--- | A single GHC option, as it would appear on the command line
+-- | A single GHC option, as it would appear on the command line.
 type GHCOption  = String
 
 type IncludeDir = FilePath
 type Package    = String
 
--- | GHC version in 'String'
+-- | GHC version in 'String'.
 type GHCVersion = String
 
--- | Haskell expression
+-- | Haskell expression.
 type Expression = String
 
--- | Module name
+-- | Module name.
 type ModuleString = String
 
 data CheckSpeed = Slow | Fast

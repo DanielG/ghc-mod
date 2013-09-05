@@ -19,6 +19,7 @@ import Var
 
 -- | Getting functions, classes, etc from a module.
 --   If 'detailed' is 'True', their types are also obtained.
+--   If 'operators' is 'True', operators are also returned.
 browseModule :: Options
              -> ModuleString -- ^ A module name. (e.g. \"Data.List\")
              -> IO String
@@ -38,6 +39,7 @@ browseModule opt mdlName = convert opt . format <$> withGHCDummyFile (browse opt
 
 -- | Getting functions, classes, etc from a module.
 --   If 'detailed' is 'True', their types are also obtained.
+--   If 'operators' is 'True', operators are also returned.
 browse :: Options
        -> ModuleString -- ^ A module name. (e.g. \"Data.List\")
        -> Ghc [String]

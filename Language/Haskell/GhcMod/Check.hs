@@ -16,7 +16,7 @@ import Prelude
 --   Warnings and errors are returned.
 checkSyntax :: Options
             -> Cradle
-            -> [FilePath]  -- ^ The target files
+            -> [FilePath]  -- ^ The target files.
             -> IO String
 checkSyntax _   _      []    = error "ghc-mod: checkSyntax: No files given"
 checkSyntax opt cradle files = unlines <$> withGHC sessionName (check opt cradle files)
@@ -31,7 +31,7 @@ checkSyntax opt cradle files = unlines <$> withGHC sessionName (check opt cradle
 --   Warnings and errors are returned.
 check :: Options
       -> Cradle
-      -> [FilePath]  -- ^ The target files
+      -> [FilePath]  -- ^ The target files.
       -> Ghc [String]
 check _   _      []        = error "ghc-mod: check: No files given"
 check opt cradle fileNames = checkIt `gcatch` handleErrMsg ls

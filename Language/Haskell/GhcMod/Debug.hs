@@ -18,7 +18,7 @@ import Prelude
 debugInfo :: Options
           -> Cradle
           -> GHCVersion
-          -> FilePath   -- ^ A target file
+          -> FilePath   -- ^ A target file.
           -> IO String
 debugInfo opt cradle ver fileName = unlines <$> withGHC fileName (debug opt cradle ver fileName)
 
@@ -26,7 +26,7 @@ debugInfo opt cradle ver fileName = unlines <$> withGHC fileName (debug opt crad
 debug :: Options
       -> Cradle
       -> GHCVersion
-      -> FilePath     -- ^ A target file
+      -> FilePath     -- ^ A target file.
       -> Ghc [String]
 debug opt cradle ver fileName = do
     (gopts, incDir, pkgs) <-

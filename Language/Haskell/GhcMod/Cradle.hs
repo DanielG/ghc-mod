@@ -10,7 +10,7 @@ import System.FilePath ((</>),takeDirectory)
 
 -- | Finding 'Cradle'.
 --   An error would be thrown.
-findCradle :: Maybe FilePath -- ^ A 'FilePath' for a sandbox
+findCradle :: Maybe FilePath -- ^ A 'FilePath' for a sandbox.
            -> GHCVersion
            -> IO Cradle
 findCradle (Just sbox) strver = do
