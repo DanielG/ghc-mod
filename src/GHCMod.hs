@@ -57,7 +57,7 @@ argspec = [ Option "l" ["tolisp"]
             "print detailed info"
           , Option "s" ["sandbox"]
             (ReqArg (\s opts -> opts { sandbox = Just s }) "path")
-            "specify cabal-dev sandbox (default 'cabal-dev`)"
+            "specify a sandbox"
           , Option "b" ["boundary"]
             (ReqArg (\s opts -> opts { lineSeparator = LineSeparator s }) "sep")
             "specify line separator (default is Nul string)"
