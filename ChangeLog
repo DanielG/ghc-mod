@@ -1,3 +1,7 @@
+2013-09-06 v3.0.0
+	* Supporting the sandbox of cabal 1.18.
+	* Obsoleting the support for cabal-dev
+
 2013-09-04 v2.1.2
 	* Supporting multiple target files. (@nh2)
 
