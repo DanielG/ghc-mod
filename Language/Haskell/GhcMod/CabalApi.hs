@@ -51,12 +51,20 @@ cookInfo ghcOptions cradle cabal = (gopts,idirs,depPkgs)
     buildInfos = cabalAllBuildInfo cabal
     gopts      = getGHCOptions ghcOptions $ head buildInfos
     idirs      = includeDirectories cdir wdir $ cabalAllSourceDirs buildInfos
-    depPkgs    = removeMe cfile $ cabalAllDependPackages buildInfos
+    depPkgs    = removeThem problematicPackages $ removeMe cfile $ cabalAllDependPackages buildInfos
 
 removeMe :: FilePath -> [String] -> [String]
 removeMe cabalfile = filter (/= me)
   where
     me = dropExtension $ takeFileName cabalfile
+
+removeThem :: [String] -> [String] -> [String]
+removeThem badpkgs = filter (`notElem` badpkgs)
+
+problematicPackages :: [String]
+problematicPackages = [
+    "base-compat" -- providing "Prelude"
+  ]
 
 includeDirectories :: String -> String -> [FilePath] -> [String]
 includeDirectories cdir wdir []   = uniqueAndSort [cdir,wdir]
