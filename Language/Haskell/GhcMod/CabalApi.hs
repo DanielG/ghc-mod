@@ -44,7 +44,7 @@ fromCabalFile ghcOptions cradle = do
   where
     Just cfile = cradleCabalFile cradle
 
-cookInfo :: [String] -> Cradle -> PackageDescription
+cookInfo :: [GHCOption] -> Cradle -> PackageDescription
          -> ([GHCOption],[IncludeDir],[Package])
 cookInfo ghcOptions cradle cabal = (gopts,idirs,depPkgs)
   where
@@ -56,15 +56,15 @@ cookInfo ghcOptions cradle cabal = (gopts,idirs,depPkgs)
     idirs      = includeDirectories cdir wdir $ cabalSourceDirs buildInfos
     depPkgs    = removeThem problematicPackages $ removeMe cfile $ cabalDependPackages buildInfos
 
-removeMe :: FilePath -> [String] -> [String]
+removeMe :: FilePath -> [Package] -> [Package]
 removeMe cabalfile = filter (/= me)
   where
     me = dropExtension $ takeFileName cabalfile
 
-removeThem :: [String] -> [String] -> [String]
+removeThem :: [Package] -> [Package] -> [Package]
 removeThem badpkgs = filter (`notElem` badpkgs)
 
-problematicPackages :: [String]
+problematicPackages :: [Package]
 problematicPackages = [
     "base-compat" -- providing "Prelude"
   ]
@@ -72,7 +72,7 @@ problematicPackages = [
 cabalBuildDirs :: [FilePath]
 cabalBuildDirs = ["dist/build"]
 
-includeDirectories :: String -> String -> [FilePath] -> [String]
+includeDirectories :: FilePath -> FilePath -> [FilePath] -> [FilePath]
 includeDirectories cdir wdir dirs = uniqueAndSort (extdirs ++ [cdir,wdir])
   where
     extdirs = map (cdir </>) $ dirs ++ cabalBuildDirs
@@ -98,7 +98,7 @@ parseCabalFile file = do
 
 ----------------------------------------------------------------
 
-getGHCOptions :: [String] -> BuildInfo -> [String]
+getGHCOptions :: [GHCOption] -> BuildInfo -> [GHCOption]
 getGHCOptions ghcOptions binfo = ghcOptions ++ exts ++ [lang] ++ libs ++ libDirs
   where
     exts = map (("-X" ++) . display) $ usedExtensions binfo

@@ -148,7 +148,7 @@ checkSlowAndSet = do
 
 ----------------------------------------------------------------
 
-modifyFlagsWithOpts :: GhcMonad m => DynFlags -> [String] -> m DynFlags
+modifyFlagsWithOpts :: GhcMonad m => DynFlags -> [GHCOption] -> m DynFlags
 modifyFlagsWithOpts dflags cmdOpts =
     tfst <$> parseDynamicFlags dflags (map noLoc cmdOpts)
   where
@@ -157,7 +157,7 @@ modifyFlagsWithOpts dflags cmdOpts =
 ----------------------------------------------------------------
 
 -- | Set the files that GHC will load / compile.
-setTargetFiles :: (GhcMonad m) => [String] -> m ()
+setTargetFiles :: (GhcMonad m) => [FilePath] -> m ()
 setTargetFiles [] = error "ghc-mod: setTargetFiles: No target files given"
 setTargetFiles files = do
     targets <- forM files $ \file -> guessTarget file Nothing
