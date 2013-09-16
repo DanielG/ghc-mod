@@ -28,6 +28,7 @@ import Distribution.Text (display)
 import Distribution.Verbosity (silent)
 import Distribution.Version (versionBranch, Version)
 import Language.Haskell.GhcMod.Types
+import System.Directory (doesFileExist)
 import System.FilePath
 
 ----------------------------------------------------------------
@@ -38,21 +39,21 @@ import System.FilePath
 fromCabalFile :: [GHCOption]
               -> Cradle
               -> IO ([GHCOption],[IncludeDir],[Package])
-fromCabalFile ghcOptions cradle = do
-    cabal <- parseCabalFile cfile
-    return $ cookInfo ghcOptions cradle cabal
+fromCabalFile ghcOptions cradle =
+    parseCabalFile cfile >>= cookInfo ghcOptions cradle
   where
     Just cfile = cradleCabalFile cradle
 
 cookInfo :: [GHCOption] -> Cradle -> PackageDescription
-         -> ([GHCOption],[IncludeDir],[Package])
-cookInfo ghcOptions cradle cabal = (gopts,idirs,depPkgs)
+         -> IO ([GHCOption],[IncludeDir],[Package])
+cookInfo ghcOptions cradle cabal = do
+    gopts <- getGHCOptions ghcOptions cdir $ head buildInfos
+    return (gopts,idirs,depPkgs)
   where
     wdir       = cradleCurrentDir cradle
     Just cdir  = cradleCabalDir   cradle
     Just cfile = cradleCabalFile  cradle
     buildInfos = cabalAllBuildInfo cabal
-    gopts      = getGHCOptions ghcOptions cdir $ head buildInfos
     idirs      = includeDirectories cdir wdir $ cabalSourceDirs buildInfos
     depPkgs    = removeThem problematicPackages $ removeMe cfile $ cabalDependPackages buildInfos
 
@@ -104,17 +105,26 @@ parseCabalFile file = do
 
 ----------------------------------------------------------------
 
-getGHCOptions :: [GHCOption] -> FilePath -> BuildInfo -> [GHCOption]
-getGHCOptions ghcOptions cdir binfo = ghcOptions ++ exts ++ [lang] ++ libs ++ libDirs ++ cpps
+getGHCOptions :: [GHCOption] -> FilePath -> BuildInfo -> IO [GHCOption]
+getGHCOptions ghcOptions cdir binfo = do
+    cabalCpp <- cabalCppOptions cdir
+    let cpps = map ("-optP" ++) $ cppOptions binfo ++ cabalCpp
+    return $ ghcOptions ++ exts ++ [lang] ++ libs ++ libDirs ++ cpps
   where
     lang = maybe "-XHaskell98" (("-X" ++) . display) $ defaultLanguage binfo
     libDirs = map ("-L" ++) $ extraLibDirs binfo
     exts = map (("-X" ++) . display) $ usedExtensions binfo
     libs = map ("-l" ++) $ extraLibs binfo
-    cpps = map ("-optP" ++) $ cppOptions binfo ++ cabalCppOptions cdir
 
-cabalCppOptions :: FilePath -> [String]
-cabalCppOptions dir = ["-include", dir </> "dist/build/autogen/cabal_macros.h"]
+cabalCppOptions :: FilePath -> IO [String]
+cabalCppOptions dir = do
+    exist <- doesFileExist cabalMacro
+    if exist then
+        return ["-include", cabalMacro]
+      else
+        return []
+  where
+    cabalMacro = dir </> "dist/build/autogen/cabal_macros.h"
 
 ----------------------------------------------------------------
 
