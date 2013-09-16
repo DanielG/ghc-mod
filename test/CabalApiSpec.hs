@@ -13,14 +13,14 @@ spec = do
         it "throws an exception if the cabal file is broken" $ do
             parseCabalFile "test/data/broken-cabal/broken.cabal" `shouldThrow` (\(_::IOException) -> True)
 
-    describe "cabalAllDependPackages" $ do
+    describe "cabalDependPackages" $ do
         it "extracts dependent packages" $ do
-            pkgs <- cabalAllDependPackages . cabalAllBuildInfo <$> parseCabalFile "test/data/cabalapi.cabal"
+            pkgs <- cabalDependPackages . cabalAllBuildInfo <$> parseCabalFile "test/data/cabalapi.cabal"
             pkgs `shouldBe` ["Cabal","base","template-haskell"]
 
-    describe "cabalAllSourceDirs" $ do
+    describe "cabalSourceDirs" $ do
         it "extracts all hs-source-dirs" $ do
-            dirs <- cabalAllSourceDirs . cabalAllBuildInfo <$> parseCabalFile "test/data/check-test-subdir/check-test-subdir.cabal"
+            dirs <- cabalSourceDirs . cabalAllBuildInfo <$> parseCabalFile "test/data/check-test-subdir/check-test-subdir.cabal"
             dirs `shouldBe` ["src", "test"]
 
     describe "cabalBuildInfo" $ do
