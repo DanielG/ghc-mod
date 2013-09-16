@@ -52,9 +52,12 @@ cookInfo ghcOptions cradle cabal = (gopts,idirs,depPkgs)
     Just cdir  = cradleCabalDir   cradle
     Just cfile = cradleCabalFile  cradle
     buildInfos = cabalAllBuildInfo cabal
-    gopts      = getGHCOptions ghcOptions $ head buildInfos
+    gopts      = getGHCOptions ghcOptions cdir $ head buildInfos
     idirs      = includeDirectories cdir wdir $ cabalSourceDirs buildInfos
     depPkgs    = removeThem problematicPackages $ removeMe cfile $ cabalDependPackages buildInfos
+
+----------------------------------------------------------------
+-- Dependent packages
 
 removeMe :: FilePath -> [Package] -> [Package]
 removeMe cabalfile = filter (/= me)
@@ -68,6 +71,9 @@ problematicPackages :: [Package]
 problematicPackages = [
     "base-compat" -- providing "Prelude"
   ]
+
+----------------------------------------------------------------
+-- Include directories for modules
 
 cabalBuildDirs :: [FilePath]
 cabalBuildDirs = ["dist/build"]
@@ -98,13 +104,17 @@ parseCabalFile file = do
 
 ----------------------------------------------------------------
 
-getGHCOptions :: [GHCOption] -> BuildInfo -> [GHCOption]
-getGHCOptions ghcOptions binfo = ghcOptions ++ exts ++ [lang] ++ libs ++ libDirs
+getGHCOptions :: [GHCOption] -> FilePath -> BuildInfo -> [GHCOption]
+getGHCOptions ghcOptions cdir binfo = ghcOptions ++ exts ++ [lang] ++ libs ++ libDirs ++ cpps
   where
-    exts = map (("-X" ++) . display) $ usedExtensions binfo
     lang = maybe "-XHaskell98" (("-X" ++) . display) $ defaultLanguage binfo
-    libs = map ("-l" ++) $ extraLibs binfo
     libDirs = map ("-L" ++) $ extraLibDirs binfo
+    exts = map (("-X" ++) . display) $ usedExtensions binfo
+    libs = map ("-l" ++) $ extraLibs binfo
+    cpps = map ("-optP" ++) $ cppOptions binfo ++ cabalCppOptions cdir
+
+cabalCppOptions :: FilePath -> [String]
+cabalCppOptions dir = ["-include", dir </> "dist/build/autogen/cabal_macros.h"]
 
 ----------------------------------------------------------------
 
