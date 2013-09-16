@@ -96,6 +96,8 @@ initSession build opt cmdOpts idirs mDepPkgs logging = do
 
 ----------------------------------------------------------------
 
+-- | Initialize the 'DynFlags' relating to the compilation of a single
+-- file or GHC session.
 initializeFlags :: GhcMonad m => Options -> m ()
 initializeFlags opt = do
     dflags0 <- getSessionDynFlags
@@ -167,6 +169,8 @@ setTargetFiles files = do
 getDynamicFlags :: IO DynFlags
 getDynamicFlags = runGhc (Just libdir) getSessionDynFlags
 
+-- | Checking if Template Haskell or quasi quotes are used.
+--   If not, the process can be faster.
 canCheckFast :: ModuleGraph -> Bool
 canCheckFast = not . any (hasTHorQQ . ms_hspp_opts)
   where

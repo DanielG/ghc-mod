@@ -3,9 +3,9 @@
 module Language.Haskell.GhcMod.CabalApi (
     fromCabalFile
   , parseCabalFile
-  , cabalAllDependPackages
-  , cabalAllSourceDirs
   , cabalAllBuildInfo
+  , cabalDependPackages
+  , cabalSourceDirs
   , getGHCVersion
   ) where
 
@@ -32,6 +32,9 @@ import System.FilePath
 
 ----------------------------------------------------------------
 
+-- | Parsing a cabal file in 'Cradle' and returns
+--   options for GHC, include directories for modules and
+--   package names of dependency.
 fromCabalFile :: [GHCOption]
               -> Cradle
               -> IO ([GHCOption],[IncludeDir],[Package])
@@ -50,8 +53,8 @@ cookInfo ghcOptions cradle cabal = (gopts,idirs,depPkgs)
     Just cfile = cradleCabalFile  cradle
     buildInfos = cabalAllBuildInfo cabal
     gopts      = getGHCOptions ghcOptions $ head buildInfos
-    idirs      = includeDirectories cdir wdir $ cabalAllSourceDirs buildInfos
-    depPkgs    = removeThem problematicPackages $ removeMe cfile $ cabalAllDependPackages buildInfos
+    idirs      = includeDirectories cdir wdir $ cabalSourceDirs buildInfos
+    depPkgs    = removeThem problematicPackages $ removeMe cfile $ cabalDependPackages buildInfos
 
 removeMe :: FilePath -> [String] -> [String]
 removeMe cabalfile = filter (/= me)
@@ -72,6 +75,8 @@ includeDirectories cdir wdir dirs = uniqueAndSort (map (cdir </>) dirs ++ [cdir,
 
 ----------------------------------------------------------------
 
+-- | Parsing a cabal file and returns 'PackageDescription'.
+--   'IOException' is thrown if parsing fails.
 parseCabalFile :: FilePath -> IO PackageDescription
 parseCabalFile file = do
     cid <- getGHCId
@@ -99,6 +104,7 @@ getGHCOptions ghcOptions binfo = ghcOptions ++ exts ++ [lang] ++ libs ++ libDirs
 
 ----------------------------------------------------------------
 
+-- | Extracting all 'BuildInfo' for libraries, executables, tests and benchmarks.
 cabalAllBuildInfo :: PackageDescription -> [BuildInfo]
 cabalAllBuildInfo pd = libBI ++ execBI ++ testBI ++ benchBI
   where
@@ -109,16 +115,18 @@ cabalAllBuildInfo pd = libBI ++ execBI ++ testBI ++ benchBI
 
 ----------------------------------------------------------------
 
-cabalAllSourceDirs :: [BuildInfo] -> [FilePath]
-cabalAllSourceDirs bis = uniqueAndSort $ concatMap hsSourceDirs bis
-
-----------------------------------------------------------------
-
-cabalAllDependPackages :: [BuildInfo] -> [Package]
-cabalAllDependPackages bis = uniqueAndSort $ pkgs
+-- | Extracting package names of dependency.
+cabalDependPackages :: [BuildInfo] -> [Package]
+cabalDependPackages bis = uniqueAndSort $ pkgs
   where
     pkgs = map getDependencyPackageName $ concatMap targetBuildDepends bis
     getDependencyPackageName (Dependency (PackageName nm) _) = nm
+
+----------------------------------------------------------------
+
+-- | Extracting include directories for modules.
+cabalSourceDirs :: [BuildInfo] -> [IncludeDir]
+cabalSourceDirs bis = uniqueAndSort $ concatMap hsSourceDirs bis
 
 ----------------------------------------------------------------
 

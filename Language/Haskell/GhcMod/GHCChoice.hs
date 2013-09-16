@@ -9,20 +9,22 @@ import GHC
 
 ----------------------------------------------------------------
 
+-- | Try the left 'Ghc' action. If 'IOException' occurs, try
+--   the right 'Ghc' action.
 (||>) :: Ghc a -> Ghc a -> Ghc a
 x ||> y = x `gcatch` (\(_ :: IOException) -> y)
 
-(|||>) :: GhcMonad m => m a -> m a -> m a
-x |||> y = x `gcatch` (\(_ :: IOException) -> y)
-
-----------------------------------------------------------------
-
-{-| Go to the next 'Ghc' monad by throwing 'AltGhcgoNext'.
--}
+-- | Go to the next 'Ghc' monad by throwing 'AltGhcgoNext'.
 goNext :: Ghc a
 goNext = liftIO . throwIO $ userError "goNext"
 
-{-| Run any one 'Ghc' monad.
--}
+-- | Run any one 'Ghc' monad.
 runAnyOne :: [Ghc a] -> Ghc a
 runAnyOne = foldr (||>) goNext
+
+----------------------------------------------------------------
+
+-- | Try the left 'GhcMonad' action. If 'IOException' occurs, try
+--   the right 'GhcMonad' action.
+(|||>) :: GhcMonad m => m a -> m a -> m a
+x |||> y = x `gcatch` (\(_ :: IOException) -> y)

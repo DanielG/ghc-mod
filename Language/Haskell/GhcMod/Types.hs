@@ -94,7 +94,10 @@ data Cradle = Cradle {
 -- | A single GHC option, as it would appear on the command line.
 type GHCOption  = String
 
+-- | Include directories for modules
 type IncludeDir = FilePath
+
+-- | Package names
 type Package    = String
 
 -- | GHC version in 'String'.

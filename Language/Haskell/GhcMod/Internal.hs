@@ -1,16 +1,37 @@
 -- | Low level access to the ghc-mod library.
 
 module Language.Haskell.GhcMod.Internal (
-  -- * Low level access
+  -- * Types
     LogReader
   , GHCOption
+  , Package
+  , IncludeDir
+  -- * Cabal API
+  , fromCabalFile
+  , parseCabalFile
+  , cabalAllBuildInfo
+  , cabalDependPackages
+  , cabalSourceDirs
+  -- * GHC API
+  , canCheckFast
+  -- * Getting 'DynFlags'
+  , getDynamicFlags
+  -- * Initializing 'DynFlags'
+  , initializeFlags
   , initializeFlagsWithCradle
+  -- * 'GhcMonad'
   , setTargetFiles
   , checkSlowAndSet
-  , getDynamicFlags
+  -- * 'Ghc' Choice
+  , (||>)
+  , goNext
+  , runAnyOne
+  -- * 'GhcMonad' Choice
+  , (|||>)
   ) where
 
+import Language.Haskell.GhcMod.CabalApi
 import Language.Haskell.GhcMod.ErrMsg
 import Language.Haskell.GhcMod.GHCApi
+import Language.Haskell.GhcMod.GHCChoice
 import Language.Haskell.GhcMod.Types
-
