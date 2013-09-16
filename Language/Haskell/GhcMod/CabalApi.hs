@@ -69,9 +69,13 @@ problematicPackages = [
     "base-compat" -- providing "Prelude"
   ]
 
+cabalBuildDirs :: [FilePath]
+cabalBuildDirs = ["dist/build"]
+
 includeDirectories :: String -> String -> [FilePath] -> [String]
-includeDirectories cdir wdir []   = uniqueAndSort [cdir,wdir]
-includeDirectories cdir wdir dirs = uniqueAndSort (map (cdir </>) dirs ++ [cdir,wdir])
+includeDirectories cdir wdir dirs = uniqueAndSort (extdirs ++ [cdir,wdir])
+  where
+    extdirs = map (cdir </>) $ dirs ++ cabalBuildDirs
 
 ----------------------------------------------------------------
 
