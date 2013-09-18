@@ -14,6 +14,7 @@ import Control.Exception (throwIO)
 import Data.List (intercalate)
 import Data.Maybe (maybeToList)
 import Data.Set (fromList, toList)
+import Distribution.ModuleName
 import Distribution.Package (Dependency(Dependency)
                            , PackageName(PackageName)
                            , PackageIdentifier(pkgName))
@@ -34,21 +35,24 @@ import System.FilePath
 ----------------------------------------------------------------
 
 -- | Parsing a cabal file in 'Cradle' and returns
---   options for GHC, include directories for modules and
---   package names of dependency.
+--   options for GHC, include directories for modules,
+--   package names of dependency, and top leevel module file paths for
+--   library, executable and test/benchmark build targets.
 fromCabalFile :: [GHCOption]
               -> Cradle
-              -> IO ([GHCOption],[IncludeDir],[Package])
+              -> IO ([GHCOption],[IncludeDir],[Package],
+                ([FilePath],[FilePath],[FilePath],[FilePath]))
 fromCabalFile ghcOptions cradle =
     parseCabalFile cfile >>= cookInfo ghcOptions cradle
   where
     Just cfile = cradleCabalFile cradle
 
 cookInfo :: [GHCOption] -> Cradle -> PackageDescription
-         -> IO ([GHCOption],[IncludeDir],[Package])
+         -> IO ([GHCOption],[IncludeDir],[Package],
+                ([FilePath],[FilePath],[FilePath],[FilePath]))
 cookInfo ghcOptions cradle cabal = do
     gopts <- getGHCOptions ghcOptions cdir $ head buildInfos
-    return (gopts,idirs,depPkgs)
+    return (gopts,idirs,depPkgs,targetFiles)
   where
     wdir       = cradleCurrentDir cradle
     Just cdir  = cradleCabalDir   cradle
@@ -56,6 +60,7 @@ cookInfo ghcOptions cradle cabal = do
     buildInfos = cabalAllBuildInfo cabal
     idirs      = includeDirectories cdir wdir $ cabalSourceDirs buildInfos
     depPkgs    = removeThem problematicPackages $ removeMe cfile $ cabalDependPackages buildInfos
+    targetFiles = cabalAllTargets cabal
 
 ----------------------------------------------------------------
 -- Dependent packages
@@ -136,6 +141,22 @@ cabalAllBuildInfo pd = libBI ++ execBI ++ testBI ++ benchBI
     execBI  = map buildInfo          $ executables pd
     testBI  = map testBuildInfo      $ testSuites pd
     benchBI = map benchmarkBuildInfo $ benchmarks pd
+
+----------------------------------------------------------------
+
+-- | Extracting all 'Module' 'FilePath's for libraries, executables,
+-- tests and benchmarks.
+cabalAllTargets :: PackageDescription -> ([FilePath],[FilePath],[FilePath],[FilePath])
+cabalAllTargets pd = targets
+  where
+    lib = case library pd of
+            Nothing -> []
+            Just l -> libModules l
+
+    targets =  (map toFilePath $ lib,
+               map modulePath                              $ executables pd,
+               map toFilePath $ concatMap testModules      $ testSuites  pd,
+               map toFilePath $ concatMap benchmarkModules $ benchmarks  pd)
 
 ----------------------------------------------------------------
 

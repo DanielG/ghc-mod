@@ -37,7 +37,7 @@ check _   _      []        = error "ghc-mod: check: No files given"
 check opt cradle fileNames = checkIt `gcatch` handleErrMsg ls
   where
     checkIt = do
-        readLog <- initializeFlagsWithCradle opt cradle options True
+        (readLog,_) <- initializeFlagsWithCradle opt cradle options True
         setTargetFiles fileNames
         checkSlowAndSet
         void $ load LoadAllTargets
