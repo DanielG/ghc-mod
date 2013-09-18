@@ -60,17 +60,22 @@ data Build = CabalPkg | SingleFile deriving Eq
 -- | Initialize the 'DynFlags' relating to the compilation of a single
 -- file or GHC session according to the 'Cradle' and 'Options'
 -- provided.
-initializeFlagsWithCradle :: GhcMonad m =>  Options -> Cradle -> [GHCOption] -> Bool -> m LogReader
+-- Return the filepaths of top level modules, for possible loading by
+-- calling function
+initializeFlagsWithCradle :: GhcMonad m =>  Options -> Cradle -> [GHCOption] -> Bool
+ -> m (LogReader,([FilePath],[FilePath],[FilePath],[FilePath]))
 initializeFlagsWithCradle opt cradle ghcOptions logging
   | cabal     = withCabal |||> withoutCabal
   | otherwise = withoutCabal
   where
     cabal = isJust $ cradleCabalFile cradle
     withCabal = do
-        (gopts,idirs,depPkgs) <- liftIO $ fromCabalFile ghcOptions cradle
-        initSession CabalPkg opt gopts idirs (Just depPkgs) logging
-    withoutCabal =
-        initSession SingleFile opt ghcOptions importDirs Nothing logging
+        (gopts,idirs,depPkgs,targets) <- liftIO $ fromCabalFile ghcOptions cradle
+        logger <- initSession CabalPkg opt gopts idirs (Just depPkgs) logging
+        return (logger,targets)
+    withoutCabal = do
+        logger <- initSession SingleFile opt ghcOptions importDirs Nothing logging
+        return (logger,([],[],[],[]))
 
 ----------------------------------------------------------------
 
