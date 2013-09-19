@@ -36,19 +36,16 @@ import System.FilePath
 -- | Parsing a cabal file in 'Cradle' and returns
 --   options for GHC, include directories for modules and
 --   package names of dependency.
-fromCabalFile :: [GHCOption]
-              -> Cradle
-              -> IO ([GHCOption],[IncludeDir],[Package])
-fromCabalFile ghcOptions cradle =
-    parseCabalFile cfile >>= cookInfo ghcOptions cradle
+fromCabalFile :: [GHCOption] -> Cradle -> IO CompilerOptions
+fromCabalFile ghcopts cradle =
+    parseCabalFile cfile >>= cookInfo ghcopts cradle
   where
     Just cfile = cradleCabalFile cradle
 
-cookInfo :: [GHCOption] -> Cradle -> PackageDescription
-         -> IO ([GHCOption],[IncludeDir],[Package])
-cookInfo ghcOptions cradle cabal = do
-    gopts <- getGHCOptions ghcOptions cdir $ head buildInfos
-    return (gopts,idirs,depPkgs)
+cookInfo :: [GHCOption] -> Cradle -> PackageDescription -> IO CompilerOptions
+cookInfo ghcopts cradle cabal = do
+    gopts <- getGHCOptions ghcopts cdir $ head buildInfos
+    return $ CompilerOptions gopts idirs depPkgs
   where
     wdir       = cradleCurrentDir cradle
     Just cdir  = cradleCabalDir   cradle
@@ -106,10 +103,10 @@ parseCabalFile file = do
 ----------------------------------------------------------------
 
 getGHCOptions :: [GHCOption] -> FilePath -> BuildInfo -> IO [GHCOption]
-getGHCOptions ghcOptions cdir binfo = do
+getGHCOptions ghcopts cdir binfo = do
     cabalCpp <- cabalCppOptions cdir
     let cpps = map ("-optP" ++) $ cppOptions binfo ++ cabalCpp
-    return $ ghcOptions ++ exts ++ [lang] ++ libs ++ libDirs ++ cpps
+    return $ ghcopts ++ exts ++ [lang] ++ libs ++ libDirs ++ cpps
   where
     lang = maybe "-XHaskell98" (("-X" ++) . display) $ defaultLanguage binfo
     libDirs = map ("-L" ++) $ extraLibDirs binfo

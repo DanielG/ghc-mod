@@ -61,36 +61,39 @@ data Build = CabalPkg | SingleFile deriving Eq
 -- file or GHC session according to the 'Cradle' and 'Options'
 -- provided.
 initializeFlagsWithCradle :: GhcMonad m =>  Options -> Cradle -> [GHCOption] -> Bool -> m LogReader
-initializeFlagsWithCradle opt cradle ghcOptions logging
+initializeFlagsWithCradle opt cradle ghcopts logging
   | cabal     = withCabal |||> withoutCabal
   | otherwise = withoutCabal
   where
     cabal = isJust $ cradleCabalFile cradle
     withCabal = do
-        (gopts,idirs,depPkgs) <- liftIO $ fromCabalFile ghcOptions cradle
-        initSession CabalPkg opt gopts idirs (Just depPkgs) logging
+        compOpts <- liftIO $ fromCabalFile ghcopts cradle
+        initSession CabalPkg opt compOpts logging
     withoutCabal =
-        initSession SingleFile opt ghcOptions importDirs Nothing logging
+        initSession SingleFile opt compOpts logging
+      where
+        compOpts = CompilerOptions ghcopts importDirs []
 
 ----------------------------------------------------------------
 
 initSession :: GhcMonad m => Build
             -> Options
-            -> [GHCOption]
-            -> [IncludeDir]
-            -> Maybe [Package]
+            -> CompilerOptions
             -> Bool
             -> m LogReader
-initSession build opt cmdOpts idirs mDepPkgs logging = do
+initSession build opt compOpts logging = do
     dflags0 <- getSessionDynFlags
     (dflags1,readLog) <- setupDynamicFlags dflags0
     _ <- setSessionDynFlags dflags1
     return readLog
   where
+    cmdOpts = ghcOptions compOpts
+    idirs   = includeDirs compOpts
+    depPkgs = depPackages compOpts
     ls = lineSeparator opt
     setupDynamicFlags df0 = do
         df1 <- modifyFlagsWithOpts df0 cmdOpts
-        let df2 = modifyFlags df1 idirs mDepPkgs (expandSplice opt) build
+        let df2 = modifyFlags df1 idirs depPkgs (expandSplice opt) build
         df3 <- modifyFlagsWithOpts df2 $ ghcOpts opt
         liftIO $ setLogger logging df3 ls
 
@@ -107,14 +110,14 @@ initializeFlags opt = do
 ----------------------------------------------------------------
 
 -- FIXME removing Options
-modifyFlags :: DynFlags -> [IncludeDir] -> Maybe [Package] -> Bool -> Build -> DynFlags
-modifyFlags d0 idirs mDepPkgs splice build
+modifyFlags :: DynFlags -> [IncludeDir] -> [Package] -> Bool -> Build -> DynFlags
+modifyFlags d0 idirs pepPkgs splice build
   | splice    = setSplice d4
   | otherwise = d4
   where
     d1 = d0 { importPaths = idirs }
     d2 = setFastOrNot d1 Fast
-    d3 = maybe d2 (Gap.addDevPkgs d2) mDepPkgs
+    d3 = Gap.addDevPkgs d2 pepPkgs
     d4 | build == CabalPkg = Gap.setCabalPkg d3
        | otherwise         = d3
 

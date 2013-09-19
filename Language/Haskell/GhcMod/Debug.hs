@@ -29,11 +29,11 @@ debug :: Options
       -> FilePath     -- ^ A target file.
       -> Ghc [String]
 debug opt cradle ver fileName = do
-    (gopts, incDir, pkgs) <-
+    CompilerOptions gopts incDir pkgs <-
         if cabal then
-            liftIO $ fromCabalFile (ghcOpts opt) cradle ||> return (ghcOpts opt, [], [])
+            liftIO $ fromCabalFile (ghcOpts opt) cradle ||> return (CompilerOptions (ghcOpts opt) [] [])
           else
-            return (ghcOpts opt, [], [])
+            return (CompilerOptions (ghcOpts opt) [] [])
     [fast] <- do
         void $ initializeFlagsWithCradle opt cradle gopts True
         setTargetFiles [fileName]
