@@ -16,7 +16,8 @@ import Control.Applicative
 import Control.Exception
 import Control.Monad
 import CoreMonad
-import Data.Maybe (isJust)
+import Data.Maybe (isJust,fromJust)
+import Distribution.PackageDescription (PackageDescription)
 import DynFlags
 import Exception
 import GHC
@@ -24,8 +25,8 @@ import GHC.Paths (libdir)
 import Language.Haskell.GhcMod.CabalApi
 import Language.Haskell.GhcMod.ErrMsg
 import Language.Haskell.GhcMod.GHCChoice
-import Language.Haskell.GhcMod.Types
 import qualified Language.Haskell.GhcMod.Gap as Gap
+import Language.Haskell.GhcMod.Types
 import System.Exit
 import System.IO
 
@@ -60,42 +61,44 @@ data Build = CabalPkg | SingleFile deriving Eq
 -- | Initialize the 'DynFlags' relating to the compilation of a single
 -- file or GHC session according to the 'Cradle' and 'Options'
 -- provided.
--- Return the filepaths of top level modules, for possible loading by
--- calling function
-initializeFlagsWithCradle :: GhcMonad m =>  Options -> Cradle -> [GHCOption] -> Bool
- -> m (LogReader,([FilePath],[FilePath],[FilePath],[FilePath]))
-initializeFlagsWithCradle opt cradle ghcOptions logging
+initializeFlagsWithCradle :: GhcMonad m =>  Options -> Cradle -> [GHCOption] -> Bool -> m (LogReader, Maybe PackageDescription)
+initializeFlagsWithCradle opt cradle ghcopts logging
   | cabal     = withCabal |||> withoutCabal
   | otherwise = withoutCabal
   where
-    cabal = isJust $ cradleCabalFile cradle
+    mCradleFile = cradleCabalFile cradle
+    cabal = isJust mCradleFile
     withCabal = do
-        (gopts,idirs,depPkgs,targets) <- liftIO $ fromCabalFile ghcOptions cradle
-        logger <- initSession CabalPkg opt gopts idirs (Just depPkgs) logging
-        return (logger,targets)
+        pkgDesc <- liftIO $ parseCabalFile $ fromJust mCradleFile
+        compOpts <- liftIO $ getCompilerOptions ghcopts cradle pkgDesc
+        logger <- initSession CabalPkg opt compOpts logging
+        return (logger, Just pkgDesc)
     withoutCabal = do
-        logger <- initSession SingleFile opt ghcOptions importDirs Nothing logging
-        return (logger,([],[],[],[]))
+        logger <- initSession SingleFile opt compOpts logging
+        return (logger, Nothing)
+      where
+        compOpts = CompilerOptions ghcopts importDirs []
 
 ----------------------------------------------------------------
 
 initSession :: GhcMonad m => Build
             -> Options
-            -> [GHCOption]
-            -> [IncludeDir]
-            -> Maybe [Package]
+            -> CompilerOptions
             -> Bool
             -> m LogReader
-initSession build opt cmdOpts idirs mDepPkgs logging = do
+initSession build opt compOpts logging = do
     dflags0 <- getSessionDynFlags
     (dflags1,readLog) <- setupDynamicFlags dflags0
     _ <- setSessionDynFlags dflags1
     return readLog
   where
+    cmdOpts = ghcOptions compOpts
+    idirs   = includeDirs compOpts
+    depPkgs = depPackages compOpts
     ls = lineSeparator opt
     setupDynamicFlags df0 = do
         df1 <- modifyFlagsWithOpts df0 cmdOpts
-        let df2 = modifyFlags df1 idirs mDepPkgs (expandSplice opt) build
+        let df2 = modifyFlags df1 idirs depPkgs (expandSplice opt) build
         df3 <- modifyFlagsWithOpts df2 $ ghcOpts opt
         liftIO $ setLogger logging df3 ls
 
@@ -112,14 +115,14 @@ initializeFlags opt = do
 ----------------------------------------------------------------
 
 -- FIXME removing Options
-modifyFlags :: DynFlags -> [IncludeDir] -> Maybe [Package] -> Bool -> Build -> DynFlags
-modifyFlags d0 idirs mDepPkgs splice build
+modifyFlags :: DynFlags -> [IncludeDir] -> [Package] -> Bool -> Build -> DynFlags
+modifyFlags d0 idirs pepPkgs splice build
   | splice    = setSplice d4
   | otherwise = d4
   where
     d1 = d0 { importPaths = idirs }
     d2 = setFastOrNot d1 Fast
-    d3 = maybe d2 (Gap.addDevPkgs d2) mDepPkgs
+    d3 = Gap.addDevPkgs d2 pepPkgs
     d4 | build == CabalPkg = Gap.setCabalPkg d3
        | otherwise         = d3
 

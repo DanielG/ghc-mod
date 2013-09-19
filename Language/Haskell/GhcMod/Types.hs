@@ -91,13 +91,13 @@ data Cradle = Cradle {
 
 ----------------------------------------------------------------
 
--- | A single GHC option, as it would appear on the command line.
+-- | A single GHC command line option.
 type GHCOption  = String
 
--- | Include directories for modules
+-- | An include directory for modules.
 type IncludeDir = FilePath
 
--- | Package names
+-- | A package name.
 type Package    = String
 
 -- | GHC version in 'String'.
@@ -110,3 +110,10 @@ type Expression = String
 type ModuleString = String
 
 data CheckSpeed = Slow | Fast
+
+-- | Option information for GHC
+data CompilerOptions = CompilerOptions {
+    ghcOptions  :: [GHCOption]  -- ^ Command line options
+  , includeDirs :: [IncludeDir] -- ^ Include directories for modules
+  , depPackages :: [Package]    -- ^ Dependent package names
+  }

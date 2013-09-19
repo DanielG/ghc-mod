@@ -6,12 +6,14 @@ module Language.Haskell.GhcMod.Internal (
   , GHCOption
   , Package
   , IncludeDir
+  , CompilerOptions(..)
   -- * Cabal API
-  , fromCabalFile
+  , getCompilerOptions
   , parseCabalFile
   , cabalAllBuildInfo
   , cabalDependPackages
   , cabalSourceDirs
+  , cabalAllTargets
   -- * GHC API
   , canCheckFast
   -- * Getting 'DynFlags'
