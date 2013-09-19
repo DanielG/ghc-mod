@@ -17,6 +17,7 @@ import Control.Exception
 import Control.Monad
 import CoreMonad
 import Data.Maybe (isJust,fromJust)
+import Distribution.PackageDescription (PackageDescription)
 import DynFlags
 import Exception
 import GHC
@@ -24,8 +25,8 @@ import GHC.Paths (libdir)
 import Language.Haskell.GhcMod.CabalApi
 import Language.Haskell.GhcMod.ErrMsg
 import Language.Haskell.GhcMod.GHCChoice
-import Language.Haskell.GhcMod.Types
 import qualified Language.Haskell.GhcMod.Gap as Gap
+import Language.Haskell.GhcMod.Types
 import System.Exit
 import System.IO
 
@@ -60,7 +61,7 @@ data Build = CabalPkg | SingleFile deriving Eq
 -- | Initialize the 'DynFlags' relating to the compilation of a single
 -- file or GHC session according to the 'Cradle' and 'Options'
 -- provided.
-initializeFlagsWithCradle :: GhcMonad m =>  Options -> Cradle -> [GHCOption] -> Bool -> m LogReader
+initializeFlagsWithCradle :: GhcMonad m =>  Options -> Cradle -> [GHCOption] -> Bool -> m (LogReader, Maybe PackageDescription)
 initializeFlagsWithCradle opt cradle ghcopts logging
   | cabal     = withCabal |||> withoutCabal
   | otherwise = withoutCabal
@@ -70,9 +71,11 @@ initializeFlagsWithCradle opt cradle ghcopts logging
     withCabal = do
         pkgDesc <- liftIO $ parseCabalFile $ fromJust mCradleFile
         compOpts <- liftIO $ getCompilerOptions ghcopts cradle pkgDesc
-        initSession CabalPkg opt compOpts logging
-    withoutCabal =
-        initSession SingleFile opt compOpts logging
+        logger <- initSession CabalPkg opt compOpts logging
+        return (logger, Just pkgDesc)
+    withoutCabal = do
+        logger <- initSession SingleFile opt compOpts logging
+        return (logger, Nothing)
       where
         compOpts = CompilerOptions ghcopts importDirs []
 
