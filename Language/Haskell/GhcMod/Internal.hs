@@ -13,6 +13,7 @@ module Language.Haskell.GhcMod.Internal (
   , cabalAllBuildInfo
   , cabalDependPackages
   , cabalSourceDirs
+  , cabalAllTargets
   -- * GHC API
   , canCheckFast
   -- * Getting 'DynFlags'

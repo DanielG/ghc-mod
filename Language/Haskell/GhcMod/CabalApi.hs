@@ -6,6 +6,7 @@ module Language.Haskell.GhcMod.CabalApi (
   , cabalAllBuildInfo
   , cabalDependPackages
   , cabalSourceDirs
+  , cabalAllTargets
   , getGHCVersion
   ) where
 
@@ -14,6 +15,7 @@ import Control.Exception (throwIO)
 import Data.List (intercalate)
 import Data.Maybe (maybeToList)
 import Data.Set (fromList, toList)
+import Distribution.ModuleName
 import Distribution.Package (Dependency(Dependency)
                            , PackageName(PackageName)
                            , PackageIdentifier(pkgName))
@@ -124,6 +126,22 @@ cabalAllBuildInfo pd = libBI ++ execBI ++ testBI ++ benchBI
     execBI  = map buildInfo          $ executables pd
     testBI  = map testBuildInfo      $ testSuites pd
     benchBI = map benchmarkBuildInfo $ benchmarks pd
+
+----------------------------------------------------------------
+
+-- | Extracting all 'Module' 'FilePath's for libraries, executables,
+-- tests and benchmarks.
+cabalAllTargets :: PackageDescription -> ([FilePath],[FilePath],[FilePath],[FilePath])
+cabalAllTargets pd = targets
+  where
+    lib = case library pd of
+            Nothing -> []
+            Just l -> libModules l
+
+    targets =  (map toFilePath $ lib,
+               map modulePath                              $ executables pd,
+               map toFilePath $ concatMap testModules      $ testSuites  pd,
+               map toFilePath $ concatMap benchmarkModules $ benchmarks  pd)
 
 ----------------------------------------------------------------
 
