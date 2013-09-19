@@ -16,7 +16,7 @@ import Control.Applicative
 import Control.Exception
 import Control.Monad
 import CoreMonad
-import Data.Maybe (isJust)
+import Data.Maybe (isJust,fromJust)
 import DynFlags
 import Exception
 import GHC
@@ -65,9 +65,11 @@ initializeFlagsWithCradle opt cradle ghcopts logging
   | cabal     = withCabal |||> withoutCabal
   | otherwise = withoutCabal
   where
-    cabal = isJust $ cradleCabalFile cradle
+    mCradleFile = cradleCabalFile cradle
+    cabal = isJust mCradleFile
     withCabal = do
-        compOpts <- liftIO $ fromCabalFile ghcopts cradle
+        pkgDesc <- liftIO $ parseCabalFile $ fromJust mCradleFile
+        compOpts <- liftIO $ getCompilerOptions ghcopts cradle pkgDesc
         initSession CabalPkg opt compOpts logging
     withoutCabal =
         initSession SingleFile opt compOpts logging

@@ -1,7 +1,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 
 module Language.Haskell.GhcMod.CabalApi (
-    fromCabalFile
+    getCompilerOptions
   , parseCabalFile
   , cabalAllBuildInfo
   , cabalDependPackages
@@ -33,24 +33,15 @@ import System.FilePath
 
 ----------------------------------------------------------------
 
--- | Parsing a cabal file in 'Cradle' and returns
---   options for GHC, include directories for modules and
---   package names of dependency.
-fromCabalFile :: [GHCOption] -> Cradle -> IO CompilerOptions
-fromCabalFile ghcopts cradle =
-    parseCabalFile cfile >>= cookInfo ghcopts cradle
-  where
-    Just cfile = cradleCabalFile cradle
-
-cookInfo :: [GHCOption] -> Cradle -> PackageDescription -> IO CompilerOptions
-cookInfo ghcopts cradle cabal = do
+getCompilerOptions :: [GHCOption] -> Cradle -> PackageDescription -> IO CompilerOptions
+getCompilerOptions ghcopts cradle pkgDesc = do
     gopts <- getGHCOptions ghcopts cdir $ head buildInfos
     return $ CompilerOptions gopts idirs depPkgs
   where
     wdir       = cradleCurrentDir cradle
     Just cdir  = cradleCabalDir   cradle
     Just cfile = cradleCabalFile  cradle
-    buildInfos = cabalAllBuildInfo cabal
+    buildInfos = cabalAllBuildInfo pkgDesc
     idirs      = includeDirectories cdir wdir $ cabalSourceDirs buildInfos
     depPkgs    = removeThem problematicPackages $ removeMe cfile $ cabalDependPackages buildInfos
 
