@@ -6,12 +6,14 @@ module Language.Haskell.GhcMod.CabalApi (
   , cabalAllBuildInfo
   , cabalDependPackages
   , cabalSourceDirs
+  , cabalAllTargets
   ) where
 
 import Control.Applicative ((<$>))
 import Control.Exception (throwIO)
 import Data.Maybe (maybeToList)
 import Data.Set (fromList, toList)
+import Distribution.ModuleName (toFilePath)
 import Distribution.Package (Dependency(Dependency)
                            , PackageName(PackageName)
                            , PackageIdentifier(pkgName))
@@ -158,3 +160,19 @@ getGHC = do
     case mv of
         Nothing -> throwIO $ userError "ghc not found"
         Just v  -> return $ v
+
+----------------------------------------------------------------
+
+-- | Extracting all 'Module' 'FilePath's for libraries, executables,
+-- tests and benchmarks.
+cabalAllTargets :: PackageDescription -> ([FilePath],[FilePath],[FilePath],[FilePath])
+cabalAllTargets pd = targets
+  where
+    lib = case library pd of
+            Nothing -> []
+            Just l -> libModules l
+
+    targets = (map toFilePath $ lib,
+               map modulePath                              $ executables pd,
+               map toFilePath $ concatMap testModules      $ testSuites  pd,
+               map toFilePath $ concatMap benchmarkModules $ benchmarks  pd)
