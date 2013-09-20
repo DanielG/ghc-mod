@@ -33,6 +33,7 @@ import System.FilePath
 
 ----------------------------------------------------------------
 
+-- | Getting necessary 'CompilerOptions' from three information sources.
 getCompilerOptions :: [GHCOption] -> Cradle -> PackageDescription -> IO CompilerOptions
 getCompilerOptions ghcopts cradle pkgDesc = do
     gopts <- getGHCOptions ghcopts cdir $ head buildInfos
