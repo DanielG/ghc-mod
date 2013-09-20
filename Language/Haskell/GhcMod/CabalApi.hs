@@ -71,7 +71,9 @@ cabalBuildDirs = ["dist/build"]
 includeDirectories :: FilePath -> FilePath -> [FilePath] -> [FilePath]
 includeDirectories cdir wdir dirs = uniqueAndSort (extdirs ++ [cdir,wdir])
   where
-    extdirs = map (cdir </>) $ dirs ++ cabalBuildDirs
+    extdirs = map expand $ dirs ++ cabalBuildDirs
+    expand "."    = cdir
+    expand subdir = cdir </> subdir
 
 ----------------------------------------------------------------
 
