@@ -66,7 +66,7 @@ problematicPackages = [
 -- Include directories for modules
 
 cabalBuildDirs :: [FilePath]
-cabalBuildDirs = ["dist/build"]
+cabalBuildDirs = ["dist/build", "dist/build/autogen"]
 
 includeDirectories :: FilePath -> FilePath -> [FilePath] -> [FilePath]
 includeDirectories cdir wdir dirs = uniqueAndSort (extdirs ++ [cdir,wdir])
