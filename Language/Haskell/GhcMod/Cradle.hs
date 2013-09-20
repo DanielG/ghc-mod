@@ -12,6 +12,9 @@ import System.FilePath ((</>),takeDirectory)
 ----------------------------------------------------------------
 
 -- | Finding 'Cradle'.
+--   Find a cabal file by tracing ancestor directories.
+--   Find a sandbox according to a cabal sandbox config
+--   in a cabal directory.
 findCradle :: IO Cradle
 findCradle = do
     wdir <- getCurrentDirectory
