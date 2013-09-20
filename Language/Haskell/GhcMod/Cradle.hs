@@ -4,10 +4,10 @@ import Data.Char (isSpace)
 import Control.Applicative ((<$>))
 import Control.Exception as E (catch, throwIO, SomeException)
 import Control.Monad (filterM)
-import Data.List (isPrefixOf, isSuffixOf)
+import Data.List (isPrefixOf, isSuffixOf, tails)
 import Language.Haskell.GhcMod.Types
 import System.Directory (getCurrentDirectory, getDirectoryContents, doesFileExist)
-import System.FilePath ((</>),takeDirectory)
+import System.FilePath ((</>), takeDirectory, takeFileName)
 
 ----------------------------------------------------------------
 
@@ -22,21 +22,21 @@ findCradle = do
   where
     handler :: FilePath -> SomeException -> IO Cradle
     handler wdir _ = return Cradle {
-        cradleCurrentDir  = wdir
-      , cradleCabalDir    = Nothing
-      , cradleCabalFile   = Nothing
-      , cradlePackageConf = Nothing
+        cradleCurrentDir    = wdir
+      , cradleCabalDir      = Nothing
+      , cradleCabalFile     = Nothing
+      , cradlePackageDbOpts = []
       }
 
 findCradle' :: FilePath -> IO Cradle
 findCradle' wdir = do
     (cdir,cfile) <- cabalDir wdir
-    mPkgConf <- getPackageDbDir cdir
+    pkgDbOpts <- getPackageDbOpts cdir
     return Cradle {
-        cradleCurrentDir  = wdir
-      , cradleCabalDir    = Just cdir
-      , cradleCabalFile   = Just cfile
-      , cradlePackageConf = mPkgConf
+        cradleCurrentDir    = wdir
+      , cradleCabalDir      = Just cdir
+      , cradleCabalFile     = Just cfile
+      , cradlePackageDbOpts = pkgDbOpts
       }
 
 ----------------------------------------------------------------
@@ -81,11 +81,40 @@ pkgDbKeyLen :: Int
 pkgDbKeyLen = length pkgDbKey
 
 -- | Extract a package db directory from the sandbox config file.
-getPackageDbDir :: FilePath -> IO (Maybe FilePath)
-getPackageDbDir cdir = (Just <$> getPkgDb) `E.catch` handler
+getPackageDbOpts :: FilePath -> IO [GHCOption]
+getPackageDbOpts cdir = (sandboxArguments <$> getPkgDb ) `E.catch` handler
   where
     getPkgDb = extractValue . parse <$> readFile (cdir </> configFile)
     parse = head . filter ("package-db:" `isPrefixOf`) . lines
     extractValue = fst . break isSpace . dropWhile isSpace . drop pkgDbKeyLen
-    handler :: SomeException -> IO (Maybe FilePath)
-    handler _ = return Nothing
+    handler :: SomeException -> IO [GHCOption]
+    handler _ = return []
+
+-- | Adding necessary GHC options to the package db.
+--   Exception is thrown if the string argument is incorrect.
+--
+-- >>> sandboxArguments "/foo/bar/i386-osx-ghc-7.6.3-packages.conf.d"
+-- ["-no-user-package-db","-package-db","/foo/bar/i386-osx-ghc-7.6.3-packages.conf.d"]
+-- >>> sandboxArguments "/foo/bar/i386-osx-ghc-7.4.1-packages.conf.d"
+-- ["-no-user-package-conf","-package-conf","/foo/bar/i386-osx-ghc-7.4.1-packages.conf.d"]
+sandboxArguments :: FilePath -> [String]
+sandboxArguments pkgDb = [noUserPkgDbOpt, pkgDbOpt, pkgDb]
+  where
+    ver = extractGhcVer pkgDb
+    (pkgDbOpt,noUserPkgDbOpt)
+      | ver < 706 = ("-package-conf","-no-user-package-conf")
+      | otherwise = ("-package-db",  "-no-user-package-db")
+
+-- | Extracting GHC version from the path of package db.
+--   Exception is thrown if the string argument is incorrect.
+--
+-- >>> extractGhcVer "/foo/bar/i386-osx-ghc-7.6.3-packages.conf.d"
+-- 706
+extractGhcVer :: String -> Int
+extractGhcVer dir = ver
+  where
+    file = takeFileName dir
+    findVer = drop 4 . head . filter ("ghc-" `isPrefixOf`) . tails
+    (verStr1,_:left) = break (== '.') $ findVer file
+    (verStr2,_)      = break (== '.') left
+    ver = read verStr1 * 100 + read verStr2

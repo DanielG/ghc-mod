@@ -84,11 +84,9 @@ main = flip catches handlers $ do
     hSetEncoding stdout utf8
 -- #endif
     args <- getArgs
-    let (opt',cmdArg) = parseArgs argspec args
-    (strVer,ver) <- getGHCVersion
+    let (opt,cmdArg) = parseArgs argspec args
     cradle <- findCradle
-    let opt = adjustOpts opt' cradle ver
-        cmdArg0 = cmdArg !. 0
+    let cmdArg0 = cmdArg !. 0
         cmdArg1 = cmdArg !. 1
         cmdArg2 = cmdArg !. 2
         cmdArg3 = cmdArg !. 3
@@ -102,7 +100,7 @@ main = flip catches handlers $ do
       "list"   -> listModules opt
       "check"  -> checkSyntax opt cradle remainingArgs
       "expand" -> checkSyntax opt { expandSplice = True } cradle remainingArgs
-      "debug"  -> nArgs 1 $ debugInfo opt cradle strVer cmdArg1
+      "debug"  -> nArgs 1 $ debugInfo opt cradle cmdArg1
       "type"   -> nArgs 4 $ typeExpr opt cradle cmdArg1 cmdArg2 (read cmdArg3) (read cmdArg4)
       "info"   -> nArgs 3 infoExpr opt cradle cmdArg1 cmdArg2 cmdArg3
       "lint"   -> nArgs 1 withFile (lintSyntax opt) cmdArg1
@@ -145,13 +143,6 @@ main = flip catches handlers $ do
     xs !. idx
       | length xs <= idx = throw SafeList
       | otherwise = xs !! idx
-    adjustOpts opt cradle ver = case mPkgConf of
-            Nothing      -> opt
-            Just pkgConf -> opt {
-                ghcOpts = ghcPackageConfOptions ver pkgConf ++ ghcOpts opt
-              }
-      where
-        mPkgConf = cradlePackageConf cradle
 
 ----------------------------------------------------------------
 
@@ -166,9 +157,3 @@ preBrowsedModules = [
   , "Data.Maybe"
   , "System.IO"
   ]
-
-
-ghcPackageConfOptions :: Int -> String -> [String]
-ghcPackageConfOptions ver file
-  | ver >= 706 = ["-package-db",   file, "-no-user-package-db"]
-  | otherwise  = ["-package-conf", file, "-no-user-package-conf"]

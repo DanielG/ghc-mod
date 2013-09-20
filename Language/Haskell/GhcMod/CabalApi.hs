@@ -36,7 +36,7 @@ import System.FilePath
 -- | Getting necessary 'CompilerOptions' from three information sources.
 getCompilerOptions :: [GHCOption] -> Cradle -> PackageDescription -> IO CompilerOptions
 getCompilerOptions ghcopts cradle pkgDesc = do
-    gopts <- getGHCOptions ghcopts cdir $ head buildInfos
+    gopts <- getGHCOptions ghcopts cradle cdir $ head buildInfos
     return $ CompilerOptions gopts idirs depPkgs
   where
     wdir       = cradleCurrentDir cradle
@@ -96,12 +96,13 @@ parseCabalFile file = do
 
 ----------------------------------------------------------------
 
-getGHCOptions :: [GHCOption] -> FilePath -> BuildInfo -> IO [GHCOption]
-getGHCOptions ghcopts cdir binfo = do
+getGHCOptions :: [GHCOption] -> Cradle -> FilePath -> BuildInfo -> IO [GHCOption]
+getGHCOptions ghcopts cradle cdir binfo = do
     cabalCpp <- cabalCppOptions cdir
     let cpps = map ("-optP" ++) $ cppOptions binfo ++ cabalCpp
-    return $ ghcopts ++ exts ++ [lang] ++ libs ++ libDirs ++ cpps
+    return $ ghcopts ++ pkgDb ++ exts ++ [lang] ++ libs ++ libDirs ++ cpps
   where
+    pkgDb = cradlePackageDbOpts cradle
     lang = maybe "-XHaskell98" (("-X" ++) . display) $ defaultLanguage binfo
     libDirs = map ("-L" ++) $ extraLibDirs binfo
     exts = map (("-X" ++) . display) $ usedExtensions binfo

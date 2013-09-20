@@ -82,8 +82,8 @@ data Cradle = Cradle {
   , cradleCabalDir    :: Maybe FilePath
   -- | The file name of the found cabal file.
   , cradleCabalFile   :: Maybe FilePath
-  -- | The sandbox directory. (e.g. \"\/foo\/bar\/packages-\<ver\>.conf/\")
-  , cradlePackageConf :: Maybe FilePath
+  -- | The package db options. ([\"-no-user-package-db\",\"-package-db\",\"\/foo\/bar\/i386-osx-ghc-7.6.3-packages.conf.d\"])
+  , cradlePackageDbOpts :: [GHCOption]
   } deriving (Eq, Show)
 
 ----------------------------------------------------------------
