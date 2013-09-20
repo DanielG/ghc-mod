@@ -22,17 +22,7 @@ spec = do
                   , cradlePackageConf = Nothing
                   }
 
-        it "finds a cabal file" $ do
-            withDirectory "test/data/subdir1/subdir2" $ \dir -> do
-                res <- relativeCradle dir <$> findCradle
-                res `shouldBe` Cradle {
-                    cradleCurrentDir = "test" </> "data" </> "subdir1" </> "subdir2"
-                  , cradleCabalDir = Just ("test" </> "data")
-                  , cradleCabalFile = Just ("test" </> "data" </> "cabalapi.cabal")
-                  , cradlePackageConf = Nothing
-                  }
-
-        it "finds a sandbox" $ do
+        it "finds a cabal file and a sandbox" $ do
             withDirectory "test/data/subdir1/subdir2" $ \dir -> do
                 res <- relativeCradle dir <$> findCradle
                 res `shouldBe` Cradle {
@@ -40,17 +30,6 @@ spec = do
                   , cradleCabalDir = Just ("test" </> "data")
                   , cradleCabalFile = Just ("test" </> "data" </> "cabalapi.cabal")
                   , cradlePackageConf = Just ("test" </> "data" </> ".cabal-sandbox" </> "i386-osx-ghc-7.6.3-packages.conf.d")
-                  }
-
-        it "works even if no cabal and no sandbox exist" $ do
-            withDirectory "/" $ \dir -> do
-                curDir <- canonicalizePath "/"
-                res <- relativeCradle dir <$> findCradle
-                res `shouldBe` Cradle {
-                    cradleCurrentDir = curDir
-                  , cradleCabalDir = Nothing
-                  , cradleCabalFile = Nothing
-                  , cradlePackageConf = Nothing
                   }
 
 relativeCradle :: FilePath -> Cradle -> Cradle
