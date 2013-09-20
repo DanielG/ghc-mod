@@ -55,9 +55,6 @@ argspec = [ Option "l" ["tolisp"]
           , Option "d" ["detailed"]
             (NoArg (\opts -> opts { detailed = True }))
             "print detailed info"
-          , Option "s" ["sandbox"]
-            (ReqArg (\s opts -> opts { sandbox = Just s }) "path")
-            "specify a sandbox"
           , Option "b" ["boundary"]
             (ReqArg (\s opts -> opts { lineSeparator = LineSeparator s }) "sep")
             "specify line separator (default is Nul string)"
@@ -89,7 +86,7 @@ main = flip catches handlers $ do
     args <- getArgs
     let (opt',cmdArg) = parseArgs argspec args
     (strVer,ver) <- getGHCVersion
-    cradle <- findCradle (sandbox opt') strVer
+    cradle <- findCradle
     let opt = adjustOpts opt' cradle ver
         cmdArg0 = cmdArg !. 0
         cmdArg1 = cmdArg !. 1

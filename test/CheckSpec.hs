@@ -12,26 +12,24 @@ spec = do
     describe "checkSyntax" $ do
         it "can check even if an executable depends on its library" $ do
             withDirectory_ "test/data/ghc-mod-check" $ do
-                (strVer,_) <- getGHCVersion
-                cradle <- findCradle Nothing strVer
+                cradle <- findCradle
                 res <- checkSyntax defaultOptions cradle ["main.hs"]
                 res `shouldBe` "main.hs:5:1:Warning: Top-level binding with no type signature: main :: IO ()\NUL\n"
 
         it "can check even if a test module imports another test module located at different directory" $ do
             withDirectory_ "test/data/check-test-subdir" $ do
-                cradle <- getGHCVersion >>= findCradle Nothing . fst
+                cradle <- findCradle
                 res <- checkSyntax defaultOptions cradle ["test/Bar/Baz.hs"]
                 res `shouldSatisfy` (("test" </> "Foo.hs:3:1:Warning: Top-level binding with no type signature: foo :: [Char]\NUL\n") `isSuffixOf`)
 
         it "can detect mutually imported modules" $ do
             withDirectory_ "test/data" $ do
-                (strVer,_) <- getGHCVersion
-                cradle <- findCradle Nothing strVer
+                cradle <- findCradle
                 res <- checkSyntax defaultOptions cradle ["Mutual1.hs"]
                 res `shouldSatisfy` ("Module imports form a cycle" `isInfixOf`)
 
         it "can check a module using QuasiQuotes" $ do
             withDirectory_ "test/data" $ do
-                cradle <- getGHCVersion >>= findCradle Nothing . fst
+                cradle <- findCradle
                 res <- checkSyntax defaultOptions cradle ["Baz.hs"]
                 res `shouldSatisfy` ("Baz.hs:5:1:Warning:" `isPrefixOf`)

@@ -8,7 +8,7 @@ import Dir
 checkFast :: String -> String -> IO ()
 checkFast file ans = withDirectory_ "test/data" $ do
     (strVer,_) <- getGHCVersion
-    cradle <- findCradle Nothing strVer
+    cradle <- findCradle
     res <- debugInfo defaultOptions cradle strVer file
     lines res `shouldContain` [ans]
 

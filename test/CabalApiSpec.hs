@@ -21,7 +21,7 @@ spec = do
     describe "getCompilerOptions" $ do
         it "gets necessary CompilerOptions" $ do
             withDirectory "test/data/subdir1/subdir2" $ \dir -> do
-                cradle <- findCradle Nothing "7.6.3"
+                cradle <- findCradle
                 pkgDesc <- parseCabalFile $ fromJust $ cradleCabalFile cradle
                 res <- getCompilerOptions [] cradle pkgDesc
                 let res' = res { includeDirs = map (toRelativeDir dir) (includeDirs res) }

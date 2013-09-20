@@ -19,8 +19,6 @@ data Options = Options {
   , detailed      :: Bool
   -- | Whether or not Template Haskell should be expanded.
   , expandSplice  :: Bool
-  -- | The sandbox directory.
-  , sandbox       :: Maybe FilePath
   -- | Line separator string.
   , lineSeparator :: LineSeparator
   }
@@ -34,7 +32,6 @@ defaultOptions = Options {
   , operators     = False
   , detailed      = False
   , expandSplice  = False
-  , sandbox       = Nothing
   , lineSeparator = LineSeparator "\0"
   }
 
