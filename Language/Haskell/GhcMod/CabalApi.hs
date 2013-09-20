@@ -35,6 +35,7 @@ import System.FilePath
 
 ----------------------------------------------------------------
 
+-- | Getting necessary 'CompilerOptions' from three information sources.
 getCompilerOptions :: [GHCOption] -> Cradle -> PackageDescription -> IO CompilerOptions
 getCompilerOptions ghcopts cradle pkgDesc = do
     gopts <- getGHCOptions ghcopts cdir $ head buildInfos
@@ -72,7 +73,9 @@ cabalBuildDirs = ["dist/build"]
 includeDirectories :: FilePath -> FilePath -> [FilePath] -> [FilePath]
 includeDirectories cdir wdir dirs = uniqueAndSort (extdirs ++ [cdir,wdir])
   where
-    extdirs = map (cdir </>) $ dirs ++ cabalBuildDirs
+    extdirs = map expand $ dirs ++ cabalBuildDirs
+    expand "."    = cdir
+    expand subdir = cdir </> subdir
 
 ----------------------------------------------------------------
 

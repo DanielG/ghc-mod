@@ -207,6 +207,7 @@ setCabalPkg dflag = dopt_set dflag Opt_BuildingCabalPackage
 ----------------------------------------------------------------
 
 addDevPkgs :: DynFlags -> [Package] -> DynFlags
+addDevPkgs df []   = df
 addDevPkgs df pkgs = df''
   where
 #if __GLASGOW_HASKELL__ >= 707

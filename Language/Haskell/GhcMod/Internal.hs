@@ -8,8 +8,8 @@ module Language.Haskell.GhcMod.Internal (
   , IncludeDir
   , CompilerOptions(..)
   -- * Cabal API
-  , getCompilerOptions
   , parseCabalFile
+  , getCompilerOptions
   , cabalAllBuildInfo
   , cabalDependPackages
   , cabalSourceDirs

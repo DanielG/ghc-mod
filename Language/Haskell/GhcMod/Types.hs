@@ -116,4 +116,4 @@ data CompilerOptions = CompilerOptions {
     ghcOptions  :: [GHCOption]  -- ^ Command line options
   , includeDirs :: [IncludeDir] -- ^ Include directories for modules
   , depPackages :: [Package]    -- ^ Dependent package names
-  }
+  } deriving (Eq, Show)
