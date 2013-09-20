@@ -4,9 +4,6 @@ module Language.Haskell.GhcMod (
   -- * Cradle
     Cradle(..)
   , findCradle
-  -- * GHC version
-  , GHCVersion
-  , getGHCVersion
   -- * Options
   , Options(..)
   , LineSeparator(..)
@@ -48,4 +45,3 @@ import Language.Haskell.GhcMod.Lang
 import Language.Haskell.GhcMod.Lint
 import Language.Haskell.GhcMod.List
 import Language.Haskell.GhcMod.Types
-import Language.Haskell.GhcMod.CabalApi

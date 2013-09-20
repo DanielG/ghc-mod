@@ -97,9 +97,6 @@ type IncludeDir = FilePath
 -- | A package name.
 type Package    = String
 
--- | GHC version in 'String'.
-type GHCVersion = String
-
 -- | Haskell expression.
 type Expression = String
 

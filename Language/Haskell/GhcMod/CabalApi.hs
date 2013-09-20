@@ -6,12 +6,10 @@ module Language.Haskell.GhcMod.CabalApi (
   , cabalAllBuildInfo
   , cabalDependPackages
   , cabalSourceDirs
-  , getGHCVersion
   ) where
 
 import Control.Applicative ((<$>))
 import Control.Exception (throwIO)
-import Data.List (intercalate)
 import Data.Maybe (maybeToList)
 import Data.Set (fromList, toList)
 import Distribution.Package (Dependency(Dependency)
@@ -26,7 +24,7 @@ import Distribution.Simple.Program.Types (programName, programFindVersion)
 import Distribution.System (buildPlatform)
 import Distribution.Text (display)
 import Distribution.Verbosity (silent)
-import Distribution.Version (versionBranch, Version)
+import Distribution.Version (Version)
 import Language.Haskell.GhcMod.Types
 import System.Directory (doesFileExist)
 import System.FilePath
@@ -150,18 +148,6 @@ uniqueAndSort :: [String] -> [String]
 uniqueAndSort = toList . fromList
 
 ----------------------------------------------------------------
-
--- | Getting GHC version. 7.6.3 becames 706 in the second of the result.
-getGHCVersion :: IO (GHCVersion, Int)
-getGHCVersion = toTupple <$> getGHC
-  where
-    toTupple v
-      | length vs < 2 = (verstr, 0)
-      | otherwise     = (verstr, ver)
-      where
-        vs = versionBranch v
-        ver = (vs !! 0) * 100 + (vs !! 1)
-        verstr = intercalate "." . map show $ vs
 
 getGHCId :: IO CompilerId
 getGHCId = CompilerId GHC <$> getGHC
