@@ -1,7 +1,6 @@
 module CradleSpec where
 
 import Control.Applicative
-import Data.List (isPrefixOf)
 import Language.Haskell.GhcMod
 import System.Directory (canonicalizePath)
 import System.FilePath (addTrailingPathSeparator, (</>))
@@ -65,12 +64,3 @@ relativeCradle dir cradle = Cradle {
   , cradleCabalFile   = toRelativeDir dir <$> cradleCabalFile   cradle
   , cradlePackageConf = toRelativeDir dir <$> cradlePackageConf cradle
   }
-
-
-toRelativeDir :: FilePath -> FilePath -> FilePath
-toRelativeDir dir file
-  | dir' `isPrefixOf` file = drop len file
-  | otherwise              = file
-  where
-    dir' = addTrailingPathSeparator dir
-    len = length dir'

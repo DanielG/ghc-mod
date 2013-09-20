@@ -4,14 +4,28 @@ module CabalApiSpec where
 
 import Control.Applicative
 import Control.Exception
+import Data.Maybe
 import Language.Haskell.GhcMod.CabalApi
+import Language.Haskell.GhcMod.Cradle
+import Language.Haskell.GhcMod.Types
 import Test.Hspec
+
+import Dir
 
 spec :: Spec
 spec = do
     describe "parseCabalFile" $ do
         it "throws an exception if the cabal file is broken" $ do
             parseCabalFile "test/data/broken-cabal/broken.cabal" `shouldThrow` (\(_::IOException) -> True)
+
+    describe "getCompilerOptions" $ do
+        it "gets necessary CompilerOptions" $ do
+            withDirectory "test/data/subdir1/subdir2" $ \dir -> do
+                cradle <- findCradle Nothing "7.6.3"
+                pkgDesc <- parseCabalFile $ fromJust $ cradleCabalFile cradle
+                res <- getCompilerOptions [] cradle pkgDesc
+                let res' = res { includeDirs = map (toRelativeDir dir) (includeDirs res) }
+                res' `shouldBe` CompilerOptions {ghcOptions = ["-XHaskell98"], includeDirs = ["test/data","test/data/dist/build","test/data/subdir1/subdir2","test/data/test"], depPackages = ["Cabal","base","template-haskell"]}
 
     describe "cabalDependPackages" $ do
         it "extracts dependent packages" $ do
@@ -22,6 +36,9 @@ spec = do
         it "extracts all hs-source-dirs" $ do
             dirs <- cabalSourceDirs . cabalAllBuildInfo <$> parseCabalFile "test/data/check-test-subdir/check-test-subdir.cabal"
             dirs `shouldBe` ["src", "test"]
+        it "extracts all hs-source-dirs including \".\"" $ do
+            dirs <- cabalSourceDirs . cabalAllBuildInfo <$> parseCabalFile "test/data/cabalapi.cabal"
+            dirs `shouldBe` [".", "test"]
 
     describe "cabalAllBuildInfo" $ do
         it "extracts build info" $ do
