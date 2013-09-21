@@ -28,14 +28,17 @@ Extra-Source-Files:     ChangeLog
                         test/data/*.hs
                         test/data/cabal.sandbox.config
                         test/data/.cabal-sandbox/i386-osx-ghc-7.6.3-packages.conf.d/dummy
-                        test/data/ghc-mod-check/*.hs
-                        test/data/ghc-mod-check/*.cabal
-                        test/data/ghc-mod-check/Data/*.hs
-                        test/data/subdir1/subdir2/dummy
+                        test/data/broken-cabal/*.cabal
+                        test/data/broken-sandbox/*.cabal
+                        test/data/broken-sandbox/cabal.sandbox.config
                         test/data/check-test-subdir/*.cabal
+                        test/data/check-test-subdir/src/Check/Test/*.hs
                         test/data/check-test-subdir/test/*.hs
                         test/data/check-test-subdir/test/Bar/*.hs
-                        test/data/check-test-subdir/src/Check/Test/*.hs
+                        test/data/ghc-mod-check/*.cabal
+                        test/data/ghc-mod-check/*.hs
+                        test/data/ghc-mod-check/Data/*.hs
+                        test/data/subdir1/subdir2/dummy
 
 Library
   Default-Language:     Haskell2010

@@ -22,7 +22,6 @@ spec = do
                   , cradleCabalFile     = Nothing
                   , cradlePackageDbOpts = []
                   }
-
         it "finds a cabal file and a sandbox" $ do
             withDirectory "test/data/subdir1/subdir2" $ \dir -> do
                 res <- relativeCradle dir <$> findCradle
@@ -32,6 +31,16 @@ spec = do
                   , cradleCabalFile     = Just ("test" </> "data" </> "cabalapi.cabal")
                   , cradlePackageDbOpts = ["-no-user-package-db", "-package-db", "test" </> "data" </> ".cabal-sandbox" </> "i386-osx-ghc-7.6.3-packages.conf.d"]
                   }
+        it "works even if a sandbox config file is broken" $ do
+            withDirectory "test/data/broken-sandbox" $ \dir -> do
+                res <- relativeCradle dir <$> findCradle
+                res `shouldBe` Cradle {
+                    cradleCurrentDir    = "test" </> "data" </> "broken-sandbox"
+                  , cradleCabalDir      = Just ("test" </> "data" </> "broken-sandbox")
+                  , cradleCabalFile     = Just ("test" </> "data" </> "broken-sandbox" </> "dummy.cabal")
+                  , cradlePackageDbOpts = []
+                  }
+
     describe "getPackageDbDir" $ do
         it "parses a config file and extracts package db" $ do
             pkgDb <- getPackageDbDir "test/data/cabal.sandbox.config"
