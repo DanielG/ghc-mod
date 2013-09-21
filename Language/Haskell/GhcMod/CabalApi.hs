@@ -13,7 +13,7 @@ import Control.Applicative ((<$>))
 import Control.Exception (throwIO)
 import Data.Maybe (maybeToList)
 import Data.Set (fromList, toList)
-import Distribution.ModuleName (toFilePath)
+import Distribution.ModuleName (ModuleName,toFilePath)
 import Distribution.Package (Dependency(Dependency)
                            , PackageName(PackageName)
                            , PackageIdentifier(pkgName))
@@ -165,14 +165,26 @@ getGHC = do
 
 -- | Extracting all 'Module' 'FilePath's for libraries, executables,
 -- tests and benchmarks.
-cabalAllTargets :: PackageDescription -> ([FilePath],[FilePath],[FilePath],[FilePath])
+cabalAllTargets :: PackageDescription -> ([String],[String],[String],[String])
 cabalAllTargets pd = targets
   where
     lib = case library pd of
             Nothing -> []
             Just l -> libModules l
 
-    targets = (map toFilePath $ lib,
-               map modulePath                              $ executables pd,
-               map toFilePath $ concatMap testModules      $ testSuites  pd,
-               map toFilePath $ concatMap benchmarkModules $ benchmarks  pd)
+    targets = (map toModuleString $ lib,
+               map (fromFilePath . modulePath)                 $ executables pd,
+               -- map toModuleString $ concatMap testModules      $ testSuites  pd,
+               concatMap getTestTargets $ map testInterface    $ testSuites  pd,
+               map toModuleString $ concatMap benchmarkModules $ benchmarks  pd)
+
+    toModuleString :: ModuleName -> String
+    toModuleString mn = fromFilePath $ toFilePath mn
+
+    fromFilePath :: FilePath -> String
+    fromFilePath fp = map (\c -> if c=='/' then '.' else c) fp
+
+    getTestTargets :: TestSuiteInterface -> [String]
+    getTestTargets (TestSuiteExeV10 _ filePath)   = [fromFilePath filePath]
+    getTestTargets (TestSuiteLibV09 _ moduleName) = [toModuleString moduleName]
+    getTestTargets (TestSuiteUnsupported _)       = []
