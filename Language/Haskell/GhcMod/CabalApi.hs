@@ -169,15 +169,15 @@ getGHC = do
 -- tests and benchmarks.
 cabalAllTargets :: PackageDescription -> IO ([String],[String],[String],[String])
 cabalAllTargets pd = do
-    exeTargets <- mapM getExecutableTarget $ executables pd
-    return (libTargets,concat exeTargets,testTargets,benchTargets)
+    exeTargets  <- mapM getExecutableTarget $ executables pd
+    testTargets <- mapM getTestTarget $ testSuites pd
+    return (libTargets,concat exeTargets,concat testTargets,benchTargets)
   where
     lib = case library pd of
             Nothing -> []
             Just l -> libModules l
 
     libTargets = map toModuleString $ lib
-    testTargets = concatMap getTestTargets $ map testInterface    $ testSuites  pd
     benchTargets = map toModuleString $ concatMap benchmarkModules $ benchmarks  pd
 
     toModuleString :: ModuleName -> String
@@ -186,10 +186,14 @@ cabalAllTargets pd = do
     fromFilePath :: FilePath -> String
     fromFilePath fp = map (\c -> if c=='/' then '.' else c) fp
 
-    getTestTargets :: TestSuiteInterface -> [String]
-    getTestTargets (TestSuiteExeV10 _ filePath)   = [fromFilePath filePath]
-    getTestTargets (TestSuiteLibV09 _ moduleName) = [toModuleString moduleName]
-    getTestTargets (TestSuiteUnsupported _)       = []
+    getTestTarget :: TestSuite -> IO [String]
+    getTestTarget ts =
+       case testInterface ts of
+        (TestSuiteExeV10 _ filePath) -> do
+          let maybeTests = [p </> e | p <- hsSourceDirs $ testBuildInfo ts, e <- [filePath]]
+          liftIO $ filterM doesFileExist maybeTests
+        (TestSuiteLibV09 _ moduleName) -> return [toModuleString moduleName]
+        (TestSuiteUnsupported _)       -> return []
 
     getExecutableTarget :: Executable -> IO [String]
     getExecutableTarget exe = do
