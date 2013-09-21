@@ -1,7 +1,8 @@
 module CradleSpec where
 
 import Control.Applicative
-import Language.Haskell.GhcMod
+import Language.Haskell.GhcMod.Cradle
+import Language.Haskell.GhcMod.Types
 import System.Directory (canonicalizePath)
 import System.FilePath ((</>))
 import Test.Hspec
@@ -31,6 +32,13 @@ spec = do
                   , cradleCabalFile     = Just ("test" </> "data" </> "cabalapi.cabal")
                   , cradlePackageDbOpts = ["-no-user-package-db", "-package-db", "test" </> "data" </> ".cabal-sandbox" </> "i386-osx-ghc-7.6.3-packages.conf.d"]
                   }
+    describe "getPackageDbDir" $ do
+        it "parses a config file and extracts package db" $ do
+            pkgDb <- getPackageDbDir "test/data/cabal.sandbox.config"
+            pkgDb `shouldBe` "/Users/kazu/work/ghc-mod/test/data/.cabal-sandbox/i386-osx-ghc-7.6.3-packages.conf.d"
+
+        it "throws an error if a config file is broken" $ do
+            getPackageDbDir "test/data/bad.config" `shouldThrow` anyException
 
 relativeCradle :: FilePath -> Cradle -> Cradle
 relativeCradle dir cradle = Cradle {

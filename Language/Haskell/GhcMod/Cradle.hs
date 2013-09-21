@@ -1,4 +1,6 @@
-module Language.Haskell.GhcMod.Cradle (findCradle) where
+{-# LANGUAGE BangPatterns #-}
+
+module Language.Haskell.GhcMod.Cradle (findCradle, getPackageDbDir) where
 
 import Data.Char (isSpace)
 import Control.Applicative ((<$>))
@@ -80,15 +82,24 @@ pkgDbKey = "package-db:"
 pkgDbKeyLen :: Int
 pkgDbKeyLen = length pkgDbKey
 
--- | Extract a package db directory from the sandbox config file.
+-- | Obtaining GHC options relating to a package db directory
 getPackageDbOpts :: FilePath -> IO [GHCOption]
-getPackageDbOpts cdir = (sandboxArguments <$> getPkgDb ) `E.catch` handler
+getPackageDbOpts cdir = (sandboxArguments <$> getPkgDb) `E.catch` handler
   where
-    getPkgDb = extractValue . parse <$> readFile (cdir </> configFile)
-    parse = head . filter ("package-db:" `isPrefixOf`) . lines
-    extractValue = fst . break isSpace . dropWhile isSpace . drop pkgDbKeyLen
+    getPkgDb = getPackageDbDir (cdir </> configFile)
     handler :: SomeException -> IO [GHCOption]
     handler _ = return []
+
+-- | Extract a package db directory from the sandbox config file.
+--   Exception is thrown if the sandbox config file is broken.
+getPackageDbDir :: FilePath -> IO FilePath
+getPackageDbDir sconf = do
+    -- Be strict to ensure that an error can be caught.
+    !path <- extractValue . parse <$> readFile sconf
+    return path
+  where
+    parse = head . filter ("package-db:" `isPrefixOf`) . lines
+    extractValue = fst . break isSpace . dropWhile isSpace . drop pkgDbKeyLen
 
 -- | Adding necessary GHC options to the package db.
 --   Exception is thrown if the string argument is incorrect.
