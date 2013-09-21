@@ -29,7 +29,7 @@ spec = do
                     cradleCurrentDir    = "test" </> "data" </> "subdir1" </> "subdir2"
                   , cradleCabalDir      = Just ("test" </> "data")
                   , cradleCabalFile     = Just ("test" </> "data" </> "cabalapi.cabal")
-                  , cradlePackageDbOpts = ["-no-user-package-db", "-package-db", "test" </> "data" </> ".cabal-sandbox" </> "i386-osx-ghc-7.6.3-packages.conf.d"]
+                  , cradlePackageDbOpts = ["-no-user-package-db", "-package-db", "test" </> "data" </> ".cabal-sandbox" </> "/home/me/work/ghc-mod/test/data/.cabal-sandbox/i386-osx-ghc-7.6.3-packages.conf.d"]
                   }
         it "works even if a sandbox config file is broken" $ do
             withDirectory "test/data/broken-sandbox" $ \dir -> do
@@ -44,7 +44,7 @@ spec = do
     describe "getPackageDbDir" $ do
         it "parses a config file and extracts package db" $ do
             pkgDb <- getPackageDbDir "test/data/cabal.sandbox.config"
-            pkgDb `shouldBe` "/Users/kazu/work/ghc-mod/test/data/.cabal-sandbox/i386-osx-ghc-7.6.3-packages.conf.d"
+            pkgDb `shouldBe` "/home/me/work/ghc-mod/test/data/.cabal-sandbox/i386-osx-ghc-7.6.3-packages.conf.d"
 
         it "throws an error if a config file is broken" $ do
             getPackageDbDir "test/data/bad.config" `shouldThrow` anyException

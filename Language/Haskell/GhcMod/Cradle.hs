@@ -1,6 +1,10 @@
 {-# LANGUAGE BangPatterns #-}
 
-module Language.Haskell.GhcMod.Cradle (findCradle, getPackageDbDir) where
+module Language.Haskell.GhcMod.Cradle (
+    findCradle
+  , findCradleWithoutSandbox
+  , getPackageDbDir
+  ) where
 
 import Data.Char (isSpace)
 import Control.Applicative ((<$>))
@@ -40,6 +44,12 @@ findCradle' wdir = do
       , cradleCabalFile     = Just cfile
       , cradlePackageDbOpts = pkgDbOpts
       }
+
+-- Just for testing
+findCradleWithoutSandbox :: IO Cradle
+findCradleWithoutSandbox = do
+    cradle <- findCradle
+    return cradle { cradlePackageDbOpts = [] }
 
 ----------------------------------------------------------------
 
