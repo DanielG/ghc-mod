@@ -11,6 +11,8 @@ module Language.Haskell.GhcMod.CabalApi (
 
 import Control.Applicative ((<$>))
 import Control.Exception (throwIO)
+import Control.Monad (filterM)
+import CoreMonad (liftIO)
 import Data.Maybe (maybeToList)
 import Data.Set (fromList, toList)
 import Distribution.ModuleName (ModuleName,toFilePath)
@@ -165,18 +167,18 @@ getGHC = do
 
 -- | Extracting all 'Module' 'FilePath's for libraries, executables,
 -- tests and benchmarks.
-cabalAllTargets :: PackageDescription -> ([String],[String],[String],[String])
-cabalAllTargets pd = targets
+cabalAllTargets :: PackageDescription -> IO ([String],[String],[String],[String])
+cabalAllTargets pd = do
+    exeTargets <- mapM getExecutableTarget $ executables pd
+    return (libTargets,concat exeTargets,testTargets,benchTargets)
   where
     lib = case library pd of
             Nothing -> []
             Just l -> libModules l
 
-    targets = (map toModuleString $ lib,
-               map (fromFilePath . modulePath)                 $ executables pd,
-               -- map toModuleString $ concatMap testModules      $ testSuites  pd,
-               concatMap getTestTargets $ map testInterface    $ testSuites  pd,
-               map toModuleString $ concatMap benchmarkModules $ benchmarks  pd)
+    libTargets = map toModuleString $ lib
+    testTargets = concatMap getTestTargets $ map testInterface    $ testSuites  pd
+    benchTargets = map toModuleString $ concatMap benchmarkModules $ benchmarks  pd
 
     toModuleString :: ModuleName -> String
     toModuleString mn = fromFilePath $ toFilePath mn
@@ -188,3 +190,9 @@ cabalAllTargets pd = targets
     getTestTargets (TestSuiteExeV10 _ filePath)   = [fromFilePath filePath]
     getTestTargets (TestSuiteLibV09 _ moduleName) = [toModuleString moduleName]
     getTestTargets (TestSuiteUnsupported _)       = []
+
+    getExecutableTarget :: Executable -> IO [String]
+    getExecutableTarget exe = do
+      let maybeExes = [p </> e | p <- hsSourceDirs $ buildInfo exe, e <- [modulePath exe]]
+      liftIO $ filterM doesFileExist maybeExes
+
