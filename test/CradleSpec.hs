@@ -54,5 +54,5 @@ relativeCradle dir cradle = Cradle {
     cradleCurrentDir    = toRelativeDir dir  $  cradleCurrentDir    cradle
   , cradleCabalDir      = toRelativeDir dir <$> cradleCabalDir      cradle
   , cradleCabalFile     = toRelativeDir dir <$> cradleCabalFile     cradle
-  , cradlePackageDbOpts = map (toRelativeDir dir) (cradlePackageDbOpts cradle)
+  , cradlePackageDbOpts = cradlePackageDbOpts cradle
   }
