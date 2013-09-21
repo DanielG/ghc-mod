@@ -1,4 +1,7 @@
-2013-09-16 v3.1.0
+2013-09-21 v3.1.1
+	* Making Cradle strict.
+
+2013-09-21 v3.1.0
 	* API breaks backward compatibility.
 	* Supporting sandbox sharing.
 
