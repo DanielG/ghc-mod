@@ -11,9 +11,11 @@ module Language.Haskell.GhcMod.CabalApi (
 
 import Control.Applicative ((<$>))
 import Control.Exception (throwIO)
+import Control.Monad (filterM)
+import CoreMonad (liftIO)
 import Data.Maybe (maybeToList)
 import Data.Set (fromList, toList)
-import Distribution.ModuleName (toFilePath)
+import Distribution.ModuleName (ModuleName,toFilePath)
 import Distribution.Package (Dependency(Dependency)
                            , PackageName(PackageName)
                            , PackageIdentifier(pkgName))
@@ -165,14 +167,36 @@ getGHC = do
 
 -- | Extracting all 'Module' 'FilePath's for libraries, executables,
 -- tests and benchmarks.
-cabalAllTargets :: PackageDescription -> ([FilePath],[FilePath],[FilePath],[FilePath])
-cabalAllTargets pd = targets
+cabalAllTargets :: PackageDescription -> IO ([String],[String],[String],[String])
+cabalAllTargets pd = do
+    exeTargets  <- mapM getExecutableTarget $ executables pd
+    testTargets <- mapM getTestTarget $ testSuites pd
+    return (libTargets,concat exeTargets,concat testTargets,benchTargets)
   where
     lib = case library pd of
             Nothing -> []
             Just l -> libModules l
 
-    targets = (map toFilePath $ lib,
-               map modulePath                              $ executables pd,
-               map toFilePath $ concatMap testModules      $ testSuites  pd,
-               map toFilePath $ concatMap benchmarkModules $ benchmarks  pd)
+    libTargets = map toModuleString $ lib
+    benchTargets = map toModuleString $ concatMap benchmarkModules $ benchmarks  pd
+
+    toModuleString :: ModuleName -> String
+    toModuleString mn = fromFilePath $ toFilePath mn
+
+    fromFilePath :: FilePath -> String
+    fromFilePath fp = map (\c -> if c=='/' then '.' else c) fp
+
+    getTestTarget :: TestSuite -> IO [String]
+    getTestTarget ts =
+       case testInterface ts of
+        (TestSuiteExeV10 _ filePath) -> do
+          let maybeTests = [p </> e | p <- hsSourceDirs $ testBuildInfo ts, e <- [filePath]]
+          liftIO $ filterM doesFileExist maybeTests
+        (TestSuiteLibV09 _ moduleName) -> return [toModuleString moduleName]
+        (TestSuiteUnsupported _)       -> return []
+
+    getExecutableTarget :: Executable -> IO [String]
+    getExecutableTarget exe = do
+      let maybeExes = [p </> e | p <- hsSourceDirs $ buildInfo exe, e <- [modulePath exe]]
+      liftIO $ filterM doesFileExist maybeExes
+
