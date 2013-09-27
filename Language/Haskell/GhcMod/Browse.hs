@@ -1,6 +1,7 @@
 module Language.Haskell.GhcMod.Browse (browseModule, browse) where
 
 import Control.Applicative
+import Control.Monad (void)
 import Data.Char
 import Data.List
 import Data.Maybe (fromMaybe)
@@ -21,9 +22,10 @@ import Var
 --   If 'detailed' is 'True', their types are also obtained.
 --   If 'operators' is 'True', operators are also returned.
 browseModule :: Options
+             -> Cradle
              -> ModuleString -- ^ A module name. (e.g. \"Data.List\")
              -> IO String
-browseModule opt mdlName = convert opt . format <$> withGHCDummyFile (browse opt mdlName)
+browseModule opt cradle mdlName = convert opt . format <$> withGHCDummyFile (browse opt cradle mdlName)
   where
     format
       | operators opt = formatOps
@@ -41,10 +43,11 @@ browseModule opt mdlName = convert opt . format <$> withGHCDummyFile (browse opt
 --   If 'detailed' is 'True', their types are also obtained.
 --   If 'operators' is 'True', operators are also returned.
 browse :: Options
+       -> Cradle
        -> ModuleString -- ^ A module name. (e.g. \"Data.List\")
        -> Ghc [String]
-browse opt mdlName = do
-    initializeFlags opt
+browse opt cradle mdlName = do
+    void $ initializeFlagsWithCradle opt cradle [] False
     getModule >>= getModuleInfo >>= listExports
   where
     getModule = findModule (mkModuleName mdlName) Nothing
