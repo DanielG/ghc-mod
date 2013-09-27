@@ -97,7 +97,7 @@ main = flip catches handlers $ do
                         else throw (TooManyArguments cmdArg0)
     res <- case cmdArg0 of
       "browse" -> concat <$> mapM (browseModule opt) remainingArgs
-      "list"   -> listModules opt
+      "list"   -> listModules opt cradle
       "check"  -> checkSyntax opt cradle remainingArgs
       "expand" -> checkSyntax opt { expandSplice = True } cradle remainingArgs
       "debug"  -> nArgs 1 $ debugInfo opt cradle cmdArg1
@@ -107,7 +107,7 @@ main = flip catches handlers $ do
       "lang"   -> listLanguages opt
       "flag"   -> listFlags opt
       "boot"   -> do
-         mods  <- listModules opt
+         mods  <- listModules opt cradle
          langs <- listLanguages opt
          flags <- listFlags opt
          pre   <- concat <$> mapM (browseModule opt) preBrowsedModules
