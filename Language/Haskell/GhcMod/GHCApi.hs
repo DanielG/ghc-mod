@@ -116,13 +116,13 @@ initializeFlags opt = do
 
 -- FIXME removing Options
 modifyFlags :: DynFlags -> [IncludeDir] -> [Package] -> Bool -> Build -> DynFlags
-modifyFlags d0 idirs pepPkgs splice build
+modifyFlags d0 idirs depPkgs splice build
   | splice    = setSplice d4
   | otherwise = d4
   where
     d1 = d0 { importPaths = idirs }
     d2 = setFastOrNot d1 Fast
-    d3 = Gap.addDevPkgs d2 pepPkgs
+    d3 = Gap.addDevPkgs d2 depPkgs
     d4 | build == CabalPkg = Gap.setCabalPkg d3
        | otherwise         = d3
 
