@@ -1,4 +1,4 @@
-module Language.Haskell.GhcMod.Browse (browseModule, browse) where
+module Language.Haskell.GhcMod.Browse (browseModule, browse, browseInternal) where
 
 import Control.Applicative
 import Control.Monad (void)
@@ -48,13 +48,16 @@ browse :: Options
        -> Ghc [String]
 browse opt cradle mdlName = do
     void $ initializeFlagsWithCradle opt cradle [] False
-    getModule >>= getModuleInfo >>= listExports
+    browseInternal mdlName (detailed opt)
+
+browseInternal :: ModuleString -> Bool -> Ghc [String]
+browseInternal mdlName typeInfo = getModule >>= getModuleInfo >>= listExports
   where
     getModule = findModule (mkModuleName mdlName) Nothing
     listExports Nothing       = return []
     listExports (Just mdinfo)
-      | detailed opt = processModule mdinfo
-      | otherwise    = return (processExports mdinfo)
+      | typeInfo  = processModule mdinfo
+      | otherwise = return (processExports mdinfo)
 
 processExports :: ModuleInfo -> [String]
 processExports = map getOccString . modInfoExports

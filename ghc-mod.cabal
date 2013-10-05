@@ -60,6 +60,7 @@ Library
                         Language.Haskell.GhcMod.Lang
                         Language.Haskell.GhcMod.Lint
                         Language.Haskell.GhcMod.List
+                        Language.Haskell.GhcMod.Find
                         Language.Haskell.GhcMod.Types
   Build-Depends:        base >= 4.0 && < 5
                       , Cabal >= 1.10

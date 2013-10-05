@@ -36,6 +36,7 @@ usage =    "ghc-mod version " ++ showVersion version ++ "\n"
         ++ "\t ghc-mod lint [-h opt] <HaskellFile>\n"
         ++ "\t ghc-mod boot\n"
         ++ "\t ghc-mod help\n"
+        ++ "\t ghc-mod find" ++ ghcOptHelp ++ "<symbol>\n"
 
 ----------------------------------------------------------------
 
@@ -116,6 +117,7 @@ main = flip catches handlers $ do
          pre   <- concat <$> mapM (browseModule opt cradle) preBrowsedModules
          return $ mods ++ langs ++ flags ++ pre
       "help"   -> return $ usageInfo usage argspec
+      "find"   -> nArgs 1 $ findSymbol opt cradle cmdArg1
       cmd      -> throw (NoSuchCommand cmd)
     putStr res
   where
