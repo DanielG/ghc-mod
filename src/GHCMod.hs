@@ -70,6 +70,7 @@ parseArgs spec argv
 
 data GHCModError = SafeList
                  | TooManyArguments String
+                 | MissingArguments String
                  | NoSuchCommand String
                  | CmdArg [String]
                  | FileNotExist String deriving (Show, Typeable)
@@ -92,9 +93,11 @@ main = flip catches handlers $ do
         cmdArg3 = cmdArg !. 3
         cmdArg4 = cmdArg !. 4
         remainingArgs = tail cmdArg
-        nArgs n f = if length remainingArgs == n
-                        then f
-                        else throw (TooManyArguments cmdArg0)
+        numArgs = length remainingArgs
+        nArgs n f | n == numArgs = f
+                  | n  > numArgs = throw $ MissingArguments cmdArg0
+                  | otherwise    = throw $ TooManyArguments cmdArg0
+
     res <- case cmdArg0 of
       "browse" -> concat <$> mapM (browseModule opt cradle) remainingArgs
       "list"   -> listModules opt cradle
@@ -124,6 +127,9 @@ main = flip catches handlers $ do
     handler2 SafeList = printUsage
     handler2 (TooManyArguments cmd) = do
         hPutStrLn stderr $ "\"" ++ cmd ++ "\": Too many arguments"
+        printUsage
+    handler2 (MissingArguments cmd) = do
+        hPutStrLn stderr $ "\"" ++ cmd ++ "\": Missing arguments"
         printUsage
     handler2 (NoSuchCommand cmd) = do
         hPutStrLn stderr $ "\"" ++ cmd ++ "\" not supported"
