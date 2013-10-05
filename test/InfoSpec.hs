@@ -1,10 +1,15 @@
+{-# LANGUAGE CPP #-}
 module InfoSpec where
 
 import Control.Applicative ((<$>))
 import Data.List (isPrefixOf)
 import Language.Haskell.GhcMod
 import Language.Haskell.GhcMod.Cradle
+#ifdef VERSION_executable_path
+import System.Environment.Executable (getExecutablePath)
+#else
 import System.Environment (getExecutablePath)
+#endif
 import System.Exit
 import System.FilePath
 import System.Process
