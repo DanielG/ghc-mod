@@ -25,5 +25,5 @@ listModsInternal :: Ghc [String]
 listModsInternal = getExposedModules <$> getSessionDynFlags
   where
     getExposedModules = map moduleNameString
-                      . concatMap exposedModules
+                      . concatMap (\pkg -> if exposed pkg then exposedModules pkg else [])
                       . eltsUFM . pkgIdMap . pkgState
