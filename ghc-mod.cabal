@@ -131,6 +131,8 @@ Test-Suite spec
                       , time
                       , transformers
                       , hspec >= 1.7.1
+  if impl(ghc < 7.6.0)
+    Build-Depends: executable-path
 
 Source-Repository head
   Type:                 git

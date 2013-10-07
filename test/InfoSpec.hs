@@ -1,9 +1,17 @@
+{-# LANGUAGE CPP #-}
 module InfoSpec where
 
+import Control.Applicative ((<$>))
 import Data.List (isPrefixOf)
 import Language.Haskell.GhcMod
 import Language.Haskell.GhcMod.Cradle
+#ifdef VERSION_executable_path
+import System.Environment.Executable (getExecutablePath)
+#else
+import System.Environment (getExecutablePath)
+#endif
 import System.Exit
+import System.FilePath
 import System.Process
 import Test.Hspec
 
@@ -50,5 +58,9 @@ spec = do
                 res `shouldSatisfy` ("bar :: [Char]" `isPrefixOf`)
 
         it "doesn't fail on unicode output" $ do
-            code <- rawSystem "dist/build/ghc-mod/ghc-mod" ["info", "test/data/Unicode.hs", "Unicode", "unicode"]
+            dir <- getDistDir
+            code <- rawSystem (dir </> "build/ghc-mod/ghc-mod") ["info", "test/data/Unicode.hs", "Unicode", "unicode"]
             code `shouldSatisfy` (== ExitSuccess)
+
+getDistDir :: IO FilePath
+getDistDir = takeDirectory . takeDirectory . takeDirectory <$> getExecutablePath
