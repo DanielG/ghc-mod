@@ -5,7 +5,7 @@ import Control.Applicative ((<$>))
 import Data.List (isPrefixOf)
 import Language.Haskell.GhcMod
 import Language.Haskell.GhcMod.Cradle
-#ifdef VERSION_executable_path
+#if __GLASGOW_HASKELL__ < 706
 import System.Environment.Executable (getExecutablePath)
 #else
 import System.Environment (getExecutablePath)
