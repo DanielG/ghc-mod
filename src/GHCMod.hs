@@ -84,7 +84,7 @@ main = flip catches handlers $ do
 -- #if __GLASGOW_HASKELL__ >= 611
     hSetEncoding stdout utf8
 -- #endif
-    args <- getArgs
+    args <- removeRTSArgs <$> getArgs
     let (opt,cmdArg) = parseArgs argspec args
     cradle <- findCradle
     let cmdArg0 = cmdArg !. 0
@@ -159,3 +159,15 @@ preBrowsedModules = [
   , "Data.Maybe"
   , "System.IO"
   ]
+
+
+-- | remove arguments for GHC runtime system
+removeRTSArgs :: [String] -> [String]
+removeRTSArgs args = reverse $ loop args False []
+  where
+   loop []          _ newArgs  = newArgs
+   loop ("+RTS":as) _ newArgs  = loop as True newArgs
+   loop ("-RTS":as) _ newArgs  = loop as False newArgs
+   loop (a:as) removeArg newArgs
+      | removeArg = loop as removeArg newArgs
+      | otherwise = loop as removeArg (a : newArgs)

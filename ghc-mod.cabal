@@ -42,7 +42,7 @@ Extra-Source-Files:     ChangeLog
 
 Library
   Default-Language:     Haskell2010
-  GHC-Options:          -Wall
+  GHC-Options:          -rtsopts -Wall
   Exposed-Modules:      Language.Haskell.GhcMod
                         Language.Haskell.GhcMod.Internal
   Other-Modules:        Language.Haskell.GhcMod.Browse
@@ -83,7 +83,7 @@ Executable ghc-mod
   Default-Language:     Haskell2010
   Main-Is:              GHCMod.hs
   Other-Modules:        Paths_ghc_mod
-  GHC-Options:          -Wall
+  GHC-Options:          -rtsopts -Wall
   HS-Source-Dirs:       src
   Build-Depends:        base >= 4.0 && < 5
                       , directory
