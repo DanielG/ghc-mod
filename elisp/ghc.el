@@ -33,9 +33,10 @@
 ;;;
 
 (defun ghc-find-C-h ()
-  (if keyboard-translate-table
-      (aref keyboard-translate-table ?\C-h)
-    ?\C-h))
+  (or
+   (when keyboard-translate-table
+     (aref keyboard-translate-table ?\C-h))
+   ?\C-h))
 
 (defvar ghc-completion-key  "\e\t")
 (defvar ghc-document-key    "\e\C-d")
