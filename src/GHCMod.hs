@@ -36,6 +36,7 @@ usage =    "ghc-mod version " ++ showVersion version ++ "\n"
         ++ "\t ghc-mod lint [-h opt] <HaskellFile>\n"
         ++ "\t ghc-mod boot\n"
         ++ "\t ghc-mod help\n"
+        ++ "\t ghc-mod find" ++ ghcOptHelp ++ "<symbol>\n"
 
 ----------------------------------------------------------------
 
@@ -69,7 +70,7 @@ parseArgs spec argv
 ----------------------------------------------------------------
 
 data GHCModError = SafeList
-                 | TooManyArguments String
+                 | InvalidNumArgs String
                  | NoSuchCommand String
                  | CmdArg [String]
                  | FileNotExist String deriving (Show, Typeable)
@@ -83,7 +84,7 @@ main = flip catches handlers $ do
 -- #if __GLASGOW_HASKELL__ >= 611
     hSetEncoding stdout utf8
 -- #endif
-    args <- getArgs
+    args <- removeRTSArgs <$> getArgs
     let (opt,cmdArg) = parseArgs argspec args
     cradle <- findCradle
     let cmdArg0 = cmdArg !. 0
@@ -92,18 +93,18 @@ main = flip catches handlers $ do
         cmdArg3 = cmdArg !. 3
         cmdArg4 = cmdArg !. 4
         remainingArgs = tail cmdArg
-        nArgs n f = if length remainingArgs == n
-                        then f
-                        else throw (TooManyArguments cmdArg0)
+        withNumArgs p f | p $ length remainingArgs = f
+                        | otherwise                = throw $ InvalidNumArgs cmdArg0
+
     res <- case cmdArg0 of
-      "browse" -> concat <$> mapM (browseModule opt cradle) remainingArgs
+      "browse" -> withNumArgs (>= 1) $ concat <$> mapM (browseModule opt cradle) remainingArgs
       "list"   -> listModules opt cradle
-      "check"  -> checkSyntax opt cradle remainingArgs
-      "expand" -> checkSyntax opt { expandSplice = True } cradle remainingArgs
-      "debug"  -> nArgs 1 $ debugInfo opt cradle cmdArg1
-      "type"   -> nArgs 4 $ typeExpr opt cradle cmdArg1 cmdArg2 (read cmdArg3) (read cmdArg4)
-      "info"   -> nArgs 3 infoExpr opt cradle cmdArg1 cmdArg2 cmdArg3
-      "lint"   -> nArgs 1 withFile (lintSyntax opt) cmdArg1
+      "check"  -> withNumArgs (>= 1) $ checkSyntax opt cradle remainingArgs
+      "expand" -> withNumArgs (>= 1) $ checkSyntax opt { expandSplice = True } cradle remainingArgs
+      "debug"  -> withNumArgs (== 1) $ debugInfo opt cradle cmdArg1
+      "type"   -> withNumArgs (== 4) $ typeExpr opt cradle cmdArg1 cmdArg2 (read cmdArg3) (read cmdArg4)
+      "info"   -> withNumArgs (== 3) $ infoExpr opt cradle cmdArg1 cmdArg2 cmdArg3
+      "lint"   -> withNumArgs (== 1) $ withFile (lintSyntax opt) cmdArg1
       "lang"   -> listLanguages opt
       "flag"   -> listFlags opt
       "boot"   -> do
@@ -113,6 +114,7 @@ main = flip catches handlers $ do
          pre   <- concat <$> mapM (browseModule opt cradle) preBrowsedModules
          return $ mods ++ langs ++ flags ++ pre
       "help"   -> return $ usageInfo usage argspec
+      "find"   -> withNumArgs (== 1) $ findSymbol opt cradle cmdArg1
       cmd      -> throw (NoSuchCommand cmd)
     putStr res
   where
@@ -122,8 +124,8 @@ main = flip catches handlers $ do
     handler1 = print -- for debug
     handler2 :: GHCModError -> IO ()
     handler2 SafeList = printUsage
-    handler2 (TooManyArguments cmd) = do
-        hPutStrLn stderr $ "\"" ++ cmd ++ "\": Too many arguments"
+    handler2 (InvalidNumArgs cmd) = do
+        hPutStrLn stderr $ "\"" ++ cmd ++ "\": Invalid num arguments"
         printUsage
     handler2 (NoSuchCommand cmd) = do
         hPutStrLn stderr $ "\"" ++ cmd ++ "\" not supported"
@@ -157,3 +159,15 @@ preBrowsedModules = [
   , "Data.Maybe"
   , "System.IO"
   ]
+
+
+-- | remove arguments for GHC runtime system
+removeRTSArgs :: [String] -> [String]
+removeRTSArgs args = reverse $ loop args False []
+  where
+   loop []          _ newArgs  = newArgs
+   loop ("+RTS":as) _ newArgs  = loop as True newArgs
+   loop ("-RTS":as) _ newArgs  = loop as False newArgs
+   loop (a:as) removeArg newArgs
+      | removeArg = loop as removeArg newArgs
+      | otherwise = loop as removeArg (a : newArgs)

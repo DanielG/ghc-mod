@@ -1,4 +1,4 @@
-module Language.Haskell.GhcMod.List (listModules, listMods) where
+module Language.Haskell.GhcMod.List (listModules, listMods, listModsInternal) where
 
 import Control.Applicative
 import Control.Monad (void)
@@ -19,8 +19,11 @@ listModules opt cradle = convert opt . nub . sort <$> withGHCDummyFile (listMods
 listMods :: Options -> Cradle -> Ghc [String]
 listMods opt cradle = do
     void $ initializeFlagsWithCradle opt cradle [] False
-    getExposedModules <$> getSessionDynFlags
+    listModsInternal
+
+listModsInternal :: Ghc [String]
+listModsInternal = getExposedModules <$> getSessionDynFlags
   where
     getExposedModules = map moduleNameString
-                      . concatMap exposedModules
+                      . concatMap (\pkg -> if exposed pkg then exposedModules pkg else [])
                       . eltsUFM . pkgIdMap . pkgState

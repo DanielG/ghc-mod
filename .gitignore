@@ -8,3 +8,5 @@ elisp/*.elc
 # For instance, .#Help.page
 # .#*
 cabal-dev
+.cabal-sandbox/
+cabal.sandbox.config

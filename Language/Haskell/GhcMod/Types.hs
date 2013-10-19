@@ -103,6 +103,9 @@ type Expression = String
 -- | Module name.
 type ModuleString = String
 
+-- | Symbol name.
+type SymbolString = String
+
 data CheckSpeed = Slow | Fast
 
 -- | Option information for GHC
