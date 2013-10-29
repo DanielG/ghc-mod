@@ -13,14 +13,21 @@ import UniqFM
 
 -- | Listing installed modules.
 listModules :: Options -> Cradle -> IO String
-listModules opt cradle = convert opt . nub . sort <$> withGHCDummyFile (listMods opt cradle)
+listModules opt cradle = convert opt . nub . sort . map dropPkgs <$> withGHCDummyFile (listMods opt cradle)
+  where
+    dropPkgs (name, pkg)
+      | detailed opt = name ++ " " ++ pkg
+      | otherwise = name
 
 -- | Listing installed modules.
-listMods :: Options -> Cradle -> Ghc [String]
+listMods :: Options -> Cradle -> Ghc [(String, String)]
 listMods opt cradle = do
     void $ initializeFlagsWithCradle opt cradle [] False
     getExposedModules <$> getSessionDynFlags
   where
-    getExposedModules = map moduleNameString
-                      . concatMap exposedModules
+    getExposedModules = concatMap exposedModules'
                       . eltsUFM . pkgIdMap . pkgState
+    exposedModules' p =
+    	map moduleNameString (exposedModules p)
+    	`zip`
+    	repeat (display $ sourcePackageId p)
