@@ -55,7 +55,7 @@ errBagToStrList dflag ls = map (ppErrMsg dflag ls) . reverse . bagToList
 ppErrMsg :: DynFlags -> LineSeparator -> ErrMsg -> String
 ppErrMsg dflag ls err = ppMsg spn SevError dflag ls msg ++ ext
    where
-     spn = head (errMsgSpans err)
+     spn = errMsgSpan err
      msg = errMsgShortDoc err
      ext = showMsg dflag ls (errMsgExtraInfo err)
 
