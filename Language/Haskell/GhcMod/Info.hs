@@ -1,4 +1,4 @@
-{-# LANGUAGE TupleSections, FlexibleInstances, TypeSynonymInstances #-}
+{-# LANGUAGE TupleSections, FlexibleInstances, TypeSynonymInstances, CPP #-}
 {-# LANGUAGE Rank2Types #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
@@ -65,6 +65,19 @@ info opt cradle file modstr expr =
 
 ----------------------------------------------------------------
 
+#if __GLASGOW_HASKELL__ >= 707
+instance HasType (LHsExpr Id) where
+    getType tcm e = do
+        hs_env <- getSession
+        (_, mbe) <- Gap.liftIO $ deSugarExpr hs_env modu rn_env ty_env fi_env e
+        return $ (getLoc e, ) <$> CoreUtils.exprType <$> mbe
+      where
+        modu = ms_mod $ pm_mod_summary $ tm_parsed_module tcm
+        tcgEnv = fst $ tm_internals_ tcm
+        rn_env = tcg_rdr_env tcgEnv
+        ty_env = tcg_type_env tcgEnv 
+        fi_env = tcg_fam_inst_env tcgEnv 
+#else
 instance HasType (LHsExpr Id) where
     getType tcm e = do
         hs_env <- getSession
@@ -72,8 +85,10 @@ instance HasType (LHsExpr Id) where
         return $ (getLoc e, ) <$> CoreUtils.exprType <$> mbe
       where
         modu = ms_mod $ pm_mod_summary $ tm_parsed_module tcm
-        rn_env = tcg_rdr_env $ fst $ tm_internals_ tcm
-        ty_env = tcg_type_env $ fst $ tm_internals_ tcm
+        tcgEnv = fst $ tm_internals_ tcm
+        rn_env = tcg_rdr_env tcgEnv
+        ty_env = tcg_type_env tcgEnv 
+#endif
 
 instance HasType (LPat Id) where
     getType _ (L spn pat) = return $ Just (spn, hsPatType pat)
@@ -137,7 +152,11 @@ listifyStaged :: Typeable r => Stage -> (r -> Bool) -> GenericQ [r]
 listifyStaged s p = everythingStaged s (++) [] ([] `mkQ` (\x -> [x | p x]))
 
 pretty :: DynFlags -> Type -> String
+#if __GLASGOW_HASKELL__ >= 707
+pretty dflag = showUnqualifiedOneLine dflag . pprTypeForUser
+#else
 pretty dflag = showUnqualifiedOneLine dflag . pprTypeForUser False
+#endif
 
 ----------------------------------------------------------------
 
