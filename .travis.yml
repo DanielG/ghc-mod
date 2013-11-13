@@ -1,1 +1,2 @@
 language: haskell
+script: cabal configure --enable-tests -f lt_ghc706 && cabal build && cabal test
