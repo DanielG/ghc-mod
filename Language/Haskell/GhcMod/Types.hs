@@ -19,6 +19,8 @@ data Options = Options {
   , detailed      :: Bool
   -- | Whether or not Template Haskell should be expanded.
   , expandSplice  :: Bool
+  -- | If 'True', 'browse' will load the module more like GHCi (useful when FFI and TH are used)
+  , ghciLoad      :: Bool
   -- | Line separator string.
   , lineSeparator :: LineSeparator
   }
@@ -32,6 +34,7 @@ defaultOptions = Options {
   , operators     = False
   , detailed      = False
   , expandSplice  = False
+  , ghciLoad      = False
   , lineSeparator = LineSeparator "\0"
   }
 
