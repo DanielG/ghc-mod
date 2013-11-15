@@ -24,7 +24,7 @@ ghcOptHelp = " [-g GHC_opt1 -g GHC_opt2 ...] "
 usage :: String
 usage =    "ghc-mod version " ++ showVersion version ++ "\n"
         ++ "Usage:\n"
-        ++ "\t ghc-mod list" ++ ghcOptHelp ++ "[-l]\n"
+        ++ "\t ghc-mod list" ++ ghcOptHelp ++ "[-l] [-d]\n"
         ++ "\t ghc-mod lang [-l]\n"
         ++ "\t ghc-mod flag [-l]\n"
         ++ "\t ghc-mod browse" ++ ghcOptHelp ++ "[-l] [-o] [-d] [-L] <module> [<module> ...]\n"
