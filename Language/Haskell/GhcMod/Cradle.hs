@@ -27,17 +27,19 @@ findCradle = do
     findCradle' wdir `E.catch` handler wdir
   where
     handler :: FilePath -> SomeException -> IO Cradle
-    handler wdir _ = return Cradle {
-        cradleCurrentDir    = wdir
-      , cradleCabalDir      = Nothing
-      , cradleCabalFile     = Nothing
-      , cradlePackageDbOpts = []
-      }
+    handler wdir _ = do
+        pkgDbOpts <- getPackageDbOpts wdir False
+        return Cradle {
+          cradleCurrentDir    = wdir
+        , cradleCabalDir      = Nothing
+        , cradleCabalFile     = Nothing
+        , cradlePackageDbOpts = pkgDbOpts
+        }
 
 findCradle' :: FilePath -> IO Cradle
 findCradle' wdir = do
     (cdir,cfile) <- cabalDir wdir
-    pkgDbOpts <- getPackageDbOpts cdir
+    pkgDbOpts <- getPackageDbOpts cdir True
     return Cradle {
         cradleCurrentDir    = wdir
       , cradleCabalDir      = Just cdir
@@ -92,11 +94,26 @@ pkgDbKey = "package-db:"
 pkgDbKeyLen :: Int
 pkgDbKeyLen = length pkgDbKey
 
--- | Obtaining GHC options relating to a package db directory
-getPackageDbOpts :: FilePath -> IO [GHCOption]
-getPackageDbOpts cdir = (sandboxArguments <$> getPkgDb) `E.catch` handler
+findConfigFile :: FilePath -> IO FilePath
+findConfigFile dir
+  | dir' == dir = throwIO $ userError "sandbox config not found"
+  | otherwise   = do
+      exist <- doesFileExist file
+      if exist
+          then return file
+          else findConfigFile dir'
   where
-    getPkgDb = getPackageDbDir (cdir </> configFile)
+    file = dir </> configFile
+    dir' = takeDirectory dir
+
+-- | Obtaining GHC options relating to a package db directory
+getPackageDbOpts :: FilePath -> Bool -> IO [GHCOption]
+getPackageDbOpts dir adloc = (sandboxArguments <$> getPkgDb) `E.catch` handler
+  where
+    sconf = if adloc
+                then return $ dir </> configFile
+                else findConfigFile dir
+    getPkgDb = sconf >>= getPackageDbDir
     handler :: SomeException -> IO [GHCOption]
     handler _ = return []
 
