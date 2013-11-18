@@ -55,9 +55,7 @@ showExport opt minfo e = do
   mtype' <- mtype
   return $ concat $ catMaybes [mqualified, Just $ formatOp $ getOccString e, mtype']
   where
-    mqualified
-      | qualified opt = Just $ moduleNameString (moduleName $ nameModule e) ++ "."
-      | otherwise = Nothing
+    mqualified = (moduleNameString (moduleName $ nameModule e) ++ ".") `justIf` qualified opt
     mtype
       | detailed opt = do
         tyInfo <- modInfoLookupName minfo e
