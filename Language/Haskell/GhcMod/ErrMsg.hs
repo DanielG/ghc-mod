@@ -1,4 +1,4 @@
-{-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE BangPatterns, CPP #-}
 
 module Language.Haskell.GhcMod.ErrMsg (
     LogReader
@@ -52,12 +52,22 @@ errBagToStrList dflag ls = map (ppErrMsg dflag ls) . reverse . bagToList
 
 ----------------------------------------------------------------
 
+#if __GLASGOW_HASKELL__ >= 707
+ppErrMsg :: DynFlags -> LineSeparator -> ErrMsg -> String
+ppErrMsg dflag ls err = ppMsg spn SevError dflag ls msg ++ ext
+   where
+     spn = errMsgSpan err
+     msg = errMsgShortDoc err
+     ext = showMsg dflag ls (errMsgExtraInfo err)
+#else
 ppErrMsg :: DynFlags -> LineSeparator -> ErrMsg -> String
 ppErrMsg dflag ls err = ppMsg spn SevError dflag ls msg ++ ext
    where
      spn = head (errMsgSpans err)
      msg = errMsgShortDoc err
      ext = showMsg dflag ls (errMsgExtraInfo err)
+#endif
+
 
 ppMsg :: SrcSpan -> Severity-> DynFlags -> LineSeparator -> SDoc -> String
 ppMsg spn sev dflag ls@(LineSeparator lsep) msg = prefix ++ cts ++ lsep

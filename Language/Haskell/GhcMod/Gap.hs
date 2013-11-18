@@ -258,9 +258,9 @@ infoThing str = do
     return $ vcat (intersperse (text "") $ map (pprInfo False) filtered)
 
 #if __GLASGOW_HASKELL__ >= 707
-pprInfo :: PrintExplicitForalls -> (TyThing, GHC.Fixity, [ClsInst], [FamInst]) -> SDoc
-pprInfo pefas (thing, fixity, insts, famInsts)
-    = pprTyThingInContextLoc pefas thing
+pprInfo :: Bool -> (TyThing, GHC.Fixity, [ClsInst], [FamInst]) -> SDoc
+pprInfo _ (thing, fixity, insts, famInsts)
+    = pprTyThingInContextLoc thing
    $$ show_fixity fixity
    $$ InstEnv.pprInstances insts
    $$ pprFamInsts famInsts
@@ -279,3 +279,4 @@ pprInfo pefas (thing, fixity, insts)
       | fx == defaultFixity = Outputable.empty
       | otherwise           = ppr fx <+> ppr (getName thing)
 #endif
+
