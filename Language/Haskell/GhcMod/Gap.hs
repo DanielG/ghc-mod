@@ -20,6 +20,7 @@ module Language.Haskell.GhcMod.Gap (
   , pprInfo
   , HasType(..)
   , errorMsgSpan
+  , typeForUser
 #if __GLASGOW_HASKELL__ >= 702
 #else
   , module Pretty
@@ -289,4 +290,11 @@ errorMsgSpan :: ErrMsg -> SrcSpan
 errorMsgSpan = errMsgSpan
 #else
 errorMsgSpan = head . errMsgSpans
+#endif
+
+typeForUser :: Type -> SDoc
+#if __GLASGOW_HASKELL__ >= 707
+typeForUser = pprTypeForUser
+#else
+typeForUser = pprTypeForUser False
 #endif

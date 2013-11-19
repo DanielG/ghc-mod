@@ -29,7 +29,6 @@ import qualified Language.Haskell.GhcMod.Gap as Gap
 import Language.Haskell.GhcMod.Gap (HasType(..))
 import Language.Haskell.GhcMod.Types
 import Outputable
-import PprTyThing
 import TcHsSyn (hsPatType)
 import TcRnTypes
 
@@ -152,11 +151,7 @@ listifyStaged :: Typeable r => Stage -> (r -> Bool) -> GenericQ [r]
 listifyStaged s p = everythingStaged s (++) [] ([] `mkQ` (\x -> [x | p x]))
 
 pretty :: DynFlags -> Type -> String
-#if __GLASGOW_HASKELL__ >= 707
-pretty dflag = showUnqualifiedOneLine dflag . pprTypeForUser
-#else
-pretty dflag = showUnqualifiedOneLine dflag . pprTypeForUser False
-#endif
+pretty dflag = showUnqualifiedOneLine dflag . Gap.typeForUser
 
 ----------------------------------------------------------------
 
