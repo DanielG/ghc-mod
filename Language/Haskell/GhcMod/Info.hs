@@ -75,8 +75,8 @@ instance HasType (LHsExpr Id) where
         modu = ms_mod $ pm_mod_summary $ tm_parsed_module tcm
         tcgEnv = fst $ tm_internals_ tcm
         rn_env = tcg_rdr_env tcgEnv
-        ty_env = tcg_type_env tcgEnv 
-        fi_env = tcg_fam_inst_env tcgEnv 
+        ty_env = tcg_type_env tcgEnv
+        fi_env = tcg_fam_inst_env tcgEnv
 #else
 instance HasType (LHsExpr Id) where
     getType tcm e = do
@@ -87,7 +87,7 @@ instance HasType (LHsExpr Id) where
         modu = ms_mod $ pm_mod_summary $ tm_parsed_module tcm
         tcgEnv = fst $ tm_internals_ tcm
         rn_env = tcg_rdr_env tcgEnv
-        ty_env = tcg_type_env tcgEnv 
+        ty_env = tcg_type_env tcgEnv
 #endif
 
 instance HasType (LPat Id) where
