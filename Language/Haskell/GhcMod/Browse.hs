@@ -1,7 +1,7 @@
 module Language.Haskell.GhcMod.Browse (browseModule, browse) where
 
 import Control.Applicative
-import Control.Monad (void)
+import Control.Monad (void, when)
 import Data.Char
 import Data.List
 import Data.Maybe (fromMaybe)
@@ -50,11 +50,20 @@ browse opt cradle mdlName = do
     void $ initializeFlagsWithCradle opt cradle [] False
     getModule >>= getModuleInfo >>= listExports
   where
-    getModule = findModule (mkModuleName mdlName) Nothing
+    getModule = do
+      -- findModule intentionally ignores local source files
+      -- (compare with GHCi requiring :load instead of :module)
+      -- to overcome this the module needs to be loaded first
+      when (ghciLoad opt) loadModuleGHCiStyle
+      findModule (mkModuleName mdlName) Nothing
     listExports Nothing       = return []
     listExports (Just mdinfo)
       | detailed opt = processModule mdinfo
       | otherwise    = return (processExports mdinfo)
+    loadModuleGHCiStyle = do
+      setTargetFiles [mdlName]
+      checkSlowAndSet
+      void $ load LoadAllTargets
 
 processExports :: ModuleInfo -> [String]
 processExports = map getOccString . modInfoExports

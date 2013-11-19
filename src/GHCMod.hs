@@ -27,7 +27,7 @@ usage =    "ghc-mod version " ++ showVersion version ++ "\n"
         ++ "\t ghc-mod list" ++ ghcOptHelp ++ "[-l] [-d]\n"
         ++ "\t ghc-mod lang [-l]\n"
         ++ "\t ghc-mod flag [-l]\n"
-        ++ "\t ghc-mod browse" ++ ghcOptHelp ++ "[-l] [-o] [-d] <module> [<module> ...]\n"
+        ++ "\t ghc-mod browse" ++ ghcOptHelp ++ "[-l] [-o] [-d] [-L] <module> [<module> ...]\n"
         ++ "\t ghc-mod check" ++ ghcOptHelp ++ "<HaskellFiles...>\n"
         ++ "\t ghc-mod expand" ++ ghcOptHelp ++ "<HaskellFiles...>\n"
         ++ "\t ghc-mod debug" ++ ghcOptHelp ++ "<HaskellFile>\n"
@@ -52,6 +52,9 @@ argspec = [ Option "l" ["tolisp"]
           , Option "o" ["operators"]
             (NoArg (\opts -> opts { operators = True }))
             "print operators, too"
+          , Option "L" ["ghciLoad"]
+            (NoArg (\opts -> opts { ghciLoad = True }))
+            "load module in GHCi style"
           , Option "d" ["detailed"]
             (NoArg (\opts -> opts { detailed = True }))
             "print detailed info"
