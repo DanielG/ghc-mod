@@ -17,6 +17,8 @@ data Options = Options {
   , operators     :: Bool
   -- | If 'True', 'browse' also returns types.
   , detailed      :: Bool
+  -- | If 'True', 'browse' will return fully qualified name
+  , qualified     :: Bool
   -- | Whether or not Template Haskell should be expanded.
   , expandSplice  :: Bool
   -- | Line separator string.
@@ -33,6 +35,7 @@ defaultOptions = Options {
   , ghcOpts       = []
   , operators     = False
   , detailed      = False
+  , qualified     = False
   , expandSplice  = False
   , lineSeparator = LineSeparator "\0"
   , packageId     = Nothing
