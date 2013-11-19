@@ -19,6 +19,7 @@ module Language.Haskell.GhcMod.Gap (
   , infoThing
   , pprInfo
   , HasType(..)
+  , errorMsgSpan
 #if __GLASGOW_HASKELL__ >= 702
 #else
   , module Pretty
@@ -280,3 +281,12 @@ pprInfo pefas (thing, fixity, insts)
       | otherwise           = ppr fx <+> ppr (getName thing)
 #endif
 
+----------------------------------------------------------------
+----------------------------------------------------------------
+
+errorMsgSpan :: ErrMsg -> SrcSpan
+#if __GLASGOW_HASKELL__ >= 707
+errorMsgSpan = errMsgSpan
+#else
+errorMsgSpan = head . errMsgSpans
+#endif
