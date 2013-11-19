@@ -18,7 +18,6 @@ import Data.List
 import Data.Maybe
 import Data.Ord as O
 import Data.Time.Clock
-import Desugar
 import GHC
 import GHC.SYB.Utils
 import HscTypes
@@ -30,7 +29,6 @@ import Language.Haskell.GhcMod.Gap (HasType(..))
 import Language.Haskell.GhcMod.Types
 import Outputable
 import TcHsSyn (hsPatType)
-import TcRnTypes
 
 ----------------------------------------------------------------
 
@@ -64,30 +62,11 @@ info opt cradle file modstr expr =
 
 ----------------------------------------------------------------
 
-#if __GLASGOW_HASKELL__ >= 707
 instance HasType (LHsExpr Id) where
     getType tcm e = do
         hs_env <- getSession
-        (_, mbe) <- Gap.liftIO $ deSugarExpr hs_env modu rn_env ty_env fi_env e
+        mbe <- Gap.liftIO $ Gap.deSugar tcm e hs_env
         return $ (getLoc e, ) <$> CoreUtils.exprType <$> mbe
-      where
-        modu = ms_mod $ pm_mod_summary $ tm_parsed_module tcm
-        tcgEnv = fst $ tm_internals_ tcm
-        rn_env = tcg_rdr_env tcgEnv
-        ty_env = tcg_type_env tcgEnv
-        fi_env = tcg_fam_inst_env tcgEnv
-#else
-instance HasType (LHsExpr Id) where
-    getType tcm e = do
-        hs_env <- getSession
-        (_, mbe) <- Gap.liftIO $ deSugarExpr hs_env modu rn_env ty_env e
-        return $ (getLoc e, ) <$> CoreUtils.exprType <$> mbe
-      where
-        modu = ms_mod $ pm_mod_summary $ tm_parsed_module tcm
-        tcgEnv = fst $ tm_internals_ tcm
-        rn_env = tcg_rdr_env tcgEnv
-        ty_env = tcg_type_env tcgEnv
-#endif
 
 instance HasType (LPat Id) where
     getType _ (L spn pat) = return $ Just (spn, hsPatType pat)

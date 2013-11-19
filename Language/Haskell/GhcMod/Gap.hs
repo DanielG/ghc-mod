@@ -21,6 +21,7 @@ module Language.Haskell.GhcMod.Gap (
   , HasType(..)
   , errorMsgSpan
   , typeForUser
+  , deSugar
 #if __GLASGOW_HASKELL__ >= 702
 #else
   , module Pretty
@@ -32,6 +33,7 @@ import Control.Monad
 import Data.List
 import Data.Maybe
 import Data.Time.Clock
+import Desugar (deSugarExpr)
 import DynFlags
 import ErrUtils
 import FastString
@@ -43,6 +45,8 @@ import Outputable
 import PprTyThing
 import StringBuffer
 import TcType
+import TcRnTypes
+import CoreSyn
 
 import qualified InstEnv
 import qualified Pretty
@@ -297,4 +301,23 @@ typeForUser :: Type -> SDoc
 typeForUser = pprTypeForUser
 #else
 typeForUser = pprTypeForUser False
+#endif
+
+deSugar :: TypecheckedModule -> LHsExpr Id -> HscEnv
+         -> IO (Maybe CoreSyn.CoreExpr)
+#if __GLASGOW_HASKELL__ >= 707
+deSugar tcm e hs_env = snd <$> deSugarExpr hs_env modu rn_env ty_env fi_env e
+  where
+    modu = ms_mod $ pm_mod_summary $ tm_parsed_module tcm
+    tcgEnv = fst $ tm_internals_ tcm
+    rn_env = tcg_rdr_env tcgEnv
+    ty_env = tcg_type_env tcgEnv
+    fi_env = tcg_fam_inst_env tcgEnv
+#else
+deSugar tcm e hs_env = snd <$> deSugarExpr hs_env modu rn_env ty_env e
+  where
+    modu = ms_mod $ pm_mod_summary $ tm_parsed_module tcm
+    tcgEnv = fst $ tm_internals_ tcm
+    rn_env = tcg_rdr_env tcgEnv
+    ty_env = tcg_type_env tcgEnv
 #endif
