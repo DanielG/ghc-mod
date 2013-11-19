@@ -111,7 +111,7 @@
 
 (defun ghc-type-obtain-tinfos (modname)
   (let* ((ln (int-to-string (line-number-at-pos)))
-	 (cn (int-to-string (current-column)))
+	 (cn (int-to-string (1+ (current-column))))
 	 (cdir default-directory)
 	 (file (buffer-file-name)))
     (ghc-read-lisp
