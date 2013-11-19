@@ -27,7 +27,7 @@ usage =    "ghc-mod version " ++ showVersion version ++ "\n"
         ++ "\t ghc-mod list" ++ ghcOptHelp ++ "[-l] [-d]\n"
         ++ "\t ghc-mod lang [-l]\n"
         ++ "\t ghc-mod flag [-l]\n"
-        ++ "\t ghc-mod browse" ++ ghcOptHelp ++ "[-l] [-o] [-d] [-p package] <module> [<module> ...]\n"
+        ++ "\t ghc-mod browse" ++ ghcOptHelp ++ "[-l] [-o] [-d] [-q] [-p package] <module> [<module> ...]\n"
         ++ "\t ghc-mod check" ++ ghcOptHelp ++ "<HaskellFiles...>\n"
         ++ "\t ghc-mod expand" ++ ghcOptHelp ++ "<HaskellFiles...>\n"
         ++ "\t ghc-mod debug" ++ ghcOptHelp ++ "<HaskellFile>\n"
@@ -55,6 +55,9 @@ argspec = [ Option "l" ["tolisp"]
           , Option "d" ["detailed"]
             (NoArg (\opts -> opts { detailed = True }))
             "print detailed info"
+          , Option "q" ["qualified"]
+            (NoArg (\opts -> opts { qualified = True }))
+            "show qualified names"
           , Option "p" ["package"]
             (ReqArg (\p opts -> opts { packageId = Just p, ghcOpts = ("-package " ++ p) : ghcOpts opts }) "package-id")
             "specify package of module"

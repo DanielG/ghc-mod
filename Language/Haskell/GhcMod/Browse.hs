@@ -4,7 +4,7 @@ import Control.Applicative
 import Control.Monad (void)
 import Data.Char
 import Data.List
-import Data.Maybe (fromMaybe)
+import Data.Maybe (catMaybes)
 import DataCon (dataConRepType)
 import FastString (mkFastString)
 import GHC
@@ -26,19 +26,7 @@ browseModule :: Options
              -> Cradle
              -> ModuleString -- ^ A module name. (e.g. \"Data.List\")
              -> IO String
-browseModule opt cradle mdlName = convert opt . format <$> withGHCDummyFile (browse opt cradle mdlName)
-  where
-    format
-      | operators opt = formatOps
-      | otherwise     = removeOps
-    removeOps = sort . filter (isAlpha.head)
-    formatOps = sort . map formatOps'
-    formatOps' x@(s:_)
-      | isAlpha s = x
-      | otherwise = "(" ++ name ++ ")" ++ tail_
-      where
-        (name, tail_) = break isSpace x
-    formatOps' [] = error "formatOps'"
+browseModule opt cradle mdlName = convert opt . sort <$> withGHCDummyFile (browse opt cradle mdlName)
 
 -- | Getting functions, classes, etc from a module.
 --   If 'detailed' is 'True', their types are also obtained.
@@ -53,26 +41,40 @@ browse opt cradle mdlName = do
   where
     getModule = findModule (mkModuleName mdlName) (mkFastString <$> packageId opt)
     listExports Nothing       = return []
-    listExports (Just mdinfo)
-      | detailed opt = processModule mdinfo
-      | otherwise    = return (processExports mdinfo)
+    listExports (Just mdinfo) = processExports opt mdinfo
 
-processExports :: ModuleInfo -> [String]
-processExports = map getOccString . modInfoExports
-
-processModule :: ModuleInfo -> Ghc [String]
-processModule minfo = mapM processName names
+processExports :: Options -> ModuleInfo -> Ghc [String]
+processExports opt minfo = mapM (showExport opt minfo) $ removeOps $ modInfoExports minfo
   where
-    names = modInfoExports minfo
-    processName :: Name -> Ghc String
-    processName nm = do
-        tyInfo <- modInfoLookupName minfo nm
+    removeOps
+      | operators opt = id
+      | otherwise = filter (isAlpha . head . getOccString)
+
+showExport :: Options -> ModuleInfo -> Name -> Ghc String
+showExport opt minfo e = do
+  mtype' <- mtype
+  return $ concat $ catMaybes [mqualified, Just $ formatOp $ getOccString e, mtype']
+  where
+    mqualified = (moduleNameString (moduleName $ nameModule e) ++ ".") `justIf` qualified opt
+    mtype
+      | detailed opt = do
+        tyInfo <- modInfoLookupName minfo e
         -- If nothing found, load dependent module and lookup global
-        tyResult <- maybe (inOtherModule nm) (return . Just) tyInfo
+        tyResult <- maybe (inOtherModule e) (return . Just) tyInfo
         dflag <- getSessionDynFlags
-        return $ fromMaybe (getOccString nm) (tyResult >>= showThing dflag)
+        return $ do
+          typeName <- tyResult >>= showThing dflag
+          (" :: " ++ typeName) `justIf` detailed opt
+      | otherwise = return Nothing
+    formatOp nm@(n:_)
+      | isAlpha n = nm
+      | otherwise = "(" ++ nm ++ ")"
+    formatOp "" = error "formatOp"
     inOtherModule :: Name -> Ghc (Maybe TyThing)
     inOtherModule nm = getModuleInfo (nameModule nm) >> lookupGlobalName nm
+    justIf :: a -> Bool -> Maybe a
+    justIf x True = Just x
+    justIf _ False = Nothing
 
 showThing :: DynFlags -> TyThing -> Maybe String
 showThing dflag (AnId i)     = Just $ formatType dflag varType i
@@ -83,7 +85,7 @@ showThing _     (ATyCon t)   = unwords . toList <$> tyType t
 showThing _     _            = Nothing
 
 formatType :: NamedThing a => DynFlags -> (a -> Type) -> a -> String
-formatType dflag f x = getOccString x ++ " :: " ++ showOutputable dflag (removeForAlls $ f x)
+formatType dflag f x = showOutputable dflag (removeForAlls $ f x)
 
 tyType :: TyCon -> Maybe String
 tyType typ
