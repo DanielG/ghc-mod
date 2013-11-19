@@ -6,6 +6,7 @@ import Data.Char
 import Data.List
 import Data.Maybe (fromMaybe)
 import DataCon (dataConRepType)
+import FastString (mkFastString)
 import GHC
 import Language.Haskell.GhcMod.Doc (showUnqualifiedPage)
 import Language.Haskell.GhcMod.GHCApi
@@ -50,7 +51,7 @@ browse opt cradle mdlName = do
     void $ initializeFlagsWithCradle opt cradle [] False
     getModule >>= getModuleInfo >>= listExports
   where
-    getModule = findModule (mkModuleName mdlName) Nothing
+    getModule = findModule (mkModuleName mdlName) (mkFastString <$> packageId opt)
     listExports Nothing       = return []
     listExports (Just mdinfo)
       | detailed opt = processModule mdinfo
