@@ -64,7 +64,6 @@ Library
   Build-Depends:        base >= 4.0 && < 5
                       , Cabal >= 1.10
                       , containers
-                      , convertible
                       , directory
                       , filepath
                       , ghc
@@ -77,6 +76,8 @@ Library
                       , syb
                       , time
                       , transformers
+  if impl(ghc < 7.7)
+    Build-Depends:      convertible
 
 Executable ghc-mod
   Default-Language:     Haskell2010
@@ -117,7 +118,6 @@ Test-Suite spec
   Build-Depends:        base >= 4.0 && < 5
                       , Cabal >= 1.10
                       , containers
-                      , convertible
                       , directory
                       , filepath
                       , ghc
@@ -131,6 +131,8 @@ Test-Suite spec
                       , time
                       , transformers
                       , hspec >= 1.7.1
+  if impl(ghc < 7.7)
+    Build-Depends:      convertible
   if impl(ghc < 7.6.0)
     Build-Depends: executable-path
 
