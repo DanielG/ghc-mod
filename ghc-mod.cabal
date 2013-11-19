@@ -134,7 +134,7 @@ Test-Suite spec
   if impl(ghc < 7.7)
     Build-Depends:      convertible
   if impl(ghc < 7.6.0)
-    Build-Depends: executable-path
+    Build-Depends:      executable-path
 
 Source-Repository head
   Type:                 git
