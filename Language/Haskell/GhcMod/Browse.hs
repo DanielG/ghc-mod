@@ -7,6 +7,7 @@ import Data.List
 import Data.Maybe (fromMaybe)
 import DataCon (dataConRepType)
 import GHC
+import Panic(throwGhcException)
 import Language.Haskell.GhcMod.Doc (showUnqualifiedPage)
 import Language.Haskell.GhcMod.GHCApi
 import Language.Haskell.GhcMod.Types
@@ -50,11 +51,26 @@ browse opt cradle mdlName = do
     void $ initializeFlagsWithCradle opt cradle [] False
     getModule >>= getModuleInfo >>= listExports
   where
-    getModule = findModule (mkModuleName mdlName) Nothing
+    getModule =
+      findModule (mkModuleName mdlName) Nothing
+      `gcatch` (\e ->
+                  case e of
+                    -- findModule works only for package modules, moreover,
+                    -- you cannot load a package module. On the other hand,
+                    -- to browse a local module you need to load it first.
+                    -- If CmdLineError is signalled, we assume the user
+                    -- tried browsing a local module.
+                    CmdLineError _ -> loadAndFind
+                    _ -> throwGhcException e)
     listExports Nothing       = return []
     listExports (Just mdinfo)
       | detailed opt = processModule mdinfo
       | otherwise    = return (processExports mdinfo)
+    loadAndFind = do
+      setTargetFiles [mdlName]
+      checkSlowAndSet
+      void $ load LoadAllTargets
+      findModule (mkModuleName mdlName) Nothing
 
 processExports :: ModuleInfo -> [String]
 processExports = map getOccString . modInfoExports
