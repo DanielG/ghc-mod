@@ -1,3 +1,11 @@
+2013-11-20 v3.1.3
+	* GHCi loading as fallback for browse. (@khorser)
+	* Supporting GHC 7.7. (@schell)
+	* Introducing the "-p" and "-q" option for browse. (@mvoidex)
+
+2013-10-07 v3.1.3
+	* Fixing tests. (@eagletmt)
+
 2013-09-21 v3.1.2
 	* Supporting sandbox for "list" and "browse". (@eagletmt)
 
