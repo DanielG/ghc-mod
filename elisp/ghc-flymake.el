@@ -35,7 +35,7 @@
 ;; if they occurred in other files. So, let's cheat flymake.
 (defun ghc-emacs23-larter-hack (tmp-file)
   (let ((real-name (flymake-get-real-file-name tmp-file))
-	(hack-name (flymake-get-real-file-name source-file-name)))
+	(hack-name (flymake-get-real-file-name buffer-file-name)))
     (unless (string= real-name hack-name)
       ;; Change the local variable, line-err-info,
       ;; in flymake-parse-err-lines.
@@ -191,9 +191,34 @@
 (defalias 'ghc-flymake-have-errs-p 'ghc-flymake-data)
 
 (defun ghc-flymake-data ()
-  (let* ((line-no (flymake-current-line-no))
+  (let* ((line-no (line-number-at-pos))
          (info (nth 0 (flymake-find-err-info flymake-err-info line-no))))
-    (flymake-make-err-menu-data line-no info)))
+    (flymake-make-err-menu-data-stolen line-no info)))
+
+(defun flymake-make-err-menu-data-stolen (line-no line-err-info-list)
+  "Make a (menu-title (item-title item-action)*) list with errors/warnings from LINE-ERR-INFO-LIST."
+  (let* ((menu-items  nil))
+    (when line-err-info-list
+      (let* ((count           (length line-err-info-list))
+	     (menu-item-text  nil))
+	(while (> count 0)
+	  (setq menu-item-text (flymake-ler-text (nth (1- count) line-err-info-list)))
+	  (let* ((file       (flymake-ler-file (nth (1- count) line-err-info-list)))
+		 (full-file  (flymake-ler-full-file (nth (1- count) line-err-info-list)))
+		 (line       (flymake-ler-line (nth (1- count) line-err-info-list))))
+	    (if file
+		(setq menu-item-text (concat menu-item-text " - " file "(" (format "%d" line) ")")))
+	    (setq menu-items (cons (list menu-item-text
+					 (if file (list 'flymake-goto-file-and-line full-file line) nil))
+				   menu-items)))
+	  (setq count (1- count)))
+	(flymake-log 3 "created menu-items with %d item(s)" (length menu-items))))
+    (if menu-items
+	(let* ((menu-title  (format "Line %d: %d error(s), %d warning(s)" line-no
+				    (flymake-get-line-err-count line-err-info-list "e")
+				    (flymake-get-line-err-count line-err-info-list "w"))))
+	  (list menu-title menu-items))
+      nil)))
 
 (defun ghc-flymake-err-title ()
   (ghc-flymake-err-get-title (ghc-flymake-data)))
