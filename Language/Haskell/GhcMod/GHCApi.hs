@@ -77,7 +77,8 @@ initializeFlagsWithCradle opt cradle ghcopts logging
         logger <- initSession SingleFile opt compOpts logging
         return (logger, Nothing)
       where
-        compOpts = CompilerOptions ghcopts importDirs []
+        pkgDbOpts = cradlePackageDbOpts cradle
+        compOpts = CompilerOptions (ghcopts ++ pkgDbOpts) importDirs []
 
 ----------------------------------------------------------------
 
