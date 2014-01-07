@@ -306,13 +306,7 @@ typeForUser = pprTypeForUser False
 deSugar :: TypecheckedModule -> LHsExpr Id -> HscEnv
          -> IO (Maybe CoreSyn.CoreExpr)
 #if __GLASGOW_HASKELL__ >= 707
-deSugar tcm e hs_env = snd <$> deSugarExpr hs_env modu rn_env ty_env fi_env e
-  where
-    modu = ms_mod $ pm_mod_summary $ tm_parsed_module tcm
-    tcgEnv = fst $ tm_internals_ tcm
-    rn_env = tcg_rdr_env tcgEnv
-    ty_env = tcg_type_env tcgEnv
-    fi_env = tcg_fam_inst_env tcgEnv
+deSugar tcm e hs_env = snd <$> deSugarExpr hs_env e
 #else
 deSugar tcm e hs_env = snd <$> deSugarExpr hs_env modu rn_env ty_env e
   where
