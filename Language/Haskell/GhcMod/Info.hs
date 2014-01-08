@@ -9,25 +9,25 @@ module Language.Haskell.GhcMod.Info (
   , typeOf
   ) where
 
-import Control.Applicative
+import Control.Applicative ((<$>))
 import Control.Monad (void, when)
-import CoreUtils
-import Data.Function
+import CoreUtils (exprType)
+import Data.Function (on)
 import Data.Generics hiding (typeOf)
-import Data.List
-import Data.Maybe
+import Data.List (sortBy)
+import Data.Maybe (catMaybes, fromMaybe, listToMaybe)
 import Data.Ord as O
-import Data.Time.Clock
+import Data.Time.Clock (getCurrentTime)
 import GHC
-import GHC.SYB.Utils
-import HscTypes
-import Language.Haskell.GhcMod.Doc
+import GHC.SYB.Utils (Stage(TypeChecker), everythingStaged)
+import HscTypes (ms_imps)
+import Language.Haskell.GhcMod.Doc (showUnqualifiedPage, showUnqualifiedOneLine, showQualifiedPage)
 import Language.Haskell.GhcMod.GHCApi
-import Language.Haskell.GhcMod.GHCChoice
+import Language.Haskell.GhcMod.GHCChoice ((||>), goNext)
 import qualified Language.Haskell.GhcMod.Gap as Gap
 import Language.Haskell.GhcMod.Gap (HasType(..))
 import Language.Haskell.GhcMod.Types
-import Outputable
+import Outputable (ppr)
 import TcHsSyn (hsPatType)
 
 ----------------------------------------------------------------
