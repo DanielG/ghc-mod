@@ -45,7 +45,6 @@ import Outputable
 import PprTyThing
 import StringBuffer
 import TcType
-import TcRnTypes
 import CoreSyn
 
 import qualified InstEnv
@@ -53,6 +52,8 @@ import qualified Pretty
 import qualified StringBuffer as SB
 #if __GLASGOW_HASKELL__ >= 707
 import FamInstEnv
+#else
+import TcRnTypes
 #endif
 
 #if __GLASGOW_HASKELL__ >= 706
@@ -67,7 +68,6 @@ import CoreMonad (liftIO)
 import HscTypes (liftIO)
 import Pretty
 #endif
-
 
 #if __GLASGOW_HASKELL__ < 706
 import Control.Arrow hiding ((<+>))
@@ -306,7 +306,7 @@ typeForUser = pprTypeForUser False
 deSugar :: TypecheckedModule -> LHsExpr Id -> HscEnv
          -> IO (Maybe CoreSyn.CoreExpr)
 #if __GLASGOW_HASKELL__ >= 707
-deSugar tcm e hs_env = snd <$> deSugarExpr hs_env e
+deSugar _   e hs_env = snd <$> deSugarExpr hs_env e
 #else
 deSugar tcm e hs_env = snd <$> deSugarExpr hs_env modu rn_env ty_env e
   where
