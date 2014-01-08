@@ -1,4 +1,4 @@
-{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE OverloadedStrings, CPP #-}
 
 module Language.Haskell.GhcMod.CabalApi (
     getCompilerOptions
@@ -129,7 +129,11 @@ cabalAllBuildInfo pd = libBI ++ execBI ++ testBI ++ benchBI
     libBI   = map libBuildInfo       $ maybeToList $ library pd
     execBI  = map buildInfo          $ executables pd
     testBI  = map testBuildInfo      $ testSuites pd
+#if __GLASGOW_HASKELL__ >= 704
     benchBI = map benchmarkBuildInfo $ benchmarks pd
+#else
+    benchBI = []
+#endif
 
 ----------------------------------------------------------------
 
@@ -178,8 +182,11 @@ cabalAllTargets pd = do
             Just l -> libModules l
 
     libTargets = map toModuleString $ lib
+#if __GLASGOW_HASKELL__ >= 704
     benchTargets = map toModuleString $ concatMap benchmarkModules $ benchmarks  pd
-
+#else
+    benchTargets = []
+#endif
     toModuleString :: ModuleName -> String
     toModuleString mn = fromFilePath $ toFilePath mn
 
