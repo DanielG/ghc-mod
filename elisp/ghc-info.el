@@ -104,9 +104,12 @@
   (if (= (ghc-type-get-point) (point))
       (ghc-type-set-ix
        (mod (1+ (ghc-type-get-ix)) (length (ghc-type-get-types))))
-    (ghc-type-set-types (ghc-type-obtain-tinfos modname))
-    (ghc-type-set-point (point))
-    (ghc-type-set-ix 0))
+    (let ((types (ghc-type-obtain-tinfos modname)))
+      (if (not (listp types)) ;; main does not exist in Main
+	  (ghc-type-set-types nil)
+	(ghc-type-set-types (ghc-type-obtain-tinfos modname))
+	(ghc-type-set-point (point))
+	(ghc-type-set-ix 0))))
   (ghc-type-get-types))
 
 (defun ghc-type-obtain-tinfos (modname)
