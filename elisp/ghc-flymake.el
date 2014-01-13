@@ -39,13 +39,14 @@
     (unless (string= real-name hack-name)
       ;; Change the local variable, line-err-info,
       ;; in flymake-parse-err-lines.
-      (setq line-err-info
-	    (flymake-ler-make-ler
-	     nil
-	     1
-	     (flymake-ler-type line-err-info)
-	     (concat real-name ": " (flymake-ler-text line-err-info))
-	     (flymake-ler-full-file line-err-info))))
+      (when (boundp 'line-err-info)
+	(setq line-err-info
+	      (flymake-ler-make-ler
+	       nil
+	       1
+	       (flymake-ler-type line-err-info)
+	       (concat real-name ": " (flymake-ler-text line-err-info))
+	       (flymake-ler-full-file line-err-info)))))
     hack-name))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
