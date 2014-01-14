@@ -161,6 +161,8 @@ fOptions = [option | (option,_,_) <- fFlags]
         ++ [option | (option,_,_) <- fLangFlags]
 #elif __GLASGOW_HASKELL__ == 702
 fOptions = [option | (option,_,_,_) <- fFlags]
+        ++ [option | (option,_,_,_) <- fWarningFlags]
+        ++ [option | (option,_,_,_) <- fLangFlags]
 #else
 fOptions = [option | (option,_,_) <- fFlags]
 #endif
