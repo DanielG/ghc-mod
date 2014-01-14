@@ -1,5 +1,4 @@
 env:
-  - GHCVER=7.0.4
   - GHCVER=7.2.2
   - GHCVER=7.4.2
   - GHCVER=7.6.3
@@ -13,7 +12,12 @@ before_install:
 
 install:
   - cabal-1.18 update
-  - cabal-1.18 install happy
+  # work around https://github.com/simonmar/happy/issues/16
+  - if [ "$GHCVER" = '7.2.2' ]; then
+      sudo apt-get install happy;
+    else
+      cabal-1.18 install happy;
+    fi
   - export PATH=$HOME/.cabal/bin:$PATH
   - happy --version
   - cabal-1.18 install --only-dependencies --enable-tests
