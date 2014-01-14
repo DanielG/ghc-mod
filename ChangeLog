@@ -1,3 +1,6 @@
+2014-XX-XX v3.1.6
+	* Testing with multi GHC versions. (@eagletmt)
+
 2014-01-14 v3.1.5
 	* Catching up to GHC 7.7. (@scottgw)
 	* Testing with multi GHC versions. (@eagletmt)
