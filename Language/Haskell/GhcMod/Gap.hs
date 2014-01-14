@@ -26,6 +26,7 @@ module Language.Haskell.GhcMod.Gap (
 #else
   , module Pretty
 #endif
+  , showDocWith
   ) where
 
 import Control.Applicative hiding (empty)
@@ -108,6 +109,15 @@ setLogAction df f =
     df { log_action = f }
 #else
     df { log_action = f df }
+#endif
+
+showDocWith :: DynFlags -> Pretty.Mode -> Pretty.Doc -> String
+#if __GLASGOW_HASKELL__ >= 707
+-- Pretty.showDocWith disappeard.
+-- https://github.com/ghc/ghc/commit/08a3536e4246e323fbcd8040e0b80001950fe9bc
+showDocWith dflags mode = Pretty.showDoc mode (pprCols dflags)
+#else
+showDocWith _ = Pretty.showDocWith
 #endif
 
 ----------------------------------------------------------------

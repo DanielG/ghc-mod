@@ -1,9 +1,9 @@
 module Language.Haskell.GhcMod.Doc where
 
 import DynFlags (DynFlags)
-import Language.Haskell.GhcMod.Gap (withStyle)
+import Language.Haskell.GhcMod.Gap (withStyle, showDocWith)
 import Outputable
-import Pretty
+import Pretty (Mode(..))
 
 ----------------------------------------------------------------
 
@@ -27,17 +27,17 @@ styleUnqualified = mkUserStyle neverQualify AllTheWay
 
 -- For "ghc-mod type"
 showQualifiedPage :: DynFlags -> SDoc -> String
-showQualifiedPage dflag = showDocWith PageMode . withStyle dflag styleQualified
+showQualifiedPage dflag = showDocWith dflag PageMode . withStyle dflag styleQualified
 
 -- For "ghc-mod browse" and show GHC's error messages.
 showUnqualifiedPage :: DynFlags -> SDoc -> String
-showUnqualifiedPage dflag = Pretty.showDocWith Pretty.PageMode
+showUnqualifiedPage dflag = showDocWith dflag PageMode
                           . withStyle dflag styleUnqualified
 
 -- Not used
 showQualifiedOneLine :: DynFlags -> SDoc -> String
-showQualifiedOneLine dflag = showDocWith OneLineMode . withStyle dflag styleQualified
+showQualifiedOneLine dflag = showDocWith dflag OneLineMode . withStyle dflag styleQualified
 
 -- To write Haskell code in a buffer
 showUnqualifiedOneLine :: DynFlags -> SDoc -> String
-showUnqualifiedOneLine dflag = showDocWith OneLineMode . withStyle dflag styleUnqualified
+showUnqualifiedOneLine dflag = showDocWith dflag OneLineMode . withStyle dflag styleUnqualified
