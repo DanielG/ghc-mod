@@ -1,10 +1,11 @@
 module CradleSpec where
 
 import Control.Applicative
+import Data.List (isSuffixOf)
 import Language.Haskell.GhcMod.Cradle
 import Language.Haskell.GhcMod.Types
 import System.Directory (canonicalizePath)
-import System.FilePath ((</>))
+import System.FilePath ((</>), pathSeparator)
 import Test.Hspec
 
 import Dir
@@ -14,7 +15,7 @@ spec = do
     describe "findCradle" $ do
         it "returns the current directory" $ do
             withDirectory_ "/" $ do
-                curDir <- canonicalizePath "/"
+                curDir <- stripLastDot <$> canonicalizePath "/"
                 res <- findCradle
                 res `shouldBe` Cradle {
                     cradleCurrentDir    = curDir
@@ -56,3 +57,9 @@ relativeCradle dir cradle = Cradle {
   , cradleCabalFile     = toRelativeDir dir <$> cradleCabalFile     cradle
   , cradlePackageDbOpts = cradlePackageDbOpts cradle
   }
+
+-- Work around GHC 7.2.2 where `canonicalizePath "/"` returns "/.".
+stripLastDot :: FilePath -> FilePath
+stripLastDot path
+  | (pathSeparator:'.':"") `isSuffixOf` path = init path
+  | otherwise = path
