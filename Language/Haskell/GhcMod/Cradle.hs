@@ -32,6 +32,7 @@ findCradle = do
       , cradleCabalDir      = Nothing
       , cradleCabalFile     = Nothing
       , cradlePackageDbOpts = []
+      , cradlePackages      = []
       }
 
 findCradle' :: FilePath -> IO Cradle
@@ -43,13 +44,14 @@ findCradle' wdir = do
       , cradleCabalDir      = Just cdir
       , cradleCabalFile     = Just cfile
       , cradlePackageDbOpts = pkgDbOpts
+      , cradlePackages      = []
       }
 
 -- Just for testing
 findCradleWithoutSandbox :: IO Cradle
 findCradleWithoutSandbox = do
     cradle <- findCradle
-    return cradle { cradlePackageDbOpts = [] }
+    return cradle { cradlePackageDbOpts = [], cradlePackages = [] }
 
 ----------------------------------------------------------------
 

@@ -234,8 +234,10 @@ addDevPkgs df pkgs = df''
     df' = dopt_set df Opt_HideAllPackages
 #endif
     df'' = df' {
-        packageFlags = map ExposePackage pkgs ++ packageFlags df
+        packageFlags = map expose pkgs ++ packageFlags df
       }
+    expose (pkg, Nothing) = ExposePackage pkg
+    expose (_, Just pid) = ExposePackageId pid
 
 ----------------------------------------------------------------
 ----------------------------------------------------------------

@@ -90,6 +90,7 @@ data Cradle = Cradle {
   , cradleCabalFile   :: Maybe FilePath
   -- | The package db options. ([\"-no-user-package-db\",\"-package-db\",\"\/foo\/bar\/i386-osx-ghc-7.6.3-packages.conf.d\"])
   , cradlePackageDbOpts :: [GHCOption]
+  , cradlePackages :: [Package]
   } deriving (Eq, Show)
 
 ----------------------------------------------------------------
@@ -101,7 +102,10 @@ type GHCOption  = String
 type IncludeDir = FilePath
 
 -- | A package name.
-type Package    = String
+type PackageBaseName = String
+
+-- | A package name and its ID.
+type Package    = (PackageBaseName, Maybe String)
 
 -- | Haskell expression.
 type Expression = String
