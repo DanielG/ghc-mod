@@ -53,6 +53,11 @@ spec = do
         it "throws an error if a config file is broken" $ do
             getPackageDbDir "test/data/bad.config" `shouldThrow` anyException
 
+    describe "getPackageDbPackages" $ do
+        it "find a config file and extracts packages with their ids" $ do
+            pkgs <- getPackageDbPackages "test/data/check-packageid"
+            pkgs `shouldBe` [("template-haskell", Just "template-haskell-2.8.0.0-32d4f24abdbb6bf41272b183b2e23e9c")]
+
 relativeCradle :: FilePath -> Cradle -> Cradle
 relativeCradle dir cradle = cradle {
     cradleCurrentDir    = toRelativeDir dir  $  cradleCurrentDir    cradle
