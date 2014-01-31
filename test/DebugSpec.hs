@@ -7,7 +7,7 @@ import Dir
 
 checkFast :: String -> String -> IO ()
 checkFast file ans = withDirectory_ "test/data" $ do
-    let cradle = Cradle "." Nothing Nothing []
+    let cradle = Cradle "." Nothing Nothing [] []
     res <- debugInfo defaultOptions cradle file
     lines res `shouldContain` [ans]
 

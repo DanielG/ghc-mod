@@ -28,7 +28,7 @@ spec = do
                         ghcOptions  = ghcOptions res
                       , includeDirs = map (toRelativeDir dir) (includeDirs res)
                       }
-                res' `shouldBe` CompilerOptions {ghcOptions = ["-no-user-package-db","-package-db","/home/me/work/ghc-mod/test/data/.cabal-sandbox/i386-osx-ghc-7.6.3-packages.conf.d","-XHaskell98"], includeDirs = ["test/data","test/data/dist/build","test/data/dist/build/autogen","test/data/subdir1/subdir2","test/data/test"], depPackages = ["Cabal","base","template-haskell"]}
+                res' `shouldBe` CompilerOptions {ghcOptions = ["-no-user-package-db","-package-db","/home/me/work/ghc-mod/test/data/.cabal-sandbox/i386-osx-ghc-7.6.3-packages.conf.d","-XHaskell98"], includeDirs = ["test/data","test/data/dist/build","test/data/dist/build/autogen","test/data/subdir1/subdir2","test/data/test"], depPackages = [("Cabal", Nothing), ("base", Nothing) , ("template-haskell", Nothing)]}
 
     describe "cabalDependPackages" $ do
         it "extracts dependent packages" $ do

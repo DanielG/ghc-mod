@@ -44,25 +44,33 @@ getCompilerOptions ghcopts cradle pkgDesc = do
     wdir       = cradleCurrentDir cradle
     Just cdir  = cradleCabalDir   cradle
     Just cfile = cradleCabalFile  cradle
+    pkgs       = cradlePackages   cradle
     buildInfos = cabalAllBuildInfo pkgDesc
     idirs      = includeDirectories cdir wdir $ cabalSourceDirs buildInfos
-    depPkgs    = removeThem problematicPackages $ removeMe cfile $ cabalDependPackages buildInfos
+    depPkgs    = attachPackageIds pkgs $ removeThem problematicPackages $ removeMe cfile $ cabalDependPackages buildInfos
 
 ----------------------------------------------------------------
 -- Dependent packages
 
-removeMe :: FilePath -> [Package] -> [Package]
+removeMe :: FilePath -> [PackageBaseName] -> [PackageBaseName]
 removeMe cabalfile = filter (/= me)
   where
     me = dropExtension $ takeFileName cabalfile
 
-removeThem :: [Package] -> [Package] -> [Package]
+removeThem :: [PackageBaseName] -> [PackageBaseName] -> [PackageBaseName]
 removeThem badpkgs = filter (`notElem` badpkgs)
 
-problematicPackages :: [Package]
+problematicPackages :: [PackageBaseName]
 problematicPackages = [
     "base-compat" -- providing "Prelude"
   ]
+
+attachPackageIds :: [Package] -> [PackageBaseName] -> [Package]
+attachPackageIds pkgs = map attachId
+  where
+    attachId x = case lookup x pkgs of
+      Nothing -> (x, Nothing)
+      Just p -> (x, p)
 
 ----------------------------------------------------------------
 -- Include directories for modules
@@ -138,7 +146,7 @@ cabalAllBuildInfo pd = libBI ++ execBI ++ testBI ++ benchBI
 ----------------------------------------------------------------
 
 -- | Extracting package names of dependency.
-cabalDependPackages :: [BuildInfo] -> [Package]
+cabalDependPackages :: [BuildInfo] -> [PackageBaseName]
 cabalDependPackages bis = uniqueAndSort $ pkgs
   where
     pkgs = map getDependencyPackageName $ concatMap targetBuildDepends bis

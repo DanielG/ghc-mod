@@ -4,6 +4,7 @@ module Language.Haskell.GhcMod.Cradle (
     findCradle
   , findCradleWithoutSandbox
   , getPackageDbDir
+  , getPackageDbPackages
   ) where
 
 import Data.Char (isSpace)
@@ -32,6 +33,7 @@ findCradle = do
       , cradleCabalDir      = Nothing
       , cradleCabalFile     = Nothing
       , cradlePackageDbOpts = []
+      , cradlePackages      = []
       }
 
 findCradle' :: FilePath -> IO Cradle
@@ -43,13 +45,14 @@ findCradle' wdir = do
       , cradleCabalDir      = Just cdir
       , cradleCabalFile     = Just cfile
       , cradlePackageDbOpts = pkgDbOpts
+      , cradlePackages      = []
       }
 
 -- Just for testing
 findCradleWithoutSandbox :: IO Cradle
 findCradleWithoutSandbox = do
     cradle <- findCradle
-    return cradle { cradlePackageDbOpts = [] }
+    return cradle { cradlePackageDbOpts = [], cradlePackages = [] }
 
 ----------------------------------------------------------------
 
@@ -139,3 +142,7 @@ extractGhcVer dir = ver
     (verStr1,_:left) = break (== '.') $ findVer file
     (verStr2,_)      = break (== '.') left
     ver = read verStr1 * 100 + read verStr2
+
+-- | Obtaining packages installed in a package db directory.
+getPackageDbPackages :: FilePath -> IO [Package]
+getPackageDbPackages _ = return []
