@@ -55,6 +55,8 @@ import qualified Pretty
 import qualified StringBuffer as SB
 #if __GLASGOW_HASKELL__ >= 707
 import FamInstEnv
+import ConLike (ConLike(..))
+import PatSyn (patSynType)
 #else
 import TcRnTypes
 #endif
@@ -338,7 +340,12 @@ deSugar tcm e hs_env = snd <$> deSugarExpr hs_env modu rn_env ty_env e
 data GapThing = GtI Id | GtD DataCon | GtT TyCon | GtN
 
 fromTyThing :: TyThing -> GapThing
-fromTyThing (AnId i)     = GtI i
-fromTyThing (ADataCon d) = GtD d
-fromTyThing (ATyCon t)   = GtT t
-fromTyThing _            = GtN
+fromTyThing (AnId i)                   = GtI i
+#if __GLASGOW_HASKELL__ >= 707
+fromTyThing (AConLike (RealDataCon d)) = GtD d
+fromTyThing (AConLike (PatSynCon d))   = GtD d
+#else
+fromTyThing (ADataCon d)               = GtD d
+#endif
+fromTyThing (ATyCon t)                 = GtT t
+fromTyThing _                          = GtN
