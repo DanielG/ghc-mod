@@ -8,7 +8,7 @@ import Data.Maybe (catMaybes)
 import DataCon (dataConRepType)
 import FastString (mkFastString)
 import GHC
-import Panic(throwGhcException)
+import Panic (throwGhcException)
 import Language.Haskell.GhcMod.Doc (showUnqualifiedPage)
 import Language.Haskell.GhcMod.GHCApi
 import Language.Haskell.GhcMod.Types
