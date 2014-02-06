@@ -5,19 +5,17 @@ import Control.Monad (void)
 import Data.Char
 import Data.List
 import Data.Maybe (catMaybes)
-import DataCon (dataConRepType)
 import FastString (mkFastString)
 import GHC
-import Panic (throwGhcException)
 import Language.Haskell.GhcMod.Doc (showUnqualifiedPage)
 import Language.Haskell.GhcMod.GHCApi
 import Language.Haskell.GhcMod.Gap
 import Language.Haskell.GhcMod.Types
 import Name
 import Outputable
+import Panic (throwGhcException)
 import TyCon
 import Type
-import Var
 
 ----------------------------------------------------------------
 
@@ -96,15 +94,14 @@ showThing :: DynFlags -> TyThing -> Maybe String
 showThing dflag tything = showThing' dflag (fromTyThing tything)
 
 showThing' :: DynFlags -> GapThing -> Maybe String
-showThing' dflag (GtI i) = Just $ formatType dflag varType i
-showThing' dflag (GtD d) = Just $ formatType dflag dataConRepType d
+showThing' dflag (GtA a) = Just $ formatType dflag a
 showThing' _     (GtT t) = unwords . toList <$> tyType t
   where
     toList t' = t' : getOccString t : map getOccString (tyConTyVars t)
 showThing' _     _       = Nothing
 
-formatType :: NamedThing a => DynFlags -> (a -> Type) -> a -> String
-formatType dflag f x = showOutputable dflag (removeForAlls $ f x)
+formatType :: DynFlags -> Type -> String
+formatType dflag a = showOutputable dflag (removeForAlls a)
 
 tyType :: TyCon -> Maybe String
 tyType typ

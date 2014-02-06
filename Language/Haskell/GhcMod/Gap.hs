@@ -33,9 +33,11 @@ module Language.Haskell.GhcMod.Gap (
 
 import Control.Applicative hiding (empty)
 import Control.Monad
+import CoreSyn
 import Data.List
 import Data.Maybe
 import Data.Time.Clock
+import DataCon (dataConRepType)
 import Desugar (deSugarExpr)
 import DynFlags
 import ErrUtils
@@ -48,7 +50,7 @@ import Outputable
 import PprTyThing
 import StringBuffer
 import TcType
-import CoreSyn
+import Var (varType)
 
 import qualified InstEnv
 import qualified Pretty
@@ -56,7 +58,7 @@ import qualified StringBuffer as SB
 #if __GLASGOW_HASKELL__ >= 707
 import FamInstEnv
 import ConLike (ConLike(..))
-import PatSyn (patSynType)
+import PatSyn (PatSyn, patSynType)
 #else
 import TcRnTypes
 #endif
@@ -337,15 +339,15 @@ deSugar tcm e hs_env = snd <$> deSugarExpr hs_env modu rn_env ty_env e
 ----------------------------------------------------------------
 ----------------------------------------------------------------
 
-data GapThing = GtI Id | GtD DataCon | GtT TyCon | GtN
+data GapThing = GtA Type | GtT TyCon | GtN
 
 fromTyThing :: TyThing -> GapThing
-fromTyThing (AnId i)                   = GtI i
+fromTyThing (AnId i)                   = GtA $ varType i
 #if __GLASGOW_HASKELL__ >= 707
-fromTyThing (AConLike (RealDataCon d)) = GtD d
-fromTyThing (AConLike (PatSynCon d))   = GtD d
+fromTyThing (AConLike (RealDataCon d)) = GtA $ dataConRepType d
+fromTyThing (AConLike (PatSynCon p))   = GtA $ patSynType p
 #else
-fromTyThing (ADataCon d)               = GtD d
+fromTyThing (ADataCon d)               = GtA $ dataConRepType d
 #endif
 fromTyThing (ATyCon t)                 = GtT t
 fromTyThing _                          = GtN
