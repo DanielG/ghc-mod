@@ -27,6 +27,8 @@ module Language.Haskell.GhcMod.Gap (
   , module Pretty
 #endif
   , showDocWith
+  , GapThing(..)
+  , fromTyThing
   ) where
 
 import Control.Applicative hiding (empty)
@@ -329,3 +331,14 @@ deSugar tcm e hs_env = snd <$> deSugarExpr hs_env modu rn_env ty_env e
     rn_env = tcg_rdr_env tcgEnv
     ty_env = tcg_type_env tcgEnv
 #endif
+
+----------------------------------------------------------------
+----------------------------------------------------------------
+
+data GapThing = GtI Id | GtD DataCon | GtT TyCon | GtN
+
+fromTyThing :: TyThing -> GapThing
+fromTyThing (AnId i)     = GtI i
+fromTyThing (ADataCon d) = GtD d
+fromTyThing (ATyCon t)   = GtT t
+fromTyThing _            = GtN
