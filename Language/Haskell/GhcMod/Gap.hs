@@ -58,7 +58,7 @@ import qualified StringBuffer as SB
 #if __GLASGOW_HASKELL__ >= 707
 import FamInstEnv
 import ConLike (ConLike(..))
-import PatSyn (PatSyn, patSynType)
+import PatSyn (patSynType)
 #else
 import TcRnTypes
 #endif
