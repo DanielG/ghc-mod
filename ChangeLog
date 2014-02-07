@@ -1,5 +1,7 @@
-2014-XX-XX v3.1.6
+2014-02-07 v3.1.6
 	* Testing with multi GHC versions. (@eagletmt)
+	* Checking package ID. (@naota)
+	* Supporting GHC 7.8.1 RC1. (@bartavelle)
 
 2014-01-14 v3.1.5
 	* Catching up to GHC 7.7. (@scottgw)
