@@ -68,7 +68,7 @@ Library
                       , ghc
                       , ghc-paths
                       , ghc-syb-utils
-                      , hlint >= 1.7.1
+                      , hlint >= 1.8.58
                       , io-choice
                       , old-time
                       , process
