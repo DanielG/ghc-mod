@@ -18,4 +18,4 @@ lintSyntax opt file = pack <$> lint opt file
 lint :: Options
      -> FilePath    -- ^ A target file.
      -> IO [String]
-lint opt file = map show <$> hlint ([file, "--quiet"] ++ hlintOpts opt)
+lint opt file = map show <$> hlint ([file] ++ hlintOpts opt)
