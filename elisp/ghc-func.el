@@ -162,16 +162,20 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defun ghc-run-ghc-mod (cmds)
-  (cond
-   ((executable-find ghc-module-command)
+  (ghc-executable-find ghc-module-command
     (let ((cdir default-directory))
       (with-temp-buffer
 	(cd cdir)
 	(apply 'call-process ghc-module-command nil t nil
 	       (append (ghc-make-ghc-options) cmds))
-	(buffer-substring (point-min) (1- (point-max))))))
-   (t
-    (message "%s not found" ghc-module-command)
-    nil)))
+	(buffer-substring (point-min) (1- (point-max)))))))
+
+(defmacro ghc-executable-find (cmd &rest body)
+  ;; (declare (indent 1))
+  `(if (not (executable-find ,cmd))
+       (message "\"%s\" not found" ,cmd)
+     ,@body))
+
+(put 'ghc-executable-find 'lisp-indent-function 1)
 
 (provide 'ghc-func)

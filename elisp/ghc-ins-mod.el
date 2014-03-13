@@ -12,8 +12,7 @@
 
 (defun ghc-insert-module ()
   (interactive)
-  (if (not (executable-find ghc-hoogle-command))
-      (message "\"%s\" not found" ghc-hoogle-command)
+  (ghc-executable-find ghc-hoogle-command
     (let* ((expr0 (ghc-things-at-point))
 	   (expr (ghc-read-expression expr0)))
       (let ((mods (ghc-function-to-modules expr)))

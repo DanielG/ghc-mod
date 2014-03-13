@@ -77,8 +77,7 @@
 
 (defun ghc-show-type ()
   (interactive)
-  (if (not (executable-find ghc-module-command))
-      (message "%s not found" ghc-module-command)
+  (ghc-executable-find ghc-module-command
     (let ((modname (or (ghc-find-module-name) "Main")))
       (ghc-show-type0 modname))))
 
