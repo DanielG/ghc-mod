@@ -100,7 +100,7 @@ unloaded modules are loaded")
     (ghc-read-lisp-list
      (lambda ()
        (message "Initializing...")
-       (call-process ghc-module-command nil t nil "-l" "boot")
+       (ghc-call-process ghc-module-command nil t nil "-l" "boot")
        (message "Initializing...done"))
      n)))
 
@@ -109,7 +109,7 @@ unloaded modules are loaded")
     (ghc-read-lisp-list
      (lambda ()
        (message "Loading names...")
-       (apply 'call-process ghc-module-command nil '(t nil) nil
+       (apply 'ghc-call-process ghc-module-command nil '(t nil) nil
 	      `(,@(ghc-make-ghc-options) "-l" "browse" ,@mods))
        (message "Loading names...done"))
      (length mods))))

@@ -34,7 +34,7 @@
 
 (defun ghc-resolve-package-name (mod)
   (with-temp-buffer
-    (call-process "ghc-pkg" nil t nil "find-module" "--simple-output" mod)
+    (ghc-call-process "ghc-pkg" nil t nil "find-module" "--simple-output" mod)
     (goto-char (point-min))
     (when (re-search-forward "\\([^ ]+\\)-\\([0-9]*\\(\\.[0-9]+\\)*\\)$" nil t)
       (ghc-make-pkg-ver
@@ -43,7 +43,7 @@
 
 (defun ghc-resolve-document-path (pkg)
   (with-temp-buffer
-    (call-process "ghc-pkg" nil t nil "field" pkg "haddock-html")
+    (ghc-call-process "ghc-pkg" nil t nil "field" pkg "haddock-html")
     (goto-char (point-max))
     (forward-line -1)
     (beginning-of-line)

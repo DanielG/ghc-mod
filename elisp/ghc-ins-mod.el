@@ -53,7 +53,7 @@
 		  (concat "(" fn ")")))
 	   (regex (concat "^\\([a-zA-Z0-9.]+\\) " fn1 " "))
 	   ret)
-      (call-process ghc-hoogle-command nil t nil "search" fn1)
+      (ghc-call-process ghc-hoogle-command nil t nil "search" fn1)
       (goto-char (point-min))
       (while (re-search-forward regex nil t)
 	(setq ret (cons (match-string 1) ret)))

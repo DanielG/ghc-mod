@@ -166,7 +166,7 @@
     (let ((cdir default-directory))
       (with-temp-buffer
 	(cd cdir)
-	(apply 'call-process ghc-module-command nil t nil
+	(apply 'ghc-call-process ghc-module-command nil t nil
 	       (append (ghc-make-ghc-options) cmds))
 	(buffer-substring (point-min) (1- (point-max)))))))
 
@@ -177,5 +177,23 @@
      ,@body))
 
 (put 'ghc-executable-find 'lisp-indent-function 1)
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defvar ghc-debug nil)
+
+(defvar ghc-debug-buffer "*GHC Debug*")
+
+(defun ghc-call-process (cmd x y z &rest args)
+  (when ghc-debug
+    (with-current-buffer (set-buffer (get-buffer-create ghc-debug-buffer))
+      (goto-char (point-max))
+      (insert (format "%% %s %s\n" cmd (mapconcat 'identity args " ")))))
+  (apply 'call-process cmd x y z args)
+  (when ghc-debug
+    (let ((cbuf (current-buffer)))
+      (with-current-buffer (set-buffer (get-buffer-create ghc-debug-buffer))
+	(goto-char (point-max))
+	(insert-buffer-substring cbuf)))))
 
 (provide 'ghc-func)

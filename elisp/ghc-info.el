@@ -119,7 +119,7 @@
     (ghc-read-lisp
      (lambda ()
        (cd cdir)
-       (apply 'call-process ghc-module-command nil t nil
+       (apply 'ghc-call-process ghc-module-command nil t nil
 	      `(,@(ghc-make-ghc-options) "-l" "type" ,file ,modname ,ln ,cn))
        (goto-char (point-min))
        (while (search-forward "[Char]" nil t)
