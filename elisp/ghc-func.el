@@ -184,16 +184,17 @@
 
 (defvar ghc-debug-buffer "*GHC Debug*")
 
+(defmacro ghc-with-debug-buffer (&rest body)
+  `(with-current-buffer (set-buffer (get-buffer-create ghc-debug-buffer))
+     (goto-char (point-max))
+     ,@body))
+
 (defun ghc-call-process (cmd x y z &rest args)
-  (when ghc-debug
-    (with-current-buffer (set-buffer (get-buffer-create ghc-debug-buffer))
-      (goto-char (point-max))
-      (insert (format "%% %s %s\n" cmd (mapconcat 'identity args " ")))))
   (apply 'call-process cmd x y z args)
   (when ghc-debug
     (let ((cbuf (current-buffer)))
-      (with-current-buffer (set-buffer (get-buffer-create ghc-debug-buffer))
-	(goto-char (point-max))
-	(insert-buffer-substring cbuf)))))
+      (ghc-with-debug-buffer
+       (insert (format "%% %s %s\n" cmd (mapconcat 'identity args " ")))
+       (insert-buffer-substring cbuf)))))
 
 (provide 'ghc-func)

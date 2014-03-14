@@ -20,7 +20,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defconst ghc-flymake-allowed-file-name-masks
-  '("\\.l?hs$" ghc-flymake-init nil ghc-emacs23-larter-hack))
+  '("\\.l?hs$" ghc-flymake-init nil ghc-emacs23-later-hack))
 
 (defconst ghc-flymake-err-line-patterns
   '("^\\(.*\\):\\([0-9]+\\):\\([0-9]+\\):[ ]*\\(.+\\)" 1 2 3 4))
@@ -33,7 +33,7 @@
 
 ;; flymake of Emacs 23 or later does not display errors
 ;; if they occurred in other files. So, let's cheat flymake.
-(defun ghc-emacs23-larter-hack (tmp-file)
+(defun ghc-emacs23-later-hack (tmp-file)
   (let ((real-name (flymake-get-real-file-name tmp-file))
 	(hack-name (flymake-get-real-file-name buffer-file-name)))
     (unless (string= real-name hack-name)
