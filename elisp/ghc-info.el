@@ -106,7 +106,7 @@
     (let ((types (ghc-type-obtain-tinfos modname)))
       (if (not (listp types)) ;; main does not exist in Main
 	  (ghc-type-set-types nil)
-	(ghc-type-set-types (ghc-type-obtain-tinfos modname))
+	(ghc-type-set-types types)
 	(ghc-type-set-point (point))
 	(ghc-type-set-ix 0))))
   (ghc-type-get-types))
