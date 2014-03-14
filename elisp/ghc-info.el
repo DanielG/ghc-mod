@@ -148,7 +148,8 @@
 (defun ghc-get-pos (buf line col)
   (save-excursion
     (set-buffer buf)
-    (goto-line line)
+    (goto-char (point-min))
+    (forward-line (1- line))
     (forward-char col)
     (point)))
 
