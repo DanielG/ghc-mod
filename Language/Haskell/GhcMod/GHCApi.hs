@@ -137,8 +137,8 @@ setFastOrNot dflags Slow = dflags {
   , hscTarget = HscInterpreted
   }
 setFastOrNot dflags Fast = dflags {
-    ghcLink   = NoLink
-  , hscTarget = HscNothing
+    ghcLink   = LinkInMemory
+  , hscTarget = HscInterpreted
   }
 
 setSlowDynFlags :: GhcMonad m => m ()

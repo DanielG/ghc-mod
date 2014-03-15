@@ -34,3 +34,9 @@ spec = do
                 cradle <- findCradleWithoutSandbox
                 res <- checkSyntax defaultOptions cradle ["Baz.hs"]
                 res `shouldSatisfy` ("Baz.hs:5:1:Warning:" `isPrefixOf`)
+
+        it "can check pattern matching warnings" $ do
+            withDirectory_ "test/data" $ do
+                cradle <- getGHCVersion >>= findCradle Nothing . fst
+                res <- checkSyntax defaultOptions cradle ["Pattern.hs"]
+                res `shouldSatisfy` ("Pattern.hs:3:1:Warning: Pattern match(es) are non-exhaustive" `isPrefixOf`)
