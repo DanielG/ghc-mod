@@ -18,7 +18,6 @@ import Distribution.PackageDescription (PackageDescription)
 import DynFlags
 import Exception
 import GHC
-import GHC.Paths (libdir)
 import Language.Haskell.GhcMod.CabalApi
 import Language.Haskell.GhcMod.ErrMsg
 import Language.Haskell.GhcMod.GHCChoice
@@ -26,6 +25,16 @@ import qualified Language.Haskell.GhcMod.Gap as Gap
 import Language.Haskell.GhcMod.Types
 import System.Exit
 import System.IO
+import System.Process
+
+----------------------------------------------------------------
+
+getSystemLibDir :: IO (Maybe FilePath)
+getSystemLibDir = do
+    res <- readProcess "ghc" ["--print-libdir"] []
+    return $ case res of
+        ""   -> Nothing
+        dirn -> Just (init dirn)
 
 ----------------------------------------------------------------
 
@@ -38,9 +47,11 @@ withGHCDummyFile = withGHC "Dummy"
 withGHC :: Alternative m => FilePath  -- ^ A target file displayed in an error message.
                          -> Ghc (m a) -- ^ 'Ghc' actions created by the Ghc utilities.
                          -> IO (m a)
-withGHC file body = ghandle ignore $ runGhc (Just libdir) $ do
-    dflags <- getSessionDynFlags
-    defaultCleanupHandler dflags body
+withGHC file body = do
+    mlibdir <- getSystemLibDir
+    ghandle ignore $ runGhc mlibdir $ do
+        dflags <- getSessionDynFlags
+        defaultCleanupHandler dflags body
   where
     ignore :: Alternative m => SomeException -> IO (m a)
     ignore e = do
@@ -150,4 +161,6 @@ setTargetFiles files = do
 
 -- | Return the 'DynFlags' currently in use in the GHC session.
 getDynamicFlags :: IO DynFlags
-getDynamicFlags = runGhc (Just libdir) getSessionDynFlags
+getDynamicFlags = do
+    mlibdir <- getSystemLibDir
+    runGhc mlibdir getSessionDynFlags
