@@ -14,8 +14,6 @@ module Language.Haskell.GhcMod.Internal (
   , cabalDependPackages
   , cabalSourceDirs
   , cabalAllTargets
-  -- * GHC API
-  , canCheckFast
   -- * Getting 'DynFlags'
   , getDynamicFlags
   -- * Initializing 'DynFlags'
@@ -23,7 +21,6 @@ module Language.Haskell.GhcMod.Internal (
   , initializeFlagsWithCradle
   -- * 'GhcMonad'
   , setTargetFiles
-  , checkSlowAndSet
   -- * 'Ghc' Choice
   , (||>)
   , goNext

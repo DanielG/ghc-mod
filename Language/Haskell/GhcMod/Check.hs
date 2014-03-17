@@ -39,7 +39,6 @@ check opt cradle fileNames = checkIt `gcatch` handleErrMsg ls
     checkIt = do
         (readLog,_) <- initializeFlagsWithCradle opt cradle options True
         setTargetFiles fileNames
-        checkSlowAndSet
         void $ load LoadAllTargets
         liftIO readLog
     options

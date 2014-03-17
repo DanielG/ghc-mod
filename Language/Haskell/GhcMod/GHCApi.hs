@@ -7,9 +7,6 @@ module Language.Haskell.GhcMod.GHCApi (
   , initializeFlagsWithCradle
   , setTargetFiles
   , getDynamicFlags
-  , setSlowDynFlags
-  , checkSlowAndSet
-  , canCheckFast
   ) where
 
 import Control.Applicative
@@ -121,38 +118,16 @@ modifyFlags d0 idirs depPkgs splice build
   | otherwise = d4
   where
     d1 = d0 { importPaths = idirs }
-    d2 = setFastOrNot d1 Fast
+    d2 = d1 {
+        ghcLink   = LinkInMemory
+      , hscTarget = HscInterpreted
+      }
     d3 = Gap.addDevPkgs d2 depPkgs
     d4 | build == CabalPkg = Gap.setCabalPkg d3
        | otherwise         = d3
 
 setSplice :: DynFlags -> DynFlags
 setSplice dflag = dopt_set dflag Opt_D_dump_splices
-
-----------------------------------------------------------------
-
-setFastOrNot :: DynFlags -> CheckSpeed -> DynFlags
-setFastOrNot dflags Slow = dflags {
-    ghcLink   = LinkInMemory
-  , hscTarget = HscInterpreted
-  }
-setFastOrNot dflags Fast = dflags {
-    ghcLink   = NoLink
-  , hscTarget = HscNothing
-  }
-
-setSlowDynFlags :: GhcMonad m => m ()
-setSlowDynFlags = (flip setFastOrNot Slow <$> getSessionDynFlags)
-                  >>= void . setSessionDynFlags
-
--- | To check TH, a session module graph is necessary.
--- "load" sets a session module graph using "depanal".
--- But we have to set "-fno-code" to DynFlags before "load".
--- So, this is necessary redundancy.
-checkSlowAndSet :: GhcMonad m => m ()
-checkSlowAndSet = do
-    fast <- canCheckFast <$> depanal [] False
-    unless fast setSlowDynFlags
 
 ----------------------------------------------------------------
 
@@ -176,11 +151,3 @@ setTargetFiles files = do
 -- | Return the 'DynFlags' currently in use in the GHC session.
 getDynamicFlags :: IO DynFlags
 getDynamicFlags = runGhc (Just libdir) getSessionDynFlags
-
--- | Checking if Template Haskell or quasi quotes are used.
---   If not, the process can be faster.
-canCheckFast :: ModuleGraph -> Bool
-canCheckFast = not . any (hasTHorQQ . ms_hspp_opts)
-  where
-    hasTHorQQ :: DynFlags -> Bool
-    hasTHorQQ dflags = any (`xopt` dflags) [Opt_TemplateHaskell, Opt_QuasiQuotes]

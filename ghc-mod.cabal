@@ -111,7 +111,6 @@ Test-Suite spec
                         BrowseSpec
                         CabalApiSpec
                         CheckSpec
-                        DebugSpec
                         FlagSpec
                         InfoSpec
                         LangSpec

@@ -10,7 +10,7 @@ module Language.Haskell.GhcMod.Info (
   ) where
 
 import Control.Applicative ((<$>))
-import Control.Monad (void, when)
+import Control.Monad (void)
 import CoreUtils (exprType)
 import Data.Function (on)
 import Data.Generics hiding (typeOf)
@@ -135,20 +135,17 @@ pretty dflag = showUnqualifiedOneLine dflag . Gap.typeForUser
 ----------------------------------------------------------------
 
 inModuleContext :: Cmd -> Options -> Cradle -> FilePath -> ModuleString -> Ghc String -> String -> Ghc String
-inModuleContext cmd opt cradle file modstr action errmsg =
+inModuleContext _ opt cradle file modstr action errmsg =
     valid ||> invalid ||> return errmsg
   where
     valid = do
         void $ initializeFlagsWithCradle opt cradle ["-w:"] False
-        when (cmd == Info) setSlowDynFlags
         setTargetFiles [file]
-        checkSlowAndSet
         void $ load LoadAllTargets
         doif setContextFromTarget action
     invalid = do
         void $ initializeFlagsWithCradle opt cradle ["-w:"] False
         setTargetBuffer
-        checkSlowAndSet
         void $ load LoadAllTargets
         doif setContextFromTarget action
     setTargetBuffer = do

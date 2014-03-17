@@ -53,7 +53,6 @@ browse opt cradle mdlName = do
     fallback e                = throwGhcException e
     loadAndFind = do
       setTargetFiles [mdlName]
-      checkSlowAndSet
       void $ load LoadAllTargets
       findModule mdlname Nothing
 

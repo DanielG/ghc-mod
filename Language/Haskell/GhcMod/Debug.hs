@@ -32,17 +32,14 @@ debug opt cradle fileName = do
             liftIO (fromCabalFile ||> return simpleCompilerOption)
           else
             return simpleCompilerOption
-    [fast] <- do
-        void $ initializeFlagsWithCradle opt cradle gopts True
-        setTargetFiles [fileName]
-        pure . canCheckFast <$> depanal [] False
+    void $ initializeFlagsWithCradle opt cradle gopts True
+    setTargetFiles [fileName]
     return [
         "Current directory:   " ++ currentDir
       , "Cabal file:          " ++ cabalFile
       , "GHC options:         " ++ unwords gopts
       , "Include directories: " ++ unwords incDir
       , "Dependent packages:  " ++ (intercalate ", " $ map fst pkgs)
-      , "Fast check:          " ++ if fast then "Yes" else "No"
       ]
   where
     currentDir = cradleCurrentDir cradle

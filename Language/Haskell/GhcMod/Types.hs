@@ -113,8 +113,6 @@ type Expression = String
 -- | Module name.
 type ModuleString = String
 
-data CheckSpeed = Slow | Fast
-
 -- | Option information for GHC
 data CompilerOptions = CompilerOptions {
     ghcOptions  :: [GHCOption]  -- ^ Command line options
