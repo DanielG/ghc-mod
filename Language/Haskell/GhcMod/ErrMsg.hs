@@ -27,18 +27,34 @@ type LogReader = IO [String]
 
 ----------------------------------------------------------------
 
+type Builder = [String] -> [String]
+
+newtype LogRef = LogRef (IORef Builder)
+
+newLogRef :: IO LogRef
+newLogRef = LogRef <$> newIORef id
+
+readAndClearLogRef :: LogRef -> IO [String]
+readAndClearLogRef (LogRef ref) = do
+    b <- readIORef ref
+    writeIORef ref id
+    return $! b []
+
+appendLogRef :: DynFlags -> LineSeparator -> LogRef -> a -> Severity -> SrcSpan -> b -> SDoc -> IO ()
+appendLogRef df ls (LogRef ref) _ sev src _ msg = do
+        let !l = ppMsg src sev df ls msg
+        modifyIORef ref (\b -> b . (l:))
+
+----------------------------------------------------------------
+
 setLogger :: Bool -> DynFlags -> LineSeparator -> IO (DynFlags, LogReader)
 setLogger False df _ = return (newdf, undefined)
   where
     newdf = Gap.setLogAction df $ \_ _ _ _ _ -> return ()
 setLogger True  df ls = do
-    ref <- newIORef [] :: IO (IORef [String])
-    let newdf = Gap.setLogAction df $ appendLog ref
-    return (newdf, reverse <$> readIORef ref)
-  where
-    appendLog ref _ sev src _ msg = do
-        let !l = ppMsg src sev df ls msg
-        modifyIORef ref (l:)
+    logref <- newLogRef
+    let newdf = Gap.setLogAction df $ appendLogRef df ls logref
+    return (newdf, readAndClearLogRef logref)
 
 ----------------------------------------------------------------
 
