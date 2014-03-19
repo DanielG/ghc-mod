@@ -8,6 +8,13 @@
 
 ;;; Code:
 
+;; other files' errors should go to 0
+;; ghc-flymake-display-errors -> line column
+;; ghc-flymake-jump
+;; flymake-goto-prev-error
+;; flymake-goto-next-error
+;; no need to save
+
 (require 'ghc-func)
 
 (defvar-local ghc-check-running nil)
@@ -85,14 +92,16 @@
 	 (infos
 	  (ghc-check-highlight-original-buffer ghc-check-original-buffer infos))
 	 (t
-	  (message "No changes")))
+	  (with-current-buffer ghc-check-original-buffer
+	    (remove-overlays (point-min) (point-max) 'ghc-check t))
+	  ;; fixme no changes
+	  ))
 	(setq ghc-check-running nil))))))
 
 (defun ghc-check-process-sentinel ()
   )
 
 (defun ghc-check-highlight-original-buffer (buf infos)
-  (message "%s" infos)
   (with-current-buffer buf
     (remove-overlays (point-min) (point-max) 'ghc-check t)
     (save-excursion
@@ -101,7 +110,8 @@
 	(let ((line (ghc-hilit-info-get-line info))
 	      (msg (ghc-hilit-info-get-msg info))
 	      beg end ovl)
-	  (goto-line line)
+	  (goto-char (point-min))
+	  (forward-line (1- line))
 	  (while (eq (char-after) 32) (forward-char))
 	  (setq beg (point))
 	  (forward-line)
@@ -131,5 +141,22 @@
   "Face used for marking warning lines."
   :group 'ghc)
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defun ghc-check-display-errors ()
+  (interactive)
+  (let* ((ovls (ghc-check-overlay-here))
+	 (errs (mapcar (lambda (ovl) (overlay-get ovl 'ghc-msg)) ovls)))
+    (if (null ovls)
+	(message "No errors or warnings")
+      (ghc-display
+       nil
+       (lambda ()
+;;	 (insert title "\n\n")
+	 (mapc (lambda (x) (insert x "\n")) errs))))))
+
+(defun ghc-check-overlay-here ()
+  (let ((ovls (overlays-at (point))))
+    (ghc-filter (lambda (ovl) (overlay-get ovl 'ghc-check)) ovls)))
 
 (provide 'ghc-check)

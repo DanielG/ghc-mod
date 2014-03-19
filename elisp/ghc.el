@@ -76,7 +76,7 @@
     (define-key haskell-mode-map ghc-import-key      'ghc-import-module)
 ;;    (define-key haskell-mode-map ghc-previous-key    'flymake-goto-prev-error)
 ;;    (define-key haskell-mode-map ghc-next-key        'flymake-goto-next-error)
-;;    (define-key haskell-mode-map ghc-help-key        'ghc-flymake-display-errors)
+    (define-key haskell-mode-map ghc-help-key        'ghc-check-display-errors)
     (define-key haskell-mode-map ghc-insert-key      'ghc-insert-template)
     (define-key haskell-mode-map ghc-sort-key        'ghc-sort-lines)
     (define-key haskell-mode-map ghc-check-key       'ghc-save-buffer)
