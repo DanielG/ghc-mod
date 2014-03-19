@@ -41,4 +41,3 @@ loop readLog ls set = do
     handler err = do
         errmsgs <- handleErrMsg ls err
         return (errmsgs, False)
-
