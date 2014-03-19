@@ -35,7 +35,8 @@ debug opt cradle fileName = do
     void $ initializeFlagsWithCradle opt cradle gopts True
     setTargetFiles [fileName]
     return [
-        "Current directory:   " ++ currentDir
+        "Root directory:      " ++ rootDir
+      , "Current directory:   " ++ currentDir
       , "Cabal file:          " ++ cabalFile
       , "GHC options:         " ++ unwords gopts
       , "Include directories: " ++ unwords incDir
@@ -44,6 +45,8 @@ debug opt cradle fileName = do
   where
     currentDir = cradleCurrentDir cradle
     mCabalFile = cradleCabalFile cradle
+    mCabalDir = cradleCabalDir cradle
+    rootDir = fromMaybe currentDir mCabalDir
     cabal = isJust mCabalFile
     cabalFile = fromMaybe "" mCabalFile
     origGopts = ghcOpts opt
