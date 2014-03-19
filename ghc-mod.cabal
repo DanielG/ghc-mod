@@ -92,6 +92,19 @@ Executable ghc-mod
                       , ghc
                       , ghc-mod
 
+Executable ghc-modi
+  Default-Language:     Haskell2010
+  Main-Is:              GHCModi.hs
+  Other-Modules:        Paths_ghc_mod
+  GHC-Options:          -Wall
+  HS-Source-Dirs:       src
+  Build-Depends:        base >= 4.0 && < 5
+                      , containers
+                      , directory
+                      , filepath
+                      , ghc
+                      , ghc-mod
+
 Test-Suite doctest
   Type:                 exitcode-stdio-1.0
   Default-Language:     Haskell2010
