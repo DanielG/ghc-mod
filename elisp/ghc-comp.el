@@ -273,7 +273,9 @@ unloaded modules are loaded")
 (ghc-defstruct buffer name file)
 
 (defun ghc-buffer-name-file (buf)
-  (ghc-make-buffer (buffer-name buf) (buffer-file-name buf)))
+  (ghc-make-buffer
+   :name (buffer-name buf)
+   :file (buffer-file-name buf)))
 
 (defun ghc-gather-import-modules-all-buffers ()
   (let ((bufs (mapcar 'ghc-buffer-name-file (buffer-list)))
