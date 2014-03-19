@@ -1,4 +1,4 @@
-SRCS = ghc.el ghc-func.el ghc-doc.el ghc-comp.el ghc-flymake.el \
+SRCS = ghc.el ghc-func.el ghc-doc.el ghc-comp.el ghc-check.el \
        ghc-command.el ghc-info.el ghc-ins-mod.el ghc-indent.el
 EMACS = emacs
 DETECT = xemacs

@@ -8,15 +8,15 @@
 
 ;;; Code:
 
-(require 'ghc-flymake)
+(require 'ghc-check)
 
 (defun ghc-insert-template ()
   (interactive)
   (cond
    ((bobp)
     (ghc-insert-module-template))
-   ((ghc-flymake-have-errs-p)
-    (ghc-flymake-insert-from-warning))
+;;   ((ghc-flymake-have-errs-p) ;; fixme
+;;    (ghc-flymake-insert-from-warning))
    (t
     (message "Nothing to be done"))))
 
@@ -40,8 +40,7 @@
 
 (defun ghc-save-buffer ()
   (interactive)
-  (if (buffer-modified-p)
-      (call-interactively 'save-buffer)
-    (flymake-start-syntax-check)))
+  (if (buffer-modified-p) (call-interactively 'save-buffer))
+  (ghc-check-syntax))
 
 (provide 'ghc-command)

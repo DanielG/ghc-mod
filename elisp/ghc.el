@@ -8,8 +8,6 @@
 ;;
 ;; (autoload 'ghc-init "ghc" nil t)
 ;; (add-hook 'haskell-mode-hook (lambda () (ghc-init)))
-;; Or
-;; (add-hook 'haskell-mode-hook (lambda () (ghc-init) (flymake-mode)))
 
 ;;; Code:
 
@@ -21,7 +19,7 @@
 (require 'ghc-comp)
 (require 'ghc-doc)
 (require 'ghc-info)
-(require 'ghc-flymake)
+(require 'ghc-check)
 (require 'ghc-command)
 (require 'ghc-ins-mod)
 (require 'ghc-indent)
@@ -74,15 +72,15 @@
     (define-key haskell-mode-map ghc-type-key        'ghc-show-type)
     (define-key haskell-mode-map ghc-info-key        'ghc-show-info)
     (define-key haskell-mode-map ghc-expand-key      'ghc-expand-th)
-    (define-key haskell-mode-map ghc-jump-key        'ghc-flymake-jump)
+;;    (define-key haskell-mode-map ghc-jump-key        'ghc-flymake-jump) ;; fixme
     (define-key haskell-mode-map ghc-import-key      'ghc-import-module)
-    (define-key haskell-mode-map ghc-previous-key    'flymake-goto-prev-error)
-    (define-key haskell-mode-map ghc-next-key        'flymake-goto-next-error)
-    (define-key haskell-mode-map ghc-help-key        'ghc-flymake-display-errors)
+;;    (define-key haskell-mode-map ghc-previous-key    'flymake-goto-prev-error)
+;;    (define-key haskell-mode-map ghc-next-key        'flymake-goto-next-error)
+;;    (define-key haskell-mode-map ghc-help-key        'ghc-flymake-display-errors)
     (define-key haskell-mode-map ghc-insert-key      'ghc-insert-template)
     (define-key haskell-mode-map ghc-sort-key        'ghc-sort-lines)
     (define-key haskell-mode-map ghc-check-key       'ghc-save-buffer)
-    (define-key haskell-mode-map ghc-toggle-key      'ghc-flymake-toggle-command)
+;;    (define-key haskell-mode-map ghc-toggle-key      'ghc-flymake-toggle-command)
     (define-key haskell-mode-map ghc-module-key      'ghc-insert-module)
     (define-key haskell-mode-map ghc-hoogle-key      'haskell-hoogle)
     (define-key haskell-mode-map ghc-shallower-key   'ghc-make-indent-shallower)
