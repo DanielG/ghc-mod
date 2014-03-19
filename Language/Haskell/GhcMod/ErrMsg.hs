@@ -81,7 +81,7 @@ ppMsg spn sev dflag ls@(LineSeparator lsep) msg = prefix ++ cts ++ lsep
     cts  = showMsg dflag ls msg
     defaultPrefix
       | dopt Opt_D_dump_splices dflag = ""
-      | otherwise                     = "Dummy:0:0:"
+      | otherwise                     = "Dummy:0:0:Error:"
     prefix = fromMaybe defaultPrefix $ do
         (line,col,_,_) <- Gap.getSrcSpan spn
         file <- normalise <$> Gap.getSrcFile spn

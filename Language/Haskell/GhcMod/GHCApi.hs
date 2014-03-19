@@ -6,6 +6,7 @@ module Language.Haskell.GhcMod.GHCApi (
   , initializeFlags
   , initializeFlagsWithCradle
   , setTargetFiles
+  , addTargetFiles
   , getDynamicFlags
   ) where
 
@@ -156,6 +157,12 @@ setTargetFiles [] = error "ghc-mod: setTargetFiles: No target files given"
 setTargetFiles files = do
     targets <- forM files $ \file -> guessTarget file Nothing
     setTargets targets
+
+addTargetFiles :: (GhcMonad m) => [FilePath] -> m ()
+addTargetFiles [] = error "ghc-mod: addTargetFiles: No target files given"
+addTargetFiles files = do
+    targets <- forM files $ \file -> guessTarget file Nothing
+    mapM_ addTarget targets
 
 ----------------------------------------------------------------
 

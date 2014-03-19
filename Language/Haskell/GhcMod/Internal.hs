@@ -21,6 +21,8 @@ module Language.Haskell.GhcMod.Internal (
   , initializeFlagsWithCradle
   -- * 'GhcMonad'
   , setTargetFiles
+  , addTargetFiles
+  , handleErrMsg
   -- * 'Ghc' Choice
   , (||>)
   , goNext
