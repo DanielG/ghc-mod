@@ -147,9 +147,9 @@
 	  (overlay-put ovl 'ghc-check t)
 	  (overlay-put ovl 'ghc-file file)
 	  (overlay-put ovl 'ghc-msg msg) ;; should be list
-	  (let ((face (if (string-match "^Error" msg)
-			  'ghc-face-error
-			'ghc-face-warn)))
+	  (let ((face (if (string-match "^Warning" msg)
+			  'ghc-face-warn
+			'ghc-face-error)))
 	    (overlay-put ovl 'face face)))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
