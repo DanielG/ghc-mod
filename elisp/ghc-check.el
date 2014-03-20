@@ -11,9 +11,6 @@
 ;; other files' errors should go to 0
 ;; ghc-flymake-display-errors -> line column
 ;; ghc-flymake-jump
-;; flymake-goto-prev-error
-;; flymake-goto-next-error
-;; no need to save
 
 (require 'ghc-func)
 
@@ -110,6 +107,8 @@
 	(let ((line (ghc-hilit-info-get-line info))
 	      (msg (ghc-hilit-info-get-msg info))
 	      beg end ovl)
+	  ;; FIXME: This is the Shlemiel painter's algorithm.
+	  ;; If this is a bottleneck for a large code, let's fix.
 	  (goto-char (point-min))
 	  (forward-line (1- line))
 	  (while (eq (char-after) 32) (forward-char))
@@ -143,9 +142,9 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defun ghc-check-display-errors ()
+(defun ghc-display-errors ()
   (interactive)
-  (let* ((ovls (ghc-check-overlay-here))
+  (let* ((ovls (ghc-check-overlay-at (point)))
 	 (errs (mapcar (lambda (ovl) (overlay-get ovl 'ghc-msg)) ovls)))
     (if (null ovls)
 	(message "No errors or warnings")
@@ -155,8 +154,30 @@
 ;;	 (insert title "\n\n")
 	 (mapc (lambda (x) (insert x "\n")) errs))))))
 
-(defun ghc-check-overlay-here ()
-  (let ((ovls (overlays-at (point))))
+(defun ghc-check-overlay-at (p)
+  (let ((ovls (overlays-at p)))
     (ghc-filter (lambda (ovl) (overlay-get ovl 'ghc-check)) ovls)))
+
+(defun ghc-goto-prev-error ()
+  (interactive)
+  (let* ((here (point))
+	 (ovls0 (ghc-check-overlay-at here))
+	 (end (if ovls0 (overlay-start (car ovls0)) here))
+	 (ovls1 (overlays-in (point-min) end))
+	 (ovls2 (ghc-filter (lambda (ovl) (overlay-get ovl 'ghc-check)) ovls1))
+	 (pnts0 (mapcar 'overlay-start ovls2))
+	 (pnts1 (sort pnts0 '>)))
+    (if pnts1 (goto-char (car pnts1)))))
+
+(defun ghc-goto-next-error ()
+  (interactive)
+  (let* ((here (point))
+	 (ovls0 (ghc-check-overlay-at here))
+	 (beg (if ovls0 (overlay-end (car ovls0)) here))
+	 (ovls1 (overlays-in beg (point-max)))
+	 (ovls2 (ghc-filter (lambda (ovl) (overlay-get ovl 'ghc-check)) ovls1))
+	 (pnts0 (mapcar 'overlay-start ovls2))
+	 (pnts1 (sort pnts0 '<)))
+    (if pnts1 (goto-char (car pnts1)))))
 
 (provide 'ghc-check)
