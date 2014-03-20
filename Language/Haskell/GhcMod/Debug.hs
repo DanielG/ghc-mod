@@ -1,4 +1,4 @@
-module Language.Haskell.GhcMod.Debug (debugInfo, debug) where
+module Language.Haskell.GhcMod.Debug (debugInfo, debug, rootInfo, root) where
 
 import Control.Applicative
 import Control.Exception.IOChoice
@@ -54,3 +54,24 @@ debug opt cradle fileName = do
     fromCabalFile = parseCabalFile file >>= getCompilerOptions origGopts cradle
       where
         file = fromJust mCabalFile
+
+----------------------------------------------------------------
+
+-- | Obtaining root information.
+rootInfo :: Options
+          -> Cradle
+          -> FilePath   -- ^ A target file.
+          -> IO String
+rootInfo opt cradle fileName = withGHC fileName (root opt cradle fileName)
+
+-- | Obtaining root information.
+root :: Options
+      -> Cradle
+      -> FilePath     -- ^ A target file.
+      -> Ghc String
+root _ cradle _ = do
+    return $ rootDir ++ "\n"
+  where
+    currentDir = cradleCurrentDir cradle
+    mCabalDir = cradleCabalDir cradle
+    rootDir = fromMaybe currentDir mCabalDir

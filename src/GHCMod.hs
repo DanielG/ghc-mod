@@ -35,6 +35,7 @@ usage =    "ghc-mod version " ++ showVersion version ++ "\n"
         ++ "\t ghc-mod type" ++ ghcOptHelp ++ "<HaskellFile> <module> <line-no> <column-no>\n"
         ++ "\t ghc-mod lint [-h opt] <HaskellFile>\n"
         ++ "\t ghc-mod boot\n"
+        ++ "\t ghc-mod root <HaskellFile>\n"
         ++ "\t ghc-mod help\n"
 
 ----------------------------------------------------------------
@@ -107,6 +108,7 @@ main = flip catches handlers $ do
       "check"  -> checkSyntax opt cradle remainingArgs
       "expand" -> checkSyntax opt { expandSplice = True } cradle remainingArgs
       "debug"  -> nArgs 1 $ debugInfo opt cradle cmdArg1
+      "root"   -> nArgs 1 $ rootInfo opt cradle cmdArg1
       "type"   -> nArgs 4 $ typeExpr opt cradle cmdArg1 cmdArg2 (read cmdArg3) (read cmdArg4)
       "info"   -> nArgs 3 infoExpr opt cradle cmdArg1 cmdArg2 cmdArg3
       "lint"   -> nArgs 1 withFile (lintSyntax opt) cmdArg1

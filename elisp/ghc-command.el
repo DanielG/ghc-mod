@@ -40,7 +40,9 @@
 
 (defun ghc-save-buffer ()
   (interactive)
-  (if (buffer-modified-p) (call-interactively 'save-buffer))
+  ;; fixme: better way then saving?
+  (set-buffer-modified-p t)
+  (call-interactively 'save-buffer)
   (ghc-check-syntax))
 
 (provide 'ghc-command)

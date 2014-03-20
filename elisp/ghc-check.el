@@ -9,7 +9,6 @@
 ;;; Code:
 
 ;; other files' errors should go to 0
-;; ghc-flymake-display-errors -> line column
 ;; ghc-flymake-jump
 
 (require 'ghc-func)
@@ -22,9 +21,9 @@
 (defun ghc-check-get-process-name ()
   (let ((file (buffer-file-name)))
     (with-temp-buffer
-      (ghc-call-process ghc-module-command nil t nil "debug" file)
+      (ghc-call-process ghc-module-command nil t nil "root" file)
       (goto-char (point-min))
-      (when (re-search-forward "^Root directory: +\\(.*\\)$" nil t)
+      (when (looking-at "^\\(.*\\)$")
 	(match-string-no-properties 1)))))
 
 (defun ghc-check-syntax ()
