@@ -8,8 +8,6 @@
 
 ;;; Code:
 
-;; templates
-;; ghc-flymake-jump
 ;; multiple Main in the same directory
 
 (require 'ghc-func)

@@ -50,7 +50,6 @@
 (defvar ghc-toggle-key      "\C-c\C-c")
 (defvar ghc-module-key      "\C-c\C-m")
 (defvar ghc-expand-key      "\C-c\C-e")
-(defvar ghc-jump-key        "\C-c\C-j")
 (defvar ghc-hoogle-key      (format "\C-c%c" (ghc-find-C-h)))
 (defvar ghc-shallower-key   "\C-c<")
 (defvar ghc-deeper-key      "\C-c>")
@@ -72,7 +71,6 @@
     (define-key haskell-mode-map ghc-type-key        'ghc-show-type)
     (define-key haskell-mode-map ghc-info-key        'ghc-show-info)
     (define-key haskell-mode-map ghc-expand-key      'ghc-expand-th)
-;;    (define-key haskell-mode-map ghc-jump-key        'ghc-flymake-jump) ;; fixme
     (define-key haskell-mode-map ghc-import-key      'ghc-import-module)
     (define-key haskell-mode-map ghc-previous-key    'ghc-goto-prev-error)
     (define-key haskell-mode-map ghc-next-key        'ghc-goto-next-error)
@@ -80,7 +78,7 @@
     (define-key haskell-mode-map ghc-insert-key      'ghc-insert-template)
     (define-key haskell-mode-map ghc-sort-key        'ghc-sort-lines)
     (define-key haskell-mode-map ghc-check-key       'ghc-save-buffer)
-;;    (define-key haskell-mode-map ghc-toggle-key      'ghc-flymake-toggle-command)
+;;    (define-key haskell-mode-map ghc-toggle-key      'ghc-flymake-toggle-command) -- fixme
     (define-key haskell-mode-map ghc-module-key      'ghc-insert-module)
     (define-key haskell-mode-map ghc-hoogle-key      'haskell-hoogle)
     (define-key haskell-mode-map ghc-shallower-key   'ghc-make-indent-shallower)
