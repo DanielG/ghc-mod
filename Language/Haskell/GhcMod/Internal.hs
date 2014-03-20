@@ -29,6 +29,8 @@ module Language.Haskell.GhcMod.Internal (
   , runAnyOne
   -- * 'GhcMonad' Choice
   , (|||>)
+  -- * GHC
+  , getSystemLibDir
   ) where
 
 import Language.Haskell.GhcMod.CabalApi

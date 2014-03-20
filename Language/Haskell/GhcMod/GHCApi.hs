@@ -8,6 +8,7 @@ module Language.Haskell.GhcMod.GHCApi (
   , setTargetFiles
   , addTargetFiles
   , getDynamicFlags
+  , getSystemLibDir
   ) where
 
 import Control.Applicative

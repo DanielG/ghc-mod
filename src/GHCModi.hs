@@ -1,25 +1,37 @@
 module Main where
 
-import System.IO
 import Control.Monad
 import CoreMonad (liftIO)
+import Data.List
 import Data.Set as S
-import Exception (ghandle)
+import Exception (ghandle, SomeException(..))
 import GHC
 import Language.Haskell.GhcMod
 import Language.Haskell.GhcMod.Internal
+import System.IO
 
 main :: IO ()
 main = do
     cradle <- findCradle
-    void $ withGHCDummyFile $ do
+    run ls $ do
         (readLog,_) <- initializeFlagsWithCradle opt cradle ["-Wall"] True
         loop readLog ls S.empty
-        return []
-    return ()
   where
     opt = defaultOptions
     ls = lineSeparator opt
+
+run :: LineSeparator -> Ghc () -> IO ()
+run (LineSeparator ls) body = do
+    mlibdir <- getSystemLibDir
+    ghandle ignore $ runGhc mlibdir $ do
+        dflags <- getSessionDynFlags
+        defaultCleanupHandler dflags body
+  where
+    ignore (SomeException e) = do
+        putStr "ghc-modi:0:0:Error:"
+        let x = intercalate ls $ lines $ show e
+        putStrLn x
+        putStrLn "NG"
 
 loop :: IO [String] -> LineSeparator -> Set FilePath -> Ghc ()
 loop readLog ls set = do
