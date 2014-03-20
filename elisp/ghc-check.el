@@ -194,4 +194,88 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+(defun ghc-check-insert-from-warning ()
+  (interactive)
+  (dolist (data (mapcar (lambda (ovl) (overlay-get ovl 'ghc-msg)) (ghc-check-overlay-at (point))))
+    (save-excursion
+      (cond
+       ((string-match "Inferred type: \\|no type signature:" data)
+	(beginning-of-line)
+	(insert-before-markers (ghc-extract-type data) "\n"))
+       ((string-match "lacks an accompanying binding" data)
+	(beginning-of-line)
+	(when (looking-at "^\\([^ ]+\\) *::")
+	  (save-match-data
+	    (forward-line)
+	    (if (not (bolp)) (insert "\n")))
+	  (insert (match-string 1) " = undefined\n")))
+       ((string-match "Not in scope: `\\([^']+\\)'" data)
+	(save-match-data
+	  (unless (re-search-forward "^$" nil t)
+	    (goto-char (point-max))
+	    (insert "\n")))
+	(insert "\n" (match-string 1 data) " = undefined\n"))
+       ((string-match "Pattern match(es) are non-exhaustive" data)
+	(let* ((fn (ghc-get-function-name))
+	       (arity (ghc-get-function-arity fn)))
+	  (ghc-insert-underscore fn arity)))
+       ((string-match "Found:\0[ ]*\\([^\0]+\\)\0Why not:\0[ ]*\\([^\0]+\\)" data)
+	(let ((old (match-string 1 data))
+	      (new (match-string 2 data)))
+	  (beginning-of-line)
+	  (when (search-forward old nil t)
+	    (let ((end (point)))
+	      (search-backward old nil t)
+	      (delete-region (point) end))
+	    (insert new))))))))
+
+(defun ghc-extract-type (str)
+  (with-temp-buffer
+    (insert str)
+    (goto-char (point-min))
+    (when (re-search-forward "Inferred type: \\|no type signature:\\( \\|\0 +\\)?" nil t)
+      (delete-region (point-min) (point)))
+    (when (re-search-forward " forall [^.]+\\." nil t)
+      (replace-match ""))
+    (while (re-search-forward "\0 +" nil t)
+      (replace-match " "))
+    (goto-char (point-min))
+    (while (re-search-forward "\\[Char\\]" nil t)
+      (replace-match "String"))
+    (re-search-forward "\0" nil t)
+    (buffer-substring-no-properties (point-min) (1- (point)))))
+
+(defun ghc-get-function-name ()
+  (save-excursion
+    (beginning-of-line)
+    (when (looking-at "\\([^ ]+\\) ")
+      (match-string 1))))
+
+(defun ghc-get-function-arity (fn)
+  (when fn
+    (save-excursion
+      (let ((regex (format "^%s *::" (regexp-quote fn))))
+	(when (re-search-backward regex nil t)
+	  (ghc-get-function-arity0))))))
+
+(defun ghc-get-function-arity0 ()
+  (let ((end (save-excursion (end-of-line) (point)))
+	(arity 0))
+    (while (search-forward "->" end t)
+      (setq arity (1+ arity)))
+    arity))
+
+(defun ghc-insert-underscore (fn ar)
+  (when fn
+    (let ((arity (or ar 1)))
+      (save-excursion
+	(goto-char (point-max))
+	(re-search-backward (format "^%s *::" (regexp-quote fn)))
+	(forward-line)
+	(re-search-forward "^$" nil t)
+	(insert fn)
+	(dotimes (i arity)
+	  (insert " _"))
+	(insert  " = error \"" fn "\"")))))
+
 (provide 'ghc-check)

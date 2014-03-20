@@ -15,8 +15,8 @@
   (cond
    ((bobp)
     (ghc-insert-module-template))
-;;   ((ghc-flymake-have-errs-p) ;; fixme
-;;    (ghc-flymake-insert-from-warning))
+   ((ghc-check-overlay-at (point))
+    (ghc-check-insert-from-warning))
    (t
     (message "Nothing to be done"))))
 
