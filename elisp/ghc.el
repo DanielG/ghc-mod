@@ -86,7 +86,8 @@
     (define-key haskell-mode-map ghc-shallower-key   'ghc-make-indent-shallower)
     (define-key haskell-mode-map ghc-deeper-key      'ghc-make-indent-deeper)
     (ghc-comp-init)
-    (setq ghc-initialized t)))
+    (setq ghc-initialized t))
+  (ghc-check-syntax))
 
 (defun ghc-abbrev-init ()
   (set (make-local-variable 'dabbrev-case-fold-search) nil))

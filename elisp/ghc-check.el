@@ -14,18 +14,35 @@
 
 (require 'ghc-func)
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; stolen from flymake.el
+(defface ghc-face-error
+  '((((supports :underline (:style wave)))
+     :underline (:style wave :color "Red1"))
+    (t
+     :inherit error))
+  "Face used for marking error lines."
+  :group 'ghc)
+
+(defface ghc-face-warn
+  '((((supports :underline (:style wave)))
+     :underline (:style wave :color "DarkOrange"))
+    (t
+     :inherit warning))
+  "Face used for marking warning lines."
+  :group 'ghc)
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
 (defvar-local ghc-check-running nil)
 (defvar-local ghc-check-process-name nil)
 (defvar-local ghc-check-original-buffer nil)
 (defvar-local ghc-check-original-file nil)
 
-(defun ghc-check-get-process-name ()
-  (let ((file (buffer-file-name)))
-    (with-temp-buffer
-      (ghc-call-process ghc-module-command nil t nil "root" file)
-      (goto-char (point-min))
-      (when (looking-at "^\\(.*\\)$")
-	(match-string-no-properties 1)))))
+(ghc-defstruct hilit-info file line col msg)
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defun ghc-check-syntax ()
   (unless ghc-check-process-name
@@ -46,6 +63,14 @@
 	  (let ((pro (ghc-check-get-process cpro name buf)))
 	    (process-send-string pro (concat file "\n"))))))))
 
+(defun ghc-check-get-process-name ()
+  (let ((file (buffer-file-name)))
+    (with-temp-buffer
+      (ghc-call-process ghc-module-command nil t nil "root" file)
+      (goto-char (point-min))
+      (when (looking-at "^\\(.*\\)$")
+	(match-string-no-properties 1)))))
+
 (defun ghc-check-get-process (cpro name buf)
   (cond
    ((not cpro)
@@ -61,8 +86,6 @@
     (set-process-sentinel pro 'ghc-check-process-sentinel)
     (set-process-query-on-exit-flag pro nil)
     pro))
-
-(ghc-defstruct hilit-info file line col msg)
 
 (defun ghc-check-process-filter (process string)
   (with-current-buffer (process-buffer process)
@@ -93,6 +116,8 @@
 
 (defun ghc-check-process-sentinel (process event)
   )
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defun ghc-check-highlight-original-buffer (ofile buf infos)
   (with-current-buffer buf
@@ -127,23 +152,6 @@
 			'ghc-face-warn)))
 	    (overlay-put ovl 'face face)))))))
 
-;; stolen from flymake.el
-(defface ghc-face-error
-  '((((supports :underline (:style wave)))
-     :underline (:style wave :color "Red1"))
-    (t
-     :inherit error))
-  "Face used for marking error lines."
-  :group 'ghc)
-
-(defface ghc-face-warn
-  '((((supports :underline (:style wave)))
-     :underline (:style wave :color "DarkOrange"))
-    (t
-     :inherit warning))
-  "Face used for marking warning lines."
-  :group 'ghc)
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defun ghc-display-errors ()
@@ -161,6 +169,8 @@
 (defun ghc-check-overlay-at (p)
   (let ((ovls (overlays-at p)))
     (ghc-filter (lambda (ovl) (overlay-get ovl 'ghc-check)) ovls)))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defun ghc-goto-prev-error ()
   (interactive)
@@ -181,5 +191,7 @@
 	 (ovls2 (ghc-filter (lambda (ovl) (overlay-get ovl 'ghc-check)) ovls1))
 	 (pnts (mapcar 'overlay-start ovls2)))
     (if pnts (goto-char (apply 'min pnts)))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (provide 'ghc-check)
