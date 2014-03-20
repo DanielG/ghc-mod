@@ -8,8 +8,9 @@
 
 ;;; Code:
 
-;; other files' errors should go to 0
+;; templates
 ;; ghc-flymake-jump
+;; multiple Main in the same directory
 
 (require 'ghc-func)
 
@@ -68,11 +69,7 @@
     (goto-char (point-max))
     (insert string)
     (forward-line -1)
-    (cond
-     ((looking-at "^NG$")
-      (setq ghc-check-running nil)
-      (message "An error happens"))
-     ((looking-at "^OK$")
+    (when (looking-at "^\\(OK\\|NG\\)$")
       (goto-char (point-min))
       (let ((regex "^\\(.*\\):\\([0-9]+\\):\\([0-9]+\\): *\\(.+\\)")
 	    info infos)
@@ -86,18 +83,18 @@
 	(setq infos (nreverse infos))
 	(cond
 	 (infos
-	  (ghc-check-highlight-original-buffer ghc-check-original-buffer infos))
+	  (let ((file ghc-check-original-file)
+		(buf ghc-check-original-buffer))
+	    (ghc-check-highlight-original-buffer file buf infos)))
 	 (t
 	  (with-current-buffer ghc-check-original-buffer
-	    (remove-overlays (point-min) (point-max) 'ghc-check t))
-	  ;; fixme no changes
-	  ))
-	(setq ghc-check-running nil))))))
+	    (remove-overlays (point-min) (point-max) 'ghc-check t))))
+	(setq ghc-check-running nil)))))
 
 (defun ghc-check-process-sentinel (process event)
   )
 
-(defun ghc-check-highlight-original-buffer (buf infos)
+(defun ghc-check-highlight-original-buffer (ofile buf infos)
   (with-current-buffer buf
     (remove-overlays (point-min) (point-max) 'ghc-check t)
     (save-excursion
@@ -105,17 +102,25 @@
       (dolist (info infos)
 	(let ((line (ghc-hilit-info-get-line info))
 	      (msg (ghc-hilit-info-get-msg info))
+	      (file (ghc-hilit-info-get-file info))
 	      beg end ovl)
 	  ;; FIXME: This is the Shlemiel painter's algorithm.
 	  ;; If this is a bottleneck for a large code, let's fix.
 	  (goto-char (point-min))
-	  (forward-line (1- line))
-	  (while (eq (char-after) 32) (forward-char))
-	  (setq beg (point))
-	  (forward-line)
-	  (setq end (1- (point)))
+	  (cond
+	   ((string= ofile file)
+	    (forward-line (1- line))
+	    (while (eq (char-after) 32) (forward-char))
+	    (setq beg (point))
+	    (forward-line)
+	    (setq end (1- (point))))
+	   (t
+	    (setq beg (point))
+	    (forward-line)
+	    (setq end (point))))
 	  (setq ovl (make-overlay beg end))
 	  (overlay-put ovl 'ghc-check t)
+	  (overlay-put ovl 'ghc-file file)
 	  (overlay-put ovl 'ghc-msg msg) ;; should be list
 	  (let ((face (if (string-match "^Error" msg)
 			  'ghc-face-error
@@ -150,7 +155,7 @@
       (ghc-display
        nil
        (lambda ()
-;;	 (insert title "\n\n")
+	 (insert (overlay-get (car ovls) 'ghc-file) "\n\n")
 	 (mapc (lambda (x) (insert x "\n")) errs))))))
 
 (defun ghc-check-overlay-at (p)
@@ -164,9 +169,8 @@
 	 (end (if ovls0 (overlay-start (car ovls0)) here))
 	 (ovls1 (overlays-in (point-min) end))
 	 (ovls2 (ghc-filter (lambda (ovl) (overlay-get ovl 'ghc-check)) ovls1))
-	 (pnts0 (mapcar 'overlay-start ovls2))
-	 (pnts1 (sort pnts0 '>)))
-    (if pnts1 (goto-char (car pnts1)))))
+	 (pnts (mapcar 'overlay-start ovls2)))
+    (if pnts (goto-char (apply 'max pnts)))))
 
 (defun ghc-goto-next-error ()
   (interactive)
@@ -175,8 +179,7 @@
 	 (beg (if ovls0 (overlay-end (car ovls0)) here))
 	 (ovls1 (overlays-in beg (point-max)))
 	 (ovls2 (ghc-filter (lambda (ovl) (overlay-get ovl 'ghc-check)) ovls1))
-	 (pnts0 (mapcar 'overlay-start ovls2))
-	 (pnts1 (sort pnts0 '<)))
-    (if pnts1 (goto-char (car pnts1)))))
+	 (pnts (mapcar 'overlay-start ovls2)))
+    (if pnts (goto-char (apply 'min pnts)))))
 
 (provide 'ghc-check)
