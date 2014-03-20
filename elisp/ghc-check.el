@@ -8,7 +8,9 @@
 
 ;;; Code:
 
-;; multiple Main in the same directory
+;; todo:
+;; * hlint
+;; * multiple Mains in the same directory
 
 (require 'ghc-func)
 
