@@ -95,7 +95,7 @@
 	  ))
 	(setq ghc-check-running nil))))))
 
-(defun ghc-check-process-sentinel ()
+(defun ghc-check-process-sentinel (process event)
   )
 
 (defun ghc-check-highlight-original-buffer (buf infos)
