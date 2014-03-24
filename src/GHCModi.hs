@@ -1,14 +1,14 @@
 module Main where
 
-import Control.Monad
+import Control.Monad (when, void)
 import CoreMonad (liftIO)
-import Data.List
+import Data.List (intercalate)
 import Data.Set as S
 import Exception (ghandle, SomeException(..))
 import GHC
 import Language.Haskell.GhcMod
 import Language.Haskell.GhcMod.Internal
-import System.IO
+import System.IO (hFlush,stdout)
 
 main :: IO ()
 main = do
@@ -35,21 +35,31 @@ run (LineSeparator ls) body = do
 
 loop :: IO [String] -> LineSeparator -> Set FilePath -> Ghc ()
 loop readLog ls set = do
-    file <- liftIO $ getLine
+    cmdArg <- liftIO $ getLine
+    let (cmd,arg') = break (== ' ') cmdArg
+        arg = dropWhile (== ' ') arg'
+    (msgs,ok,set') <- case cmd of
+        "check" -> checkStx readLog ls set arg
+        _       -> return ([], False, set)
+    mapM_ (liftIO . putStrLn) msgs
+    liftIO $ putStrLn $ if ok then "OK" else "NG"
+    liftIO $ hFlush stdout
+    when ok $ loop readLog ls set'
+
+checkStx :: IO [String]
+         -> LineSeparator
+         -> Set FilePath
+         -> FilePath
+         -> Ghc ([String], Bool, Set FilePath)
+checkStx readLog ls set file = do
     let add = not $ S.member file set
-    (errmsgs,ok) <- ghandle handler $ do
+    ghandle handler $ do
         when add $ addTargetFiles [file]
         void $ load LoadAllTargets
         msgs <- liftIO $ readLog
-        return (msgs, True)
-    mapM_ (liftIO . putStrLn) errmsgs
-    liftIO $ putStrLn $ if ok then "OK" else "NG"
-    liftIO $ hFlush stdout
-    let set'
-          | add && ok = S.insert file set
-          | otherwise = set
-    when ok $ loop readLog ls set'
+        let set' = if add then S.insert file set else set
+        return (msgs, True, set')
   where
     handler err = do
         errmsgs <- handleErrMsg ls err
-        return (errmsgs, False)
+        return (errmsgs, False, set)

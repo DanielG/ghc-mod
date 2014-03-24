@@ -61,7 +61,7 @@
 	  (setq ghc-check-original-file file)
 	  (erase-buffer)
 	  (let ((pro (ghc-check-get-process cpro name buf)))
-	    (process-send-string pro (concat file "\n"))))))))
+	    (process-send-string pro (concat "check " file "\n"))))))))
 
 (defun ghc-check-get-process-name ()
   (let ((file (buffer-file-name)))
