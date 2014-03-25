@@ -34,6 +34,10 @@
   "Face used for marking warning lines."
   :group 'ghc)
 
+(defvar ghc-check-error-fringe (propertize "!" 'display '(left-fringe exclamation-mark)))
+
+(defvar ghc-check-warning-fringe (propertize "?" 'display '(left-fringe question-mark)))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defun ghc-check-syntax ()
@@ -109,8 +113,11 @@
 	  (setq ovl (make-overlay beg end))
 	  (overlay-put ovl 'ghc-check t)
 	  (overlay-put ovl 'ghc-file file)
-	  (overlay-put ovl 'ghc-msg msg) ;; should be list
-	  (let ((face (if err 'ghc-face-error 'ghc-face-warn)))
+	  (overlay-put ovl 'ghc-msg msg)
+	  ;; fixme tooltips
+	  (let ((fringe (if err ghc-check-error-fringe ghc-check-warning-fringe))
+		(face (if err 'ghc-face-error 'ghc-face-warn)))
+	    (overlay-put ovl 'before-string fringe)
 	    (overlay-put ovl 'face face)))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
