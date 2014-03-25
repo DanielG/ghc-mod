@@ -1,65 +1,111 @@
+{-# LANGUAGE BangPatterns #-}
+
 module Main where
 
+import Panic
+import Control.Concurrent
 import Control.Monad (when, void)
-import CoreMonad (liftIO)
-import Data.List (intercalate)
-import Data.Set as S
-import Exception (ghandle, SomeException(..))
+import Data.Function
+import Data.List (intercalate, groupBy, sort)
+import Data.Map.Strict (Map)
+import qualified Data.Map.Strict as M
+import Data.Set (Set)
+import qualified Data.Set as S
+import HscTypes (SourceError)
+import qualified Exception as G (ghandle)
+import qualified Control.Exception as E (handle, SomeException(..))
 import GHC
+import GhcMonad
 import Language.Haskell.GhcMod
 import Language.Haskell.GhcMod.Internal
 import System.IO (hFlush,stdout)
 
+----------------------------------------------------------------
+
+type DB = Map String [String]
+type Logger = IO [String]
+
+----------------------------------------------------------------
+
 main :: IO ()
-main = do
+main = E.handle handler $ do
+    myThreadId >>= pushInterruptTargetThread
     cradle <- findCradle
-    run ls $ do
-        (readLog,_) <- initializeFlagsWithCradle opt cradle ["-Wall"] True
-        loop readLog ls S.empty
+    mvar <- liftIO newEmptyMVar
+    mlibdir <- getSystemLibDir
+    void $ forkIO $ setupDB cradle mlibdir opt mvar
+    run cradle mlibdir opt $ loop S.empty ls mvar
   where
     opt = defaultOptions
     ls = lineSeparator opt
-
-run :: LineSeparator -> Ghc () -> IO ()
-run (LineSeparator ls) body = do
-    mlibdir <- getSystemLibDir
-    ghandle ignore $ runGhc mlibdir $ do
-        dflags <- getSessionDynFlags
-        defaultCleanupHandler dflags body
-  where
-    ignore (SomeException e) = do
+    LineSeparator lsc = ls
+    handler (E.SomeException e) = do
         putStr "ghc-modi:0:0:Error:"
-        let x = intercalate ls $ lines $ show e
+        let x = intercalate lsc $ lines $ show e
         putStrLn x
         putStrLn "NG"
 
-loop :: IO [String] -> LineSeparator -> Set FilePath -> Ghc ()
-loop readLog ls set = do
+----------------------------------------------------------------
+
+run :: Cradle -> Maybe FilePath -> Options -> (Logger -> Ghc a) -> IO a
+run cradle mlibdir opt body = runGhc mlibdir $ do
+    (readLog,_) <- initializeFlagsWithCradle opt cradle ["-Wall"] True
+    dflags <- getSessionDynFlags
+    defaultCleanupHandler dflags $ body readLog
+
+----------------------------------------------------------------
+
+setupDB :: Cradle -> Maybe FilePath -> Options -> MVar DB -> IO ()
+setupDB cradle mlibdir opt mvar = do
+    sm <- run cradle mlibdir opt $ \_ -> getSessionDynFlags >>= browseAll
+    let sms = map tieup $ groupBy ((==) `on` fst) $ sort sm
+        m = M.fromList sms
+    putMVar mvar m
+  where
+    tieup x = (head (map fst x), map snd x)
+
+----------------------------------------------------------------
+
+loop :: Set FilePath -> LineSeparator -> MVar DB -> Logger -> Ghc ()
+loop set ls mvar readLog  = do
     cmdArg <- liftIO $ getLine
     let (cmd,arg') = break (== ' ') cmdArg
         arg = dropWhile (== ' ') arg'
     (msgs,ok,set') <- case cmd of
-        "check" -> checkStx readLog ls set arg
+        "check" -> checkStx set ls readLog arg
+        "find"  -> findSym set mvar arg
         _       -> return ([], False, set)
     mapM_ (liftIO . putStrLn) msgs
     liftIO $ putStrLn $ if ok then "OK" else "NG"
     liftIO $ hFlush stdout
-    when ok $ loop readLog ls set'
+    when ok $ loop set' ls mvar readLog
 
-checkStx :: IO [String]
+----------------------------------------------------------------
+
+checkStx :: Set FilePath
          -> LineSeparator
-         -> Set FilePath
+         -> Logger
          -> FilePath
          -> Ghc ([String], Bool, Set FilePath)
-checkStx readLog ls set file = do
+checkStx set ls readLog file = do
     let add = not $ S.member file set
-    ghandle handler $ do
+    G.ghandle handler $ do
         when add $ addTargetFiles [file]
         void $ load LoadAllTargets
         msgs <- liftIO $ readLog
         let set' = if add then S.insert file set else set
         return (msgs, True, set')
   where
+    handler :: SourceError -> Ghc ([String], Bool, Set FilePath)
     handler err = do
         errmsgs <- handleErrMsg ls err
         return (errmsgs, False, set)
+
+findSym :: Set FilePath -> MVar DB -> String
+        -> Ghc ([String], Bool, Set FilePath)
+findSym set mvar sym = do
+    db <- liftIO $ readMVar mvar
+    let ret = case M.lookup sym db of
+            Nothing -> []
+            Just xs -> xs
+    return (ret, True, set)
