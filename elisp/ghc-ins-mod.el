@@ -8,23 +8,27 @@
 
 ;;; Code:
 
-(defvar ghc-hoogle-command "hoogle")
+(defvar ghc-ins-mod-rendezvous nil)
 
 (defun ghc-insert-module ()
   (interactive)
-  (ghc-executable-find ghc-hoogle-command
-    (let* ((expr0 (ghc-things-at-point))
-	   (expr (ghc-read-expression expr0)))
-      (let ((mods (ghc-function-to-modules expr)))
-	(if (null mods)
-	    (message "No module guessed")
-	  (let* ((first (car mods))
-		 (mod (if (= (length mods) 1)
-			  first
-			(completing-read "Module name: " mods nil t first))))
-	    (save-excursion
-	      (ghc-goto-module-position)
-	      (insert "import " mod "\n"))))))))
+  (let* ((expr0 (ghc-things-at-point))
+	 (expr (ghc-read-expression expr0)))
+    (let ((mods (ghc-function-to-modules expr)))
+      (if (null mods)
+	  (message "No module guessed")
+	(let ((mod (ghc-completing-read "Module name (%s): " mods)))
+	  (save-excursion
+	    (ghc-goto-module-position)
+	    (if (string-match "^[a-zA-Z0-9_]$" expr)
+		(insert "import " mod " (" expr ")\n")
+	      (insert "import " mod " ((" expr "))\n"))))))))
+
+(defun ghc-completing-read (fmt lst)
+  (let* ((def (car lst))
+	 (prompt (format fmt def))
+	 (inp (completing-read prompt lst)))
+    (if (string= inp "") def inp)))
 
 (defun ghc-goto-module-position ()
   (goto-char (point-max))
@@ -38,25 +42,27 @@
   (unless (re-search-forward "^$" nil t)
     (forward-line)))
 
-;; To avoid Data.Functor
-(defvar ghc-applicative-operators '("<$>" "<$" "<*>" "<**>" "<*" "*>" "<|>"))
+(defun ghc-function-to-modules (fun)
+  (setq ghc-ins-mod-rendezvous nil)
+  (ghc-with-process
+   (lambda () (ghc-ins-mod-send fun))
+   'ghc-ins-mod-callback)
+  (while (null ghc-ins-mod-rendezvous)
+    (sit-for 0.01))
+  ghc-ins-mod-rendezvous)
 
-(defun ghc-function-to-modules (fn)
-  (if (member fn ghc-applicative-operators)
-      '("Control.Applicative")
-    (ghc-function-to-modules-hoogle fn)))
+(defun ghc-ins-mod-send (fun)
+  (concat "find " fun "\n"))
 
-(defun ghc-function-to-modules-hoogle (fn)
-  (with-temp-buffer
-    (let* ((fn1 (if (string-match "^[a-zA-Z0-9'_]+$" fn)
-		    fn
-		  (concat "(" fn ")")))
-	   (regex (concat "^\\([a-zA-Z0-9.]+\\) " fn1 " "))
-	   ret)
-      (ghc-call-process ghc-hoogle-command nil t nil "search" fn1)
-      (goto-char (point-min))
-      (while (re-search-forward regex nil t)
-	(setq ret (cons (match-string 1) ret)))
-      (nreverse ret))))
+(defun ghc-ins-mod-callback ()
+  (let (lines line beg)
+    (while (not (eobp))
+      (setq beg (point))
+      (forward-line)
+      (setq line (buffer-substring-no-properties beg (1- (point))))
+      (setq lines (cons line lines)))
+    (with-current-buffer ghc-process-original-buffer
+      (setq ghc-ins-mod-rendezvous
+	    (nreverse (cdr lines)))))) ;; removing "OK"
 
 (provide 'ghc-ins-mod)
