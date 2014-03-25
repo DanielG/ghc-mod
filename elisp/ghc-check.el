@@ -157,12 +157,15 @@
 	    (forward-line)
 	    (if (not (bolp)) (insert "\n")))
 	  (insert (match-string 1) " = undefined\n")))
-       ((string-match "Not in scope: `\\([^']+\\)'" data)
-	(save-match-data
-	  (unless (re-search-forward "^$" nil t)
-	    (goto-char (point-max))
-	    (insert "\n")))
-	(insert "\n" (match-string 1 data) " = undefined\n"))
+       ;; GHC 7.8 uses Unicode for single-quotes.
+       ((string-match "Not in scope: `\\([^'\n\0]+\\)'" data)
+	(let ((sym (match-string 1 data)))
+	  (if (y-or-n-p (format "Import module for %s?" sym))
+	      (ghc-ins-mod sym)
+	    (unless (re-search-forward "^$" nil t)
+	      (goto-char (point-max))
+	      (insert "\n"))
+	    (insert "\n" (ghc-enclose sym) " = undefined\n"))))
        ((string-match "Pattern match(es) are non-exhaustive" data)
 	(let* ((fn (ghc-get-function-name))
 	       (arity (ghc-get-function-arity fn)))
@@ -175,7 +178,9 @@
 	    (let ((end (point)))
 	      (search-backward old nil t)
 	      (delete-region (point) end))
-	    (insert new))))))))
+	    (insert new))))
+       (t
+	(message "Nothing is done"))))))
 
 (defun ghc-extract-type (str)
   (with-temp-buffer

@@ -6,6 +6,8 @@
 ;; Author:  Kazu Yamamoto <Kazu@Mew.org>
 ;; Created: Dec 27, 2011
 
+(require 'ghc-process)
+
 ;;; Code:
 
 (defvar ghc-ins-mod-rendezvous nil)
@@ -14,15 +16,16 @@
   (interactive)
   (let* ((expr0 (ghc-things-at-point))
 	 (expr (ghc-read-expression expr0)))
-    (let ((mods (ghc-function-to-modules expr)))
-      (if (null mods)
-	  (message "No module guessed")
-	(let ((mod (ghc-completing-read "Module name (%s): " mods)))
-	  (save-excursion
-	    (ghc-goto-module-position)
-	    (if (string-match "^[a-zA-Z0-9_]$" expr)
-		(insert "import " mod " (" expr ")\n")
-	      (insert "import " mod " ((" expr "))\n"))))))))
+    (ghc-ins-mod expr)))
+
+(defun ghc-ins-mod (expr)
+  (let ((mods (ghc-function-to-modules expr)))
+    (if (null mods)
+	(message "No module guessed")
+      (let ((mod (ghc-completing-read "Module name (%s): " mods)))
+	(save-excursion
+	  (ghc-goto-module-position)
+	  (insert "import " mod " (" (ghc-enclose expr) ")\n"))))))
 
 (defun ghc-completing-read (fmt lst)
   (let* ((def (car lst))
@@ -35,7 +38,12 @@
   (if (re-search-backward "^import" nil t)
       (ghc-goto-empty-line)
     (if (re-search-backward "^module" nil t)
-	(ghc-goto-empty-line)
+	(progn
+	  (ghc-goto-empty-line)
+	  (forward-line)
+	  (unless (eolp)
+	    (save-excursion
+	      (insert "\n"))))
       (goto-char (point-min)))))
 
 (defun ghc-goto-empty-line ()

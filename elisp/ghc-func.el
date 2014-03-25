@@ -197,4 +197,11 @@
        (insert (format "%% %s %s\n" cmd (mapconcat 'identity args " ")))
        (insert-buffer-substring cbuf)))))
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defun ghc-enclose (expr)
+  (if (string-match "^[a-zA-Z0-9_]$" expr)
+      expr
+    (concat "(" expr ")")))
+
 (provide 'ghc-func)
