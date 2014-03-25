@@ -8,6 +8,7 @@
 
 ;;; Code:
 
+(require 'ghc-process)
 (require 'ghc-check)
 
 (defun ghc-insert-template ()
@@ -21,9 +22,23 @@
     (message "Nothing to be done"))))
 
 (defun ghc-insert-module-template ()
-  (let ((mod (file-name-sans-extension (buffer-name))))
-    (aset mod 0 (upcase (aref mod 0)))
+  (let* ((fullname (file-name-sans-extension (buffer-file-name)))
+	 (rootdir (ghc-get-project-root))
+	 (len (length rootdir))
+	 (name (substring fullname (1+ len)))
+	 (file (file-name-sans-extension (buffer-name)))
+	 (case-fold-search nil)
+	 (mod (if (string-match "^[A-Z]" name)
+		  (ghc-replace-character name ?/ ?.)
+		(if (string-match "^[a-z]" file)
+		    "Main"
+		  file))))
     (insert "module " mod " where\n")))
+
+;; (defun ghc-capitalize (str)
+;;   (let ((ret (copy-sequence str)))
+;;     (aset ret 0 (upcase (aref ret 0)))
+;;     ret))
 
 (defun ghc-sort-lines (beg end)
   (interactive "r")

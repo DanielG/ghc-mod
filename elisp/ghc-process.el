@@ -22,7 +22,7 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defun ghc-get-process-name ()
+(defun ghc-get-project-root ()
   (let ((file (buffer-file-name)))
     (with-temp-buffer
       (ghc-call-process ghc-module-command nil t nil "root" file)
@@ -32,7 +32,7 @@
 
 (defun ghc-with-process (send callback)
   (unless ghc-process-process-name
-    (setq ghc-process-process-name (ghc-get-process-name)))
+    (setq ghc-process-process-name (ghc-get-project-root)))
   (when ghc-process-process-name
     (let* ((cbuf (current-buffer))
 	   (name ghc-process-process-name)
