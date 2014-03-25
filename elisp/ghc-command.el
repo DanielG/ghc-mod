@@ -58,6 +58,8 @@
   (let ((case-fold-search nil))
     (goto-char (point-min))
     (while (not (eolp))
+      ;; qualified modlues are not merged at this moment.
+      ;; fixme if it is improper.
       (if (looking-at "^import *\\([A-Z][^ \n]+\\) *(\\(.*\\))$")
 	  (let ((mod (match-string-no-properties 1))
 		(syms (match-string-no-properties 2))
