@@ -42,7 +42,7 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(ghc-defstruct hilit-info file line col msg)
+(ghc-defstruct hilit-info file line col msg err)
 
 (defun ghc-check-send ()
   (concat "check " ghc-process-original-file "\n"))
@@ -51,12 +51,18 @@
   (let ((regex "^\\([^\n\0]*\\):\\([0-9]+\\):\\([0-9]+\\): *\\(.+\\)")
 	info infos)
     (while (re-search-forward regex nil t)
-      (setq info (ghc-make-hilit-info
-		  :file (match-string 1)
-		  :line (string-to-number (match-string 2))
-		  :col  (string-to-number (match-string 3))
-		  :msg  (match-string 4)))
-      (setq infos (cons info infos)))
+      (let* ((file (match-string 1))
+	     (line (string-to-number (match-string 2)))
+	     (col  (string-to-number (match-string 3)))
+	     (msg  (match-string 4))
+	     (err  (not (string-match "^Warning" msg)))
+	     (info (ghc-make-hilit-info
+		    :file file
+		    :line line
+		    :col  col
+		    :msg  msg
+		    :err  err)))
+	(setq infos (cons info infos))))
     (setq infos (nreverse infos))
     (cond
      (infos
@@ -65,7 +71,15 @@
 	(ghc-check-highlight-original-buffer file buf infos)))
      (t
       (with-current-buffer ghc-process-original-buffer
-	(remove-overlays (point-min) (point-max) 'ghc-check t))))))
+	(remove-overlays (point-min) (point-max) 'ghc-check t))))
+    (with-current-buffer ghc-process-original-buffer
+      (let ((len (length infos)))
+	(if (= len 0)
+	    (setq mode-line-process "")
+	  (let* ((errs (ghc-filter 'ghc-hilit-info-get-err infos))
+		 (elen (length errs))
+		 (wlen (- len elen)))
+	    (setq mode-line-process (format " %d:%d" elen wlen))))))))
 
 (defun ghc-check-highlight-original-buffer (ofile buf infos)
   (with-current-buffer buf
@@ -74,8 +88,9 @@
       (goto-char (point-min))
       (dolist (info infos)
 	(let ((line (ghc-hilit-info-get-line info))
-	      (msg (ghc-hilit-info-get-msg info))
+	      (msg  (ghc-hilit-info-get-msg  info))
 	      (file (ghc-hilit-info-get-file info))
+	      (err  (ghc-hilit-info-get-err  info))
 	      beg end ovl)
 	  ;; FIXME: This is the Shlemiel painter's algorithm.
 	  ;; If this is a bottleneck for a large code, let's fix.
@@ -95,9 +110,7 @@
 	  (overlay-put ovl 'ghc-check t)
 	  (overlay-put ovl 'ghc-file file)
 	  (overlay-put ovl 'ghc-msg msg) ;; should be list
-	  (let ((face (if (string-match "^Warning" msg)
-			  'ghc-face-warn
-			'ghc-face-error)))
+	  (let ((face (if err 'ghc-face-error 'ghc-face-warn)))
 	    (overlay-put ovl 'face face)))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
