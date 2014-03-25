@@ -2,11 +2,12 @@
 
 module Main where
 
+import Control.Applicative ((<$>))
 import Control.Concurrent
 import qualified Control.Exception as E (handle, SomeException(..))
 import Control.Monad (when, void)
 import Data.Function
-import Data.List (intercalate, groupBy, sort)
+import Data.List (intercalate, groupBy, sort, find)
 import Data.Map.Strict (Map)
 import qualified Data.Map.Strict as M
 import Data.Set (Set)
@@ -91,16 +92,33 @@ checkStx :: Set FilePath
 checkStx set ls readLog file = do
     let add = not $ S.member file set
     G.ghandle handler $ do
+        mdel <- removeMainTarget
         when add $ addTargetFiles [file]
         void $ load LoadAllTargets
         msgs <- liftIO $ readLog
-        let set' = if add then S.insert file set else set
-        return (msgs, True, set')
+        let set1 = if add then S.insert file set else set
+            set2 = case mdel of
+                Nothing    -> set1
+                Just delfl -> S.delete delfl set1
+        return (msgs, True, set2)
   where
     handler :: SourceError -> Ghc ([String], Bool, Set FilePath)
     handler err = do
         errmsgs <- handleErrMsg ls err
         return (errmsgs, False, set)
+    removeMainTarget = do
+        mx <- find isMain <$> getModuleGraph
+        case mx of
+            Nothing -> return Nothing
+            Just x  -> do
+                let mainfile = ms_hspp_file x
+                if mainfile == file then
+                    return Nothing
+                  else do
+                    let target = TargetFile mainfile Nothing
+                    removeTarget target
+                    return $ Just mainfile
+    isMain m = moduleNameString  (moduleName (ms_mod m)) == "Main"
 
 findSym :: Set FilePath -> MVar DB -> String
         -> Ghc ([String], Bool, Set FilePath)
