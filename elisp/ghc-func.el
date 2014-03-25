@@ -200,8 +200,9 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defun ghc-enclose (expr)
-  (if (string-match "^[a-zA-Z0-9_]$" expr)
-      expr
-    (concat "(" expr ")")))
+  (let ((case-fold-search nil))
+    (if (string-match "^[a-zA-Z0-9_]" expr)
+	expr
+      (concat "(" expr ")"))))
 
 (provide 'ghc-func)

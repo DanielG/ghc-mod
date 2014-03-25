@@ -171,6 +171,9 @@
 	    (if (not (bolp)) (insert "\n")))
 	  (insert (match-string 1) " = undefined\n")))
        ;; GHC 7.8 uses Unicode for single-quotes.
+       ((string-match "Not in scope: type constructor or class `\\([^'\n\0]+\\)'" data)
+	(let ((sym (match-string 1 data)))
+	  (ghc-ins-mod sym)))
        ((string-match "Not in scope: `\\([^'\n\0]+\\)'" data)
 	(let ((sym (match-string 1 data)))
 	  (if (y-or-n-p (format "Import module for %s?" sym))
@@ -193,7 +196,7 @@
 	      (delete-region (point) end))
 	    (insert new))))
        (t
-	(message "Nothing is done"))))))
+	(message "Nothing was done"))))))
 
 (defun ghc-extract-type (str)
   (with-temp-buffer
