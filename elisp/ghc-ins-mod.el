@@ -11,6 +11,7 @@
 ;;; Code:
 
 (defvar ghc-ins-mod-rendezvous nil)
+(defvar ghc-ins-mod-results nil)
 
 (defun ghc-insert-module ()
   (interactive)
@@ -52,12 +53,13 @@
 
 (defun ghc-function-to-modules (fun)
   (setq ghc-ins-mod-rendezvous nil)
+  (setq ghc-ins-mod-results nil)
   (ghc-with-process
    (lambda () (ghc-ins-mod-send fun))
    'ghc-ins-mod-callback)
   (while (null ghc-ins-mod-rendezvous)
     (sit-for 0.01))
-  ghc-ins-mod-rendezvous)
+  ghc-ins-mod-results)
 
 (defun ghc-ins-mod-send (fun)
   (concat "find " fun "\n"))
@@ -69,8 +71,7 @@
       (forward-line)
       (setq line (buffer-substring-no-properties beg (1- (point))))
       (setq lines (cons line lines)))
-    (with-current-buffer ghc-process-original-buffer
-      (setq ghc-ins-mod-rendezvous
-	    (nreverse (cdr lines)))))) ;; removing "OK"
+    (setq ghc-ins-mod-rendezvous t)
+    (setq ghc-ins-mod-results (nreverse (cdr lines))))) ;; removing "OK"
 
 (provide 'ghc-ins-mod)
