@@ -94,7 +94,7 @@
     (forward-line -1)
     (when (looking-at "^\\(OK\\|NG\\)$")
       (goto-char (point-min))
-      (let ((regex "^\\(.*\\):\\([0-9]+\\):\\([0-9]+\\): *\\(.+\\)")
+      (let ((regex "^\\([^\n\0]*\\):\\([0-9]+\\):\\([0-9]+\\): *\\(.+\\)")
 	    info infos)
 	(while (re-search-forward regex nil t)
 	  (setq info (ghc-make-hilit-info
