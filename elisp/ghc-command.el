@@ -33,6 +33,8 @@
 		(if (string-match "^[a-z]" file)
 		    "Main"
 		  file))))
+    (while (looking-at "^{-#")
+      (forward-line))
     (insert "module " mod " where\n")))
 
 ;; (defun ghc-capitalize (str)
