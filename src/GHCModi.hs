@@ -2,8 +2,8 @@
 
 module Main where
 
-import Panic
 import Control.Concurrent
+import qualified Control.Exception as E (handle, SomeException(..))
 import Control.Monad (when, void)
 import Data.Function
 import Data.List (intercalate, groupBy, sort)
@@ -11,11 +11,10 @@ import Data.Map.Strict (Map)
 import qualified Data.Map.Strict as M
 import Data.Set (Set)
 import qualified Data.Set as S
-import HscTypes (SourceError)
 import qualified Exception as G (ghandle)
-import qualified Control.Exception as E (handle, SomeException(..))
 import GHC
 import GhcMonad
+import HscTypes (SourceError)
 import Language.Haskell.GhcMod
 import Language.Haskell.GhcMod.Internal
 import System.IO (hFlush,stdout)
@@ -27,9 +26,11 @@ type Logger = IO [String]
 
 ----------------------------------------------------------------
 
+-- Running two GHC monad threads disables the handling of
+-- C-c since installSignalHandlers is called twice, sigh.
+
 main :: IO ()
 main = E.handle handler $ do
-    myThreadId >>= pushInterruptTargetThread
     cradle <- findCradle
     mvar <- liftIO newEmptyMVar
     mlibdir <- getSystemLibDir
