@@ -31,8 +31,10 @@ module Language.Haskell.GhcMod.Internal (
   , (|||>)
   -- * GHC
   , getSystemLibDir
+  , browseAll
   ) where
 
+import Language.Haskell.GhcMod.Browse
 import Language.Haskell.GhcMod.CabalApi
 import Language.Haskell.GhcMod.ErrMsg
 import Language.Haskell.GhcMod.GHCApi

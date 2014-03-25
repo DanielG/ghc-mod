@@ -1,4 +1,8 @@
-module Language.Haskell.GhcMod.Browse (browseModule, browse) where
+module Language.Haskell.GhcMod.Browse (
+    browseModule
+  , browse
+  , browseAll)
+  where
 
 import Control.Applicative
 import Control.Monad (void)
@@ -7,7 +11,7 @@ import Data.List
 import Data.Maybe (catMaybes)
 import FastString (mkFastString)
 import GHC
-import Language.Haskell.GhcMod.Doc (showUnqualifiedPage)
+import Language.Haskell.GhcMod.Doc (showUnqualifiedPage, showUnqualifiedOneLine)
 import Language.Haskell.GhcMod.GHCApi
 import Language.Haskell.GhcMod.Gap
 import Language.Haskell.GhcMod.Types
@@ -126,3 +130,19 @@ removeForAlls' ty (Just (pre, ftype))
 
 showOutputable :: Outputable a => DynFlags -> a -> String
 showOutputable dflag = unwords . lines . showUnqualifiedPage dflag . ppr
+
+----------------------------------------------------------------
+
+browseAll :: DynFlags -> Ghc [(String,String)]
+browseAll dflag = do
+    ms <- packageDbModules True
+    is <- mapM getModuleInfo ms
+    return $ concatMap (toNameModule dflag) (zip ms is)
+
+toNameModule :: DynFlags -> (Module, Maybe ModuleInfo) -> [(String,String)]
+toNameModule _     (_,Nothing)  = []
+toNameModule dflag (m,Just inf) = map (\name -> (toStr name, mdl)) names
+  where
+    mdl = moduleNameString (moduleName m)
+    names = modInfoExports inf
+    toStr = showUnqualifiedOneLine dflag . ppr
