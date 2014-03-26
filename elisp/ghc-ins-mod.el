@@ -20,13 +20,20 @@
     (ghc-ins-mod expr)))
 
 (defun ghc-ins-mod (expr)
-  (let ((mods (ghc-function-to-modules expr)))
+  (let (prefix fun mods)
+    (if (not (string-match "^\\([^.]+\\)\\\.\\([^.]+\\)$" expr))
+	(setq fun expr)
+      (setq prefix (match-string 1 expr))
+      (setq fun (match-string 2 expr)))
+    (setq mods (ghc-function-to-modules fun))
     (if (null mods)
 	(message "No module guessed")
       (let ((mod (ghc-completing-read "Module name (%s): " mods)))
 	(save-excursion
 	  (ghc-goto-module-position)
-	  (insert "import " mod " (" (ghc-enclose expr) ")\n"))))))
+	  (if prefix
+	      (insert "import qualified " mod " as " prefix "\n")
+	    (insert "import " mod " (" (ghc-enclose expr) ")\n")))))))
 
 (defun ghc-completing-read (fmt lst)
   (let* ((def (car lst))

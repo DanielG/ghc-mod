@@ -184,7 +184,8 @@
 	  (ghc-ins-mod sym)))
        ((string-match "Not in scope: `\\([^'\n\0]+\\)'" data)
 	(let ((sym (match-string 1 data)))
-	  (if (y-or-n-p (format "Import module for %s?" sym))
+	  (if (or (string-match "\\." sym) ;; qualified
+		  (y-or-n-p (format "Import module for %s?" sym)))
 	      (ghc-ins-mod sym)
 	    (unless (re-search-forward "^$" nil t)
 	      (goto-char (point-max))
