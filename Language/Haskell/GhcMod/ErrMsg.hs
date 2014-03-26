@@ -58,6 +58,7 @@ setLogger True  df ls = do
 
 ----------------------------------------------------------------
 
+-- | Converting 'SourceError' to 'String'.
 handleErrMsg :: LineSeparator -> SourceError -> Ghc [String]
 handleErrMsg ls err = do
     dflag <- getSessionDynFlags

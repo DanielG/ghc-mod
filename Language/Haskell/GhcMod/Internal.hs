@@ -14,24 +14,23 @@ module Language.Haskell.GhcMod.Internal (
   , cabalDependPackages
   , cabalSourceDirs
   , cabalAllTargets
-  -- * Getting 'DynFlags'
+  -- * IO
+  , getSystemLibDir
   , getDynamicFlags
   -- * Initializing 'DynFlags'
   , initializeFlags
   , initializeFlagsWithCradle
-  -- * 'GhcMonad'
+  -- * 'Ghc' Monad
   , setTargetFiles
   , addTargetFiles
   , handleErrMsg
+  , browseAll
   -- * 'Ghc' Choice
   , (||>)
   , goNext
   , runAnyOne
   -- * 'GhcMonad' Choice
   , (|||>)
-  -- * GHC
-  , getSystemLibDir
-  , browseAll
   ) where
 
 import Language.Haskell.GhcMod.Browse

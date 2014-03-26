@@ -31,6 +31,7 @@ import System.Process
 
 ----------------------------------------------------------------
 
+-- | Obtaining the directory for system libraries.
 getSystemLibDir :: IO (Maybe FilePath)
 getSystemLibDir = do
     res <- readProcess "ghc" ["--print-libdir"] []
@@ -159,6 +160,7 @@ setTargetFiles files = do
     targets <- forM files $ \file -> guessTarget file Nothing
     setTargets targets
 
+-- | Adding the files to the targets.
 addTargetFiles :: (GhcMonad m) => [FilePath] -> m ()
 addTargetFiles [] = error "ghc-mod: addTargetFiles: No target files given"
 addTargetFiles files = do

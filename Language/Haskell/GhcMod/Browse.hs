@@ -133,6 +133,7 @@ showOutputable dflag = unwords . lines . showUnqualifiedPage dflag . ppr
 
 ----------------------------------------------------------------
 
+-- | Browsing all functions in all system/user modules.
 browseAll :: DynFlags -> Ghc [(String,String)]
 browseAll dflag = do
     ms <- packageDbModules True
