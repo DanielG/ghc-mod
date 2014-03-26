@@ -87,6 +87,7 @@ unloaded modules are loaded")
 			"Data.Char"
 			"Data.List"
 			"Data.Maybe"
+			"Data.ByteString"
 			"System.IO"))
   (run-with-idle-timer ghc-idle-timer-interval 'repeat 'ghc-idle-timer))
 
