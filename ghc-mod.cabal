@@ -62,7 +62,7 @@ Library
                         Language.Haskell.GhcMod.List
                         Language.Haskell.GhcMod.Types
   Build-Depends:        base >= 4.0 && < 5
-                      , containers >= 0.5
+                      , containers
                       , directory
                       , filepath
                       , ghc
@@ -99,7 +99,7 @@ Executable ghc-modi
   GHC-Options:          -Wall
   HS-Source-Dirs:       src
   Build-Depends:        base >= 4.0 && < 5
-                      , containers >= 0.5
+                      , containers
                       , directory
                       , filepath
                       , ghc
@@ -129,7 +129,7 @@ Test-Suite spec
                         LintSpec
                         ListSpec
   Build-Depends:        base >= 4.0 && < 5
-                      , containers >= 0.5
+                      , containers
                       , directory
                       , filepath
                       , ghc

@@ -1,4 +1,4 @@
-{-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE BangPatterns, CPP #-}
 
 module Main where
 
@@ -8,8 +8,13 @@ import qualified Control.Exception as E (handle, SomeException(..))
 import Control.Monad (when, void)
 import Data.Function
 import Data.List (intercalate, groupBy, sort, find)
+#if MIN_VERSION_containers(0,5,0)
 import Data.Map.Strict (Map)
 import qualified Data.Map.Strict as M
+#else
+import Data.Map (Map)
+import qualified Data.Map as M
+#endif
 import Data.Set (Set)
 import qualified Data.Set as S
 import qualified Exception as G (ghandle)
