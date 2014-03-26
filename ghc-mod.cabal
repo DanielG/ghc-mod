@@ -74,11 +74,9 @@ Library
                       , syb
                       , time
                       , transformers
+                      , Cabal >= 1.10
   if impl(ghc < 7.7)
     Build-Depends:      convertible
-                      , Cabal >= 1.10 && < 1.17
-  else
-    Build-Depends:      Cabal >= 1.18
 
 Executable ghc-mod
   Default-Language:     Haskell2010
@@ -142,11 +140,9 @@ Test-Suite spec
                       , time
                       , transformers
                       , hspec >= 1.7.1
+                      , Cabal >= 1.10
   if impl(ghc < 7.7)
     Build-Depends:      convertible
-                      , Cabal >= 1.10 && < 1.17
-  else
-    Build-Depends:      Cabal >= 1.18
   if impl(ghc < 7.6.0)
     Build-Depends:      executable-path
 
