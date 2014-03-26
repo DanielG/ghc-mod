@@ -76,7 +76,7 @@ ppErrMsg dflag ls err = ppMsg spn SevError dflag ls msg ++ ext
      ext = showMsg dflag ls (errMsgExtraInfo err)
 
 ppMsg :: SrcSpan -> Severity-> DynFlags -> LineSeparator -> SDoc -> String
-ppMsg spn sev dflag ls@(LineSeparator lsep) msg = prefix ++ cts -- ++ lsep
+ppMsg spn sev dflag ls msg = prefix ++ cts
   where
     cts  = showMsg dflag ls msg
     defaultPrefix
