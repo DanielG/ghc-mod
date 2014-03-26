@@ -134,6 +134,7 @@ Test-Suite spec
                       , filepath
                       , ghc
                       , ghc-syb-utils
+                      , happy >= 1.17
                       , hlint >= 1.7.1
                       , io-choice
                       , old-time
