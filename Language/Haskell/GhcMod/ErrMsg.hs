@@ -76,7 +76,7 @@ ppErrMsg dflag ls err = ppMsg spn SevError dflag ls msg ++ ext
      ext = showMsg dflag ls (errMsgExtraInfo err)
 
 ppMsg :: SrcSpan -> Severity-> DynFlags -> LineSeparator -> SDoc -> String
-ppMsg spn sev dflag ls@(LineSeparator lsep) msg = prefix ++ cts ++ lsep
+ppMsg spn sev dflag ls@(LineSeparator lsep) msg = prefix ++ cts -- ++ lsep
   where
     cts  = showMsg dflag ls msg
     defaultPrefix
@@ -91,12 +91,6 @@ ppMsg spn sev dflag ls@(LineSeparator lsep) msg = prefix ++ cts ++ lsep
 ----------------------------------------------------------------
 
 showMsg :: DynFlags -> LineSeparator -> SDoc -> String
-showMsg dflag (LineSeparator [s]) sdoc = replaceNull $ showUnqualifiedPage dflag sdoc
-  where
-    replaceNull :: String -> String
-    replaceNull []        = []
-    replaceNull ('\n':xs) = s : replaceNull xs
-    replaceNull (x:xs)    = x : replaceNull xs
 showMsg dflag (LineSeparator lsep) sdoc = replaceNull $ showUnqualifiedPage dflag sdoc
   where
     replaceNull []        = []

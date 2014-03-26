@@ -133,7 +133,7 @@
        nil
        (lambda ()
 	 (insert (overlay-get (car ovls) 'ghc-file) "\n\n")
-	 (mapc (lambda (x) (insert x "\n")) errs))))))
+	 (mapc (lambda (x) (insert x "\n\n")) errs))))))
 
 (defun ghc-check-overlay-at (p)
   (let ((ovls (overlays-at p)))
