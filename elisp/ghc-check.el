@@ -114,7 +114,8 @@
 	  (overlay-put ovl 'ghc-check t)
 	  (overlay-put ovl 'ghc-file file)
 	  (overlay-put ovl 'ghc-msg msg)
-	  ;; fixme tooltips
+	  (let ((echo (ghc-replace-character msg ?\0 ?\n)))
+	    (overlay-put ovl 'help-echo echo))
 	  (let ((fringe (if err ghc-check-error-fringe ghc-check-warning-fringe))
 		(face (if err 'ghc-face-error 'ghc-face-warn)))
 	    (overlay-put ovl 'before-string fringe)
