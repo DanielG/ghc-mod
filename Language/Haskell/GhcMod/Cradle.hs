@@ -112,7 +112,10 @@ getPackageDbDir sconf = do
     return path
   where
     parse = head . filter ("package-db:" `isPrefixOf`) . lines
-    extractValue = fst . break isSpace . dropWhile isSpace . drop pkgDbKeyLen
+    extractValue = dropWhileEnd isSpace . dropWhile isSpace . drop pkgDbKeyLen
+    -- dropWhileEnd is not provided prior to base 4.5.0.0.
+    dropWhileEnd :: (a -> Bool) -> [a] -> [a]
+    dropWhileEnd p = foldr (\x xs -> if p x && null xs then [] else x : xs) []
 
 -- | Adding necessary GHC options to the package db.
 --   Exception is thrown if the string argument is incorrect.
