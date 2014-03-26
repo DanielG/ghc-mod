@@ -49,7 +49,7 @@ unloaded modules are loaded")
 (defvar ghc-merged-keyword nil) ;; completion for type/func/...
 (defvar ghc-language-extensions nil)
 (defvar ghc-option-flags nil)
-(defvar ghc-pragma-names '("LANGUAGE" "OPTIONS_GHC"))
+(defvar ghc-pragma-names '("LANGUAGE" "OPTIONS_GHC" "INCLUDE" "WARNING" "DEPRECATED" "INLINE" "NOINLINE" "ANN" "LINE" "RULES" "SPECIALIZE" "UNPACK" "SOURCE"))
 
 (defconst ghc-keyword-prefix "ghc-keyword-")
 (defvar ghc-keyword-Prelude nil)
