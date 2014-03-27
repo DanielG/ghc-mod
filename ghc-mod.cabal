@@ -49,8 +49,8 @@ Library
                         Language.Haskell.GhcMod.CabalApi
                         Language.Haskell.GhcMod.Check
                         Language.Haskell.GhcMod.Cradle
-                        Language.Haskell.GhcMod.Doc
                         Language.Haskell.GhcMod.Debug
+                        Language.Haskell.GhcMod.Doc
                         Language.Haskell.GhcMod.ErrMsg
                         Language.Haskell.GhcMod.Flag
                         Language.Haskell.GhcMod.GHCApi
@@ -60,6 +60,7 @@ Library
                         Language.Haskell.GhcMod.Lang
                         Language.Haskell.GhcMod.Lint
                         Language.Haskell.GhcMod.List
+                        Language.Haskell.GhcMod.PkgDoc
                         Language.Haskell.GhcMod.Types
   Build-Depends:        base >= 4.0 && < 5
                       , containers
