@@ -19,5 +19,5 @@ pkgDoc cradle mdl = do
     return ret
   where
     toModuleOpts = ["find-module", "--simple-output"] ++ cradlePackageDbOpts cradle ++ [mdl]
-    trim = fst . break (== '\n')
+    trim = takeWhile (/= '\n')
 
