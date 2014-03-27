@@ -160,6 +160,7 @@ preBrowsedModules = [
   , "Control.Applicative"
   , "Control.Monad"
   , "Control.Exception"
+  , "Data.ByteString"
   , "Data.Char"
   , "Data.List"
   , "Data.Maybe"
