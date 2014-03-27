@@ -19,7 +19,8 @@ import Distribution.ModuleName (ModuleName,toFilePath)
 import Distribution.Package (Dependency(Dependency)
                            , PackageName(PackageName)
                            , PackageIdentifier(pkgName))
-import Distribution.PackageDescription
+import Distribution.PackageDescription (PackageDescription, BuildInfo, TestSuite, TestSuiteInterface(..), Executable)
+import qualified Distribution.PackageDescription as P
 import Distribution.PackageDescription.Configuration (finalizePackageDescription)
 import Distribution.PackageDescription.Parse (readPackageDescription)
 import Distribution.Simple.Compiler (CompilerId(..), CompilerFlavor(..))
@@ -31,7 +32,7 @@ import Distribution.Verbosity (silent)
 import Distribution.Version (Version)
 import Language.Haskell.GhcMod.Types
 import System.Directory (doesFileExist)
-import System.FilePath
+import System.FilePath (dropExtension, takeFileName, (</>))
 
 ----------------------------------------------------------------
 
@@ -102,21 +103,21 @@ parseCabalFile file = do
     toPkgDesc cid = finalizePackageDescription [] (const True) buildPlatform cid []
     nullPkg pd = name == ""
       where
-        PackageName name = pkgName (package pd)
+        PackageName name = pkgName (P.package pd)
 
 ----------------------------------------------------------------
 
 getGHCOptions :: [GHCOption] -> Cradle -> FilePath -> BuildInfo -> IO [GHCOption]
 getGHCOptions ghcopts cradle cdir binfo = do
     cabalCpp <- cabalCppOptions cdir
-    let cpps = map ("-optP" ++) $ cppOptions binfo ++ cabalCpp
+    let cpps = map ("-optP" ++) $ P.cppOptions binfo ++ cabalCpp
     return $ ghcopts ++ pkgDb ++ exts ++ [lang] ++ libs ++ libDirs ++ cpps
   where
     pkgDb = cradlePackageDbOpts cradle
-    lang = maybe "-XHaskell98" (("-X" ++) . display) $ defaultLanguage binfo
-    libDirs = map ("-L" ++) $ extraLibDirs binfo
-    exts = map (("-X" ++) . display) $ usedExtensions binfo
-    libs = map ("-l" ++) $ extraLibs binfo
+    lang = maybe "-XHaskell98" (("-X" ++) . display) $ P.defaultLanguage binfo
+    libDirs = map ("-L" ++) $ P.extraLibDirs binfo
+    exts = map (("-X" ++) . display) $ P.usedExtensions binfo
+    libs = map ("-l" ++) $ P.extraLibs binfo
 
 cabalCppOptions :: FilePath -> IO [String]
 cabalCppOptions dir = do
@@ -134,11 +135,11 @@ cabalCppOptions dir = do
 cabalAllBuildInfo :: PackageDescription -> [BuildInfo]
 cabalAllBuildInfo pd = libBI ++ execBI ++ testBI ++ benchBI
   where
-    libBI   = map libBuildInfo       $ maybeToList $ library pd
-    execBI  = map buildInfo          $ executables pd
-    testBI  = map testBuildInfo      $ testSuites pd
+    libBI   = map P.libBuildInfo       $ maybeToList $ P.library pd
+    execBI  = map P.buildInfo          $ P.executables pd
+    testBI  = map P.testBuildInfo      $ P.testSuites pd
 #if __GLASGOW_HASKELL__ >= 704
-    benchBI = map benchmarkBuildInfo $ benchmarks pd
+    benchBI = map P.benchmarkBuildInfo $ P.benchmarks pd
 #else
     benchBI = []
 #endif
@@ -149,14 +150,14 @@ cabalAllBuildInfo pd = libBI ++ execBI ++ testBI ++ benchBI
 cabalDependPackages :: [BuildInfo] -> [PackageBaseName]
 cabalDependPackages bis = uniqueAndSort $ pkgs
   where
-    pkgs = map getDependencyPackageName $ concatMap targetBuildDepends bis
+    pkgs = map getDependencyPackageName $ concatMap P.targetBuildDepends bis
     getDependencyPackageName (Dependency (PackageName nm) _) = nm
 
 ----------------------------------------------------------------
 
 -- | Extracting include directories for modules.
 cabalSourceDirs :: [BuildInfo] -> [IncludeDir]
-cabalSourceDirs bis = uniqueAndSort $ concatMap hsSourceDirs bis
+cabalSourceDirs bis = uniqueAndSort $ concatMap P.hsSourceDirs bis
 
 ----------------------------------------------------------------
 
@@ -181,17 +182,17 @@ getGHC = do
 -- tests and benchmarks.
 cabalAllTargets :: PackageDescription -> IO ([String],[String],[String],[String])
 cabalAllTargets pd = do
-    exeTargets  <- mapM getExecutableTarget $ executables pd
-    testTargets <- mapM getTestTarget $ testSuites pd
+    exeTargets  <- mapM getExecutableTarget $ P.executables pd
+    testTargets <- mapM getTestTarget $ P.testSuites pd
     return (libTargets,concat exeTargets,concat testTargets,benchTargets)
   where
-    lib = case library pd of
+    lib = case P.library pd of
             Nothing -> []
-            Just l -> libModules l
+            Just l -> P.libModules l
 
     libTargets = map toModuleString $ lib
 #if __GLASGOW_HASKELL__ >= 704
-    benchTargets = map toModuleString $ concatMap benchmarkModules $ benchmarks  pd
+    benchTargets = map toModuleString $ concatMap P.benchmarkModules $ P.benchmarks  pd
 #else
     benchTargets = []
 #endif
@@ -203,15 +204,15 @@ cabalAllTargets pd = do
 
     getTestTarget :: TestSuite -> IO [String]
     getTestTarget ts =
-       case testInterface ts of
+       case P.testInterface ts of
         (TestSuiteExeV10 _ filePath) -> do
-          let maybeTests = [p </> e | p <- hsSourceDirs $ testBuildInfo ts, e <- [filePath]]
+          let maybeTests = [p </> e | p <- P.hsSourceDirs $ P.testBuildInfo ts, e <- [filePath]]
           liftIO $ filterM doesFileExist maybeTests
         (TestSuiteLibV09 _ moduleName) -> return [toModuleString moduleName]
         (TestSuiteUnsupported _)       -> return []
 
     getExecutableTarget :: Executable -> IO [String]
     getExecutableTarget exe = do
-      let maybeExes = [p </> e | p <- hsSourceDirs $ buildInfo exe, e <- [modulePath exe]]
+      let maybeExes = [p </> e | p <- P.hsSourceDirs $ P.buildInfo exe, e <- [P.modulePath exe]]
       liftIO $ filterM doesFileExist maybeExes
 
