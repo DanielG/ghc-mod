@@ -218,8 +218,7 @@
     (goto-char (point-min))
     (while (re-search-forward "\\[Char\\]" nil t)
       (replace-match "String"))
-    (re-search-forward "\0" nil t)
-    (buffer-substring-no-properties (point-min) (1- (point)))))
+    (buffer-substring-no-properties (point-min) (point-max))))
 
 (defun ghc-get-function-name ()
   (save-excursion
