@@ -2,7 +2,7 @@ module Language.Haskell.GhcMod.Doc where
 
 import DynFlags (DynFlags)
 import Language.Haskell.GhcMod.Gap (withStyle, showDocWith)
-import Outputable
+import Outputable (SDoc, PprStyle, Depth(AllTheWay), mkUserStyle, alwaysQualify, neverQualify)
 import Pretty (Mode(..))
 
 ----------------------------------------------------------------
