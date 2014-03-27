@@ -56,7 +56,7 @@ main = E.handle handler $ do
     ls = lineSeparator opt
     LineSeparator lsc = ls
     handler (E.SomeException e) = do
-        putStr "ghc-modi:0:0:Error:"
+        putStr "ghc-modi:0:0:"
         let x = intercalate lsc $ lines $ show e
         putStrLn x
         putStrLn "NG"
@@ -72,13 +72,14 @@ run cradle mlibdir opt body = runGhc mlibdir $ do
 ----------------------------------------------------------------
 
 setupDB :: Cradle -> Maybe FilePath -> Options -> MVar DB -> IO ()
-setupDB cradle mlibdir opt mvar = do
+setupDB cradle mlibdir opt mvar = E.handle handler $ do
     sm <- run cradle mlibdir opt $ \_ -> getSessionDynFlags >>= browseAll
     let sms = map tieup $ groupBy ((==) `on` fst) $ sort sm
         m = M.fromList sms
     putMVar mvar m
   where
     tieup x = (head (map fst x), map snd x)
+    handler (E.SomeException _) = return ()
 
 ----------------------------------------------------------------
 
