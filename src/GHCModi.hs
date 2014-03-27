@@ -1,4 +1,4 @@
-{-# LANGUAGE BangPatterns, CPP #-}
+{-# LANGUAGE CPP #-}
 
 -- Commands:
 --  check <file>
@@ -10,6 +10,10 @@
 --   NG -- failure
 
 module Main where
+
+#ifndef MIN_VERSION_containers
+#define MIN_VERSION_containers 1
+#endif
 
 import Control.Applicative ((<$>))
 import Control.Concurrent (forkIO, MVar, newEmptyMVar, putMVar, readMVar)

@@ -127,7 +127,7 @@ main = flip E.catches handlers $ do
     putStr res
   where
     handlers = [Handler (handleThenExit handler1), Handler (handleThenExit handler2)]
-    handleThenExit handler = \e -> handler e >> exitFailure
+    handleThenExit handler e = handler e >> exitFailure
     handler1 :: ErrorCall -> IO ()
     handler1 = print -- for debug
     handler2 :: GHCModError -> IO ()
