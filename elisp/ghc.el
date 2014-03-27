@@ -78,7 +78,7 @@
     (define-key haskell-mode-map ghc-insert-key      'ghc-insert-template)
     (define-key haskell-mode-map ghc-sort-key        'ghc-sort-lines)
     (define-key haskell-mode-map ghc-check-key       'ghc-save-buffer)
-;;    (define-key haskell-mode-map ghc-toggle-key      'ghc-flymake-toggle-command) -- fixme
+    (define-key haskell-mode-map ghc-toggle-key      'ghc-toggle-check-command)
     (define-key haskell-mode-map ghc-module-key      'ghc-insert-module)
     (define-key haskell-mode-map ghc-hoogle-key      'haskell-hoogle)
     (define-key haskell-mode-map ghc-shallower-key   'ghc-make-indent-shallower)

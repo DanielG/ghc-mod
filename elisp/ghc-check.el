@@ -45,7 +45,9 @@
 (ghc-defstruct hilit-info file line col msg err)
 
 (defun ghc-check-send ()
-  (concat "check " ghc-process-original-file "\n"))
+  (if ghc-check-command
+      (concat "lint " ghc-process-original-file "\n")
+    (concat "check " ghc-process-original-file "\n")))
 
 (defun ghc-check-callback ()
   (let ((regex "^\\([^\n\0]*\\):\\([0-9]+\\):\\([0-9]+\\): *\\(.+\\)")
@@ -251,5 +253,18 @@
 	(dotimes (i arity)
 	  (insert " _"))
 	(insert  " = error \"" fn "\"")))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defvar ghc-hlint-options nil "*Hlint options")
+
+(defvar ghc-check-command nil)
+
+(defun ghc-toggle-check-command ()
+  (interactive)
+  (setq ghc-check-command (not ghc-check-command))
+  (if ghc-check-command
+      (message "Syntax check with hlint")
+    (message "Syntax check with GHC")))
 
 (provide 'ghc-check)
