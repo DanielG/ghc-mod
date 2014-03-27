@@ -158,7 +158,7 @@ getPackageDbPackages cdir = (getPkgDb >>= listDbPackages) `E.catch` handler
 listDbPackages :: FilePath -> IO [Package]
 listDbPackages pkgdir = do
   files <- filter (".conf" `isSuffixOf`) <$> getDirectoryContents pkgdir
-  mapM extractPackage $ map (pkgdir </>) files
+  mapM (extractPackage . (pkgdir </>)) files
 
 extractPackage :: FilePath -> IO Package
 extractPackage pconf = do
@@ -173,7 +173,7 @@ extractPackage pconf = do
     parseId = parse idKey
     extractId = extract idKeyLength
     parse key = head . filter (key `isPrefixOf`)
-    extract keylen = fst . break isSpace . dropWhile isSpace . drop keylen
+    extract keylen = takeWhile (not . isSpace) . dropWhile isSpace . drop keylen
 
 nameKey :: String
 nameKey = "name:"

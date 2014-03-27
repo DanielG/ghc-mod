@@ -39,7 +39,7 @@ debug opt cradle fileName = do
       , "Cabal file:          " ++ cabalFile
       , "GHC options:         " ++ unwords gopts
       , "Include directories: " ++ unwords incDir
-      , "Dependent packages:  " ++ (intercalate ", " $ map fst pkgs)
+      , "Dependent packages:  " ++ intercalate ", " (map fst pkgs)
       ]
   where
     currentDir = cradleCurrentDir cradle
@@ -68,8 +68,7 @@ root :: Options
       -> Cradle
       -> FilePath     -- ^ A target file.
       -> Ghc String
-root _ cradle _ = do
-    return $ rootDir ++ "\n"
+root _ cradle _ = return $ rootDir ++ "\n"
   where
     currentDir = cradleCurrentDir cradle
     mCabalDir = cradleCabalDir cradle
