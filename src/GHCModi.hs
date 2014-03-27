@@ -12,10 +12,11 @@
 module Main where
 
 import Control.Applicative ((<$>))
-import Control.Concurrent
-import qualified Control.Exception as E (handle, SomeException(..))
+import Control.Concurrent (forkIO, MVar, newEmptyMVar, putMVar, readMVar)
+import Control.Exception (SomeException(..))
+import qualified Control.Exception as E
 import Control.Monad (when, void)
-import Data.Function
+import Data.Function (on)
 import Data.List (intercalate, groupBy, sort, find)
 #if MIN_VERSION_containers(0,5,0)
 import Data.Map.Strict (Map)
@@ -26,9 +27,10 @@ import qualified Data.Map as M
 #endif
 import Data.Set (Set)
 import qualified Data.Set as S
-import qualified Exception as G (ghandle)
-import GHC
-import GhcMonad
+import qualified Exception as GE
+import GHC (Ghc, LoadHowMuch(LoadAllTargets), TargetId(TargetFile))
+import qualified GHC as G
+import GhcMonad (liftIO)
 import HscTypes (SourceError)
 import Language.Haskell.GhcMod
 import Language.Haskell.GhcMod.Internal
@@ -55,7 +57,7 @@ main = E.handle handler $ do
     opt = defaultOptions
     ls = lineSeparator opt
     LineSeparator lsc = ls
-    handler (E.SomeException e) = do
+    handler (SomeException e) = do
         putStr "ghc-modi:0:0:"
         let x = intercalate lsc $ lines $ show e
         putStrLn x
@@ -64,22 +66,22 @@ main = E.handle handler $ do
 ----------------------------------------------------------------
 
 run :: Cradle -> Maybe FilePath -> Options -> (Logger -> Ghc a) -> IO a
-run cradle mlibdir opt body = runGhc mlibdir $ do
+run cradle mlibdir opt body = G.runGhc mlibdir $ do
     (readLog,_) <- initializeFlagsWithCradle opt cradle ["-Wall"] True
-    dflags <- getSessionDynFlags
-    defaultCleanupHandler dflags $ body readLog
+    dflags <- G.getSessionDynFlags
+    G.defaultCleanupHandler dflags $ body readLog
 
 ----------------------------------------------------------------
 
 setupDB :: Cradle -> Maybe FilePath -> Options -> MVar DB -> IO ()
 setupDB cradle mlibdir opt mvar = E.handle handler $ do
-    sm <- run cradle mlibdir opt $ \_ -> getSessionDynFlags >>= browseAll
+    sm <- run cradle mlibdir opt $ \_ -> G.getSessionDynFlags >>= browseAll
     let sms = map tieup $ groupBy ((==) `on` fst) $ sort sm
         m = M.fromList sms
     putMVar mvar m
   where
     tieup x = (head (map fst x), map snd x)
-    handler (E.SomeException _) = return ()
+    handler (SomeException _) = return ()
 
 ----------------------------------------------------------------
 
@@ -107,10 +109,10 @@ checkStx :: Set FilePath
          -> Ghc ([String], Bool, Set FilePath)
 checkStx set ls readLog file = do
     let add = not $ S.member file set
-    G.ghandle handler $ do
+    GE.ghandle handler $ do
         mdel <- removeMainTarget
         when add $ addTargetFiles [file]
-        void $ load LoadAllTargets
+        void $ G.load LoadAllTargets
         msgs <- liftIO $ readLog
         let set1 = if add then S.insert file set else set
             set2 = case mdel of
@@ -123,18 +125,18 @@ checkStx set ls readLog file = do
         errmsgs <- handleErrMsg ls err
         return (errmsgs, False, set)
     removeMainTarget = do
-        mx <- find isMain <$> getModuleGraph
+        mx <- find isMain <$> G.getModuleGraph
         case mx of
             Nothing -> return Nothing
             Just x  -> do
-                let mainfile = ms_hspp_file x
+                let mainfile = G.ms_hspp_file x
                 if mainfile == file then
                     return Nothing
                   else do
                     let target = TargetFile mainfile Nothing
-                    removeTarget target
+                    G.removeTarget target
                     return $ Just mainfile
-    isMain m = moduleNameString  (moduleName (ms_mod m)) == "Main"
+    isMain m = G.moduleNameString (G.moduleName (G.ms_mod m)) == "Main"
 
 findSym :: Set FilePath -> MVar DB -> String
         -> Ghc ([String], Bool, Set FilePath)
