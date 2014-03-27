@@ -1,5 +1,14 @@
 {-# LANGUAGE BangPatterns, CPP #-}
 
+-- Commands:
+--  check <file>
+--  find <symbol>
+--  lint <file> [hlint options]
+--
+-- Session separators:
+--   OK -- success
+--   NG -- failure
+
 module Main where
 
 import Control.Applicative ((<$>))
@@ -81,6 +90,7 @@ loop set ls mvar readLog  = do
     (msgs,ok,set') <- case cmd of
         "check" -> checkStx set ls readLog arg
         "find"  -> findSym set mvar arg
+        "lint"  -> lintStx set ls arg
         _       -> return ([], False, set)
     mapM_ (liftIO . putStrLn) msgs
     liftIO $ putStrLn $ if ok then "OK" else "NG"
@@ -133,3 +143,12 @@ findSym set mvar sym = do
             Nothing -> []
             Just xs -> xs
     return (ret, True, set)
+
+lintStx :: Set FilePath -> LineSeparator -> FilePath
+        -> Ghc ([String], Bool, Set FilePath)
+lintStx set (LineSeparator lsep) fileOpts = liftIO $ do
+    msgs <- map (intercalate lsep . lines) <$> lint hopts file
+    return (msgs, True, set) -- fixme: error handling
+  where
+    file = fileOpts -- fixme
+    hopts = [] -- fixme
