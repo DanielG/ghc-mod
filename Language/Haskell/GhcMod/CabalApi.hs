@@ -122,10 +122,10 @@ getGHCOptions ghcopts cradle cdir binfo = do
 cabalCppOptions :: FilePath -> IO [String]
 cabalCppOptions dir = do
     exist <- doesFileExist cabalMacro
-    if exist then
-        return ["-include", cabalMacro]
+    return $ if exist then
+        ["-include", cabalMacro]
       else
-        return []
+        []
   where
     cabalMacro = dir </> "dist/build/autogen/cabal_macros.h"
 
@@ -148,7 +148,7 @@ cabalAllBuildInfo pd = libBI ++ execBI ++ testBI ++ benchBI
 
 -- | Extracting package names of dependency.
 cabalDependPackages :: [BuildInfo] -> [PackageBaseName]
-cabalDependPackages bis = uniqueAndSort $ pkgs
+cabalDependPackages bis = uniqueAndSort pkgs
   where
     pkgs = map getDependencyPackageName $ concatMap P.targetBuildDepends bis
     getDependencyPackageName (Dependency (PackageName nm) _) = nm
@@ -174,7 +174,7 @@ getGHC = do
     mv <- programFindVersion ghcProgram silent (programName ghcProgram)
     case mv of
         Nothing -> throwIO $ userError "ghc not found"
-        Just v  -> return $ v
+        Just v  -> return v
 
 ----------------------------------------------------------------
 
@@ -190,7 +190,7 @@ cabalAllTargets pd = do
             Nothing -> []
             Just l -> P.libModules l
 
-    libTargets = map toModuleString $ lib
+    libTargets = map toModuleString lib
 #if __GLASGOW_HASKELL__ >= 704
     benchTargets = map toModuleString $ concatMap P.benchmarkModules $ P.benchmarks  pd
 #else
