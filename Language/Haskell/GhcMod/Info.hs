@@ -11,6 +11,7 @@ module Language.Haskell.GhcMod.Info (
 
 import Control.Applicative ((<$>))
 import Control.Monad (void)
+import CoreMonad (liftIO)
 import CoreUtils (exprType)
 import Data.Function (on)
 import Data.Generics hiding (typeOf)
@@ -65,7 +66,7 @@ info opt cradle file modstr expr =
 instance HasType (LHsExpr Id) where
     getType tcm e = do
         hs_env <- getSession
-        mbe <- Gap.liftIO $ Gap.deSugar tcm e hs_env
+        mbe <- liftIO $ Gap.deSugar tcm e hs_env
         return $ (getLoc e, ) <$> CoreUtils.exprType <$> mbe
 
 instance HasType (LPat Id) where
@@ -156,7 +157,7 @@ inModuleContext _ opt cradle file modstr action errmsg =
             moddef = "module " ++ sanitize modstr ++ " where"
             header = moddef : imports
         importsBuf <- Gap.toStringBuffer header
-        clkTime <- Gap.liftIO getCurrentTime
+        clkTime <- liftIO getCurrentTime
         setTargets [Gap.mkTarget (TargetModule $ mkModuleName modstr)
                                  True
                                  (Just (importsBuf, clkTime))]

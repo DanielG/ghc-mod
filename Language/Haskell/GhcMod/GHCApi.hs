@@ -14,7 +14,7 @@ module Language.Haskell.GhcMod.GHCApi (
 import Control.Applicative
 import Control.Exception
 import Control.Monad
-import CoreMonad
+import CoreMonad (liftIO)
 import Data.Maybe (isJust,fromJust)
 import Distribution.PackageDescription (PackageDescription)
 import DynFlags

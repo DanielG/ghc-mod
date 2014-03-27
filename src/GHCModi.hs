@@ -16,6 +16,7 @@ import Control.Concurrent (forkIO, MVar, newEmptyMVar, putMVar, readMVar)
 import Control.Exception (SomeException(..))
 import qualified Control.Exception as E
 import Control.Monad (when, void)
+import CoreMonad (liftIO)
 import Data.Function (on)
 import Data.List (intercalate, groupBy, sort, find)
 #if MIN_VERSION_containers(0,5,0)
@@ -30,7 +31,6 @@ import qualified Data.Set as S
 import qualified Exception as GE
 import GHC (Ghc, LoadHowMuch(LoadAllTargets), TargetId(TargetFile))
 import qualified GHC as G
-import GhcMonad (liftIO)
 import HscTypes (SourceError)
 import Language.Haskell.GhcMod
 import Language.Haskell.GhcMod.Internal

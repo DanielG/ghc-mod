@@ -1,8 +1,8 @@
 module Language.Haskell.GhcMod.Check (checkSyntax, check) where
 
-import Control.Applicative
-import Control.Monad
-import CoreMonad
+import Control.Applicative ((<$>))
+import Control.Monad (void)
+import CoreMonad (liftIO)
 import Exception
 import GHC
 import Language.Haskell.GhcMod.ErrMsg

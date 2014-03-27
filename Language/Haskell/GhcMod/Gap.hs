@@ -11,7 +11,6 @@ module Language.Haskell.GhcMod.Gap (
   , setCtx
   , fOptions
   , toStringBuffer
-  , liftIO
   , showSeverityCaption
   , setCabalPkg
   , addDevPkgs
@@ -69,10 +68,8 @@ import GHC hiding (ClsInst)
 import GHC hiding (Instance)
 #endif
 
-#if __GLASGOW_HASKELL__ >= 702
+#if __GLASGOW_HASKELL__ < 702
 import CoreMonad (liftIO)
-#else
-import HscTypes (liftIO)
 import Pretty
 #endif
 

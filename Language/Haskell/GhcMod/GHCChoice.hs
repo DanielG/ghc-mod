@@ -3,7 +3,7 @@
 module Language.Haskell.GhcMod.GHCChoice where
 
 import Control.Exception
-import CoreMonad
+import CoreMonad (liftIO)
 import Exception
 import GHC
 
