@@ -14,9 +14,12 @@ packageDoc _ cradle mdl = pkgDoc cradle mdl
 pkgDoc :: Cradle -> String -> IO String
 pkgDoc cradle mdl = do
     pkg <- trim <$> readProcess "ghc-pkg" toModuleOpts []
-    htmlpath <- readProcess "ghc-pkg" ["field", pkg, "haddock-html"] []
-    let ret = pkg ++ " " ++ drop 14 htmlpath
-    return ret
+    if pkg == "" then
+        return "\n"
+      else do
+        htmlpath <- readProcess "ghc-pkg" ["field", pkg, "haddock-html"] []
+        let ret = pkg ++ " " ++ drop 14 htmlpath
+        return ret
   where
     toModuleOpts = ["find-module", "--simple-output"] ++ cradlePackageDbOpts cradle ++ [mdl]
     trim = takeWhile (/= '\n')
