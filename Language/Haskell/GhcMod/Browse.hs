@@ -4,22 +4,23 @@ module Language.Haskell.GhcMod.Browse (
   , browseAll)
   where
 
-import Control.Applicative
+import Control.Applicative ((<$>))
 import Control.Monad (void)
-import Data.Char
-import Data.List
+import Data.Char (isAlpha)
+import Data.List (sort)
 import Data.Maybe (catMaybes)
 import FastString (mkFastString)
-import GHC
+import GHC (Ghc, GhcException(CmdLineError), ModuleInfo, Name, TyThing, DynFlags, Type, TyCon, Module)
+import qualified GHC as G
 import Language.Haskell.GhcMod.Doc (showUnqualifiedPage, showUnqualifiedOneLine)
 import Language.Haskell.GhcMod.GHCApi
 import Language.Haskell.GhcMod.Gap
 import Language.Haskell.GhcMod.Types
-import Name
-import Outputable
+import Name (getOccString)
+import Outputable (ppr, Outputable)
 import Panic (throwGhcException)
-import TyCon
-import Type
+import TyCon (isAlgTyCon)
+import Type (dropForAlls, splitFunTy_maybe, mkFunTy, isPredTy)
 
 ----------------------------------------------------------------
 
@@ -41,10 +42,10 @@ browse :: Options
        -> Ghc [String]
 browse opt cradle mdlName = do
     void $ initializeFlagsWithCradle opt cradle [] False
-    getModule >>= getModuleInfo >>= listExports
+    getModule >>= G.getModuleInfo >>= listExports
   where
-    getModule = findModule mdlname mpkgid `gcatch` fallback
-    mdlname = mkModuleName mdlName
+    getModule = G.findModule mdlname mpkgid `G.gcatch` fallback
+    mdlname = G.mkModuleName mdlName
     mpkgid = mkFastString <$> packageId opt
     listExports Nothing       = return []
     listExports (Just mdinfo) = processExports opt mdinfo
@@ -57,11 +58,11 @@ browse opt cradle mdlName = do
     fallback e                = throwGhcException e
     loadAndFind = do
       setTargetFiles [mdlName]
-      void $ load LoadAllTargets
-      findModule mdlname Nothing
+      void $ G.load G.LoadAllTargets
+      G.findModule mdlname Nothing
 
 processExports :: Options -> ModuleInfo -> Ghc [String]
-processExports opt minfo = mapM (showExport opt minfo) $ removeOps $ modInfoExports minfo
+processExports opt minfo = mapM (showExport opt minfo) $ removeOps $ G.modInfoExports minfo
   where
     removeOps
       | operators opt = id
@@ -72,13 +73,13 @@ showExport opt minfo e = do
   mtype' <- mtype
   return $ concat $ catMaybes [mqualified, Just $ formatOp $ getOccString e, mtype']
   where
-    mqualified = (moduleNameString (moduleName $ nameModule e) ++ ".") `justIf` qualified opt
+    mqualified = (G.moduleNameString (G.moduleName $ G.nameModule e) ++ ".") `justIf` qualified opt
     mtype
       | detailed opt = do
-        tyInfo <- modInfoLookupName minfo e
+        tyInfo <- G.modInfoLookupName minfo e
         -- If nothing found, load dependent module and lookup global
         tyResult <- maybe (inOtherModule e) (return . Just) tyInfo
-        dflag <- getSessionDynFlags
+        dflag <- G.getSessionDynFlags
         return $ do
           typeName <- tyResult >>= showThing dflag
           (" :: " ++ typeName) `justIf` detailed opt
@@ -88,7 +89,7 @@ showExport opt minfo e = do
       | otherwise = "(" ++ nm ++ ")"
     formatOp "" = error "formatOp"
     inOtherModule :: Name -> Ghc (Maybe TyThing)
-    inOtherModule nm = getModuleInfo (nameModule nm) >> lookupGlobalName nm
+    inOtherModule nm = G.getModuleInfo (G.nameModule nm) >> G.lookupGlobalName nm
     justIf :: a -> Bool -> Maybe a
     justIf x True = Just x
     justIf _ False = Nothing
@@ -100,7 +101,7 @@ showThing' :: DynFlags -> GapThing -> Maybe String
 showThing' dflag (GtA a) = Just $ formatType dflag a
 showThing' _     (GtT t) = unwords . toList <$> tyType t
   where
-    toList t' = t' : getOccString t : map getOccString (tyConTyVars t)
+    toList t' = t' : getOccString t : map getOccString (G.tyConTyVars t)
 showThing' _     _       = Nothing
 
 formatType :: DynFlags -> Type -> String
@@ -109,12 +110,12 @@ formatType dflag a = showOutputable dflag (removeForAlls a)
 tyType :: TyCon -> Maybe String
 tyType typ
     | isAlgTyCon typ
-      && not (isNewTyCon typ)
-      && not (isClassTyCon typ) = Just "data"
-    | isNewTyCon typ            = Just "newtype"
-    | isClassTyCon typ          = Just "class"
-    | isSynTyCon typ            = Just "type"
-    | otherwise                 = Nothing
+      && not (G.isNewTyCon typ)
+      && not (G.isClassTyCon typ) = Just "data"
+    | G.isNewTyCon typ            = Just "newtype"
+    | G.isClassTyCon typ          = Just "class"
+    | G.isSynTyCon typ            = Just "type"
+    | otherwise                   = Nothing
 
 removeForAlls :: Type -> Type
 removeForAlls ty = removeForAlls' ty' tty'
@@ -136,14 +137,14 @@ showOutputable dflag = unwords . lines . showUnqualifiedPage dflag . ppr
 -- | Browsing all functions in all system/user modules.
 browseAll :: DynFlags -> Ghc [(String,String)]
 browseAll dflag = do
-    ms <- packageDbModules True
-    is <- mapM getModuleInfo ms
+    ms <- G.packageDbModules True
+    is <- mapM G.getModuleInfo ms
     return $ concatMap (toNameModule dflag) (zip ms is)
 
 toNameModule :: DynFlags -> (Module, Maybe ModuleInfo) -> [(String,String)]
 toNameModule _     (_,Nothing)  = []
 toNameModule dflag (m,Just inf) = map (\name -> (toStr name, mdl)) names
   where
-    mdl = moduleNameString (moduleName m)
-    names = modInfoExports inf
+    mdl = G.moduleNameString (G.moduleName m)
+    names = G.modInfoExports inf
     toStr = showUnqualifiedOneLine dflag . ppr
