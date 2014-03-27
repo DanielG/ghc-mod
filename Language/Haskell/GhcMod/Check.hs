@@ -3,8 +3,8 @@ module Language.Haskell.GhcMod.Check (checkSyntax, check) where
 import Control.Applicative ((<$>))
 import Control.Monad (void)
 import CoreMonad (liftIO)
-import Exception
-import GHC
+import GHC (Ghc, LoadHowMuch(LoadAllTargets))
+import qualified GHC as G
 import Language.Haskell.GhcMod.ErrMsg
 import Language.Haskell.GhcMod.GHCApi
 import Language.Haskell.GhcMod.Types
@@ -33,12 +33,12 @@ check :: Options
       -> [FilePath]  -- ^ The target files.
       -> Ghc [String]
 check _   _      []        = error "ghc-mod: check: No files given"
-check opt cradle fileNames = checkIt `gcatch` handleErrMsg ls
+check opt cradle fileNames = checkIt `G.gcatch` handleErrMsg ls
   where
     checkIt = do
         (readLog,_) <- initializeFlagsWithCradle opt cradle options True
         setTargetFiles fileNames
-        void $ load LoadAllTargets
+        void $ G.load LoadAllTargets
         liftIO readLog
     options
       | expandSplice opt = "-w:"   : ghcOpts opt

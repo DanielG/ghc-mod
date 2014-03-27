@@ -7,10 +7,11 @@ module Language.Haskell.GhcMod.Cradle (
   , getPackageDbPackages
   ) where
 
-import Data.Char (isSpace)
 import Control.Applicative ((<$>))
-import Control.Exception as E (catch, throwIO, SomeException)
+import Control.Exception (SomeException(..))
+import qualified Control.Exception as E
 import Control.Monad (filterM)
+import Data.Char (isSpace)
 import Data.List (isPrefixOf, isSuffixOf, tails)
 import Language.Haskell.GhcMod.Types
 import System.Directory (getCurrentDirectory, getDirectoryContents, doesFileExist)
@@ -70,7 +71,7 @@ cabalDir :: FilePath -> IO (FilePath,FilePath)
 cabalDir dir = do
     cnts <- getCabalFiles dir
     case cnts of
-        [] | dir' == dir -> throwIO $ userError "cabal files not found"
+        [] | dir' == dir -> E.throwIO $ userError "cabal files not found"
            | otherwise   -> cabalDir dir'
         cfile:_          -> return (dir,dir </> cfile)
   where
