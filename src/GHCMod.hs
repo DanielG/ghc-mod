@@ -2,16 +2,16 @@
 
 module Main where
 
-import Control.Applicative
-import Control.Exception
-import Control.Monad
-import Data.Typeable
-import Data.Version
+import Control.Applicative ((<$>))
+import Control.Exception (Exception, Handler(..), ErrorCall(..))
+import qualified Control.Exception as E
+import Data.Typeable (Typeable)
+import Data.Version (showVersion)
 import Language.Haskell.GhcMod
 import Paths_ghc_mod
-import Prelude
-import System.Console.GetOpt
-import System.Directory
+import System.Console.GetOpt (OptDescr(..), ArgDescr(..), ArgOrder(..))
+import qualified System.Console.GetOpt as O
+import System.Directory (doesFileExist)
 import System.Environment (getArgs)
 import System.Exit (exitFailure)
 import System.IO (hPutStr, hPutStrLn, stdout, stderr, hSetEncoding, utf8)
@@ -69,9 +69,9 @@ argspec = [ Option "l" ["tolisp"]
 
 parseArgs :: [OptDescr (Options -> Options)] -> [String] -> (Options, [String])
 parseArgs spec argv
-    = case getOpt Permute spec argv of
+    = case O.getOpt Permute spec argv of
         (o,n,[]  ) -> (foldr id defaultOptions o, n)
-        (_,_,errs) -> throw (CmdArg errs)
+        (_,_,errs) -> E.throw (CmdArg errs)
 
 ----------------------------------------------------------------
 
@@ -86,7 +86,7 @@ instance Exception GHCModError
 ----------------------------------------------------------------
 
 main :: IO ()
-main = flip catches handlers $ do
+main = flip E.catches handlers $ do
 -- #if __GLASGOW_HASKELL__ >= 611
     hSetEncoding stdout utf8
 -- #endif
@@ -101,7 +101,7 @@ main = flip catches handlers $ do
         remainingArgs = tail cmdArg
         nArgs n f = if length remainingArgs == n
                         then f
-                        else throw (TooManyArguments cmdArg0)
+                        else E.throw (TooManyArguments cmdArg0)
     res <- case cmdArg0 of
       "browse" -> concat <$> mapM (browseModule opt cradle) remainingArgs
       "list"   -> listModules opt cradle
@@ -120,8 +120,8 @@ main = flip catches handlers $ do
          flags <- listFlags opt
          pre   <- concat <$> mapM (browseModule opt cradle) preBrowsedModules
          return $ mods ++ langs ++ flags ++ pre
-      "help"   -> return $ usageInfo usage argspec
-      cmd      -> throw (NoSuchCommand cmd)
+      "help"   -> return $ O.usageInfo usage argspec
+      cmd      -> E.throw (NoSuchCommand cmd)
     putStr res
   where
     handlers = [Handler (handleThenExit handler1), Handler (handleThenExit handler2)]
@@ -142,14 +142,14 @@ main = flip catches handlers $ do
     handler2 (FileNotExist file) = do
         hPutStrLn stderr $ "\"" ++ file ++ "\" not found"
         printUsage
-    printUsage = hPutStrLn stderr $ '\n' : usageInfo usage argspec
+    printUsage = hPutStrLn stderr $ '\n' : O.usageInfo usage argspec
     withFile cmd file = do
         exist <- doesFileExist file
         if exist
             then cmd file
-            else throw (FileNotExist file)
+            else E.throw (FileNotExist file)
     xs !. idx
-      | length xs <= idx = throw SafeList
+      | length xs <= idx = E.throw SafeList
       | otherwise = xs !! idx
 
 ----------------------------------------------------------------
