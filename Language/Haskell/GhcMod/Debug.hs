@@ -1,12 +1,12 @@
 module Language.Haskell.GhcMod.Debug (debugInfo, debug, rootInfo, root) where
 
-import Control.Applicative
-import Control.Exception.IOChoice
-import Control.Monad
+import Control.Applicative ((<$>))
+import Control.Exception.IOChoice ((||>))
+import Control.Monad (void)
 import CoreMonad (liftIO)
 import Data.List (intercalate)
-import Data.Maybe
-import GHC
+import Data.Maybe (fromMaybe, isJust, fromJust)
+import GHC (Ghc)
 import Language.Haskell.GhcMod.CabalApi
 import Language.Haskell.GhcMod.GHCApi
 import Language.Haskell.GhcMod.Types
