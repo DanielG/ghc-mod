@@ -31,11 +31,11 @@ module Language.Haskell.GhcMod.Gap (
   ) where
 
 import Control.Applicative hiding (empty)
-import Control.Monad
-import CoreSyn
-import Data.List
-import Data.Maybe
-import Data.Time.Clock
+import Control.Monad (filterM)
+import CoreSyn (CoreExpr)
+import Data.List (intersperse)
+import Data.Maybe (catMaybes)
+import Data.Time.Clock (UTCTime)
 import DataCon (dataConRepType)
 import Desugar (deSugarExpr)
 import DynFlags
@@ -321,7 +321,7 @@ typeForUser = pprTypeForUser False
 #endif
 
 deSugar :: TypecheckedModule -> LHsExpr Id -> HscEnv
-         -> IO (Maybe CoreSyn.CoreExpr)
+         -> IO (Maybe CoreExpr)
 #if __GLASGOW_HASKELL__ >= 707
 deSugar _   e hs_env = snd <$> deSugarExpr hs_env e
 #else

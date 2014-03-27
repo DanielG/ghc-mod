@@ -1,13 +1,14 @@
 module Language.Haskell.GhcMod.List (listModules, listMods) where
 
-import Control.Applicative
+import Control.Applicative ((<$>))
 import Control.Monad (void)
-import Data.List
-import GHC
+import Data.List (nub, sort)
+import GHC (Ghc)
+import qualified GHC as G
 import Language.Haskell.GhcMod.GHCApi
 import Language.Haskell.GhcMod.Types
-import Packages
-import UniqFM
+import Packages (pkgIdMap, exposedModules, sourcePackageId, display)
+import UniqFM (eltsUFM)
 
 ----------------------------------------------------------------
 
@@ -23,11 +24,11 @@ listModules opt cradle = convert opt . nub . sort . map dropPkgs <$> withGHCDumm
 listMods :: Options -> Cradle -> Ghc [(String, String)]
 listMods opt cradle = do
     void $ initializeFlagsWithCradle opt cradle [] False
-    getExposedModules <$> getSessionDynFlags
+    getExposedModules <$> G.getSessionDynFlags
   where
     getExposedModules = concatMap exposedModules'
-                      . eltsUFM . pkgIdMap . pkgState
+                      . eltsUFM . pkgIdMap . G.pkgState
     exposedModules' p =
-    	map moduleNameString (exposedModules p)
+        map G.moduleNameString (exposedModules p)
     	`zip`
-    	repeat (display $ sourcePackageId p)
+        repeat (display $ sourcePackageId p)
