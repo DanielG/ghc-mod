@@ -11,23 +11,23 @@ module Language.Haskell.GhcMod.GHCApi (
   , getSystemLibDir
   ) where
 
-import Control.Applicative
-import Control.Exception
-import Control.Monad
+import Control.Applicative (Alternative, (<$>))
+import Control.Monad (void, forM)
 import CoreMonad (liftIO)
-import Data.Maybe (isJust,fromJust)
+import Data.Maybe (isJust, fromJust)
 import Distribution.PackageDescription (PackageDescription)
-import DynFlags
-import Exception
-import GHC
+import DynFlags (dopt_set)
+import Exception (ghandle, SomeException(..))
+import GHC (Ghc, GhcMonad, DynFlags(..), DynFlag(Opt_D_dump_splices), GhcLink(..), HscTarget(..))
+import qualified GHC as G
 import Language.Haskell.GhcMod.CabalApi
 import Language.Haskell.GhcMod.ErrMsg
 import Language.Haskell.GhcMod.GHCChoice
 import qualified Language.Haskell.GhcMod.Gap as Gap
 import Language.Haskell.GhcMod.Types
-import System.Exit
-import System.IO
-import System.Process
+import System.Exit (exitSuccess)
+import System.IO (hPutStr, hPrint, stderr)
+import System.Process (readProcess)
 
 ----------------------------------------------------------------
 
@@ -52,9 +52,9 @@ withGHC :: Alternative m => FilePath  -- ^ A target file displayed in an error m
                          -> IO (m a)
 withGHC file body = do
     mlibdir <- getSystemLibDir
-    ghandle ignore $ runGhc mlibdir $ do
-        dflags <- getSessionDynFlags
-        defaultCleanupHandler dflags body
+    ghandle ignore $ G.runGhc mlibdir $ do
+        dflags <- G.getSessionDynFlags
+        G.defaultCleanupHandler dflags body
   where
     ignore :: Alternative m => SomeException -> IO (m a)
     ignore e = do
@@ -98,9 +98,9 @@ initSession :: GhcMonad m => Build
             -> Bool
             -> m LogReader
 initSession build opt compOpts logging = do
-    dflags0 <- getSessionDynFlags
+    dflags0 <- G.getSessionDynFlags
     (dflags1,readLog) <- setupDynamicFlags dflags0
-    _ <- setSessionDynFlags dflags1
+    _ <- G.setSessionDynFlags dflags1
     return readLog
   where
     cmdOpts = ghcOptions compOpts
@@ -119,9 +119,9 @@ initSession build opt compOpts logging = do
 -- file or GHC session.
 initializeFlags :: GhcMonad m => Options -> m ()
 initializeFlags opt = do
-    dflags0 <- getSessionDynFlags
+    dflags0 <- G.getSessionDynFlags
     dflags1 <- modifyFlagsWithOpts dflags0 $ ghcOpts opt
-    void $ setSessionDynFlags dflags1
+    void $ G.setSessionDynFlags dflags1
 
 ----------------------------------------------------------------
 
@@ -147,7 +147,7 @@ setSplice dflag = dopt_set dflag Opt_D_dump_splices
 
 modifyFlagsWithOpts :: GhcMonad m => DynFlags -> [GHCOption] -> m DynFlags
 modifyFlagsWithOpts dflags cmdOpts =
-    tfst <$> parseDynamicFlags dflags (map noLoc cmdOpts)
+    tfst <$> G.parseDynamicFlags dflags (map G.noLoc cmdOpts)
   where
     tfst (a,_,_) = a
 
@@ -157,15 +157,15 @@ modifyFlagsWithOpts dflags cmdOpts =
 setTargetFiles :: (GhcMonad m) => [FilePath] -> m ()
 setTargetFiles [] = error "ghc-mod: setTargetFiles: No target files given"
 setTargetFiles files = do
-    targets <- forM files $ \file -> guessTarget file Nothing
-    setTargets targets
+    targets <- forM files $ \file -> G.guessTarget file Nothing
+    G.setTargets targets
 
 -- | Adding the files to the targets.
 addTargetFiles :: (GhcMonad m) => [FilePath] -> m ()
 addTargetFiles [] = error "ghc-mod: addTargetFiles: No target files given"
 addTargetFiles files = do
-    targets <- forM files $ \file -> guessTarget file Nothing
-    mapM_ addTarget targets
+    targets <- forM files $ \file -> G.guessTarget file Nothing
+    mapM_ G.addTarget targets
 
 ----------------------------------------------------------------
 
@@ -173,4 +173,4 @@ addTargetFiles files = do
 getDynamicFlags :: IO DynFlags
 getDynamicFlags = do
     mlibdir <- getSystemLibDir
-    runGhc mlibdir getSessionDynFlags
+    G.runGhc mlibdir G.getSessionDynFlags
