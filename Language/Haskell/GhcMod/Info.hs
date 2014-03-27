@@ -19,14 +19,15 @@ import Data.List (sortBy)
 import Data.Maybe (catMaybes, fromMaybe, listToMaybe)
 import Data.Ord as O
 import Data.Time.Clock (getCurrentTime)
-import GHC
+import GHC (Ghc, LHsBind, LHsExpr, LPat, Id, TypecheckedModule(..), DynFlags, SrcSpan, Type, Located, TypecheckedSource, GenLocated(L), LoadHowMuch(..), TargetId(..))
+import qualified GHC as G
 import GHC.SYB.Utils (Stage(TypeChecker), everythingStaged)
 import HscTypes (ms_imps)
 import Language.Haskell.GhcMod.Doc (showUnqualifiedPage, showUnqualifiedOneLine, showQualifiedPage)
 import Language.Haskell.GhcMod.GHCApi
 import Language.Haskell.GhcMod.GHCChoice ((||>), goNext)
-import qualified Language.Haskell.GhcMod.Gap as Gap
 import Language.Haskell.GhcMod.Gap (HasType(..))
+import qualified Language.Haskell.GhcMod.Gap as Gap
 import Language.Haskell.GhcMod.Types
 import Outputable (ppr)
 import TcHsSyn (hsPatType)
@@ -57,7 +58,7 @@ info opt cradle file modstr expr =
     inModuleContext Info opt cradle file modstr exprToInfo "Cannot show info"
   where
     exprToInfo = do
-        dflag <- getSessionDynFlags
+        dflag <- G.getSessionDynFlags
         sdoc <- Gap.infoThing expr
         return $ showUnqualifiedPage dflag sdoc
 
@@ -65,12 +66,12 @@ info opt cradle file modstr expr =
 
 instance HasType (LHsExpr Id) where
     getType tcm e = do
-        hs_env <- getSession
+        hs_env <- G.getSession
         mbe <- liftIO $ Gap.deSugar tcm e hs_env
-        return $ (getLoc e, ) <$> CoreUtils.exprType <$> mbe
+        return $ (G.getLoc e, ) <$> CoreUtils.exprType <$> mbe
 
 instance HasType (LPat Id) where
-    getType _ (L spn pat) = return $ Just (spn, hsPatType pat)
+    getType _ (G.L spn pat) = return $ Just (spn, hsPatType pat)
 
 ----------------------------------------------------------------
 
@@ -96,16 +97,16 @@ typeOf opt cradle file modstr lineNo colNo =
     inModuleContext Type opt cradle file modstr exprToType errmsg
   where
     exprToType = do
-      modSum <- getModSummary $ mkModuleName modstr
-      p <- parseModule modSum
-      tcm@TypecheckedModule{tm_typechecked_source = tcs} <- typecheckModule p
+      modSum <- G.getModSummary $ G.mkModuleName modstr
+      p <- G.parseModule modSum
+      tcm@TypecheckedModule{tm_typechecked_source = tcs} <- G.typecheckModule p
       let bs = listifySpans tcs (lineNo, colNo) :: [LHsBind Id]
           es = listifySpans tcs (lineNo, colNo) :: [LHsExpr Id]
           ps = listifySpans tcs (lineNo, colNo) :: [LPat Id]
       bts <- mapM (getType tcm) bs
       ets <- mapM (getType tcm) es
       pts <- mapM (getType tcm) ps
-      dflag <- getSessionDynFlags
+      dflag <- G.getSessionDynFlags
       let sss = map (toTup dflag) $ sortBy (cmp `on` fst) $ catMaybes $ concat [ets, bts, pts]
       return $ convert opt sss
 
@@ -116,8 +117,8 @@ typeOf opt cradle file modstr lineNo colNo =
     fourInts = fromMaybe (0,0,0,0) . Gap.getSrcSpan
 
     cmp a b
-      | a `isSubspanOf` b = O.LT
-      | b `isSubspanOf` a = O.GT
+      | a `G.isSubspanOf` b = O.LT
+      | b `G.isSubspanOf` a = O.GT
       | otherwise = O.EQ
 
     errmsg = convert opt ([] :: [((Int,Int,Int,Int),String)])
@@ -125,7 +126,7 @@ typeOf opt cradle file modstr lineNo colNo =
 listifySpans :: Typeable a => TypecheckedSource -> (Int, Int) -> [Located a]
 listifySpans tcs lc = listifyStaged TypeChecker p tcs
   where
-    p (L spn _) = isGoodSrcSpan spn && spn `spans` lc
+    p (L spn _) = G.isGoodSrcSpan spn && spn `G.spans` lc
 
 listifyStaged :: Typeable r => Stage -> (r -> Bool) -> GenericQ [r]
 listifyStaged s p = everythingStaged s (++) [] ([] `mkQ` (\x -> [x | p x]))
@@ -142,27 +143,27 @@ inModuleContext _ opt cradle file modstr action errmsg =
     valid = do
         void $ initializeFlagsWithCradle opt cradle ["-w:"] False
         setTargetFiles [file]
-        void $ load LoadAllTargets
+        void $ G.load LoadAllTargets
         doif setContextFromTarget action
     invalid = do
         void $ initializeFlagsWithCradle opt cradle ["-w:"] False
         setTargetBuffer
-        void $ load LoadAllTargets
+        void $ G.load LoadAllTargets
         doif setContextFromTarget action
     setTargetBuffer = do
-        modgraph <- depanal [mkModuleName modstr] True
-        dflag <- getSessionDynFlags
-        let imports = concatMap (map (showQualifiedPage dflag . ppr . unLoc)) $
-                      map ms_imps modgraph ++ map ms_srcimps modgraph
+        modgraph <- G.depanal [G.mkModuleName modstr] True
+        dflag <- G.getSessionDynFlags
+        let imports = concatMap (map (showQualifiedPage dflag . ppr . G.unLoc)) $
+                      map ms_imps modgraph ++ map G.ms_srcimps modgraph
             moddef = "module " ++ sanitize modstr ++ " where"
             header = moddef : imports
         importsBuf <- Gap.toStringBuffer header
         clkTime <- liftIO getCurrentTime
-        setTargets [Gap.mkTarget (TargetModule $ mkModuleName modstr)
-                                 True
-                                 (Just (importsBuf, clkTime))]
+        G.setTargets [Gap.mkTarget (TargetModule $ G.mkModuleName modstr)
+                                   True
+                                   (Just (importsBuf, clkTime))]
     doif m t = m >>= \ok -> if ok then t else goNext
     sanitize = fromMaybe "SomeModule" . listToMaybe . words
 
 setContextFromTarget :: Ghc Bool
-setContextFromTarget = depanal [] False >>= Gap.setCtx
+setContextFromTarget = G.depanal [] False >>= Gap.setCtx

@@ -1,11 +1,11 @@
 module Language.Haskell.GhcMod.Lint where
 
-import Control.Applicative
+import Control.Applicative ((<$>))
 import Control.Exception (finally)
-import Data.List
+import Data.List (intercalate)
 import GHC.IO.Handle (hDuplicate, hDuplicateTo)
 import Language.Haskell.GhcMod.Types
-import Language.Haskell.HLint
+import Language.Haskell.HLint (hlint)
 import System.Directory (getTemporaryDirectory, removeFile)
 import System.IO (hClose, openTempFile, stdout)
 
