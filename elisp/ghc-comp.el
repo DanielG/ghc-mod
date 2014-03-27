@@ -72,6 +72,7 @@ unloaded modules are loaded")
 		 ghc-keyword-Control.Applicative
 		 ghc-keyword-Control.Monad
 		 ghc-keyword-Control.Exception
+		 ghc-keyword-Data.ByteString
 		 ghc-keyword-Data.Char
 		 ghc-keyword-Data.List
 		 ghc-keyword-Data.Maybe
@@ -84,10 +85,10 @@ unloaded modules are loaded")
 			"Control.Applicative"
 			"Control.Monad"
 			"Control.Exception"
+			"Data.ByteString"
 			"Data.Char"
 			"Data.List"
 			"Data.Maybe"
-			"Data.ByteString"
 			"System.IO"))
   (run-with-idle-timer ghc-idle-timer-interval 'repeat 'ghc-idle-timer))
 
