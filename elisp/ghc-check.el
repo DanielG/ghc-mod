@@ -8,10 +8,6 @@
 
 ;;; Code:
 
-;; todo:
-;; * hlint
-;; * multiple Mains in the same directory
-
 (require 'ghc-func)
 (require 'ghc-process)
 
