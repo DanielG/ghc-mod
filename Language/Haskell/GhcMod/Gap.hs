@@ -28,6 +28,7 @@ module Language.Haskell.GhcMod.Gap (
   , showDocWith
   , GapThing(..)
   , fromTyThing
+  , dumpSplicesFlag
   ) where
 
 import Control.Applicative hiding (empty)
@@ -348,3 +349,12 @@ fromTyThing (ADataCon d)               = GtA $ dataConRepType d
 #endif
 fromTyThing (ATyCon t)                 = GtT t
 fromTyThing _                          = GtN
+
+----------------------------------------------------------------
+
+#if __GLASGOW_HASKELL__ >= 707
+dumpSplicesFlag :: DumpFlag
+#else
+dumpSplicesFlag :: DynFlag
+#endif
+dumpSplicesFlag = Opt_D_dump_splices

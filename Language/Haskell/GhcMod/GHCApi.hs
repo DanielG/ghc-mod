@@ -18,7 +18,7 @@ import Data.Maybe (isJust, fromJust)
 import Distribution.PackageDescription (PackageDescription)
 import DynFlags (dopt_set)
 import Exception (ghandle, SomeException(..))
-import GHC (Ghc, GhcMonad, DynFlags(..), DynFlag(Opt_D_dump_splices), GhcLink(..), HscTarget(..))
+import GHC (Ghc, GhcMonad, DynFlags(..), GhcLink(..), HscTarget(..))
 import qualified GHC as G
 import Language.Haskell.GhcMod.CabalApi
 import Language.Haskell.GhcMod.ErrMsg
@@ -141,7 +141,7 @@ modifyFlags d0 idirs depPkgs splice build
        | otherwise         = d3
 
 setSplice :: DynFlags -> DynFlags
-setSplice dflag = dopt_set dflag Opt_D_dump_splices
+setSplice dflag = dopt_set dflag Gap.dumpSplicesFlag
 
 ----------------------------------------------------------------
 

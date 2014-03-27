@@ -10,8 +10,9 @@ import Bag (Bag, bagToList)
 import Control.Applicative ((<$>))
 import Data.IORef (IORef, newIORef, readIORef, writeIORef, modifyIORef)
 import Data.Maybe (fromMaybe)
+import DynFlags (dopt)
 import ErrUtils (ErrMsg, errMsgShortDoc, errMsgExtraInfo)
-import GHC (Ghc, DynFlag(Opt_D_dump_splices), DynFlags, SrcSpan, Severity(SevError))
+import GHC (Ghc, DynFlags, SrcSpan, Severity(SevError))
 import qualified GHC as G
 import HscTypes (SourceError, srcErrorMessages)
 import Language.Haskell.GhcMod.Doc (showUnqualifiedPage)
@@ -81,8 +82,8 @@ ppMsg spn sev dflag ls msg = prefix ++ cts
   where
     cts  = showMsg dflag ls msg
     defaultPrefix
-      | G.dopt Opt_D_dump_splices dflag = ""
-      | otherwise                       = "Dummy:0:0:Error:"
+      | dopt Gap.dumpSplicesFlag dflag = ""
+      | otherwise                      = "Dummy:0:0:Error:"
     prefix = fromMaybe defaultPrefix $ do
         (line,col,_,_) <- Gap.getSrcSpan spn
         file <- normalise <$> Gap.getSrcFile spn
