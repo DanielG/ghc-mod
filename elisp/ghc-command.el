@@ -84,8 +84,11 @@
 (defun ghc-save-buffer ()
   (interactive)
   ;; fixme: better way then saving?
-  (set-buffer-modified-p t)
-  (call-interactively 'save-buffer)
+  (if ghc-check-command ;; hlint
+      (if (buffer-modified-p)
+	  (call-interactively 'save-buffer))
+    (set-buffer-modified-p t)
+    (call-interactively 'save-buffer))
   (ghc-check-syntax))
 
 (provide 'ghc-command)
