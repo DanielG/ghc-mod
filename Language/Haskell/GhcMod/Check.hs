@@ -8,7 +8,6 @@ import GHC
 import Language.Haskell.GhcMod.ErrMsg
 import Language.Haskell.GhcMod.GHCApi
 import Language.Haskell.GhcMod.Types
-import Prelude
 
 ----------------------------------------------------------------
 

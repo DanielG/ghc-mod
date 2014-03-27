@@ -10,7 +10,6 @@ import GhcMonad (liftIO)
 import Language.Haskell.GhcMod.CabalApi
 import Language.Haskell.GhcMod.GHCApi
 import Language.Haskell.GhcMod.Types
-import Prelude
 
 ----------------------------------------------------------------
 
