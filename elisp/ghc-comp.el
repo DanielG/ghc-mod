@@ -30,6 +30,8 @@ unloaded modules are loaded")
 ;; must be sorted
 (defconst ghc-reserved-keyword '("case" "deriving" "do" "else" "if" "in" "let" "module" "of" "then" "where"))
 
+(defconst ghc-extra-keywords '("ByteString"))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
 ;;; Local Variables
@@ -73,7 +75,6 @@ unloaded modules are loaded")
 		 ghc-keyword-Control.Applicative
 		 ghc-keyword-Control.Monad
 		 ghc-keyword-Control.Exception
-		 ghc-keyword-Data.ByteString
 		 ghc-keyword-Data.Char
 		 ghc-keyword-Data.List
 		 ghc-keyword-Data.Maybe
@@ -87,7 +88,6 @@ unloaded modules are loaded")
 			"Control.Applicative"
 			"Control.Monad"
 			"Control.Exception"
-			"Data.ByteString"
 			"Data.Char"
 			"Data.List"
 			"Data.Maybe"
@@ -261,7 +261,7 @@ unloaded modules are loaded")
 (defun ghc-merge-keywords (mods)
   (setq ghc-loaded-module (append mods ghc-loaded-module))
   (let* ((modkeys (mapcar 'ghc-module-keyword ghc-loaded-module))
-	 (keywords (cons ghc-reserved-keyword modkeys))
+	 (keywords (cons ghc-extra-keywords (cons ghc-reserved-keyword modkeys)))
 	 (uniq-sorted (sort (ghc-uniq-lol keywords) 'string<)))
     (setq ghc-merged-keyword uniq-sorted)))
 
