@@ -33,6 +33,7 @@ module Language.Haskell.GhcMod (
   , typeOf
   , listMods
   , debug
+  , lint
   ) where
 
 import Language.Haskell.GhcMod.Browse

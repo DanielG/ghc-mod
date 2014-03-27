@@ -14,15 +14,18 @@ import System.IO (hClose, openTempFile, stdout)
 lintSyntax :: Options
            -> FilePath  -- ^ A target file.
            -> IO String
-lintSyntax opt file = pack <$> lint opt file
+lintSyntax opt file = pack <$> lint hopts file
   where
     LineSeparator lsep = lineSeparator opt
     pack = unlines . map (intercalate lsep . lines)
+    hopts = hlintOpts opt
 
-lint :: Options
+-- | Checking syntax of a target file using hlint.
+--   Warnings and errors are returned.
+lint :: [String]
      -> FilePath    -- ^ A target file.
      -> IO [String]
-lint opt file = map show <$> suppressStdout (hlint ([file] ++ hlintOpts opt))
+lint hopts file = map show <$> suppressStdout (hlint (file : hopts))
 
 suppressStdout :: IO a -> IO a
 suppressStdout f = do
