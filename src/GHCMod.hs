@@ -34,8 +34,9 @@ usage =    "ghc-mod version " ++ showVersion version ++ "\n"
         ++ "\t ghc-mod info" ++ ghcOptHelp ++ "<HaskellFile> <module> <expression>\n"
         ++ "\t ghc-mod type" ++ ghcOptHelp ++ "<HaskellFile> <module> <line-no> <column-no>\n"
         ++ "\t ghc-mod lint [-h opt] <HaskellFile>\n"
-        ++ "\t ghc-mod boot\n"
         ++ "\t ghc-mod root <HaskellFile>\n"
+        ++ "\t ghc-mod doc <HaskellFile>\n"
+        ++ "\t ghc-mod boot\n"
         ++ "\t ghc-mod help\n"
 
 ----------------------------------------------------------------
@@ -103,17 +104,18 @@ main = flip E.catches handlers $ do
                         then f
                         else E.throw (TooManyArguments cmdArg0)
     res <- case cmdArg0 of
-      "browse" -> concat <$> mapM (browseModule opt cradle) remainingArgs
       "list"   -> listModules opt cradle
+      "lang"   -> listLanguages opt
+      "flag"   -> listFlags opt
+      "browse" -> concat <$> mapM (browseModule opt cradle) remainingArgs
       "check"  -> checkSyntax opt cradle remainingArgs
       "expand" -> checkSyntax opt { expandSplice = True } cradle remainingArgs
       "debug"  -> nArgs 1 $ debugInfo opt cradle cmdArg1
-      "root"   -> nArgs 1 $ rootInfo opt cradle cmdArg1
-      "type"   -> nArgs 4 $ typeExpr opt cradle cmdArg1 cmdArg2 (read cmdArg3) (read cmdArg4)
       "info"   -> nArgs 3 infoExpr opt cradle cmdArg1 cmdArg2 cmdArg3
+      "type"   -> nArgs 4 $ typeExpr opt cradle cmdArg1 cmdArg2 (read cmdArg3) (read cmdArg4)
       "lint"   -> nArgs 1 withFile (lintSyntax opt) cmdArg1
-      "lang"   -> listLanguages opt
-      "flag"   -> listFlags opt
+      "root"   -> nArgs 1 $ rootInfo opt cradle cmdArg1
+      "doc"    -> nArgs 1 $ packageDoc opt cradle cmdArg1
       "boot"   -> do
          mods  <- listModules opt cradle
          langs <- listLanguages opt
