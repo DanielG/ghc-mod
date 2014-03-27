@@ -68,6 +68,7 @@ unloaded modules are loaded")
   (let* ((syms '(ghc-module-names
 		 ghc-language-extensions
 		 ghc-option-flags
+		 ;; hard coded in GHCMod.hs
 		 ghc-keyword-Prelude
 		 ghc-keyword-Control.Applicative
 		 ghc-keyword-Control.Monad
@@ -81,6 +82,7 @@ unloaded modules are loaded")
     (ghc-set syms vals))
   (ghc-add ghc-module-names "qualified")
   (ghc-add ghc-module-names "hiding")
+  ;; hard coded in GHCMod.hs
   (ghc-merge-keywords '("Prelude"
 			"Control.Applicative"
 			"Control.Monad"
