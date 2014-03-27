@@ -6,18 +6,18 @@ module Language.Haskell.GhcMod.ErrMsg (
   , handleErrMsg
   ) where
 
-import Bag
-import Control.Applicative
-import Data.IORef
-import Data.Maybe
-import DynFlags
-import ErrUtils
-import GHC
-import HscTypes
+import Bag (Bag, bagToList)
+import Control.Applicative ((<$>))
+import Data.IORef (IORef, newIORef, readIORef, writeIORef, modifyIORef)
+import Data.Maybe (fromMaybe)
+import ErrUtils (ErrMsg, errMsgShortDoc, errMsgExtraInfo)
+import GHC (Ghc, DynFlag(Opt_D_dump_splices), DynFlags, SrcSpan, Severity(SevError))
+import qualified GHC as G
+import HscTypes (SourceError, srcErrorMessages)
 import Language.Haskell.GhcMod.Doc (showUnqualifiedPage)
-import Language.Haskell.GhcMod.Types (LineSeparator(..))
 import qualified Language.Haskell.GhcMod.Gap as Gap
-import Outputable
+import Language.Haskell.GhcMod.Types (LineSeparator(..))
+import Outputable (SDoc)
 import System.FilePath (normalise)
 
 ----------------------------------------------------------------
@@ -61,7 +61,7 @@ setLogger True  df ls = do
 -- | Converting 'SourceError' to 'String'.
 handleErrMsg :: LineSeparator -> SourceError -> Ghc [String]
 handleErrMsg ls err = do
-    dflag <- getSessionDynFlags
+    dflag <- G.getSessionDynFlags
     return . errBagToStrList dflag ls . srcErrorMessages $ err
 
 errBagToStrList :: DynFlags -> LineSeparator -> Bag ErrMsg -> [String]
@@ -81,8 +81,8 @@ ppMsg spn sev dflag ls msg = prefix ++ cts
   where
     cts  = showMsg dflag ls msg
     defaultPrefix
-      | dopt Opt_D_dump_splices dflag = ""
-      | otherwise                     = "Dummy:0:0:Error:"
+      | G.dopt Opt_D_dump_splices dflag = ""
+      | otherwise                       = "Dummy:0:0:Error:"
     prefix = fromMaybe defaultPrefix $ do
         (line,col,_,_) <- Gap.getSrcSpan spn
         file <- normalise <$> Gap.getSrcFile spn
