@@ -23,6 +23,7 @@ module Language.Haskell.GhcMod (
   , listFlags
   , debugInfo
   , rootInfo
+  , packageDoc
   -- * Converting the 'Ghc' monad to the 'IO' monad
   , withGHC
   , withGHCDummyFile
@@ -46,4 +47,5 @@ import Language.Haskell.GhcMod.Info
 import Language.Haskell.GhcMod.Lang
 import Language.Haskell.GhcMod.Lint
 import Language.Haskell.GhcMod.List
+import Language.Haskell.GhcMod.PkgDoc
 import Language.Haskell.GhcMod.Types
