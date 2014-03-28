@@ -154,11 +154,26 @@ findSym set mvar sym = do
 
 lintStx :: Set FilePath -> LineSeparator -> FilePath
         -> Ghc ([String], Bool, Set FilePath)
-lintStx set (LineSeparator lsep) fileOpts = liftIO $ E.handle handler $ do
+lintStx set (LineSeparator lsep) optFile = liftIO $ E.handle handler $ do
     msgs <- map (intercalate lsep . lines) <$> lint hopts file
     return (msgs, True, set)
   where
-    file = fileOpts -- fixme
-    hopts = [] -- fixme
+    (opt,file) = parseLintOptions optFile
+    hopts = read opt
     -- let's continue the session
     handler (SomeException _) = return ([], True, set)
+
+-- |
+-- >>> parseLintOptions "[\"--ignore=Use camelCase\", \"--ignore=Eta reduce\"] file name"
+-- (["--ignore=Use camelCase", "--ignore=Eta reduce"], "file name")
+-- >>> parseLintOptions "file name"
+-- ([], "file name")
+parseLintOptions :: String -> (String, String)
+parseLintOptions optFile = case brk (== ']') (dropWhile (/= '[') optFile) of
+    ("","")      -> ([],   optFile)
+    (opt',file') -> (opt', dropWhile (/= ' ') file')
+  where
+    brk _ []         =  ([],[])
+    brk p (x:xs')
+        | p x        =  ([x],xs')
+        | otherwise  =  let (ys,zs) = brk p xs' in (x:ys,zs)
