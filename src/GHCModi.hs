@@ -3,7 +3,9 @@
 -- Commands:
 --  check <file>
 --  find <symbol>
---  lint <file> [hlint options]
+--  lint [hlint options] <file>
+--     the format of hlint options is [String] because they may contain
+--     spaces and aslo <file> may contain spaces.
 --
 -- Session separators:
 --   OK -- success
