@@ -32,6 +32,7 @@ import qualified Data.Map.Strict as M
 import Data.Map (Map)
 import qualified Data.Map as M
 #endif
+import Data.Maybe (fromMaybe)
 import Data.Set (Set)
 import qualified Data.Set as S
 import qualified Exception as GE
@@ -93,7 +94,7 @@ setupDB cradle mlibdir opt mvar = E.handle handler $ do
 
 loop :: Set FilePath -> LineSeparator -> MVar DB -> Logger -> Ghc ()
 loop set ls mvar readLog  = do
-    cmdArg <- liftIO $ getLine
+    cmdArg <- liftIO getLine
     let (cmd,arg') = break (== ' ') cmdArg
         arg = dropWhile (== ' ') arg'
     (msgs,ok,set') <- case cmd of
@@ -119,7 +120,7 @@ checkStx set ls readLog file = do
         mdel <- removeMainTarget
         when add $ addTargetFiles [file]
         void $ G.load LoadAllTargets
-        msgs <- liftIO $ readLog
+        msgs <- liftIO readLog
         let set1 = if add then S.insert file set else set
             set2 = case mdel of
                 Nothing    -> set1
@@ -148,9 +149,7 @@ findSym :: Set FilePath -> MVar DB -> String
         -> Ghc ([String], Bool, Set FilePath)
 findSym set mvar sym = do
     db <- liftIO $ readMVar mvar
-    let ret = case M.lookup sym db of
-            Nothing -> []
-            Just xs -> xs
+    let ret = fromMaybe [] (M.lookup sym db)
     return (ret, True, set)
 
 lintStx :: Set FilePath -> LineSeparator -> FilePath
