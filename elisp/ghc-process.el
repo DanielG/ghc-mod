@@ -49,8 +49,9 @@
 	  (let ((pro (ghc-get-process cpro name buf))
 		(cmd (funcall send)))
 	    (process-send-string pro cmd)
-	    (ghc-with-debug-buffer
-	     (insert (format "%% %s" cmd)))))))))
+	    (when ghc-debug
+	      (ghc-with-debug-buffer
+	       (insert (format "%% %s" cmd))))))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -77,9 +78,10 @@
     (when (looking-at "^\\(OK\\|NG\\)$")
       (goto-char (point-min))
       (funcall ghc-process-callback)
-      (let ((cbuf (current-buffer)))
-	(ghc-with-debug-buffer
-	 (insert-buffer-substring cbuf)))
+      (when ghc-debug
+	(let ((cbuf (current-buffer)))
+	  (ghc-with-debug-buffer
+	   (insert-buffer-substring cbuf))))
       (setq ghc-process-running nil))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
