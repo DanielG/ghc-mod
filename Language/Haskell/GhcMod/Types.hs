@@ -90,6 +90,7 @@ data Cradle = Cradle {
   , cradleCabalFile   :: Maybe FilePath
   -- | The package db options. ([\"-no-user-package-db\",\"-package-db\",\"\/foo\/bar\/i386-osx-ghc-7.6.3-packages.conf.d\"])
   , cradlePackageDbOpts :: [GHCOption]
+  -- | Dependent packages.
   , cradlePackages :: [Package]
   } deriving (Eq, Show)
 
