@@ -46,8 +46,17 @@
 
 (defun ghc-check-send ()
   (if ghc-check-command
-      (concat "lint " ghc-process-original-file "\n")
+      (let ((opts (ghc-haskell-list-of-string ghc-hlint-options)))
+	(if opts
+	    (concat "lint " opts " " ghc-process-original-file "\n")
+	  (concat "lint " ghc-process-original-file "\n")))
     (concat "check " ghc-process-original-file "\n")))
+
+(defun ghc-haskell-list-of-string (los)
+  (when los
+    (concat "["
+	    (mapconcat (lambda (x) (concat "\"" x "\"")) los ", ")
+	    "]")))
 
 (defun ghc-check-callback ()
   (let ((regex "^\\([^\n\0]*\\):\\([0-9]+\\):\\([0-9]+\\): *\\(.+\\)")
