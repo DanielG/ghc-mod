@@ -18,31 +18,31 @@ spec = do
                 curDir <- stripLastDot <$> canonicalizePath "/"
                 res <- findCradle
                 res `shouldBe` Cradle {
-                    cradleCurrentDir    = curDir
-                  , cradleCabalDir      = Nothing
-                  , cradleCabalFile     = Nothing
-                  , cradlePackageDbOpts = []
-                  , cradlePackages      = []
+                    cradleCurrentDir = curDir
+                  , cradleCabalDir   = Nothing
+                  , cradleCabalFile  = Nothing
+                  , cradlePackageDb  = Nothing
+                  , cradlePackages   = []
                   }
         it "finds a cabal file and a sandbox" $ do
             withDirectory "test/data/subdir1/subdir2" $ \dir -> do
                 res <- relativeCradle dir <$> findCradle
                 res `shouldBe` Cradle {
-                    cradleCurrentDir    = "test" </> "data" </> "subdir1" </> "subdir2"
-                  , cradleCabalDir      = Just ("test" </> "data")
-                  , cradleCabalFile     = Just ("test" </> "data" </> "cabalapi.cabal")
-                  , cradlePackageDbOpts = ["-no-user-package-db", "-package-db", "test" </> "data" </> ".cabal-sandbox" </> "/home/me/work/ghc-mod/test/data/.cabal-sandbox/i386-osx-ghc-7.6.3-packages.conf.d"]
-                  , cradlePackages      = []
+                    cradleCurrentDir = "test" </> "data" </> "subdir1" </> "subdir2"
+                  , cradleCabalDir   = Just ("test" </> "data")
+                  , cradleCabalFile  = Just ("test" </> "data" </> "cabalapi.cabal")
+                  , cradlePackageDb  = Just ("test" </> "data" </> ".cabal-sandbox" </> "/home/me/work/ghc-mod/test/data/.cabal-sandbox/i386-osx-ghc-7.6.3-packages.conf.d")
+                  , cradlePackages   = []
                   }
         it "works even if a sandbox config file is broken" $ do
             withDirectory "test/data/broken-sandbox" $ \dir -> do
                 res <- relativeCradle dir <$> findCradle
                 res `shouldBe` Cradle {
-                    cradleCurrentDir    = "test" </> "data" </> "broken-sandbox"
-                  , cradleCabalDir      = Just ("test" </> "data" </> "broken-sandbox")
-                  , cradleCabalFile     = Just ("test" </> "data" </> "broken-sandbox" </> "dummy.cabal")
-                  , cradlePackageDbOpts = []
-                  , cradlePackages      = []
+                    cradleCurrentDir = "test" </> "data" </> "broken-sandbox"
+                  , cradleCabalDir   = Just ("test" </> "data" </> "broken-sandbox")
+                  , cradleCabalFile  = Just ("test" </> "data" </> "broken-sandbox" </> "dummy.cabal")
+                  , cradlePackageDb  = Nothing
+                  , cradlePackages   = []
                   }
 
     describe "getPackageDbDir" $ do

@@ -5,6 +5,8 @@ module Language.Haskell.GhcMod.Cradle (
   , findCradleWithoutSandbox
   , getPackageDbDir
   , getPackageDbPackages
+  , userPackageDbOptsForGhc
+  , userPackageDbOptsForGhcPkg
   ) where
 
 import Control.Applicative ((<$>))
@@ -30,30 +32,30 @@ findCradle = do
   where
     handler :: FilePath -> SomeException -> IO Cradle
     handler wdir _ = return Cradle {
-        cradleCurrentDir    = wdir
-      , cradleCabalDir      = Nothing
-      , cradleCabalFile     = Nothing
-      , cradlePackageDbOpts = []
-      , cradlePackages      = []
+        cradleCurrentDir = wdir
+      , cradleCabalDir   = Nothing
+      , cradleCabalFile  = Nothing
+      , cradlePackageDb  = Nothing
+      , cradlePackages   = []
       }
 
 findCradle' :: FilePath -> IO Cradle
 findCradle' wdir = do
     (cdir,cfile) <- cabalDir wdir
-    pkgDbOpts <- getPackageDbOpts cdir
+    pkgDbOpts <- getPackageDb cdir
     return Cradle {
-        cradleCurrentDir    = wdir
-      , cradleCabalDir      = Just cdir
-      , cradleCabalFile     = Just cfile
-      , cradlePackageDbOpts = pkgDbOpts
-      , cradlePackages      = []
+        cradleCurrentDir = wdir
+      , cradleCabalDir   = Just cdir
+      , cradleCabalFile  = Just cfile
+      , cradlePackageDb  = pkgDbOpts
+      , cradlePackages   = []
       }
 
 -- Just for testing
 findCradleWithoutSandbox :: IO Cradle
 findCradleWithoutSandbox = do
     cradle <- findCradle
-    return cradle { cradlePackageDbOpts = [], cradlePackages = [] }
+    return cradle { cradlePackageDb = Nothing, cradlePackages = [] }
 
 ----------------------------------------------------------------
 
@@ -97,12 +99,12 @@ pkgDbKeyLen :: Int
 pkgDbKeyLen = length pkgDbKey
 
 -- | Obtaining GHC options relating to a package db directory
-getPackageDbOpts :: FilePath -> IO [GHCOption]
-getPackageDbOpts cdir = (sandboxArguments <$> getPkgDb) `E.catch` handler
+getPackageDb :: FilePath -> IO (Maybe FilePath)
+getPackageDb cdir = (Just <$> getPkgDb) `E.catch` handler
   where
     getPkgDb = getPackageDbDir (cdir </> configFile)
-    handler :: SomeException -> IO [GHCOption]
-    handler _ = return []
+    handler :: SomeException -> IO (Maybe FilePath)
+    handler _ = return Nothing
 
 -- | Extract a package db directory from the sandbox config file.
 --   Exception is thrown if the sandbox config file is broken.
@@ -118,20 +120,35 @@ getPackageDbDir sconf = do
     dropWhileEnd :: (a -> Bool) -> [a] -> [a]
     dropWhileEnd p = foldr (\x xs -> if p x && null xs then [] else x : xs) []
 
--- | Adding necessary GHC options to the package db.
---   Exception is thrown if the string argument is incorrect.
+-- | Creating user package db options for GHC.
 --
--- >>> sandboxArguments "/foo/bar/i386-osx-ghc-7.6.3-packages.conf.d"
+-- >>> userPackageDbOptsForGhc (Just "/foo/bar/i386-osx-ghc-7.6.3-packages.conf.d")
 -- ["-no-user-package-db","-package-db","/foo/bar/i386-osx-ghc-7.6.3-packages.conf.d"]
--- >>> sandboxArguments "/foo/bar/i386-osx-ghc-7.4.1-packages.conf.d"
+-- >>> userPackageDbOptsForGhc (Just "/foo/bar/i386-osx-ghc-7.4.1-packages.conf.d")
 -- ["-no-user-package-conf","-package-conf","/foo/bar/i386-osx-ghc-7.4.1-packages.conf.d"]
-sandboxArguments :: FilePath -> [String]
-sandboxArguments pkgDb = [noUserPkgDbOpt, pkgDbOpt, pkgDb]
+userPackageDbOptsForGhc :: Maybe FilePath -> [String]
+userPackageDbOptsForGhc Nothing      = []
+userPackageDbOptsForGhc (Just pkgDb) = [noUserPkgDbOpt, pkgDbOpt, pkgDb]
   where
     ver = extractGhcVer pkgDb
-    (pkgDbOpt,noUserPkgDbOpt)
-      | ver < 706 = ("-package-conf","-no-user-package-conf")
-      | otherwise = ("-package-db",  "-no-user-package-db")
+    (noUserPkgDbOpt,pkgDbOpt)
+      | ver < 706 = ("-no-user-package-conf", "-package-conf")
+      | otherwise = ("-no-user-package-db",   "-package-db")
+
+-- | Creating user package db options for ghc-pkg.
+--
+-- >>> userPackageDbOptsForGhcPkg (Just "/foo/bar/i386-osx-ghc-7.6.3-packages.conf.d")
+-- ["--no-user-package-db","--package-db=/foo/bar/i386-osx-ghc-7.6.3-packages.conf.d"]
+-- >>> userPackageDbOptsForGhcPkg (Just "/foo/bar/i386-osx-ghc-7.4.1-packages.conf.d")
+-- ["--no-user-package-conf","--package-conf=/foo/bar/i386-osx-ghc-7.4.1-packages.conf.d"]
+userPackageDbOptsForGhcPkg :: Maybe FilePath -> [String]
+userPackageDbOptsForGhcPkg Nothing      = []
+userPackageDbOptsForGhcPkg (Just pkgDb) = [noUserPkgDbOpt, pkgDbOpt]
+  where
+    ver = extractGhcVer pkgDb
+    (noUserPkgDbOpt,pkgDbOpt)
+      | ver < 706 = ("--no-user-package-conf", "--package-conf=" ++ pkgDb)
+      | otherwise = ("--no-user-package-db",   "--package-db="   ++ pkgDb)
 
 -- | Extracting GHC version from the path of package db.
 --   Exception is thrown if the string argument is incorrect.

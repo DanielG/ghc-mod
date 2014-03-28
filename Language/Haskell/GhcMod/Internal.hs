@@ -7,6 +7,9 @@ module Language.Haskell.GhcMod.Internal (
   , Package
   , IncludeDir
   , CompilerOptions(..)
+  -- * Cradle
+  , userPackageDbOptsForGhc
+  , userPackageDbOptsForGhcPkg
   -- * Cabal API
   , parseCabalFile
   , getCompilerOptions
@@ -35,6 +38,7 @@ module Language.Haskell.GhcMod.Internal (
 
 import Language.Haskell.GhcMod.Browse
 import Language.Haskell.GhcMod.CabalApi
+import Language.Haskell.GhcMod.Cradle
 import Language.Haskell.GhcMod.ErrMsg
 import Language.Haskell.GhcMod.GHCApi
 import Language.Haskell.GhcMod.GHCChoice

@@ -31,6 +31,7 @@ import Distribution.Text (display)
 import Distribution.Verbosity (silent)
 import Distribution.Version (Version)
 import Language.Haskell.GhcMod.Types
+import Language.Haskell.GhcMod.Cradle
 import System.Directory (doesFileExist)
 import System.FilePath (dropExtension, takeFileName, (</>))
 
@@ -113,7 +114,7 @@ getGHCOptions ghcopts cradle cdir binfo = do
     let cpps = map ("-optP" ++) $ P.cppOptions binfo ++ cabalCpp
     return $ ghcopts ++ pkgDb ++ exts ++ [lang] ++ libs ++ libDirs ++ cpps
   where
-    pkgDb = cradlePackageDbOpts cradle
+    pkgDb = userPackageDbOptsForGhc $ cradlePackageDb cradle
     lang = maybe "-XHaskell98" (("-X" ++) . display) $ P.defaultLanguage binfo
     libDirs = map ("-L" ++) $ P.extraLibDirs binfo
     exts = map (("-X" ++) . display) $ P.usedExtensions binfo

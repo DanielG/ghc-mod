@@ -2,6 +2,7 @@ module Language.Haskell.GhcMod.PkgDoc (packageDoc) where
 
 import Control.Applicative ((<$>))
 import Language.Haskell.GhcMod.Types
+import Language.Haskell.GhcMod.Cradle
 import System.Process (readProcess)
 
 -- | Obtaining the package name and the doc path of a module.
@@ -17,10 +18,10 @@ pkgDoc cradle mdl = do
     if pkg == "" then
         return "\n"
       else do
-        htmlpath <- readProcess "ghc-pkg" ["field", pkg, "haddock-html"] []
+        htmlpath <- readProcess "ghc-pkg" (toDocDirOpts pkg) []
         let ret = pkg ++ " " ++ drop 14 htmlpath
         return ret
   where
-    toModuleOpts = ["find-module", "--simple-output"] ++ cradlePackageDbOpts cradle ++ [mdl]
+    toModuleOpts = ["find-module", mdl, "--simple-output"] ++ userPackageDbOptsForGhcPkg (cradlePackageDb cradle)
+    toDocDirOpts pkg = ["field", pkg, "haddock-html"] ++ userPackageDbOptsForGhcPkg (cradlePackageDb cradle)
     trim = takeWhile (/= '\n')
-
