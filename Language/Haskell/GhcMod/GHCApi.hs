@@ -125,7 +125,6 @@ initializeFlags opt = do
 
 ----------------------------------------------------------------
 
--- FIXME removing Options
 modifyFlags :: DynFlags -> [IncludeDir] -> [Package] -> Bool -> Build -> DynFlags
 modifyFlags d0 idirs depPkgs splice build
   | splice    = setSplice d4
