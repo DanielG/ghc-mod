@@ -155,9 +155,11 @@ findSym set mvar sym = do
 
 lintStx :: Set FilePath -> LineSeparator -> FilePath
         -> Ghc ([String], Bool, Set FilePath)
-lintStx set (LineSeparator lsep) fileOpts = liftIO $ do
+lintStx set (LineSeparator lsep) fileOpts = liftIO $ E.handle handler $ do
     msgs <- map (intercalate lsep . lines) <$> lint hopts file
-    return (msgs, True, set) -- fixme: error handling
+    return (msgs, True, set)
   where
     file = fileOpts -- fixme
     hopts = [] -- fixme
+    -- let's continue the session
+    handler (SomeException _) = return ([], True, set)
