@@ -159,9 +159,11 @@ lintStx set (LineSeparator lsep) optFile = liftIO $ E.handle handler $ do
     return (msgs, True, set)
   where
     (opt,file) = parseLintOptions optFile
-    hopts = read opt
+    hopts = if opt == "" then [] else read opt
     -- let's continue the session
-    handler (SomeException _) = return ([], True, set)
+    handler (SomeException e) = do
+        print e
+        return ([], True, set)
 
 -- |
 -- >>> parseLintOptions "[\"--ignore=Use camelCase\", \"--ignore=Eta reduce\"] file name"
@@ -171,7 +173,7 @@ lintStx set (LineSeparator lsep) optFile = liftIO $ E.handle handler $ do
 parseLintOptions :: String -> (String, String)
 parseLintOptions optFile = case brk (== ']') (dropWhile (/= '[') optFile) of
     ("","")      -> ([],   optFile)
-    (opt',file') -> (opt', dropWhile (/= ' ') file')
+    (opt',file') -> (opt', dropWhile (== ' ') file')
   where
     brk _ []         =  ([],[])
     brk p (x:xs')
