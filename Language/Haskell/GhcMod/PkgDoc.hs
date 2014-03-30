@@ -24,4 +24,4 @@ pkgDoc cradle mdl = do
   where
     toModuleOpts = ["find-module", mdl, "--simple-output"] ++ userPackageDbOptsForGhcPkg (cradlePackageDb cradle)
     toDocDirOpts pkg = ["field", pkg, "haddock-html"] ++ userPackageDbOptsForGhcPkg (cradlePackageDb cradle)
-    trim = takeWhile (/= '\n')
+    trim = takeWhile (`notElem` " \n")
