@@ -132,18 +132,13 @@ cabalCppOptions dir = do
 
 ----------------------------------------------------------------
 
--- | Extracting all 'BuildInfo' for libraries, executables, tests and benchmarks.
+-- | Extracting all 'BuildInfo' for libraries, executables, and tests.
 cabalAllBuildInfo :: PackageDescription -> [BuildInfo]
-cabalAllBuildInfo pd = libBI ++ execBI ++ testBI ++ benchBI
+cabalAllBuildInfo pd = libBI ++ execBI ++ testBI
   where
     libBI   = map P.libBuildInfo       $ maybeToList $ P.library pd
     execBI  = map P.buildInfo          $ P.executables pd
     testBI  = map P.testBuildInfo      $ P.testSuites pd
-#if __GLASGOW_HASKELL__ >= 704
-    benchBI = map P.benchmarkBuildInfo $ P.benchmarks pd
-#else
-    benchBI = []
-#endif
 
 ----------------------------------------------------------------
 
