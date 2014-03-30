@@ -40,15 +40,15 @@ import System.FilePath (dropExtension, takeFileName, (</>))
 -- | Getting necessary 'CompilerOptions' from three information sources.
 getCompilerOptions :: [GHCOption] -> Cradle -> PackageDescription -> IO CompilerOptions
 getCompilerOptions ghcopts cradle pkgDesc = do
-    gopts <- getGHCOptions ghcopts cradle cdir $ head buildInfos
+    gopts <- getGHCOptions ghcopts cradle rdir $ head buildInfos
     return $ CompilerOptions gopts idirs depPkgs
   where
     wdir       = cradleCurrentDir cradle
-    Just cdir  = cradleCabalDir   cradle
+    rdir       = cradleRootDir    cradle
     Just cfile = cradleCabalFile  cradle
     pkgs       = cradlePackages   cradle
     buildInfos = cabalAllBuildInfo pkgDesc
-    idirs      = includeDirectories cdir wdir $ cabalSourceDirs buildInfos
+    idirs      = includeDirectories rdir wdir $ cabalSourceDirs buildInfos
     depPkgs    = attachPackageIds pkgs $ removeThem problematicPackages $ removeMe cfile $ cabalDependPackages buildInfos
 
 ----------------------------------------------------------------
@@ -109,8 +109,8 @@ parseCabalFile file = do
 ----------------------------------------------------------------
 
 getGHCOptions :: [GHCOption] -> Cradle -> FilePath -> BuildInfo -> IO [GHCOption]
-getGHCOptions ghcopts cradle cdir binfo = do
-    cabalCpp <- cabalCppOptions cdir
+getGHCOptions ghcopts cradle rdir binfo = do
+    cabalCpp <- cabalCppOptions rdir
     let cpps = map ("-optP" ++) $ P.cppOptions binfo ++ cabalCpp
     return $ ghcopts ++ pkgDb ++ exts ++ [lang] ++ libs ++ libDirs ++ cpps
   where

@@ -7,11 +7,13 @@ module Language.Haskell.GhcMod.Cradle (
   , getPackageDbPackages
   , userPackageDbOptsForGhc
   , userPackageDbOptsForGhcPkg
+  , getSandboxDir
   ) where
 
 import Control.Applicative ((<$>))
 import Control.Exception (SomeException(..))
 import qualified Control.Exception as E
+import Control.Exception.IOChoice ((||>))
 import Control.Monad (filterM)
 import Data.Char (isSpace)
 import Data.List (isPrefixOf, isSuffixOf, tails)
@@ -28,26 +30,38 @@ import System.FilePath ((</>), takeDirectory, takeFileName)
 findCradle :: IO Cradle
 findCradle = do
     wdir <- getCurrentDirectory
-    findCradle' wdir `E.catch` handler wdir
-  where
-    handler :: FilePath -> SomeException -> IO Cradle
-    handler wdir _ = return Cradle {
+    cabalCradle wdir ||> sandboxCradle wdir ||> plainCradle wdir
+
+cabalCradle :: FilePath -> IO Cradle
+cabalCradle wdir = do
+    (rdir,cfile) <- cabalDir wdir
+    pkgDbOpts <- getPackageDb rdir
+    return Cradle {
         cradleCurrentDir = wdir
-      , cradleCabalDir   = Nothing
-      , cradleCabalFile  = Nothing
-      , cradlePackageDb  = Nothing
+      , cradleRootDir    = rdir
+      , cradleCabalFile  = Just cfile
+      , cradlePackageDb  = pkgDbOpts
       , cradlePackages   = []
       }
 
-findCradle' :: FilePath -> IO Cradle
-findCradle' wdir = do
-    (cdir,cfile) <- cabalDir wdir
-    pkgDbOpts <- getPackageDb cdir
+sandboxCradle :: FilePath -> IO Cradle
+sandboxCradle wdir = do
+    rdir <- getSandboxDir wdir
+    pkgDbOpts <- getPackageDb rdir
     return Cradle {
         cradleCurrentDir = wdir
-      , cradleCabalDir   = Just cdir
-      , cradleCabalFile  = Just cfile
+      , cradleRootDir    = rdir
+      , cradleCabalFile  = Nothing
       , cradlePackageDb  = pkgDbOpts
+      , cradlePackages   = []
+      }
+
+plainCradle :: FilePath -> IO Cradle
+plainCradle wdir = return Cradle {
+        cradleCurrentDir = wdir
+      , cradleRootDir    = wdir
+      , cradleCabalFile  = Nothing
+      , cradlePackageDb  = Nothing
       , cradlePackages   = []
       }
 
@@ -203,3 +217,16 @@ nameKeyLength = length nameKey
 
 idKeyLength :: Int
 idKeyLength = length idKey
+
+getSandboxDir :: FilePath -> IO FilePath
+getSandboxDir dir = do
+    exist <- doesFileExist sfile
+    if exist then
+        return dir
+      else if dir == dir' then
+        E.throwIO $ userError "sandbox not found"
+      else
+        getSandboxDir dir'
+  where
+    sfile = dir </> configFile
+    dir' = takeDirectory dir

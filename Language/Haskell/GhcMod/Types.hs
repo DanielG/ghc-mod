@@ -83,15 +83,15 @@ addNewLine = (++ "\n")
 -- | The environment where this library is used.
 data Cradle = Cradle {
   -- | The directory where this library is executed.
-    cradleCurrentDir  :: FilePath
-  -- | The directory where a cabal file is found.
-  , cradleCabalDir    :: Maybe FilePath
+    cradleCurrentDir :: FilePath
+  -- | The project root directory.
+  , cradleRootDir    :: FilePath
   -- | The file name of the found cabal file.
-  , cradleCabalFile   :: Maybe FilePath
+  , cradleCabalFile  :: Maybe FilePath
   -- | User package db. (\"\/foo\/bar\/i386-osx-ghc-7.6.3-packages.conf.d\")
-  , cradlePackageDb :: Maybe FilePath
+  , cradlePackageDb  :: Maybe FilePath
   -- | Dependent packages.
-  , cradlePackages :: [Package]
+  , cradlePackages   :: [Package]
   } deriving (Eq, Show)
 
 ----------------------------------------------------------------

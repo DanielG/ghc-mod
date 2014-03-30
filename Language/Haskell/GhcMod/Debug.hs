@@ -44,8 +44,7 @@ debug opt cradle fileName = do
   where
     currentDir = cradleCurrentDir cradle
     mCabalFile = cradleCabalFile cradle
-    mCabalDir = cradleCabalDir cradle
-    rootDir = fromMaybe currentDir mCabalDir
+    rootDir    = cradleRootDir cradle
     cabal = isJust mCabalFile
     cabalFile = fromMaybe "" mCabalFile
     origGopts = ghcOpts opt
@@ -68,8 +67,4 @@ root :: Options
       -> Cradle
       -> FilePath     -- ^ A target file.
       -> Ghc String
-root _ cradle _ = return $ rootDir ++ "\n"
-  where
-    currentDir = cradleCurrentDir cradle
-    mCabalDir = cradleCabalDir cradle
-    rootDir = fromMaybe currentDir mCabalDir
+root _ cradle _ = return $ cradleRootDir cradle ++ "\n"

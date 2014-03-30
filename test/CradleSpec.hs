@@ -19,7 +19,7 @@ spec = do
                 res <- findCradle
                 res `shouldBe` Cradle {
                     cradleCurrentDir = curDir
-                  , cradleCabalDir   = Nothing
+                  , cradleRootDir    = curDir
                   , cradleCabalFile  = Nothing
                   , cradlePackageDb  = Nothing
                   , cradlePackages   = []
@@ -29,7 +29,7 @@ spec = do
                 res <- relativeCradle dir <$> findCradle
                 res `shouldBe` Cradle {
                     cradleCurrentDir = "test" </> "data" </> "subdir1" </> "subdir2"
-                  , cradleCabalDir   = Just ("test" </> "data")
+                  , cradleRootDir    = "test" </> "data"
                   , cradleCabalFile  = Just ("test" </> "data" </> "cabalapi.cabal")
                   , cradlePackageDb  = Just ("test" </> "data" </> ".cabal-sandbox" </> "/home/me/work/ghc-mod/test/data/.cabal-sandbox/i386-osx-ghc-7.6.3-packages.conf.d")
                   , cradlePackages   = []
@@ -39,7 +39,7 @@ spec = do
                 res <- relativeCradle dir <$> findCradle
                 res `shouldBe` Cradle {
                     cradleCurrentDir = "test" </> "data" </> "broken-sandbox"
-                  , cradleCabalDir   = Just ("test" </> "data" </> "broken-sandbox")
+                  , cradleRootDir    = "test" </> "data" </> "broken-sandbox"
                   , cradleCabalFile  = Just ("test" </> "data" </> "broken-sandbox" </> "dummy.cabal")
                   , cradlePackageDb  = Nothing
                   , cradlePackages   = []
@@ -60,9 +60,9 @@ spec = do
 
 relativeCradle :: FilePath -> Cradle -> Cradle
 relativeCradle dir cradle = cradle {
-    cradleCurrentDir    = toRelativeDir dir  $  cradleCurrentDir    cradle
-  , cradleCabalDir      = toRelativeDir dir <$> cradleCabalDir      cradle
-  , cradleCabalFile     = toRelativeDir dir <$> cradleCabalFile     cradle
+    cradleCurrentDir    = toRelativeDir dir  $  cradleCurrentDir cradle
+  , cradleRootDir       = toRelativeDir dir  $  cradleRootDir    cradle
+  , cradleCabalFile     = toRelativeDir dir <$> cradleCabalFile  cradle
   }
 
 -- Work around GHC 7.2.2 where `canonicalizePath "/"` returns "/.".

@@ -21,6 +21,7 @@ import Exception (ghandle, SomeException(..))
 import GHC (Ghc, GhcMonad, DynFlags(..), GhcLink(..), HscTarget(..))
 import qualified GHC as G
 import Language.Haskell.GhcMod.CabalApi
+import Language.Haskell.GhcMod.Cradle (userPackageDbOptsForGhc)
 import Language.Haskell.GhcMod.ErrMsg
 import Language.Haskell.GhcMod.GHCChoice
 import qualified Language.Haskell.GhcMod.Gap as Gap
@@ -74,8 +75,8 @@ data Build = CabalPkg | SingleFile deriving Eq
 -- provided.
 initializeFlagsWithCradle :: GhcMonad m =>  Options -> Cradle -> [GHCOption] -> Bool -> m (LogReader, Maybe PackageDescription)
 initializeFlagsWithCradle opt cradle ghcopts logging
-  | cabal     = withCabal |||> withoutCabal
-  | otherwise = withoutCabal
+  | cabal     = withCabal |||> withSandbox
+  | otherwise = withSandbox
   where
     mCradleFile = cradleCabalFile cradle
     cabal = isJust mCradleFile
@@ -84,11 +85,16 @@ initializeFlagsWithCradle opt cradle ghcopts logging
         compOpts <- liftIO $ getCompilerOptions ghcopts cradle pkgDesc
         logger <- initSession CabalPkg opt compOpts logging
         return (logger, Just pkgDesc)
-    withoutCabal = do
+    withSandbox = do
         logger <- initSession SingleFile opt compOpts logging
         return (logger, Nothing)
       where
-        compOpts = CompilerOptions ghcopts importDirs []
+        pkgDb = userPackageDbOptsForGhc $ cradlePackageDb cradle
+        compOpts
+          | pkgDb == [] = CompilerOptions ghcopts importDirs []
+          | otherwise   = CompilerOptions (ghcopts ++ pkgDb) [wdir,rdir] []
+        wdir = cradleCurrentDir cradle
+        rdir = cradleRootDir    cradle
 
 ----------------------------------------------------------------
 
