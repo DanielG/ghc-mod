@@ -86,4 +86,13 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+(defun ghc-kill-process ()
+  (interactive)
+  (let* ((name ghc-process-process-name)
+	 (cpro (if name (get-process name))))
+    (if (not cpro)
+	(message "No process")
+      (delete-process cpro)
+      (message "A process was killed"))))
+
 (provide 'ghc-process)
