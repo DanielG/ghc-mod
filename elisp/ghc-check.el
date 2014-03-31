@@ -16,7 +16,7 @@
 ;; stolen from flymake.el
 (defface ghc-face-error
   '((((supports :underline (:style wave)))
-     :underline (:style wave :color "Red1"))
+     :underline (:style wave :color "orangered"))
     (t
      :inherit error))
   "Face used for marking error lines."
@@ -24,7 +24,7 @@
 
 (defface ghc-face-warn
   '((((supports :underline (:style wave)))
-     :underline (:style wave :color "DarkOrange"))
+     :underline (:style wave :color "gold"))
     (t
      :inherit warning))
   "Face used for marking warning lines."
