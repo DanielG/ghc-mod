@@ -1,3 +1,7 @@
+2014-03-15 v3.1.7
+	* Defining ghc-debug for Elisp debugging.
+	* Catching up the latest hlint which does not provide --quite.
+
 2014-02-07 v3.1.6
 	* Testing with multi GHC versions. (@eagletmt)
 	* Checking package ID. (@naota)
