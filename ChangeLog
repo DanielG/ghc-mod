@@ -1,3 +1,20 @@
+2014-04-01 v4.0.0
+	* Implementing interactive "ghc-modi" command.
+	  "check", "find", and "lint" are available.
+	* Introducing a concept of project root directory.
+	  Thanks to this, sandbox without cabal can be used.
+	  "ghd-mod debug" displays the project root.
+	* Syntax error highlighting (C-xC-s) gets much faster
+	  thanks to ghc-modi. "flymake" was thrown away and
+	  syntax error highlighting is implemented from a scratch.
+	* Resolving the "import hell". You dont' have to type
+	  "import Foo" anymore. Use M-t or C-cC-m.
+	* Inserting "module Foo" (M-t) can insert all paths
+	  relative to the project root.
+	* M-C-d displays a html document even if it is in its sandbox.
+	* M-s now merges the same module lines in addition to sorting.
+	* A bug fix for hlint support. (@eagletmt)
+
 2014-03-15 v3.1.7
 	* Defining ghc-debug for Elisp debugging.
 	* Catching up the latest hlint which does not provide --quite.
