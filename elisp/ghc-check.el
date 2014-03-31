@@ -45,6 +45,8 @@
 (ghc-defstruct hilit-info file line col msg err)
 
 (defun ghc-check-send ()
+  (with-current-buffer ghc-process-original-buffer
+    (setq mode-line-process " -:-"))
   (if ghc-check-command
       (let ((opts (ghc-haskell-list-of-string ghc-hlint-options)))
 	(if opts
