@@ -28,9 +28,8 @@
     (setq mods (ghc-function-to-modules fun))
     (if (null mods)
 	(message "No module guessed")
-      (let* ((fmt (if prefix
-		      (concat "Module name for \"" prefix "\" (%s): ")
-		    "Module name (%s): "))
+      (let* ((key (or prefix fun))
+	     (fmt (concat "Module name for \"" key "\" (%s): "))
 	     (mod (ghc-completing-read fmt mods)))
 	(save-excursion
 	  (ghc-goto-module-position)
