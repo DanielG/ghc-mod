@@ -35,7 +35,7 @@ usage =    "ghc-mod version " ++ showVersion version ++ "\n"
         ++ "\t ghc-mod type" ++ ghcOptHelp ++ "<HaskellFile> <module> <line-no> <column-no>\n"
         ++ "\t ghc-mod lint [-h opt] <HaskellFile>\n"
         ++ "\t ghc-mod root <HaskellFile>\n"
-        ++ "\t ghc-mod doc <HaskellFile>\n"
+        ++ "\t ghc-mod doc <module>\n"
         ++ "\t ghc-mod boot\n"
         ++ "\t ghc-mod help\n"
 
