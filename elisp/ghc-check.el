@@ -266,6 +266,14 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+(defun ghc-jump-file ()
+  (interactive)
+  (let* ((ovl (car (ghc-check-overlay-at 1)))
+	 (file (if ovl (overlay-get ovl 'ghc-file))))
+    (if file (find-file file))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
 (defvar ghc-hlint-options nil "*Hlint options")
 
 (defvar ghc-check-command nil)
