@@ -35,8 +35,8 @@
 	(save-excursion
 	  (ghc-goto-module-position)
 	  (if prefix
-	      (insert "import qualified " mod " as " prefix "\n")
-	    (insert "import " mod " (" (ghc-enclose expr) ")\n")))))))
+	      (insert-before-markers "import qualified " mod " as " prefix "\n")
+	    (insert-before-markers "import " mod " (" (ghc-enclose expr) ")\n")))))))
 
 (defun ghc-completing-read (fmt lst)
   (let* ((def (car lst))
@@ -48,14 +48,15 @@
   (goto-char (point-max))
   (if (re-search-backward "^import" nil t)
       (ghc-goto-empty-line)
-    (if (re-search-backward "^module" nil t)
-	(progn
-	  (ghc-goto-empty-line)
-	  (forward-line)
-	  (unless (eolp)
-	    (save-excursion
-	      (insert "\n"))))
-      (goto-char (point-min)))))
+    (if (not (re-search-backward "^module" nil t))
+	(goto-char (point-min))
+      (ghc-goto-empty-line)
+      (forward-line)
+      (unless (eolp)
+	;; save-excursion is not proper due to insert-before-markers.
+	(let ((beg (point)))
+	  (insert-before-markers "\n")
+	  (goto-char beg))))))
 
 (defun ghc-goto-empty-line ()
   (unless (re-search-forward "^$" nil t)
