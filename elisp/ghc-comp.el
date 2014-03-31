@@ -224,7 +224,7 @@ unloaded modules are loaded")
 (defun ghc-completion-start-point ()
   (save-excursion
     (let ((beg (save-excursion (beginning-of-line) (point)))
-	  (regex (if (ghc-module-completion-p) "[ (,`]" "[ (,`.]")))
+	  (regex (if (ghc-module-completion-p) "[ (,`]" "[\[ (,`.]")))
       (if (re-search-backward regex beg t)
 	  (1+ (point))
 	beg))))
