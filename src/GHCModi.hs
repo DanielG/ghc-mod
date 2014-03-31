@@ -136,7 +136,10 @@ checkStx set ls readLog file = do
         case mx of
             Nothing -> return Nothing
             Just x  -> do
-                let mainfile = G.ms_hspp_file x
+                let mmainfile = G.ml_hs_file (G.ms_location x)
+                    -- G.ms_hspp_file x is a temporary file with CPP.
+                    -- this is a just fake.
+                    mainfile = fromMaybe (G.ms_hspp_file x) mmainfile
                 if mainfile == file then
                     return Nothing
                   else do
