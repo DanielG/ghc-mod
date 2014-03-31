@@ -42,7 +42,7 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(ghc-defstruct hilit-info file line col msg err)
+(ghc-defstruct hilit-info file line msg err)
 
 (defun ghc-check-send ()
   (with-current-buffer ghc-process-original-buffer
@@ -66,16 +66,16 @@
     (while (re-search-forward regex nil t)
       (let* ((file (match-string 1))
 	     (line (string-to-number (match-string 2)))
-	     (col  (string-to-number (match-string 3)))
+	     ;; don't take column to make multiple same errors to a single.
 	     (msg  (match-string 4))
 	     (err  (not (string-match "^Warning" msg)))
 	     (info (ghc-make-hilit-info
 		    :file file
 		    :line line
-		    :col  col
 		    :msg  msg
 		    :err  err)))
-	(setq infos (cons info infos))))
+	(unless (member info infos)
+	  (setq infos (cons info infos)))))
     (setq infos (nreverse infos))
     (cond
      (infos
