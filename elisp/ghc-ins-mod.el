@@ -19,13 +19,25 @@
 	 (expr (ghc-read-expression expr0)))
     (ghc-ins-mod expr)))
 
+(defvar ghc-preferred-modules '("Control.Applicative"
+				"Data.ByteString"
+				"Data.Text"
+				"Text.Parsec"))
+
+(defun ghc-reorder-modules (mods)
+  (catch 'loop
+    (dolist (pmod ghc-preferred-modules)
+      (if (member pmod mods)
+	  (throw 'loop (cons pmod (delete pmod mods)))))
+    mods))
+
 (defun ghc-ins-mod (expr)
   (let (prefix fun mods)
     (if (not (string-match "^\\([^.]+\\)\\\.\\([^.]+\\)$" expr))
 	(setq fun expr)
       (setq prefix (match-string 1 expr))
       (setq fun (match-string 2 expr)))
-    (setq mods (ghc-function-to-modules fun))
+    (setq mods (ghc-reorder-modules (ghc-function-to-modules fun)))
     (if (null mods)
 	(message "No module guessed")
       (let* ((key (or prefix fun))
