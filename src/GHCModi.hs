@@ -41,6 +41,7 @@ import qualified GHC as G
 import HscTypes (SourceError)
 import Language.Haskell.GhcMod
 import Language.Haskell.GhcMod.Internal
+import System.Directory (setCurrentDirectory)
 import System.IO (hFlush,stdout)
 
 ----------------------------------------------------------------
@@ -55,7 +56,10 @@ type Logger = IO [String]
 
 main :: IO ()
 main = E.handle handler $ do
-    cradle <- findCradle
+    cradle0 <- findCradle
+    let rootdir = cradleRootDir cradle0
+        cradle = cradle0 { cradleCurrentDir = rootdir }
+    setCurrentDirectory rootdir
     mvar <- liftIO newEmptyMVar
     mlibdir <- getSystemLibDir
     void $ forkIO $ setupDB cradle mlibdir opt mvar
