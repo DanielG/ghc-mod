@@ -15,10 +15,10 @@ import ErrUtils (ErrMsg, errMsgShortDoc, errMsgExtraInfo)
 import GHC (Ghc, DynFlags, SrcSpan, Severity(SevError))
 import qualified GHC as G
 import HscTypes (SourceError, srcErrorMessages)
-import Language.Haskell.GhcMod.Doc (showUnqualifiedPage)
+import Language.Haskell.GhcMod.Doc (showPage, getStyle)
 import qualified Language.Haskell.GhcMod.Gap as Gap
 import Language.Haskell.GhcMod.Types (LineSeparator(..))
-import Outputable (SDoc)
+import Outputable (PprStyle, SDoc)
 import System.FilePath (normalise)
 
 ----------------------------------------------------------------
@@ -41,9 +41,9 @@ readAndClearLogRef (LogRef ref) = do
     writeIORef ref id
     return $! b []
 
-appendLogRef :: DynFlags -> LineSeparator -> LogRef -> a -> Severity -> SrcSpan -> b -> SDoc -> IO ()
-appendLogRef df ls (LogRef ref) _ sev src _ msg = do
-        let !l = ppMsg src sev df ls msg
+appendLogRef :: DynFlags -> LineSeparator -> LogRef -> DynFlags -> Severity -> SrcSpan -> PprStyle -> SDoc -> IO ()
+appendLogRef df ls (LogRef ref) _ sev src style msg = do
+        let !l = ppMsg src sev df ls style msg
         modifyIORef ref (\b -> b . (l:))
 
 ----------------------------------------------------------------
@@ -63,24 +63,25 @@ setLogger True  df ls = do
 handleErrMsg :: LineSeparator -> SourceError -> Ghc [String]
 handleErrMsg ls err = do
     dflag <- G.getSessionDynFlags
-    return . errBagToStrList dflag ls . srcErrorMessages $ err
+    style <- getStyle
+    return . errBagToStrList dflag ls style . srcErrorMessages $ err
 
-errBagToStrList :: DynFlags -> LineSeparator -> Bag ErrMsg -> [String]
-errBagToStrList dflag ls = map (ppErrMsg dflag ls) . reverse . bagToList
+errBagToStrList :: DynFlags -> LineSeparator -> PprStyle -> Bag ErrMsg -> [String]
+errBagToStrList dflag ls style = map (ppErrMsg dflag ls style) . reverse . bagToList
 
 ----------------------------------------------------------------
 
-ppErrMsg :: DynFlags -> LineSeparator -> ErrMsg -> String
-ppErrMsg dflag ls err = ppMsg spn SevError dflag ls msg ++ ext
+ppErrMsg :: DynFlags -> LineSeparator -> PprStyle -> ErrMsg -> String
+ppErrMsg dflag ls style err = ppMsg spn SevError dflag ls style msg ++ ext
    where
      spn = Gap.errorMsgSpan err
      msg = errMsgShortDoc err
-     ext = showMsg dflag ls (errMsgExtraInfo err)
+     ext = showMsg dflag ls style (errMsgExtraInfo err)
 
-ppMsg :: SrcSpan -> Severity-> DynFlags -> LineSeparator -> SDoc -> String
-ppMsg spn sev dflag ls msg = prefix ++ cts
+ppMsg :: SrcSpan -> Severity-> DynFlags -> LineSeparator -> PprStyle -> SDoc -> String
+ppMsg spn sev dflag ls style msg = prefix ++ cts
   where
-    cts  = showMsg dflag ls msg
+    cts  = showMsg dflag ls style msg
     defaultPrefix
       | dopt Gap.dumpSplicesFlag dflag = ""
       | otherwise                      = "Dummy:0:0:Error:"
@@ -92,8 +93,8 @@ ppMsg spn sev dflag ls msg = prefix ++ cts
 
 ----------------------------------------------------------------
 
-showMsg :: DynFlags -> LineSeparator -> SDoc -> String
-showMsg dflag (LineSeparator lsep) sdoc = replaceNull $ showUnqualifiedPage dflag sdoc
+showMsg :: DynFlags -> LineSeparator -> PprStyle -> SDoc -> String
+showMsg dflag (LineSeparator lsep) style sdoc = replaceNull $ showPage dflag style sdoc
   where
     replaceNull []        = []
     replaceNull ('\n':xs) = lsep ++ replaceNull xs

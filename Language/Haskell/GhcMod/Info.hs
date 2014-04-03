@@ -24,13 +24,13 @@ import GHC (Ghc, LHsBind, LHsExpr, LPat, Id, TypecheckedModule(..), DynFlags, Sr
 import qualified GHC as G
 import GHC.SYB.Utils (Stage(TypeChecker), everythingStaged)
 import HscTypes (ms_imps)
-import Language.Haskell.GhcMod.Doc (showUnqualifiedPage, showUnqualifiedOneLine, showQualifiedPage)
+import Language.Haskell.GhcMod.Doc (showPage, showOneLine, getStyle)
 import Language.Haskell.GhcMod.GHCApi
 import Language.Haskell.GhcMod.GHCChoice ((||>), goNext)
 import Language.Haskell.GhcMod.Gap (HasType(..))
 import qualified Language.Haskell.GhcMod.Gap as Gap
 import Language.Haskell.GhcMod.Types
-import Outputable (ppr)
+import Outputable (PprStyle, ppr)
 import TcHsSyn (hsPatType)
 
 ----------------------------------------------------------------
@@ -61,7 +61,8 @@ info opt cradle file modstr expr =
     exprToInfo = do
         dflag <- G.getSessionDynFlags
         sdoc <- Gap.infoThing expr
-        return $ showUnqualifiedPage dflag sdoc
+        style <- getStyle
+        return $ showPage dflag style sdoc
 
 ----------------------------------------------------------------
 
@@ -108,11 +109,12 @@ typeOf opt cradle file modstr lineNo colNo =
       ets <- mapM (getType tcm) es
       pts <- mapM (getType tcm) ps
       dflag <- G.getSessionDynFlags
-      let sss = map (toTup dflag) $ sortBy (cmp `on` fst) $ catMaybes $ concat [ets, bts, pts]
+      style <- getStyle
+      let sss = map (toTup dflag style) $ sortBy (cmp `on` fst) $ catMaybes $ concat [ets, bts, pts]
       return $ convert opt sss
 
-    toTup :: DynFlags -> (SrcSpan, Type) -> ((Int,Int,Int,Int),String)
-    toTup dflag (spn, typ) = (fourInts spn, pretty dflag typ)
+    toTup :: DynFlags -> PprStyle -> (SrcSpan, Type) -> ((Int,Int,Int,Int),String)
+    toTup dflag style (spn, typ) = (fourInts spn, pretty dflag style typ)
 
     fourInts :: SrcSpan -> (Int,Int,Int,Int)
     fourInts = fromMaybe (0,0,0,0) . Gap.getSrcSpan
@@ -132,8 +134,8 @@ listifySpans tcs lc = listifyStaged TypeChecker p tcs
 listifyStaged :: Typeable r => Stage -> (r -> Bool) -> GenericQ [r]
 listifyStaged s p = everythingStaged s (++) [] ([] `mkQ` (\x -> [x | p x]))
 
-pretty :: DynFlags -> Type -> String
-pretty dflag = showUnqualifiedOneLine dflag . Gap.typeForUser
+pretty :: DynFlags -> PprStyle -> Type -> String
+pretty dflag style = showOneLine dflag style . Gap.typeForUser
 
 ----------------------------------------------------------------
 
@@ -154,7 +156,8 @@ inModuleContext _ opt cradle file modstr action errmsg =
     setTargetBuffer = do
         modgraph <- G.depanal [G.mkModuleName modstr] True
         dflag <- G.getSessionDynFlags
-        let imports = concatMap (map (showQualifiedPage dflag . ppr . G.unLoc)) $
+        style <- getStyle
+        let imports = concatMap (map (showPage dflag style . ppr . G.unLoc)) $
                       map ms_imps modgraph ++ map G.ms_srcimps modgraph
             moddef = "module " ++ sanitize modstr ++ " where"
             header = moddef : imports

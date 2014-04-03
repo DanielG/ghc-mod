@@ -12,7 +12,7 @@ import Data.Maybe (catMaybes)
 import FastString (mkFastString)
 import GHC (Ghc, GhcException(CmdLineError), ModuleInfo, Name, TyThing, DynFlags, Type, TyCon, Module)
 import qualified GHC as G
-import Language.Haskell.GhcMod.Doc (showUnqualifiedPage, showUnqualifiedOneLine)
+import Language.Haskell.GhcMod.Doc (showPage, showOneLine, styleUnqualified)
 import Language.Haskell.GhcMod.GHCApi
 import Language.Haskell.GhcMod.Gap
 import Language.Haskell.GhcMod.Types
@@ -130,7 +130,7 @@ removeForAlls' ty (Just (pre, ftype))
     | otherwise           = ty
 
 showOutputable :: Outputable a => DynFlags -> a -> String
-showOutputable dflag = unwords . lines . showUnqualifiedPage dflag . ppr
+showOutputable dflag = unwords . lines . showPage dflag styleUnqualified . ppr
 
 ----------------------------------------------------------------
 
@@ -147,4 +147,4 @@ toNameModule dflag (m,Just inf) = map (\name -> (toStr name, mdl)) names
   where
     mdl = G.moduleNameString (G.moduleName m)
     names = G.modInfoExports inf
-    toStr = showUnqualifiedOneLine dflag . ppr
+    toStr = showOneLine dflag styleUnqualified . ppr

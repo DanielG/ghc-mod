@@ -1,43 +1,22 @@
 module Language.Haskell.GhcMod.Doc where
 
 import DynFlags (DynFlags)
+import GHC (Ghc)
+import qualified GHC as G
 import Language.Haskell.GhcMod.Gap (withStyle, showDocWith)
-import Outputable (SDoc, PprStyle, Depth(AllTheWay), mkUserStyle, alwaysQualify, neverQualify)
+import Outputable (SDoc, PprStyle, mkUserStyle, Depth(AllTheWay), neverQualify)
 import Pretty (Mode(..))
 
-----------------------------------------------------------------
+showPage :: DynFlags -> PprStyle -> SDoc -> String
+showPage dflag style = showDocWith dflag PageMode . withStyle dflag style
 
-{-
-pretty :: Outputable a => a -> String
-pretty = showSDocForUser neverQualify . ppr
+showOneLine :: DynFlags -> PprStyle -> SDoc -> String
+showOneLine dflag style = showDocWith dflag OneLineMode . withStyle dflag style
 
-debug :: Outputable a => a -> b -> b
-debug x v = trace (pretty x) v
--}
-
-----------------------------------------------------------------
-
-styleQualified :: PprStyle
-styleQualified = mkUserStyle alwaysQualify AllTheWay
+getStyle :: Ghc PprStyle
+getStyle = do
+    unqual <- G.getPrintUnqual
+    return $ mkUserStyle unqual AllTheWay
 
 styleUnqualified :: PprStyle
 styleUnqualified = mkUserStyle neverQualify AllTheWay
-
-----------------------------------------------------------------
-
--- For "ghc-mod type"
-showQualifiedPage :: DynFlags -> SDoc -> String
-showQualifiedPage dflag = showDocWith dflag PageMode . withStyle dflag styleQualified
-
--- For "ghc-mod browse" and show GHC's error messages.
-showUnqualifiedPage :: DynFlags -> SDoc -> String
-showUnqualifiedPage dflag = showDocWith dflag PageMode
-                          . withStyle dflag styleUnqualified
-
--- Not used
-showQualifiedOneLine :: DynFlags -> SDoc -> String
-showQualifiedOneLine dflag = showDocWith dflag OneLineMode . withStyle dflag styleQualified
-
--- To write Haskell code in a buffer
-showUnqualifiedOneLine :: DynFlags -> SDoc -> String
-showUnqualifiedOneLine dflag = showDocWith dflag OneLineMode . withStyle dflag styleUnqualified
