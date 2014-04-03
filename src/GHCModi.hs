@@ -14,7 +14,7 @@
 module Main where
 
 #ifndef MIN_VERSION_containers
-#define MIN_VERSION_containers 1
+#define MIN_VERSION_containers(x,y,z) 1
 #endif
 
 import Control.Applicative ((<$>))
