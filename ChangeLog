@@ -1,3 +1,7 @@
+2014-04-03 v4.0.1
+	* Displaying a qualified name for one if two unqualified names
+	  are conflict.
+
 2014-04-01 v4.0.0
 	* Implementing interactive "ghc-modi" command.
 	  "check", "find", and "lint" are available.
