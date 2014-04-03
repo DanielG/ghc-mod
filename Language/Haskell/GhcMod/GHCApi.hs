@@ -91,8 +91,8 @@ initializeFlagsWithCradle opt cradle ghcopts logging
       where
         pkgDb = userPackageDbOptsForGhc $ cradlePackageDb cradle
         compOpts
-          | pkgDb == [] = CompilerOptions ghcopts importDirs []
-          | otherwise   = CompilerOptions (ghcopts ++ pkgDb) [wdir,rdir] []
+          | null pkgDb = CompilerOptions ghcopts importDirs []
+          | otherwise  = CompilerOptions (ghcopts ++ pkgDb) [wdir,rdir] []
         wdir = cradleCurrentDir cradle
         rdir = cradleRootDir    cradle
 
