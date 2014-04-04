@@ -144,6 +144,18 @@
 	 (insert (overlay-get (car ovls) 'ghc-file) "\n\n")
 	 (mapc (lambda (x) (insert x "\n\n")) errs))))))
 
+(defun ghc-display-errors-to-minibuf ()
+  (interactive)
+  (let* ((ovls (ghc-check-overlay-at (point)))
+	 (errs (mapcar (lambda (ovl) (overlay-get ovl 'ghc-msg)) ovls))
+         (old-max-mini-window-height max-mini-window-height))
+    (setq max-mini-window-height 0.95)
+    (if (null ovls)
+	(message "No errors or warnings")
+      (progn
+        (message "%s\n" (mapconcat (lambda (x) (replace-regexp-in-string "\0" "\n" x)) errs "\n"))))
+    (setq old-max-mini-window-height)))
+
 (defun ghc-check-overlay-at (p)
   (let ((ovls (overlays-at p)))
     (ghc-filter (lambda (ovl) (overlay-get ovl 'ghc-check)) ovls)))
@@ -160,6 +172,11 @@
 	 (pnts (mapcar 'overlay-start ovls2)))
     (if pnts (goto-char (apply 'max pnts)))))
 
+(defun ghc-goto-and-display-prev-error ()
+  (interactive)
+  (ghc-goto-prev-error)
+  (ghc-display-errors-to-minibuf))
+
 (defun ghc-goto-next-error ()
   (interactive)
   (let* ((here (point))
@@ -169,6 +186,11 @@
 	 (ovls2 (ghc-filter (lambda (ovl) (overlay-get ovl 'ghc-check)) ovls1))
 	 (pnts (mapcar 'overlay-start ovls2)))
     (if pnts (goto-char (apply 'min pnts)))))
+
+(defun ghc-goto-and-display-next-error ()
+  (interactive)
+  (ghc-goto-next-error)
+  (ghc-display-errors-to-minibuf))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 

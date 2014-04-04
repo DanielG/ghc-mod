@@ -8,6 +8,14 @@
 ;;
 ;; (autoload 'ghc-init "ghc" nil t)
 ;; (add-hook 'haskell-mode-hook (lambda () (ghc-init)))
+;;
+;; Or you wish to display error to minibuffer.
+;;
+;; (autoload 'ghc-init "ghc" nil t)
+;; (setq ghc-display-error-to-minibuffer t)
+;; (add-hook 'haskell-mode-hook (lambda () (ghc-init)))
+
+;;
 
 ;;; Code:
 
@@ -56,6 +64,8 @@
 (defvar ghc-shallower-key   "\C-c<")
 (defvar ghc-deeper-key      "\C-c>")
 
+(defvar ghc-display-error-to-minibuffer  nil)
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
 ;;; Initializer
@@ -74,8 +84,13 @@
     (define-key haskell-mode-map ghc-info-key        'ghc-show-info)
     (define-key haskell-mode-map ghc-expand-key      'ghc-expand-th)
     (define-key haskell-mode-map ghc-import-key      'ghc-import-module)
-    (define-key haskell-mode-map ghc-previous-key    'ghc-goto-prev-error)
-    (define-key haskell-mode-map ghc-next-key        'ghc-goto-next-error)
+    (if ghc-display-error-to-minibuffer
+        (progn
+          (define-key haskell-mode-map ghc-previous-key    'ghc-goto-and-display-prev-error)
+          (define-key haskell-mode-map ghc-next-key        'ghc-goto-and-display-next-error))
+      (progn
+        (define-key haskell-mode-map ghc-previous-key    'ghc-goto-prev-error)
+        (define-key haskell-mode-map ghc-next-key        'ghc-goto-next-error)))
     (define-key haskell-mode-map ghc-help-key        'ghc-display-errors)
     (define-key haskell-mode-map ghc-insert-key      'ghc-insert-template)
     (define-key haskell-mode-map ghc-sort-key        'ghc-sort-lines)
