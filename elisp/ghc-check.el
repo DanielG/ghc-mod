@@ -153,7 +153,8 @@
     (if (null ovls)
 	(message "No errors or warnings")
       (progn
-        (message "%s\n" (mapconcat (lambda (x) (replace-regexp-in-string "\0" "\n" x)) errs "\n"))))
+        (message "%s\n\n%s\n" (overlay-get (car ovls) 'ghc-file)
+                 (mapconcat (lambda (x) (replace-regexp-in-string "\0" "\n" x)) errs "\n"))))
     (setq old-max-mini-window-height)))
 
 (defun ghc-check-overlay-at (p)
@@ -165,32 +166,28 @@
 (defun ghc-goto-prev-error ()
   (interactive)
   (let* ((here (point))
-	 (ovls0 (ghc-check-overlay-at here))
-	 (end (if ovls0 (overlay-start (car ovls0)) here))
-	 (ovls1 (overlays-in (point-min) end))
-	 (ovls2 (ghc-filter (lambda (ovl) (overlay-get ovl 'ghc-check)) ovls1))
-	 (pnts (mapcar 'overlay-start ovls2)))
-    (if pnts (goto-char (apply 'max pnts)))))
-
-(defun ghc-goto-and-display-prev-error ()
-  (interactive)
-  (ghc-goto-prev-error)
-  (ghc-display-errors-to-minibuf))
+         (ovls0 (ghc-check-overlay-at here))
+         (end (if ovls0 (overlay-start (car ovls0)) here))
+         (ovls1 (overlays-in (point-min) end))
+         (ovls2 (ghc-filter (lambda (ovl) (overlay-get ovl 'ghc-check)) ovls1))
+         (pnts (mapcar 'overlay-start ovls2)))
+    (if pnts (goto-char (apply 'max pnts))))
+  (cond
+   ((eq ghc-display-error 'minibuffer) (ghc-display-errors-to-minibuf))
+   ((eq ghc-display-error 'other-buffer) (ghc-display-errors))))
 
 (defun ghc-goto-next-error ()
   (interactive)
   (let* ((here (point))
-	 (ovls0 (ghc-check-overlay-at here))
-	 (beg (if ovls0 (overlay-end (car ovls0)) here))
-	 (ovls1 (overlays-in beg (point-max)))
-	 (ovls2 (ghc-filter (lambda (ovl) (overlay-get ovl 'ghc-check)) ovls1))
-	 (pnts (mapcar 'overlay-start ovls2)))
-    (if pnts (goto-char (apply 'min pnts)))))
-
-(defun ghc-goto-and-display-next-error ()
-  (interactive)
-  (ghc-goto-next-error)
-  (ghc-display-errors-to-minibuf))
+         (ovls0 (ghc-check-overlay-at here))
+         (beg (if ovls0 (overlay-end (car ovls0)) here))
+         (ovls1 (overlays-in beg (point-max)))
+         (ovls2 (ghc-filter (lambda (ovl) (overlay-get ovl 'ghc-check)) ovls1))
+         (pnts (mapcar 'overlay-start ovls2)))
+    (if pnts (goto-char (apply 'min pnts))))
+  (cond
+   ((eq ghc-display-error 'minibuffer) (ghc-display-errors-to-minibuf))
+   ((eq ghc-display-error 'other-buffer) (ghc-display-errors))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
