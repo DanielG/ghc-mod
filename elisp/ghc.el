@@ -66,8 +66,6 @@
 (defvar ghc-shallower-key   "\C-c<")
 (defvar ghc-deeper-key      "\C-c>")
 
-(defvar ghc-display-error   nil)
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
 ;;; Initializer

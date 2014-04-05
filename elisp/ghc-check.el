@@ -34,6 +34,8 @@
 
 (defvar ghc-check-warning-fringe (propertize "?" 'display '(left-fringe question-mark)))
 
+(defvar ghc-display-error nil)
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defun ghc-check-syntax ()
