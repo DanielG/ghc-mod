@@ -147,17 +147,18 @@
 (defconst ghc-error-buffer-name "*GHC Info*")
 
 (defun ghc-display (fontify ins-func)
-  (let ((buf (get-buffer-create ghc-error-buffer-name)))
-    (with-current-buffer buf
-      (erase-buffer)
-      (funcall ins-func)
-      (ghc-replace-character-buffer ghc-null ghc-newline)
-      (goto-char (point-min))
-      (if (not fontify)
-	  (turn-off-haskell-font-lock)
-	(haskell-font-lock-defaults-create)
-	(turn-on-haskell-font-lock)))
-    (display-buffer buf)))
+  (let ((buf ghc-error-buffer-name))
+    (with-output-to-temp-buffer buf
+      (with-current-buffer buf
+        (erase-buffer)
+        (funcall ins-func)
+        (ghc-replace-character-buffer ghc-null ghc-newline)
+        (goto-char (point-min))
+        (if (not fontify)
+            (turn-off-haskell-font-lock)
+          (haskell-font-lock-defaults-create)
+          (turn-on-haskell-font-lock)))
+      (display-buffer buf))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
