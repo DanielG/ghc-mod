@@ -144,7 +144,8 @@
        nil
        (lambda ()
 	 (insert (overlay-get (car ovls) 'ghc-file) "\n\n")
-	 (mapc (lambda (x) (insert x "\n\n")) errs))))))
+	 (mapc (lambda (x) (insert x "\n\n")) errs)))
+	 (ghc-focus-display))))
 
 (defun ghc-display-errors-to-minibuf ()
   (interactive)

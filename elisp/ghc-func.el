@@ -161,6 +161,10 @@
       (display-buffer buf))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+(defun ghc-focus-display ()
+  (pop-to-buffer ghc-error-buffer-name))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defun ghc-run-ghc-mod (cmds)
   (ghc-executable-find ghc-module-command
