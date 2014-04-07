@@ -164,8 +164,8 @@ nil            does not display errors/warnings.
              (ghcfile (overlay-get (car ovls) 'ghc-file))
              (errmsg (mapconcat (lambda (x) (replace-regexp-in-string "\0" "\n" x)) errs "\n")))
         (if (string-equal buffile ghcfile)
-            (message "%s\n" errmsg)
-          (message "%s\n\n%s\n" ghcfile errmsg))))
+            (message "%s" errmsg)
+          (message "%s\n\n%s" ghcfile errmsg))))
     (setq old-max-mini-window-height)))
 
 (defun ghc-check-overlay-at (p)
