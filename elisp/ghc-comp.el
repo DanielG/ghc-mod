@@ -101,12 +101,12 @@ unloaded modules are loaded")
 
 (defun ghc-boot (n)
   (ghc-executable-find ghc-module-command
-    (ghc-read-lisp-list
-     (lambda ()
-       (message "Initializing...")
-       (ghc-call-process ghc-module-command nil t nil "-l" "boot")
-       (message "Initializing...done"))
-     n)))
+    (progn (ghc-read-lisp-list
+      (lambda ()
+        (message "Initializing...")
+        (ghc-call-process ghc-module-command nil t nil "-l" "boot")
+        (message "Initializing...done"))
+      n))))
 
 (defun ghc-load-modules (mods)
   (if (null mods)
