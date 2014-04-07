@@ -12,10 +12,8 @@
 ;; Or if you wish to display error each goto next/prev error,
 ;; set ghc-display-error valiable.
 ;;
-;; (autoload 'ghc-init "ghc" nil t)
 ;; (setq ghc-display-error 'minibuffer) ; to minibuffer
 ;; ; (setq ghc-display-error 'other-buffer) ; to other-buffer
-;; (add-hook 'haskell-mode-hook (lambda () (ghc-init)))
 
 ;;
 

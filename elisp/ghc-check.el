@@ -34,7 +34,13 @@
 
 (defvar ghc-check-warning-fringe (propertize "?" 'display '(left-fringe question-mark)))
 
-(defvar ghc-display-error nil)
+(defvar ghc-display-error nil
+  "*An action to display errors/warnings for 'M-n' and 'M-p:
+
+nil            does not display errors/warnings.
+'minibuffer    displays errors/warnings in the minibuffer.
+'other-buffer  displays errors/warnings in the other buffer.
+")
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
