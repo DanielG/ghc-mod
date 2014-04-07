@@ -22,7 +22,9 @@
 (defvar ghc-preferred-modules '("Control.Applicative"
 				"Data.ByteString"
 				"Data.Text"
-				"Text.Parsec"))
+				"Text.Parsec"
+				"System.FilePath"
+				"System.Directory"))
 
 (defun ghc-reorder-modules (mods)
   (catch 'loop
