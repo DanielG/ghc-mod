@@ -66,7 +66,7 @@
   (let ((regex "^\\([^\n\0]*\\):\\([0-9]+\\):\\([0-9]+\\): *\\(.+\\)")
 	info infos)
     (while (re-search-forward regex nil t)
-      (let* ((file (expand-file-name (match-string 1)))
+      (let* ((file (expand-file-name (match-string 1))) ;; for Windows
 	     (line (string-to-number (match-string 2)))
 	     ;; don't take column to make multiple same errors to a single.
 	     (msg  (match-string 4))
