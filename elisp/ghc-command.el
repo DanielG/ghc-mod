@@ -87,8 +87,9 @@
   (if ghc-check-command ;; hlint
       (if (buffer-modified-p)
 	  (call-interactively 'save-buffer))
-    (set-buffer-modified-p t)
-    (call-interactively 'save-buffer))
+    (unless buffer-read-only
+      (set-buffer-modified-p t)
+      (call-interactively 'save-buffer)))
   (ghc-check-syntax))
 
 (provide 'ghc-command)
