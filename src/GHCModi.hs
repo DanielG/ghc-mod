@@ -1,4 +1,5 @@
 {-# LANGUAGE CPP #-}
+{-# LANGUAGE DeriveDataTypeable #-}
 
 -- Commands:
 --  check <file>
@@ -35,13 +36,18 @@ import qualified Data.Map as M
 import Data.Maybe (fromMaybe)
 import Data.Set (Set)
 import qualified Data.Set as S
+import Data.Typeable
+import Data.Version (showVersion)
 import qualified Exception as GE
 import GHC (Ghc, LoadHowMuch(LoadAllTargets), TargetId(TargetFile))
 import qualified GHC as G
 import HscTypes (SourceError)
 import Language.Haskell.GhcMod
 import Language.Haskell.GhcMod.Internal
+import Paths_ghc_mod
+import System.Console.GetOpt
 import System.Directory (setCurrentDirectory)
+import System.Environment (getArgs)
 import System.IO (hFlush,stdout)
 
 ----------------------------------------------------------------
@@ -51,28 +57,66 @@ type Logger = IO [String]
 
 ----------------------------------------------------------------
 
+argspec :: [OptDescr (Options -> Options)]
+argspec = [ Option "b" ["boundary"]
+            (ReqArg (\s opts -> opts { lineSeparator = LineSeparator s }) "sep")
+            "specify line separator (default is Nul string)"
+          ]
+
+usage :: String
+usage =    "ghc-modi version " ++ showVersion version ++ "\n"
+        ++ "Usage:\n"
+        ++ "\t ghc-modi [-b sep]\n"
+        ++ "\t ghc-modi help\n"
+
+parseArgs :: [OptDescr (Options -> Options)] -> [String] -> (Options, [String])
+parseArgs spec argv
+    = case getOpt Permute spec argv of
+        (o,n,[]  ) -> (foldr id defaultOptions o, n)
+        (_,_,errs) -> GE.throw (CmdArg errs)
+
+----------------------------------------------------------------
+
+data GHCModiError = CmdArg [String]
+                  deriving (Show, Typeable)
+
+instance GE.Exception GHCModiError
+
+----------------------------------------------------------------
+
 -- Running two GHC monad threads disables the handling of
 -- C-c since installSignalHandlers is called twice, sigh.
 
 main :: IO ()
-main = E.handle handler $ do
-    cradle0 <- findCradle
-    let rootdir = cradleRootDir cradle0
-        cradle = cradle0 { cradleCurrentDir = rootdir }
-    setCurrentDirectory rootdir
-    mvar <- liftIO newEmptyMVar
-    mlibdir <- getSystemLibDir
-    void $ forkIO $ setupDB cradle mlibdir opt mvar
-    run cradle mlibdir opt $ loop S.empty ls mvar
+main = handle [GE.Handler cmdHandler, GE.Handler someHandler] $
+    go =<< parseArgs argspec <$> getArgs
   where
-    opt = defaultOptions
-    ls = lineSeparator opt
-    LineSeparator lsc = ls
-    handler (SomeException e) = do
+    handle = flip GE.catches
+    LineSeparator lsc = lineSeparator defaultOptions
+    cmdHandler (CmdArg e) = do
+        putStr "ghc-modi:0:0:"
+        let x = intercalate lsc e
+        putStrLn x
+        putStr $ usageInfo usage argspec
+        putStrLn "NG"
+    someHandler (SomeException e) = do
         putStr "ghc-modi:0:0:"
         let x = intercalate lsc $ lines $ show e
         putStrLn x
         putStrLn "NG"
+    go (_,"help":_) = do
+        putStr $ usageInfo usage argspec
+        putStrLn "NG"
+    go (opt,_) = do
+        cradle0 <- findCradle
+        let rootdir = cradleRootDir cradle0
+            cradle = cradle0 { cradleCurrentDir = rootdir }
+            ls = lineSeparator opt
+        setCurrentDirectory rootdir
+        mvar <- liftIO newEmptyMVar
+        mlibdir <- getSystemLibDir
+        void $ forkIO $ setupDB cradle mlibdir opt mvar
+        run cradle mlibdir opt $ loop S.empty ls mvar
 
 ----------------------------------------------------------------
 
