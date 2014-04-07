@@ -24,11 +24,12 @@
 
 (defun ghc-get-project-root ()
   (let ((file (buffer-file-name)))
-    (with-temp-buffer
-      (ghc-call-process ghc-module-command nil t nil "root" file)
-      (goto-char (point-min))
-      (when (looking-at "^\\(.*\\)$")
-	(match-string-no-properties 1)))))
+    (when file
+      (with-temp-buffer
+	(ghc-call-process ghc-module-command nil t nil "root" file)
+	(goto-char (point-min))
+	(when (looking-at "^\\(.*\\)$")
+	  (match-string-no-properties 1))))))
 
 (defun ghc-with-process (send callback)
   (unless ghc-process-process-name
