@@ -140,37 +140,45 @@ nil            does not display errors/warnings.
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defun ghc-display-errors ()
-  (interactive)
-  (let* ((ovls (ghc-check-overlay-at (point)))
-	 (errs (mapcar (lambda (ovl) (overlay-get ovl 'ghc-msg)) ovls)))
-    (if (null ovls)
-	(message "No errors or warnings")
-      (ghc-display
-       nil
-       (lambda ()
-	 (insert (overlay-get (car ovls) 'ghc-file) "\n\n")
-	 (mapc (lambda (x) (insert x "\n\n")) errs))))))
-
-(defun ghc-display-errors-to-minibuf ()
-  (interactive)
-  (let* ((ovls (ghc-check-overlay-at (point)))
-	 (errs (mapcar (lambda (ovl) (overlay-get ovl 'ghc-msg)) ovls))
-         (old-max-mini-window-height max-mini-window-height))
-    (setq max-mini-window-height 0.95)
-    (if (null ovls)
-	(message "No errors or warnings")
-      (let* ((buffile buffer-file-name)
-             (ghcfile (overlay-get (car ovls) 'ghc-file))
-             (errmsg (mapconcat (lambda (x) (replace-regexp-in-string "\0" "\n" x)) errs "\n")))
-        (if (string-equal buffile ghcfile)
-            (message "%s" errmsg)
-          (message "%s\n\n%s" ghcfile errmsg))))
-    (setq old-max-mini-window-height)))
+(defun ghc-overlay-p (ovl)
+  (overlay-get ovl 'ghc-check))
 
 (defun ghc-check-overlay-at (p)
-  (let ((ovls (overlays-at p)))
-    (ghc-filter (lambda (ovl) (overlay-get ovl 'ghc-check)) ovls)))
+  (ghc-filter 'ghc-overlay-p (overlays-at p)))
+
+(ghc-defstruct file-msgs file msgs)
+
+(defun ghc-get-errors-over-warnings ()
+  (let ((ovls (ghc-check-overlay-at (point))))
+    (when ovls
+      (let ((msgs (mapcar (lambda (ovl) (overlay-get ovl 'ghc-msg)) ovls))
+	    (file (overlay-get (car ovls) 'ghc-file)))
+	(ghc-make-file-msgs :file file :msgs msgs)))))
+
+(defun ghc-display-errors ()
+  (interactive)
+  (let ((file-msgs (ghc-get-errors-over-warnings)))
+    (if (null file-msgs)
+	(message "No errors or warnings")
+      (let ((file (ghc-file-msgs-get-file file-msgs))
+	    (msgs (ghc-file-msgs-get-msgs file-msgs)))
+	(ghc-display
+	 nil
+	 (lambda ()
+	   (insert file "\n\n")
+	   (mapc (lambda (x) (insert x "\n\n")) msgs)))))))
+
+(defun ghc-display-errors-to-minibuf ()
+  (let ((file-msgs (ghc-get-errors-over-warnings)))
+    (if (null file-msgs)
+	(message "No errors or warnings")
+      (let* ((file (ghc-file-msgs-get-file file-msgs))
+	     (msgs (ghc-file-msgs-get-msgs file-msgs))
+	     (errmsg (mapconcat (lambda (x) (replace-regexp-in-string "\0" "\n" x)) msgs "\n"))
+	     (buffile buffer-file-name))
+        (if (string-equal buffile file)
+            (message "%s" errmsg)
+          (message "%s\n\n%s" file errmsg))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
