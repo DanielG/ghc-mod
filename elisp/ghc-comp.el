@@ -30,7 +30,7 @@ unloaded modules are loaded")
 ;; must be sorted
 (defconst ghc-reserved-keyword '("case" "deriving" "do" "else" "if" "in" "let" "module" "of" "then" "where"))
 
-(defconst ghc-extra-keywords '("ByteString"))
+(defconst ghc-extra-keywords '()) ;; was '("ByteString")
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -56,11 +56,14 @@ unloaded modules are loaded")
 (defconst ghc-keyword-prefix "ghc-keyword-")
 (defvar ghc-keyword-Prelude nil)
 (defvar ghc-keyword-Control.Applicative nil)
-(defvar ghc-keyword-Control.Monad nil)
 (defvar ghc-keyword-Control.Exception nil)
+(defvar ghc-keyword-Control.Monad nil)
+(defvar ghc-keyword-Data.ByteString nil)
 (defvar ghc-keyword-Data.Char nil)
 (defvar ghc-keyword-Data.List nil)
 (defvar ghc-keyword-Data.Maybe nil)
+(defvar ghc-keyword-System.Directory nil)
+(defvar ghc-keyword-System.FilePath nil)
 (defvar ghc-keyword-System.IO nil)
 
 (defvar ghc-loaded-module nil)
@@ -73,11 +76,14 @@ unloaded modules are loaded")
 		 ;; hard coded in GHCMod.hs
 		 ghc-keyword-Prelude
 		 ghc-keyword-Control.Applicative
-		 ghc-keyword-Control.Monad
 		 ghc-keyword-Control.Exception
+		 ghc-keyword-Control.Monad
+		 ghc-keyword-Data.ByteString
 		 ghc-keyword-Data.Char
 		 ghc-keyword-Data.List
 		 ghc-keyword-Data.Maybe
+		 ghc-keyword-System.Directory
+		 ghc-keyword-System.FilePath
 		 ghc-keyword-System.IO))
 	 (vals (ghc-boot (length syms))))
     (ghc-set syms vals))
@@ -86,11 +92,14 @@ unloaded modules are loaded")
   ;; hard coded in GHCMod.hs
   (ghc-merge-keywords '("Prelude"
 			"Control.Applicative"
-			"Control.Monad"
 			"Control.Exception"
+			"Control.Monad"
+			"Data.ByteString"
 			"Data.Char"
 			"Data.List"
 			"Data.Maybe"
+			"System.Directory"
+			"System.FilePath"
 			"System.IO"))
   (run-with-idle-timer ghc-idle-timer-interval 'repeat 'ghc-idle-timer))
 

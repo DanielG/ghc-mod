@@ -120,7 +120,8 @@ main = flip E.catches handlers $ do
          mods  <- listModules opt cradle
          langs <- listLanguages opt
          flags <- listFlags opt
-         pre   <- concat <$> mapM (browseModule opt cradle) preBrowsedModules
+         let opt' = addPackages opt
+         pre   <- concat <$> mapM (browseModule opt' cradle) preBrowsedModules
          return $ mods ++ langs ++ flags ++ pre
       "help"   -> return $ O.usageInfo usage argspec
       cmd      -> E.throw (NoSuchCommand cmd)
@@ -160,10 +161,25 @@ preBrowsedModules :: [String]
 preBrowsedModules = [
     "Prelude"
   , "Control.Applicative"
-  , "Control.Monad"
   , "Control.Exception"
+  , "Control.Monad"
+  , "Data.ByteString"
   , "Data.Char"
   , "Data.List"
   , "Data.Maybe"
+  , "System.Directory"
+  , "System.FilePath"
   , "System.IO"
   ]
+
+preBrowsePackages :: [String]
+preBrowsePackages = [
+    "bytestring"
+  , "directory"
+  , "filepath"
+  ]
+
+addPackages :: Options -> Options
+addPackages opt = opt { ghcOpts = pkgs ++ ghcOpts opt}
+  where
+    pkgs = map ("-package " ++) preBrowsePackages
