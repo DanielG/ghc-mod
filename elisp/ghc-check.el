@@ -152,8 +152,13 @@ nil            does not display errors/warnings.
   (let ((ovls (ghc-check-overlay-at (point))))
     (when ovls
       (let ((msgs (mapcar (lambda (ovl) (overlay-get ovl 'ghc-msg)) ovls))
-	    (file (overlay-get (car ovls) 'ghc-file)))
-	(ghc-make-file-msgs :file file :msgs msgs)))))
+	    (file (overlay-get (car ovls) 'ghc-file))
+	    errs wrns)
+	(dolist (msg msgs)
+	  (if (string-match "^Warning" msg)
+	      (setq wrns (cons msg wrns))
+	    (setq errs (cons msg errs))))
+	(ghc-make-file-msgs :file file :msgs (nconc errs wrns))))))
 
 (defun ghc-display-errors ()
   (interactive)
