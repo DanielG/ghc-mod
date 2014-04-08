@@ -1,3 +1,8 @@
+2014-04-07 v4.0.2
+	* The ghc-display-error option (@notogawa)
+	* Fixing a file bug for Windows (@Kiripon)
+	* The -b option for ghc-modi (@yuga)
+
 2014-04-03 v4.0.1
 	* Displaying a qualified name for one if two unqualified names
 	  are conflict.
