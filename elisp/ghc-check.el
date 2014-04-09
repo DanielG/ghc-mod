@@ -231,10 +231,10 @@ nil            does not display errors/warnings.
 	    (if (not (bolp)) (insert "\n")))
 	  (insert (match-string 1) " = undefined\n")))
        ;; GHC 7.8 uses Unicode for single-quotes.
-       ((string-match "Not in scope: type constructor or class `\\([^'\n\0]+\\)'" data)
+       ((string-match "Not in scope: type constructor or class .\\([^\n\0]+\\)." data)
 	(let ((sym (match-string 1 data)))
 	  (ghc-ins-mod sym)))
-       ((string-match "Not in scope: `\\([^'\n\0]+\\)'" data)
+       ((string-match "Not in scope: .\\([^\n\0]+\\)." data)
 	(let ((sym (match-string 1 data)))
 	  (if (or (string-match "\\." sym) ;; qualified
 		  (y-or-n-p (format "Import module for %s?" sym)))
