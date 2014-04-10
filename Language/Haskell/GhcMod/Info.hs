@@ -81,7 +81,7 @@ instance HasType (LPat Id) where
 typeExpr :: Options
          -> Cradle
          -> FilePath     -- ^ A target file.
-         -> ModuleString -- ^ A odule name.
+         -> ModuleString -- ^ A module name.
          -> Int          -- ^ Line number.
          -> Int          -- ^ Column number.
          -> IO String
@@ -91,7 +91,7 @@ typeExpr opt cradle file modstr lineNo colNo = withGHCDummyFile $ typeOf opt cra
 typeOf :: Options
        -> Cradle
        -> FilePath     -- ^ A target file.
-       -> ModuleString -- ^ A odule name.
+       -> ModuleString -- ^ A module name.
        -> Int          -- ^ Line number.
        -> Int          -- ^ Column number.
        -> Ghc String
