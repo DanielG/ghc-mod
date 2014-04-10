@@ -139,17 +139,20 @@ pretty dflag style = showOneLine dflag style . Gap.typeForUser
 
 ----------------------------------------------------------------
 
+noWaringOptions :: [String]
+noWaringOptions = ["-w:"]
+
 inModuleContext :: Cmd -> Options -> Cradle -> FilePath -> ModuleString -> Ghc String -> String -> Ghc String
 inModuleContext _ opt cradle file modstr action errmsg =
     valid ||> invalid ||> return errmsg
   where
     valid = do
-        void $ initializeFlagsWithCradle opt cradle ["-w:"] False
+        void $ initializeFlagsWithCradle opt cradle noWaringOptions False
         setTargetFiles [file]
         void $ G.load LoadAllTargets
         doif setContextFromTarget action
     invalid = do
-        void $ initializeFlagsWithCradle opt cradle ["-w:"] False
+        void $ initializeFlagsWithCradle opt cradle noWaringOptions False
         setTargetBuffer
         void $ G.load LoadAllTargets
         doif setContextFromTarget action
