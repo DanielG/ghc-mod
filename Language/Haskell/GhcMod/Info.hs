@@ -48,7 +48,7 @@ info :: Options
 info opt cradle file expr =
     inModuleContext opt cradle file exprToInfo "Cannot show info"
   where
-    exprToInfo = do
+    exprToInfo _ = do
         sdoc  <- Gap.infoThing expr
         dflag <- G.getSessionDynFlags
         style <- getStyle
@@ -86,10 +86,7 @@ typeOf :: Options
 typeOf opt cradle file lineNo colNo =
     inModuleContext opt cradle file exprToType errmsg
   where
-    exprToType = do
-      modGraph <- G.getModuleGraph
-      let ms = filter (\m -> G.ml_hs_file (G.ms_location m) == Just file) modGraph
-          modSum = head ms
+    exprToType modSum = do
       srcSpanTypes <- getSrcSpanType modSum lineNo colNo
       dflag <- G.getSessionDynFlags
       style <- getStyle
@@ -138,12 +135,11 @@ pretty dflag style = showOneLine dflag style . Gap.typeForUser
 noWaringOptions :: [String]
 noWaringOptions = ["-w:"]
 
-inModuleContext :: Options -> Cradle -> FilePath -> Ghc String -> String -> Ghc String
+inModuleContext :: Options -> Cradle -> FilePath -> (G.ModSummary -> Ghc String) -> String -> Ghc String
 inModuleContext opt cradle file action errmsg = ghandle handler $ do
     void $ initializeFlagsWithCradle opt cradle noWaringOptions False
     setTargetFiles [file]
     void $ G.load LoadAllTargets
-    void $ G.depanal [] False >>= Gap.setCtx
-    action
+    G.depanal [] False >>= Gap.setCtx file >>= action
  where
    handler (SomeException _) = return errmsg
