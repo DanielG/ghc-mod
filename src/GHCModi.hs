@@ -61,12 +61,15 @@ argspec :: [OptDescr (Options -> Options)]
 argspec = [ Option "b" ["boundary"]
             (ReqArg (\s opts -> opts { lineSeparator = LineSeparator s }) "sep")
             "specify line separator (default is Nul string)"
+          , Option "g" []
+            (ReqArg (\s opts -> opts { ghcOpts = s : ghcOpts opts }) "flag") "specify a ghc flag"
           ]
 
 usage :: String
 usage =    "ghc-modi version " ++ showVersion version ++ "\n"
         ++ "Usage:\n"
         ++ "\t ghc-modi [-b sep]\n"
+        ++ "\t ghc-modi [-g flag]\n"
         ++ "\t ghc-modi help\n"
 
 parseArgs :: [OptDescr (Options -> Options)] -> [String] -> (Options, [String])
