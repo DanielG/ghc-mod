@@ -15,21 +15,18 @@ import CoreUtils (exprType)
 import Data.Function (on)
 import Data.Generics hiding (typeOf)
 import Data.List (sortBy)
-import Data.Maybe (catMaybes, fromMaybe, listToMaybe)
+import Data.Maybe (catMaybes, fromMaybe)
 import Data.Ord as O
-import Data.Time.Clock (getCurrentTime)
-import Exception (gcatch, SomeException(..))
-import GHC (Ghc, LHsBind, LHsExpr, LPat, Id, TypecheckedModule(..), DynFlags, SrcSpan, Type, Located, TypecheckedSource, GenLocated(L), LoadHowMuch(..), TargetId(..))
+import Exception (ghandle, SomeException(..))
+import GHC (Ghc, LHsBind, LHsExpr, LPat, Id, TypecheckedModule(..), DynFlags, SrcSpan, Type, Located, TypecheckedSource, GenLocated(L), LoadHowMuch(..))
 import qualified GHC as G
 import GHC.SYB.Utils (Stage(TypeChecker), everythingStaged)
-import HscTypes (ms_imps)
 import Language.Haskell.GhcMod.Doc (showPage, showOneLine, getStyle)
 import Language.Haskell.GhcMod.GHCApi
-import Language.Haskell.GhcMod.GHCChoice ((||>), goNext)
 import Language.Haskell.GhcMod.Gap (HasType(..))
 import qualified Language.Haskell.GhcMod.Gap as Gap
 import Language.Haskell.GhcMod.Types
-import Outputable (PprStyle, ppr)
+import Outputable (PprStyle)
 import TcHsSyn (hsPatType)
 
 ----------------------------------------------------------------
@@ -42,20 +39,18 @@ data Cmd = Info | Type deriving Eq
 infoExpr :: Options
          -> Cradle
          -> FilePath     -- ^ A target file.
-         -> ModuleString -- ^ A module name.
          -> Expression   -- ^ A Haskell expression.
          -> IO String
-infoExpr opt cradle file modstr expr = (++ "\n") <$> withGHCDummyFile (info opt cradle file modstr expr)
+infoExpr opt cradle file expr = (++ "\n") <$> withGHCDummyFile (info opt cradle file expr)
 
 -- | Obtaining information of a target expression. (GHCi's info:)
 info :: Options
      -> Cradle
      -> FilePath     -- ^ A target file.
-     -> ModuleString -- ^ A module name.
      -> Expression   -- ^ A Haskell expression.
      -> Ghc String
-info opt cradle file modstr expr =
-    inModuleContext Info opt cradle file modstr exprToInfo "Cannot show info"
+info opt cradle file expr =
+    inModuleContext Info opt cradle file exprToInfo "Cannot show info"
   where
     exprToInfo = do
         dflag <- G.getSessionDynFlags
@@ -80,25 +75,25 @@ instance HasType (LPat Id) where
 typeExpr :: Options
          -> Cradle
          -> FilePath     -- ^ A target file.
-         -> ModuleString -- ^ A module name.
          -> Int          -- ^ Line number.
          -> Int          -- ^ Column number.
          -> IO String
-typeExpr opt cradle file modstr lineNo colNo = withGHCDummyFile $ typeOf opt cradle file modstr lineNo colNo
+typeExpr opt cradle file lineNo colNo = withGHCDummyFile $ typeOf opt cradle file lineNo colNo
 
 -- | Obtaining type of a target expression. (GHCi's type:)
 typeOf :: Options
        -> Cradle
        -> FilePath     -- ^ A target file.
-       -> ModuleString -- ^ A module name.
        -> Int          -- ^ Line number.
        -> Int          -- ^ Column number.
        -> Ghc String
-typeOf opt cradle file modstr lineNo colNo =
-    inModuleContext Type opt cradle file modstr exprToType errmsg
+typeOf opt cradle file lineNo colNo =
+    inModuleContext Type opt cradle file exprToType errmsg
   where
     exprToType = do
-      modSum <- G.getModSummary $ G.mkModuleName modstr
+      modGraph <- G.getModuleGraph
+      let ms = filter (\m -> G.ml_hs_file (G.ms_location m) == Just file) modGraph
+          modSum = head ms
       p <- G.parseModule modSum
       tcm@TypecheckedModule{tm_typechecked_source = tcs} <- G.typecheckModule p
       let bs = listifySpans tcs (lineNo, colNo) :: [LHsBind Id]
@@ -141,36 +136,12 @@ pretty dflag style = showOneLine dflag style . Gap.typeForUser
 noWaringOptions :: [String]
 noWaringOptions = ["-w:"]
 
-inModuleContext :: Cmd -> Options -> Cradle -> FilePath -> ModuleString -> Ghc String -> String -> Ghc String
-inModuleContext _ opt cradle file modstr action errmsg =
-    valid ||> invalid ||> return errmsg
-  where
-    valid = do
-        void $ initializeFlagsWithCradle opt cradle noWaringOptions False
-        setTargetFiles [file]
-        void $ G.load LoadAllTargets
-        doif setContextFromTarget action
-    invalid = do
-        void $ initializeFlagsWithCradle opt cradle noWaringOptions False
-        setTargetBuffer
-        void $ G.load LoadAllTargets
-        doif setContextFromTarget action
-    setTargetBuffer = do
-        modgraph <- G.depanal [G.mkModuleName modstr] True
-        dflag <- G.getSessionDynFlags
-        style <- getStyle
-        -- FIXME: "import (implicit) Prelude"
-        let imports = concatMap (map (showPage dflag style . ppr . G.unLoc)) $
-                      map ms_imps modgraph ++ map G.ms_srcimps modgraph
-            moddef = "module " ++ sanitize modstr ++ " where"
-            header = moddef : imports
-        importsBuf <- Gap.toStringBuffer header
-        clkTime <- liftIO getCurrentTime
-        G.setTargets [Gap.mkTarget (TargetModule $ G.mkModuleName modstr)
-                                   True
-                                   (Just (importsBuf, clkTime))]
-    doif m t = m >>= \ok -> if ok then t else goNext
-    sanitize = fromMaybe "SomeModule" . listToMaybe . words
-
-setContextFromTarget :: Ghc Bool
-setContextFromTarget = (G.depanal [] False >>= Gap.setCtx) `gcatch` \(SomeException _) -> return False
+inModuleContext :: Cmd -> Options -> Cradle -> FilePath -> Ghc String -> String -> Ghc String
+inModuleContext _ opt cradle file action errmsg = ghandle handler $ do
+    void $ initializeFlagsWithCradle opt cradle noWaringOptions False
+    setTargetFiles [file]
+    void $ G.load LoadAllTargets
+    void $ G.depanal [] False >>= Gap.setCtx
+    action
+ where
+   handler (SomeException _) = return errmsg

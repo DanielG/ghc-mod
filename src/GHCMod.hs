@@ -38,6 +38,9 @@ usage =    "ghc-mod version " ++ showVersion version ++ "\n"
         ++ "\t ghc-mod doc <module>\n"
         ++ "\t ghc-mod boot\n"
         ++ "\t ghc-mod help\n"
+        ++ "\n"
+        ++ "<module> is not used, anything is OK.\n"
+        ++ "It is necessary to maintain backward compatibility.\n"
 
 ----------------------------------------------------------------
 
@@ -96,7 +99,6 @@ main = flip E.catches handlers $ do
     cradle <- findCradle
     let cmdArg0 = cmdArg !. 0
         cmdArg1 = cmdArg !. 1
-        cmdArg2 = cmdArg !. 2
         cmdArg3 = cmdArg !. 3
         cmdArg4 = cmdArg !. 4
         remainingArgs = tail cmdArg
@@ -111,8 +113,8 @@ main = flip E.catches handlers $ do
       "check"  -> checkSyntax opt cradle remainingArgs
       "expand" -> checkSyntax opt { expandSplice = True } cradle remainingArgs
       "debug"  -> nArgs 1 $ debugInfo opt cradle cmdArg1
-      "info"   -> nArgs 3 infoExpr opt cradle cmdArg1 cmdArg2 cmdArg3
-      "type"   -> nArgs 4 $ typeExpr opt cradle cmdArg1 cmdArg2 (read cmdArg3) (read cmdArg4)
+      "info"   -> nArgs 3 infoExpr opt cradle cmdArg1 cmdArg3
+      "type"   -> nArgs 4 $ typeExpr opt cradle cmdArg1 (read cmdArg3) (read cmdArg4)
       "lint"   -> nArgs 1 withFile (lintSyntax opt) cmdArg1
       "root"   -> nArgs 1 $ rootInfo opt cradle cmdArg1
       "doc"    -> nArgs 1 $ packageDoc opt cradle cmdArg1
