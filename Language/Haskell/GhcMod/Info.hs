@@ -1,5 +1,4 @@
-{-# LANGUAGE TupleSections, FlexibleInstances, TypeSynonymInstances, CPP #-}
-{-# LANGUAGE Rank2Types #-}
+{-# LANGUAGE TupleSections, FlexibleInstances, Rank2Types #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
 module Language.Haskell.GhcMod.Info (
@@ -14,7 +13,6 @@ import Control.Monad (void)
 import CoreMonad (liftIO)
 import CoreUtils (exprType)
 import Data.Function (on)
---import Data.Generics (Typeable, GenericQ, mkQ)
 import Data.Generics hiding (typeOf)
 import Data.List (sortBy)
 import Data.Maybe (catMaybes, fromMaybe, listToMaybe)
