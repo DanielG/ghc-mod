@@ -47,8 +47,7 @@ info :: FilePath     -- ^ A target file.
 info file expr = do
     void $ Gap.setCtx file
     sdoc  <- Gap.infoThing expr
-    dflag <- G.getSessionDynFlags
-    style <- getStyle
+    (dflag, style) <- getFlagStyle
     return $ showPage dflag style sdoc
 
 ----------------------------------------------------------------
@@ -84,9 +83,8 @@ typeOf :: Options
        -> Ghc String
 typeOf opt file lineNo colNo = do
     modSum <- Gap.setCtx file
+    (dflag, style) <- getFlagStyle
     srcSpanTypes <- getSrcSpanType modSum lineNo colNo
-    dflag <- G.getSessionDynFlags
-    style <- getStyle
     let tups = map (toTup dflag style) $ sortBy (cmp `on` fst) srcSpanTypes
     return $ convert opt tups
 
@@ -138,3 +136,11 @@ inModuleContext opt cradle file action errmsg = ghandle handler $ do
     action
  where
    handler (SomeException _) = return errmsg
+
+----------------------------------------------------------------
+
+getFlagStyle :: Ghc (DynFlags, PprStyle)
+getFlagStyle = do
+    dflag <- G.getSessionDynFlags
+    style <- getStyle
+    return (dflag, style)
