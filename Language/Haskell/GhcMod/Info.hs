@@ -121,7 +121,7 @@ typeOf opt cradle file modstr lineNo colNo =
     cmp a b
       | a `G.isSubspanOf` b = O.LT
       | b `G.isSubspanOf` a = O.GT
-      | otherwise = O.EQ
+      | otherwise           = O.EQ
 
     errmsg = convert opt ([] :: [((Int,Int,Int,Int),String)])
 
