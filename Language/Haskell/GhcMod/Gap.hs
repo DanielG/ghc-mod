@@ -184,9 +184,10 @@ fOptions = [option | (option,_,_) <- fFlags]
 ----------------------------------------------------------------
 ----------------------------------------------------------------
 
-setCtx :: FilePath -> [ModSummary] -> Ghc ModSummary
+setCtx :: FilePath -> Ghc ModSummary
 #if __GLASGOW_HASKELL__ >= 704
-setCtx file mss = do
+setCtx file = do
+    mss <- getModuleGraph
 #if __GLASGOW_HASKELL__ >= 706
     let modName = IIModule . moduleName . ms_mod
 #else
@@ -197,7 +198,8 @@ setCtx file mss = do
     let [ms] = filter (\m -> ml_hs_file (ms_location m) == Just file) mss
     return ms
 #else
-setCtx file mss = do
+setCtx file = do
+    mss <- getModuleGraph
     top <- map ms_mod <$> filterM isTop mss
     setContext top []
     let [ms] = filter (\m -> ml_hs_file (ms_location m) == Just file) mss

@@ -140,6 +140,6 @@ inModuleContext opt cradle file action errmsg = ghandle handler $ do
     void $ initializeFlagsWithCradle opt cradle noWaringOptions False
     setTargetFiles [file]
     void $ G.load LoadAllTargets
-    G.depanal [] False >>= Gap.setCtx file >>= action
+    Gap.setCtx file >>= action
  where
    handler (SomeException _) = return errmsg
