@@ -49,8 +49,8 @@ info opt cradle file expr =
     inModuleContext opt cradle file exprToInfo "Cannot show info"
   where
     exprToInfo = do
+        sdoc  <- Gap.infoThing expr
         dflag <- G.getSessionDynFlags
-        sdoc <- Gap.infoThing expr
         style <- getStyle
         return $ showPage dflag style sdoc
 
