@@ -20,6 +20,7 @@ import Data.List (sortBy)
 import Data.Maybe (catMaybes, fromMaybe, listToMaybe)
 import Data.Ord as O
 import Data.Time.Clock (getCurrentTime)
+import Exception (gcatch, SomeException(..))
 import GHC (Ghc, LHsBind, LHsExpr, LPat, Id, TypecheckedModule(..), DynFlags, SrcSpan, Type, Located, TypecheckedSource, GenLocated(L), LoadHowMuch(..), TargetId(..))
 import qualified GHC as G
 import GHC.SYB.Utils (Stage(TypeChecker), everythingStaged)
@@ -160,6 +161,7 @@ inModuleContext _ opt cradle file modstr action errmsg =
         modgraph <- G.depanal [G.mkModuleName modstr] True
         dflag <- G.getSessionDynFlags
         style <- getStyle
+        -- FIXME: "import (implicit) Prelude"
         let imports = concatMap (map (showPage dflag style . ppr . G.unLoc)) $
                       map ms_imps modgraph ++ map G.ms_srcimps modgraph
             moddef = "module " ++ sanitize modstr ++ " where"
@@ -173,4 +175,4 @@ inModuleContext _ opt cradle file modstr action errmsg =
     sanitize = fromMaybe "SomeModule" . listToMaybe . words
 
 setContextFromTarget :: Ghc Bool
-setContextFromTarget = G.depanal [] False >>= Gap.setCtx
+setContextFromTarget = (G.depanal [] False >>= Gap.setCtx) `gcatch` \(SomeException _) -> return False
