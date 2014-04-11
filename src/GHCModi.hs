@@ -36,7 +36,7 @@ import qualified Data.Map as M
 import Data.Maybe (fromMaybe)
 import Data.Set (Set)
 import qualified Data.Set as S
-import Data.Typeable
+import Data.Typeable (Typeable)
 import Data.Version (showVersion)
 import qualified Exception as GE
 import GHC (Ghc, LoadHowMuch(LoadAllTargets), TargetId(TargetFile))
@@ -119,7 +119,7 @@ main = handle [GE.Handler cmdHandler, GE.Handler someHandler] $
         mvar <- liftIO newEmptyMVar
         mlibdir <- getSystemLibDir
         void $ forkIO $ setupDB cradle mlibdir opt mvar
-        run cradle mlibdir opt $ loop S.empty ls mvar
+        run cradle mlibdir opt $ loop opt S.empty ls mvar
 
 ----------------------------------------------------------------
 
@@ -143,8 +143,8 @@ setupDB cradle mlibdir opt mvar = E.handle handler $ do
 
 ----------------------------------------------------------------
 
-loop :: Set FilePath -> LineSeparator -> MVar DB -> Logger -> Ghc ()
-loop set ls mvar readLog  = do
+loop :: Options -> Set FilePath -> LineSeparator -> MVar DB -> Logger -> Ghc ()
+loop opt set ls mvar readLog  = do
     cmdArg <- liftIO getLine
     let (cmd,arg') = break (== ' ') cmdArg
         arg = dropWhile (== ' ') arg'
@@ -152,11 +152,13 @@ loop set ls mvar readLog  = do
         "check" -> checkStx set ls readLog arg
         "find"  -> findSym set mvar arg
         "lint"  -> lintStx set ls arg
+        "info"  -> showInfo set ls readLog arg
+        "type"  -> showType opt set ls readLog arg
         _       -> return ([], False, set)
     mapM_ (liftIO . putStrLn) msgs
     liftIO $ putStrLn $ if ok then "OK" else "NG"
     liftIO $ hFlush stdout
-    when ok $ loop set' ls mvar readLog
+    when ok $ loop opt set' ls mvar readLog
 
 ----------------------------------------------------------------
 
@@ -233,3 +235,28 @@ parseLintOptions optFile = case brk (== ']') (dropWhile (/= '[') optFile) of
     brk p (x:xs')
         | p x        =  ([x],xs')
         | otherwise  =  let (ys,zs) = brk p xs' in (x:ys,zs)
+
+showInfo :: Set FilePath
+         -> LineSeparator
+         -> Logger
+         -> FilePath
+         -> Ghc ([String], Bool, Set FilePath)
+showInfo set ls readLog fileArg = do
+    let [file, expr] = words fileArg
+    (_, _, set') <- checkStx set ls readLog file
+    msgs <- info file expr
+    _ <- liftIO readLog
+    return ([msgs], True, set')
+
+showType :: Options
+         -> Set FilePath
+         -> LineSeparator
+         -> Logger
+         -> FilePath
+         -> Ghc ([String], Bool, Set FilePath)
+showType opt set ls readLog fileArg = do
+    let [file, line, column] = words fileArg
+    (_, _, set') <- checkStx set ls readLog file
+    msgs <- typeOf opt file (read line) (read column)
+    _ <- liftIO readLog
+    return ([msgs], True, set')
