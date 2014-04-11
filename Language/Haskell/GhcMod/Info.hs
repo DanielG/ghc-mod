@@ -31,10 +31,6 @@ import TcHsSyn (hsPatType)
 
 ----------------------------------------------------------------
 
-data Cmd = Info | Type deriving Eq
-
-----------------------------------------------------------------
-
 -- | Obtaining information of a target expression. (GHCi's info:)
 infoExpr :: Options
          -> Cradle
@@ -50,7 +46,7 @@ info :: Options
      -> Expression   -- ^ A Haskell expression.
      -> Ghc String
 info opt cradle file expr =
-    inModuleContext Info opt cradle file exprToInfo "Cannot show info"
+    inModuleContext opt cradle file exprToInfo "Cannot show info"
   where
     exprToInfo = do
         dflag <- G.getSessionDynFlags
@@ -88,7 +84,7 @@ typeOf :: Options
        -> Int          -- ^ Column number.
        -> Ghc String
 typeOf opt cradle file lineNo colNo =
-    inModuleContext Type opt cradle file exprToType errmsg
+    inModuleContext opt cradle file exprToType errmsg
   where
     exprToType = do
       modGraph <- G.getModuleGraph
@@ -136,8 +132,8 @@ pretty dflag style = showOneLine dflag style . Gap.typeForUser
 noWaringOptions :: [String]
 noWaringOptions = ["-w:"]
 
-inModuleContext :: Cmd -> Options -> Cradle -> FilePath -> Ghc String -> String -> Ghc String
-inModuleContext _ opt cradle file action errmsg = ghandle handler $ do
+inModuleContext :: Options -> Cradle -> FilePath -> Ghc String -> String -> Ghc String
+inModuleContext opt cradle file action errmsg = ghandle handler $ do
     void $ initializeFlagsWithCradle opt cradle noWaringOptions False
     setTargetFiles [file]
     void $ G.load LoadAllTargets
