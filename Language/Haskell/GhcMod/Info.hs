@@ -37,22 +37,19 @@ infoExpr :: Options
          -> FilePath     -- ^ A target file.
          -> Expression   -- ^ A Haskell expression.
          -> IO String
-infoExpr opt cradle file expr = (++ "\n") <$> withGHCDummyFile (info opt cradle file expr)
+infoExpr opt cradle file expr = (++ "\n") <$> withGHCDummyFile
+    (inModuleContext opt cradle file (info file expr) "Cannot show info")
 
 -- | Obtaining information of a target expression. (GHCi's info:)
-info :: Options
-     -> Cradle
-     -> FilePath     -- ^ A target file.
+info :: FilePath     -- ^ A target file.
      -> Expression   -- ^ A Haskell expression.
      -> Ghc String
-info opt cradle file expr =
-    inModuleContext opt cradle file exprToInfo "Cannot show info"
-  where
-    exprToInfo _ = do
-        sdoc  <- Gap.infoThing expr
-        dflag <- G.getSessionDynFlags
-        style <- getStyle
-        return $ showPage dflag style sdoc
+info file expr = do
+    void $ Gap.setCtx file
+    sdoc  <- Gap.infoThing expr
+    dflag <- G.getSessionDynFlags
+    style <- getStyle
+    return $ showPage dflag style sdoc
 
 ----------------------------------------------------------------
 
@@ -74,26 +71,24 @@ typeExpr :: Options
          -> Int          -- ^ Line number.
          -> Int          -- ^ Column number.
          -> IO String
-typeExpr opt cradle file lineNo colNo = withGHCDummyFile $ typeOf opt cradle file lineNo colNo
+typeExpr opt cradle file lineNo colNo = withGHCDummyFile $
+    inModuleContext opt cradle file (typeOf opt file lineNo colNo) errmsg
+  where
+    errmsg = convert opt ([] :: [((Int,Int,Int,Int),String)])
 
 -- | Obtaining type of a target expression. (GHCi's type:)
 typeOf :: Options
-       -> Cradle
        -> FilePath     -- ^ A target file.
        -> Int          -- ^ Line number.
        -> Int          -- ^ Column number.
        -> Ghc String
-typeOf opt cradle file lineNo colNo =
-    inModuleContext opt cradle file exprToType errmsg
-  where
-    exprToType modSum = do
-      srcSpanTypes <- getSrcSpanType modSum lineNo colNo
-      dflag <- G.getSessionDynFlags
-      style <- getStyle
-      let tups = map (toTup dflag style) $ sortBy (cmp `on` fst) srcSpanTypes
-      return $ convert opt tups
-
-    errmsg = convert opt ([] :: [((Int,Int,Int,Int),String)])
+typeOf opt file lineNo colNo = do
+    modSum <- Gap.setCtx file
+    srcSpanTypes <- getSrcSpanType modSum lineNo colNo
+    dflag <- G.getSessionDynFlags
+    style <- getStyle
+    let tups = map (toTup dflag style) $ sortBy (cmp `on` fst) srcSpanTypes
+    return $ convert opt tups
 
 getSrcSpanType :: G.ModSummary -> Int -> Int -> Ghc [(SrcSpan, Type)]
 getSrcSpanType modSum lineNo colNo = do
@@ -135,11 +130,11 @@ pretty dflag style = showOneLine dflag style . Gap.typeForUser
 noWaringOptions :: [String]
 noWaringOptions = ["-w:"]
 
-inModuleContext :: Options -> Cradle -> FilePath -> (G.ModSummary -> Ghc String) -> String -> Ghc String
+inModuleContext :: Options -> Cradle -> FilePath -> Ghc String -> String -> Ghc String
 inModuleContext opt cradle file action errmsg = ghandle handler $ do
     void $ initializeFlagsWithCradle opt cradle noWaringOptions False
     setTargetFiles [file]
     void $ G.load LoadAllTargets
-    Gap.setCtx file >>= action
+    action
  where
    handler (SomeException _) = return errmsg
