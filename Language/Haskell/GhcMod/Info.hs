@@ -90,31 +90,25 @@ typeOf opt cradle file lineNo colNo =
       modGraph <- G.getModuleGraph
       let ms = filter (\m -> G.ml_hs_file (G.ms_location m) == Just file) modGraph
           modSum = head ms
-      p <- G.parseModule modSum
-      tcm@TypecheckedModule{tm_typechecked_source = tcs} <- G.typecheckModule p
-      let bs = listifySpans tcs (lineNo, colNo) :: [LHsBind Id]
-          es = listifySpans tcs (lineNo, colNo) :: [LHsExpr Id]
-          ps = listifySpans tcs (lineNo, colNo) :: [LPat Id]
-      bts <- mapM (getType tcm) bs
-      ets <- mapM (getType tcm) es
-      pts <- mapM (getType tcm) ps
+      srcSpanTypes <- getSrcSpanType modSum lineNo colNo
       dflag <- G.getSessionDynFlags
       style <- getStyle
-      let sss = map (toTup dflag style) $ sortBy (cmp `on` fst) $ catMaybes $ concat [ets, bts, pts]
-      return $ convert opt sss
-
-    toTup :: DynFlags -> PprStyle -> (SrcSpan, Type) -> ((Int,Int,Int,Int),String)
-    toTup dflag style (spn, typ) = (fourInts spn, pretty dflag style typ)
-
-    fourInts :: SrcSpan -> (Int,Int,Int,Int)
-    fourInts = fromMaybe (0,0,0,0) . Gap.getSrcSpan
-
-    cmp a b
-      | a `G.isSubspanOf` b = O.LT
-      | b `G.isSubspanOf` a = O.GT
-      | otherwise           = O.EQ
+      let tups = map (toTup dflag style) $ sortBy (cmp `on` fst) srcSpanTypes
+      return $ convert opt tups
 
     errmsg = convert opt ([] :: [((Int,Int,Int,Int),String)])
+
+getSrcSpanType :: G.ModSummary -> Int -> Int -> Ghc [(SrcSpan, Type)]
+getSrcSpanType modSum lineNo colNo = do
+    p <- G.parseModule modSum
+    tcm@TypecheckedModule{tm_typechecked_source = tcs} <- G.typecheckModule p
+    let bs = listifySpans tcs (lineNo, colNo) :: [LHsBind Id]
+        es = listifySpans tcs (lineNo, colNo) :: [LHsExpr Id]
+        ps = listifySpans tcs (lineNo, colNo) :: [LPat Id]
+    bts <- mapM (getType tcm) bs
+    ets <- mapM (getType tcm) es
+    pts <- mapM (getType tcm) ps
+    return $ catMaybes $ concat [ets, bts, pts]
 
 listifySpans :: Typeable a => TypecheckedSource -> (Int, Int) -> [Located a]
 listifySpans tcs lc = listifyStaged TypeChecker p tcs
@@ -123,6 +117,18 @@ listifySpans tcs lc = listifyStaged TypeChecker p tcs
 
 listifyStaged :: Typeable r => Stage -> (r -> Bool) -> GenericQ [r]
 listifyStaged s p = everythingStaged s (++) [] ([] `mkQ` (\x -> [x | p x]))
+
+cmp :: SrcSpan -> SrcSpan -> Ordering
+cmp a b
+  | a `G.isSubspanOf` b = O.LT
+  | b `G.isSubspanOf` a = O.GT
+  | otherwise           = O.EQ
+
+toTup :: DynFlags -> PprStyle -> (SrcSpan, Type) -> ((Int,Int,Int,Int),String)
+toTup dflag style (spn, typ) = (fourInts spn, pretty dflag style typ)
+
+fourInts :: SrcSpan -> (Int,Int,Int,Int)
+fourInts = fromMaybe (0,0,0,0) . Gap.getSrcSpan
 
 pretty :: DynFlags -> PprStyle -> Type -> String
 pretty dflag style = showOneLine dflag style . Gap.typeForUser
