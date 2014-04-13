@@ -20,9 +20,7 @@ spec = do
             parseCabalFile "test/data/broken-cabal/broken.cabal" `shouldThrow` (\(_::IOException) -> True)
 
     describe "getCompilerOptions" $ do
-        it "gets necessary CompilerOptions after `cabal configure'" $ do
-            withDirectory "test/data" $ \_ ->
-                Cabal.defaultMainArgs ["configure"]
+        it "gets necessary CompilerOptions" $ do
             withDirectory "test/data/subdir1/subdir2" $ \dir -> do
                 cradle <- findCradle
                 pkgDesc <- parseCabalFile $ fromJust $ cradleCabalFile cradle

@@ -10,7 +10,7 @@ module Language.Haskell.GhcMod.CabalApi (
   ) where
 
 import Control.Applicative ((<$>))
-import Control.Exception (throwIO)
+import Control.Exception (throwIO,catch)
 import Control.Monad (filterM)
 import CoreMonad (liftIO)
 import Data.Maybe (maybeToList)
@@ -30,6 +30,7 @@ import Distribution.Simple.Program.Types (programName, programFindVersion)
 import Distribution.Simple.BuildPaths (defaultDistPref)
 import Distribution.Simple.Configure (getPersistBuildConfig)
 import Distribution.Simple.LocalBuildInfo (externalPackageDeps)
+import Distribution.Simple as Cabal (defaultMainArgs)
 import Distribution.System (buildPlatform)
 import Distribution.Text (display)
 import Distribution.Verbosity (silent)
@@ -38,7 +39,7 @@ import Language.Haskell.GhcMod.Types
 import Language.Haskell.GhcMod.Cradle
 import System.Directory (doesFileExist)
 import System.FilePath ((</>))
-
+import System.IO (hPutStrLn, stderr)
 ----------------------------------------------------------------
 
 -- | Getting necessary 'CompilerOptions' from three information sources.
@@ -56,9 +57,19 @@ getCompilerOptions ghcopts cradle pkgDesc = do
 ----------------------------------------------------------------
 
 getExternalPackageDeps :: Cradle -> IO [InstalledPackageId]
-getExternalPackageDeps cradle = do
-  lbi <- getPersistBuildConfig $ (cradleRootDir cradle) </> defaultDistPref
-  return $ map fst $ externalPackageDeps lbi
+getExternalPackageDeps cradle = getExternalPackageDeps' `catch` handler
+ where
+   getExternalPackageDeps' = do
+     lbi <- getPersistBuildConfig $ (cradleRootDir cradle) </> defaultDistPref
+     return $ map fst $ externalPackageDeps lbi
+   msg = "Package has never been configured. Configuring with default"
+         ++ " flags. If this\nfails, please run configure manually."
+   handler :: IOError -> IO [InstalledPackageId]
+   handler _ = do
+         hPutStrLn stderr msg
+         Cabal.defaultMainArgs ["configure", "-v0"]
+         getExternalPackageDeps'
+
 
 ----------------------------------------------------------------
 -- Include directories for modules
