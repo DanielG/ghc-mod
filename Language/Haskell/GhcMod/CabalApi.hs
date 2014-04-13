@@ -9,6 +9,7 @@ module Language.Haskell.GhcMod.CabalApi (
   , cabalAllTargets
   ) where
 
+import Prelude hiding (catch)
 import Control.Applicative ((<$>))
 import Control.Exception (throwIO,catch)
 import Control.Monad (filterM)
