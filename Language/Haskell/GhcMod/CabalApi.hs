@@ -1,4 +1,4 @@
-{-# LANGUAGE OverloadedStrings, CPP #-}
+{-# LANGUAGE OverloadedStrings, TupleSections, CPP #-}
 
 module Language.Haskell.GhcMod.CabalApi (
     getCompilerOptions
@@ -23,9 +23,13 @@ import Distribution.PackageDescription (PackageDescription, BuildInfo, TestSuite
 import qualified Distribution.PackageDescription as P
 import Distribution.PackageDescription.Configuration (finalizePackageDescription)
 import Distribution.PackageDescription.Parse (readPackageDescription)
+import Distribution.Package (InstalledPackageId)
 import Distribution.Simple.Compiler (CompilerId(..), CompilerFlavor(..))
 import Distribution.Simple.Program (ghcProgram)
 import Distribution.Simple.Program.Types (programName, programFindVersion)
+import Distribution.Simple.BuildPaths (defaultDistPref)
+import Distribution.Simple.Configure (getPersistBuildConfig)
+import Distribution.Simple.LocalBuildInfo (externalPackageDeps)
 import Distribution.System (buildPlatform)
 import Distribution.Text (display)
 import Distribution.Verbosity (silent)
@@ -33,7 +37,7 @@ import Distribution.Version (Version)
 import Language.Haskell.GhcMod.Types
 import Language.Haskell.GhcMod.Cradle
 import System.Directory (doesFileExist)
-import System.FilePath (dropExtension, takeFileName, (</>))
+import System.FilePath ((</>))
 
 ----------------------------------------------------------------
 
@@ -41,38 +45,20 @@ import System.FilePath (dropExtension, takeFileName, (</>))
 getCompilerOptions :: [GHCOption] -> Cradle -> PackageDescription -> IO CompilerOptions
 getCompilerOptions ghcopts cradle pkgDesc = do
     gopts <- getGHCOptions ghcopts cradle rdir $ head buildInfos
+    depPkgs <- getExternalPackageDeps cradle
     return $ CompilerOptions gopts idirs depPkgs
   where
     wdir       = cradleCurrentDir cradle
     rdir       = cradleRootDir    cradle
-    Just cfile = cradleCabalFile  cradle
-    pkgs       = cradlePackages   cradle
     buildInfos = cabalAllBuildInfo pkgDesc
     idirs      = includeDirectories rdir wdir $ cabalSourceDirs buildInfos
-    depPkgs    = attachPackageIds pkgs $ removeThem problematicPackages $ removeMe cfile $ cabalDependPackages buildInfos
 
 ----------------------------------------------------------------
--- Dependent packages
 
-removeMe :: FilePath -> [PackageBaseName] -> [PackageBaseName]
-removeMe cabalfile = filter (/= me)
-  where
-    me = dropExtension $ takeFileName cabalfile
-
-removeThem :: [PackageBaseName] -> [PackageBaseName] -> [PackageBaseName]
-removeThem badpkgs = filter (`notElem` badpkgs)
-
-problematicPackages :: [PackageBaseName]
-problematicPackages = [
-    "base-compat" -- providing "Prelude"
-  ]
-
-attachPackageIds :: [Package] -> [PackageBaseName] -> [Package]
-attachPackageIds pkgs = map attachId
-  where
-    attachId x = case lookup x pkgs of
-      Nothing -> (x, Nothing)
-      Just p -> (x, p)
+getExternalPackageDeps :: Cradle -> IO [InstalledPackageId]
+getExternalPackageDeps cradle = do
+  lbi <- getPersistBuildConfig $ (cradleRootDir cradle) </> defaultDistPref
+  return $ map fst $ externalPackageDeps lbi
 
 ----------------------------------------------------------------
 -- Include directories for modules

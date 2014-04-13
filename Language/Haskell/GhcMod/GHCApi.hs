@@ -16,6 +16,7 @@ import Control.Monad (void, forM)
 import CoreMonad (liftIO)
 import Data.Maybe (isJust, fromJust)
 import Distribution.PackageDescription (PackageDescription)
+import Distribution.Package (InstalledPackageId)
 import DynFlags (dopt_set)
 import Exception (ghandle, SomeException(..))
 import GHC (Ghc, GhcMonad, DynFlags(..), GhcLink(..), HscTarget(..))
@@ -131,7 +132,12 @@ initializeFlags opt = do
 
 ----------------------------------------------------------------
 
-modifyFlags :: DynFlags -> [IncludeDir] -> [Package] -> Bool -> Build -> DynFlags
+modifyFlags :: DynFlags
+            -> [IncludeDir]
+            -> [InstalledPackageId]
+            -> Bool
+            -> Build
+            -> DynFlags
 modifyFlags d0 idirs depPkgs splice build
   | splice    = setSplice d4
   | otherwise = d4

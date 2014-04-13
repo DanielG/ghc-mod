@@ -40,7 +40,7 @@ debug opt cradle fileName = do
       , "Cabal file:          " ++ cabalFile
       , "GHC options:         " ++ unwords gopts
       , "Include directories: " ++ unwords incDir
-      , "Dependent packages:  " ++ intercalate ", " (map fst pkgs)
+      , "Dependent packages:  " ++ intercalate ", " (map show pkgs)
       , "System libraries:    " ++ fromMaybe "" mglibdir
       ]
   where
