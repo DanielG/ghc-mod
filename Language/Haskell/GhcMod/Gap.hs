@@ -44,13 +44,14 @@ import ErrUtils
 import FastString
 import HscTypes
 import Language.Haskell.GhcMod.GHCChoice
-import Language.Haskell.GhcMod.Types hiding (convert)
 import NameSet
 import Outputable
 import PprTyThing
 import StringBuffer
 import TcType
 import Var (varType)
+import Distribution.Package (InstalledPackageId)
+import Distribution.Text (display)
 
 import qualified InstEnv
 import qualified Pretty
@@ -232,7 +233,7 @@ setCabalPkg dflag = dopt_set dflag Opt_BuildingCabalPackage
 
 ----------------------------------------------------------------
 
-addDevPkgs :: DynFlags -> [Package] -> DynFlags
+addDevPkgs :: DynFlags -> [InstalledPackageId] -> DynFlags
 addDevPkgs df []   = df
 addDevPkgs df pkgs = df''
   where
@@ -244,8 +245,7 @@ addDevPkgs df pkgs = df''
     df'' = df' {
         packageFlags = map expose pkgs ++ packageFlags df
       }
-    expose (pkg, Nothing) = ExposePackage pkg
-    expose (_, Just pid) = ExposePackageId pid
+    expose pid = ExposePackageId (display pid)
 
 ----------------------------------------------------------------
 ----------------------------------------------------------------

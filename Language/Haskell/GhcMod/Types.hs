@@ -2,6 +2,8 @@
 
 module Language.Haskell.GhcMod.Types where
 
+import Distribution.Package (InstalledPackageId)
+
 -- | Output style.
 data OutputStyle = LispStyle  -- ^ S expression style.
                  | PlainStyle -- ^ Plain textstyle.
@@ -118,5 +120,5 @@ type ModuleString = String
 data CompilerOptions = CompilerOptions {
     ghcOptions  :: [GHCOption]  -- ^ Command line options
   , includeDirs :: [IncludeDir] -- ^ Include directories for modules
-  , depPackages :: [Package]    -- ^ Dependent package names
+  , depPackages :: [InstalledPackageId]    -- ^ Dependent package names
   } deriving (Eq, Show)
