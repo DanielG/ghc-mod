@@ -1,4 +1,4 @@
-{-# LANGUAGE OverloadedStrings, TupleSections, CPP #-}
+{-# LANGUAGE OverloadedStrings, CPP #-}
 
 module Language.Haskell.GhcMod.CabalApi (
     getCompilerOptions
@@ -197,4 +197,3 @@ cabalAllTargets pd = do
     getExecutableTarget exe = do
       let maybeExes = [p </> e | p <- P.hsSourceDirs $ P.buildInfo exe, e <- [P.modulePath exe]]
       liftIO $ filterM doesFileExist maybeExes
-
