@@ -9,6 +9,9 @@ module Language.Haskell.GhcMod.CabalApi (
   , cabalAllTargets
   ) where
 
+import Language.Haskell.GhcMod.Types
+import Language.Haskell.GhcMod.GhcPkg
+
 import Control.Applicative ((<$>))
 import Control.Exception (throwIO)
 import Control.Monad (filterM)
@@ -30,8 +33,6 @@ import Distribution.System (buildPlatform)
 import Distribution.Text (display)
 import Distribution.Verbosity (silent)
 import Distribution.Version (Version)
-import Language.Haskell.GhcMod.Types
-import Language.Haskell.GhcMod.Cradle
 import System.Directory (doesFileExist)
 import System.FilePath (dropExtension, takeFileName, (</>))
 
@@ -114,7 +115,7 @@ getGHCOptions ghcopts cradle rdir binfo = do
     let cpps = map ("-optP" ++) $ P.cppOptions binfo ++ cabalCpp
     return $ ghcopts ++ pkgDb ++ exts ++ [lang] ++ libs ++ libDirs ++ cpps
   where
-    pkgDb = userPackageDbOptsForGhc $ cradlePackageDb cradle
+    pkgDb = ghcDbStackOpts $ cradlePkgDbStack cradle
     lang = maybe "-XHaskell98" (("-X" ++) . display) $ P.defaultLanguage binfo
     libDirs = map ("-L" ++) $ P.extraLibDirs binfo
     exts = map (("-X" ++) . display) $ P.usedExtensions binfo

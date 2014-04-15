@@ -54,6 +54,7 @@ Library
                         Language.Haskell.GhcMod.ErrMsg
                         Language.Haskell.GhcMod.Flag
                         Language.Haskell.GhcMod.GHCApi
+                        Language.Haskell.GhcMod.GhcPkg
                         Language.Haskell.GhcMod.GHCChoice
                         Language.Haskell.GhcMod.Gap
                         Language.Haskell.GhcMod.Info
@@ -117,10 +118,11 @@ Test-Suite doctest
 
 Test-Suite spec
   Default-Language:     Haskell2010
-  Main-Is:              Spec.hs
+  Main-Is:              Main.hs
   Hs-Source-Dirs:       test, .
   Type:                 exitcode-stdio-1.0
   Other-Modules:        Dir
+                        Spec
                         BrowseSpec
                         CabalApiSpec
                         CheckSpec
@@ -129,6 +131,7 @@ Test-Suite spec
                         LangSpec
                         LintSpec
                         ListSpec
+                        GhcPkgSpec
   Build-Depends:        base >= 4.0 && < 5
                       , containers
                       , directory
