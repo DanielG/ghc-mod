@@ -39,10 +39,14 @@ import System.FilePath (dropExtension, takeFileName, (</>))
 ----------------------------------------------------------------
 
 -- | Getting necessary 'CompilerOptions' from three information sources.
-getCompilerOptions :: [GHCOption] -> Cradle -> PackageDescription -> IO CompilerOptions
+getCompilerOptions :: [GHCOption]
+                   -> Cradle
+                   -> PackageDescription
+                   -> IO CompilerOptions
 getCompilerOptions ghcopts cradle pkgDesc = do
     gopts <- getGHCOptions ghcopts cradle rdir $ head buildInfos
-    return $ CompilerOptions gopts idirs depPkgs
+    dbPkgs <- getPackageDbPackages rdir
+    return $ CompilerOptions gopts idirs (depPkgs dbPkgs)
   where
     wdir       = cradleCurrentDir cradle
     rdir       = cradleRootDir    cradle
@@ -50,7 +54,12 @@ getCompilerOptions ghcopts cradle pkgDesc = do
     pkgs       = cradlePackages   cradle
     buildInfos = cabalAllBuildInfo pkgDesc
     idirs      = includeDirectories rdir wdir $ cabalSourceDirs buildInfos
-    depPkgs    = attachPackageIds pkgs $ removeThem problematicPackages $ removeMe cfile $ cabalDependPackages buildInfos
+    depPkgs ps = attachPackageIds pkgs
+                   $ removeThem problematicPackages
+                   $ removeMe cfile
+                   $ filter (`elem` ps) -- remove packages not available in any
+                                        -- package dbs
+                   $ cabalDependPackages buildInfos
 
 ----------------------------------------------------------------
 -- Dependent packages
@@ -212,4 +221,3 @@ cabalAllTargets pd = do
     getExecutableTarget exe = do
       let maybeExes = [p </> e | p <- P.hsSourceDirs $ P.buildInfo exe, e <- [P.modulePath exe]]
       liftIO $ filterM doesFileExist maybeExes
-
