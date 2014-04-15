@@ -88,13 +88,16 @@ data Cradle = Cradle {
   , cradleRootDir    :: FilePath
   -- | The file name of the found cabal file.
   , cradleCabalFile  :: Maybe FilePath
-  -- | User package db. (\"\/foo\/bar\/i386-osx-ghc-7.6.3-packages.conf.d\")
-  , cradlePackageDb  :: Maybe FilePath
-  -- | Dependent packages.
+  -- | Package database stack
+  , cradlePkgDbStack  :: [GhcPkgDb]
+  -- | Package dependencies
   , cradlePackages   :: [Package]
   } deriving (Eq, Show)
 
 ----------------------------------------------------------------
+
+-- | GHC package database flags.
+data GhcPkgDb = GlobalDb | UserDb | PackageDb String deriving (Eq, Show)
 
 -- | A single GHC command line option.
 type GHCOption  = String

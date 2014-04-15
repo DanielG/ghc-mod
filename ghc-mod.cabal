@@ -26,7 +26,7 @@ Data-Files:             Makefile ghc.el ghc-func.el ghc-doc.el ghc-comp.el
 Extra-Source-Files:     ChangeLog
 			test/data/*.cabal
                         test/data/*.hs
-                        test/data/cabal.sandbox.config
+                        test/data/cabal.sandbox.config.in
                         test/data/.cabal-sandbox/i386-osx-ghc-7.6.3-packages.conf.d/dummy
                         test/data/broken-cabal/*.cabal
                         test/data/broken-sandbox/*.cabal
@@ -35,6 +35,8 @@ Extra-Source-Files:     ChangeLog
                         test/data/check-test-subdir/src/Check/Test/*.hs
                         test/data/check-test-subdir/test/*.hs
                         test/data/check-test-subdir/test/Bar/*.hs
+                        test/data/check-packageid/cabal.sandbox.config.in
+                        test/data/check-packageid/.cabal-sandbox/i386-osx-ghc-7.6.3-packages.conf.d/template-haskell-2.8.0.0-32d4f24abdbb6bf41272b183b2e23e9c.conf
                         test/data/ghc-mod-check/*.cabal
                         test/data/ghc-mod-check/*.hs
                         test/data/ghc-mod-check/Data/*.hs
@@ -54,6 +56,7 @@ Library
                         Language.Haskell.GhcMod.ErrMsg
                         Language.Haskell.GhcMod.Flag
                         Language.Haskell.GhcMod.GHCApi
+                        Language.Haskell.GhcMod.GhcPkg
                         Language.Haskell.GhcMod.GHCChoice
                         Language.Haskell.GhcMod.Gap
                         Language.Haskell.GhcMod.Info
@@ -117,10 +120,11 @@ Test-Suite doctest
 
 Test-Suite spec
   Default-Language:     Haskell2010
-  Main-Is:              Spec.hs
+  Main-Is:              Main.hs
   Hs-Source-Dirs:       test, .
   Type:                 exitcode-stdio-1.0
   Other-Modules:        Dir
+                        Spec
                         BrowseSpec
                         CabalApiSpec
                         CheckSpec
@@ -129,6 +133,7 @@ Test-Suite spec
                         LangSpec
                         LintSpec
                         ListSpec
+                        GhcPkgSpec
   Build-Depends:        base >= 4.0 && < 5
                       , containers
                       , directory

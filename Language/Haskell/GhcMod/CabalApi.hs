@@ -9,6 +9,9 @@ module Language.Haskell.GhcMod.CabalApi (
   , cabalAllTargets
   ) where
 
+import Language.Haskell.GhcMod.Types
+import Language.Haskell.GhcMod.GhcPkg
+
 import Control.Applicative ((<$>))
 import Control.Exception (throwIO)
 import Control.Monad (filterM)
@@ -30,18 +33,20 @@ import Distribution.System (buildPlatform)
 import Distribution.Text (display)
 import Distribution.Verbosity (silent)
 import Distribution.Version (Version)
-import Language.Haskell.GhcMod.Types
-import Language.Haskell.GhcMod.Cradle
 import System.Directory (doesFileExist)
 import System.FilePath (dropExtension, takeFileName, (</>))
 
 ----------------------------------------------------------------
 
 -- | Getting necessary 'CompilerOptions' from three information sources.
-getCompilerOptions :: [GHCOption] -> Cradle -> PackageDescription -> IO CompilerOptions
+getCompilerOptions :: [GHCOption]
+                   -> Cradle
+                   -> PackageDescription
+                   -> IO CompilerOptions
 getCompilerOptions ghcopts cradle pkgDesc = do
     gopts <- getGHCOptions ghcopts cradle rdir $ head buildInfos
-    return $ CompilerOptions gopts idirs depPkgs
+    dbPkgs <- getPackageDbPackages rdir
+    return $ CompilerOptions gopts idirs (depPkgs dbPkgs)
   where
     wdir       = cradleCurrentDir cradle
     rdir       = cradleRootDir    cradle
@@ -49,7 +54,12 @@ getCompilerOptions ghcopts cradle pkgDesc = do
     pkgs       = cradlePackages   cradle
     buildInfos = cabalAllBuildInfo pkgDesc
     idirs      = includeDirectories rdir wdir $ cabalSourceDirs buildInfos
-    depPkgs    = attachPackageIds pkgs $ removeThem problematicPackages $ removeMe cfile $ cabalDependPackages buildInfos
+    depPkgs ps = attachPackageIds pkgs
+                   $ removeThem problematicPackages
+                   $ removeMe cfile
+                   $ filter (`elem` ps) -- remove packages not available in any
+                                        -- package dbs
+                   $ cabalDependPackages buildInfos
 
 ----------------------------------------------------------------
 -- Dependent packages
@@ -114,7 +124,7 @@ getGHCOptions ghcopts cradle rdir binfo = do
     let cpps = map ("-optP" ++) $ P.cppOptions binfo ++ cabalCpp
     return $ ghcopts ++ pkgDb ++ exts ++ [lang] ++ libs ++ libDirs ++ cpps
   where
-    pkgDb = userPackageDbOptsForGhc $ cradlePackageDb cradle
+    pkgDb = ghcDbStackOpts $ cradlePkgDbStack cradle
     lang = maybe "-XHaskell98" (("-X" ++) . display) $ P.defaultLanguage binfo
     libDirs = map ("-L" ++) $ P.extraLibDirs binfo
     exts = map (("-X" ++) . display) $ P.usedExtensions binfo
@@ -211,4 +221,3 @@ cabalAllTargets pd = do
     getExecutableTarget exe = do
       let maybeExes = [p </> e | p <- P.hsSourceDirs $ P.buildInfo exe, e <- [P.modulePath exe]]
       liftIO $ filterM doesFileExist maybeExes
-

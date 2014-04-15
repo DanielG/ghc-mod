@@ -11,6 +11,11 @@ module Language.Haskell.GhcMod.GHCApi (
   , getSystemLibDir
   ) where
 
+import Language.Haskell.GhcMod.CabalApi
+import Language.Haskell.GhcMod.ErrMsg
+import Language.Haskell.GhcMod.GHCChoice
+import Language.Haskell.GhcMod.GhcPkg
+
 import Control.Applicative (Alternative, (<$>))
 import Control.Monad (void, forM)
 import CoreMonad (liftIO)
@@ -20,10 +25,6 @@ import DynFlags (dopt_set)
 import Exception (ghandle, SomeException(..))
 import GHC (Ghc, GhcMonad, DynFlags(..), GhcLink(..), HscTarget(..))
 import qualified GHC as G
-import Language.Haskell.GhcMod.CabalApi
-import Language.Haskell.GhcMod.Cradle (userPackageDbOptsForGhc)
-import Language.Haskell.GhcMod.ErrMsg
-import Language.Haskell.GhcMod.GHCChoice
 import qualified Language.Haskell.GhcMod.Gap as Gap
 import Language.Haskell.GhcMod.Types
 import System.Exit (exitSuccess)
@@ -89,10 +90,10 @@ initializeFlagsWithCradle opt cradle ghcopts logging
         logger <- initSession SingleFile opt compOpts logging
         return (logger, Nothing)
       where
-        pkgDb = userPackageDbOptsForGhc $ cradlePackageDb cradle
+        pkgOpts = ghcDbStackOpts $ cradlePkgDbStack cradle
         compOpts
-          | null pkgDb = CompilerOptions ghcopts importDirs []
-          | otherwise  = CompilerOptions (ghcopts ++ pkgDb) [wdir,rdir] []
+          | null pkgOpts = CompilerOptions ghcopts importDirs []
+          | otherwise    = CompilerOptions (ghcopts ++ pkgOpts) [wdir,rdir] []
         wdir = cradleCurrentDir cradle
         rdir = cradleRootDir    cradle
 

@@ -51,7 +51,9 @@ debug opt cradle fileName = do
     cabalFile = fromMaybe "" mCabalFile
     origGopts = ghcOpts opt
     simpleCompilerOption = CompilerOptions origGopts [] []
-    fromCabalFile = parseCabalFile file >>= getCompilerOptions origGopts cradle
+    fromCabalFile = do
+        pkgDesc <- parseCabalFile file
+        getCompilerOptions origGopts cradle pkgDesc
       where
         file = fromJust mCabalFile
 
