@@ -14,6 +14,12 @@ import System.FilePath
 
 import Dir
 
+import Config (cProjectVersionInt) -- ghc version
+
+ghcVersion :: Int
+ghcVersion = read cProjectVersionInt
+
+
 spec :: Spec
 spec = do
     describe "parseCabalFile" $ do
@@ -31,7 +37,9 @@ spec = do
                         ghcOptions  = ghcOptions res
                       , includeDirs = map (toRelativeDir dir) (includeDirs res)
                       }
-                res' `shouldBe` CompilerOptions {ghcOptions = ["-global-package-db", "-no-user-package-db","-package-db",cwd </> "test/data/.cabal-sandbox/i386-osx-ghc-7.6.3-packages.conf.d","-XHaskell98"], includeDirs = ["test/data","test/data/dist/build","test/data/dist/build/autogen","test/data/subdir1/subdir2","test/data/test"], depPackages = [("Cabal", Nothing), ("base", Nothing) , ("template-haskell", Nothing)]}
+                if ghcVersion < 706
+                  then res' `shouldBe` CompilerOptions {ghcOptions = ["-global-package-conf", "-no-user-package-conf","-package-conf",cwd </> "test/data/.cabal-sandbox/i386-osx-ghc-7.6.3-packages.conf.d","-XHaskell98"], includeDirs = ["test/data","test/data/dist/build","test/data/dist/build/autogen","test/data/subdir1/subdir2","test/data/test"], depPackages = [("Cabal", Nothing), ("base", Nothing) , ("template-haskell", Nothing)]}
+                  else res' `shouldBe` CompilerOptions {ghcOptions = ["-global-package-db", "-no-user-package-db","-package-db",cwd </> "test/data/.cabal-sandbox/i386-osx-ghc-7.6.3-packages.conf.d","-XHaskell98"], includeDirs = ["test/data","test/data/dist/build","test/data/dist/build/autogen","test/data/subdir1/subdir2","test/data/test"], depPackages = [("Cabal", Nothing), ("base", Nothing) , ("template-haskell", Nothing)]}
 
 
     describe "cabalDependPackages" $ do

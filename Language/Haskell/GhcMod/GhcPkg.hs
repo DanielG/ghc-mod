@@ -21,6 +21,11 @@ import Data.List (isPrefixOf, tails)
 import System.FilePath ((</>), takeFileName)
 import System.Process (readProcess)
 
+import Config (cProjectVersionInt) -- ghc version
+
+ghcVersion :: Int
+ghcVersion = read cProjectVersionInt
+
 -- | Get path to sandbox package db
 getSandboxDb :: FilePath -- ^ Path to the cabal package root directory
                          -- (containing the @cabal.sandbox.config@ file)
@@ -87,43 +92,21 @@ ghcDbStackOpts :: [GhcPkgDb] -- ^ Package db stack
                   -> [String]
 ghcDbStackOpts dbs = (ghcDbOpt `concatMap` dbs)
 
-
 ghcPkgDbOpt :: GhcPkgDb -> [String]
 ghcPkgDbOpt GlobalDb = ["--global"]
 ghcPkgDbOpt UserDb   = ["--user"]
-ghcPkgDbOpt (PackageDb pkgDb) =
-    [noUserPkgDbOpt, pkgDbOpt]
-  where
-    ver = extractGhcVer pkgDb
-    (noUserPkgDbOpt,pkgDbOpt)
-      | ver < 706 = ("--no-user-package-conf", "--package-conf=" ++ pkgDb)
-      | otherwise = ("--no-user-package-db",   "--package-db="   ++ pkgDb)
+ghcPkgDbOpt (PackageDb pkgDb)
+    | ghcVersion < 706 = ["--no-user-package-conf", "--package-conf=" ++ pkgDb]
+    | otherwise = ["--no-user-package-db",   "--package-db="   ++ pkgDb]
 
 ghcDbOpt :: GhcPkgDb -> [String]
-ghcDbOpt GlobalDb = ["-global-package-db"]
-ghcDbOpt UserDb   = ["-user-package-db"]
-ghcDbOpt (PackageDb pkgDb) =
-    [noUserPkgDbOpt, pkgDbOpt, pkgDb]
-  where
-    ver = extractGhcVer pkgDb
-    (noUserPkgDbOpt,pkgDbOpt)
-      | ver < 706 = ("-no-user-package-conf", "-package-conf")
-      | otherwise = ("-no-user-package-db",   "-package-db")
-
--- | Extracting GHC version from the path of package db.
---   Exception is thrown if the string argument is incorrect.
---
--- >>> extractGhcVer "/foo/bar/i386-osx-ghc-7.6.3-packages.conf.d"
--- 706
-extractGhcVer :: String -> Int
-extractGhcVer dir = ver
-  where
-    file = takeFileName dir
-    findVer = drop 4 . head . filter ("ghc-" `isPrefixOf`) . tails
-    (verStr1,_:left) = break (== '.') $ findVer file
-    (verStr2,_)      = break (== '.') left
-    ver = read verStr1 * 100 + read verStr2
-
+ghcDbOpt GlobalDb | ghcVersion < 706 = ["-global-package-conf"]
+                  | otherwise = ["-global-package-db"]
+ghcDbOpt UserDb   | ghcVersion < 706 = ["-user-package-conf"]
+                  | otherwise = ["-user-package-db"]
+ghcDbOpt (PackageDb pkgDb)
+    | ghcVersion < 706 = ["-no-user-package-conf", "-package-conf", pkgDb]
+    | otherwise = ["-no-user-package-db",   "-package-db",   pkgDb]
 
 -- getPackageDbPackages :: FilePath -> IO [Package]
 -- getPackageDbPackages cdir = (getPkgDb >>= listDbPackages) `E.catch` handler
