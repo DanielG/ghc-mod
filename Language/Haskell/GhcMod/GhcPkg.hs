@@ -10,18 +10,15 @@ module Language.Haskell.GhcMod.GhcPkg (
   , getPackageDbPackages
   ) where
 
-import Language.Haskell.GhcMod.Types
-
+import Config (cProjectVersionInt) -- ghc version
 import Control.Applicative ((<$>))
 import Control.Exception (SomeException(..))
 import qualified Control.Exception as E
---import Control.Exception.IOChoice ((||>))
 import Data.Char (isSpace)
 import Data.List (isPrefixOf)
+import Language.Haskell.GhcMod.Types
 import System.FilePath ((</>))
 import System.Process (readProcess)
-
-import Config (cProjectVersionInt) -- ghc version
 
 ghcVersion :: Int
 ghcVersion = read cProjectVersionInt
@@ -30,8 +27,7 @@ ghcVersion = read cProjectVersionInt
 getSandboxDb :: FilePath -- ^ Path to the cabal package root directory
                          -- (containing the @cabal.sandbox.config@ file)
              -> IO FilePath
-getSandboxDb cdir =
-    getSandboxDbDir (cdir </> "cabal.sandbox.config")
+getSandboxDb cdir = getSandboxDbDir (cdir </> "cabal.sandbox.config")
 
 -- | Extract the sandbox package db directory from the cabal.sandbox.config file.
 --   Exception is thrown if the sandbox config file is broken.
@@ -61,8 +57,7 @@ getPackageDbPackages :: FilePath -- ^ Project Directory (where the
                                  -- cabal.sandbox.config file would be if it
                                  -- exists)
                      -> IO [PackageBaseName]
-getPackageDbPackages cdir =
-    ghcPkgList =<< getPackageDbStack cdir
+getPackageDbPackages cdir = ghcPkgList =<< getPackageDbStack cdir
 
 getPackageDbStack :: FilePath -- ^ Project Directory (where the
                                  -- cabal.sandbox.config file would be if it
@@ -75,12 +70,9 @@ getPackageDbStack cdir =
 
 -- | List packages in one or more ghc package stores
 ghcPkgList :: [GhcPkgDb] -> IO [PackageBaseName]
-ghcPkgList dbs =
-    words <$> readProcess "ghc-pkg" opts ""
+ghcPkgList dbs = words <$> readProcess "ghc-pkg" opts ""
   where
-    opts =
-        ["--simple-output", "--names-only", "list"]
-          ++ ghcPkgDbStackOpts dbs
+    opts = ["--simple-output", "--names-only", "list"] ++ ghcPkgDbStackOpts dbs
 
 -- | Get options needed to add a list of package dbs to ghc-pkg's db stack
 ghcPkgDbStackOpts :: [GhcPkgDb] -- ^ Package db stack
@@ -89,60 +81,23 @@ ghcPkgDbStackOpts dbs = (ghcPkgDbOpt `concatMap` dbs)
 
 -- | Get options needed to add a list of package dbs to ghc's db stack
 ghcDbStackOpts :: [GhcPkgDb] -- ^ Package db stack
-                  -> [String]
+               -> [String]
 ghcDbStackOpts dbs = (ghcDbOpt `concatMap` dbs)
 
 ghcPkgDbOpt :: GhcPkgDb -> [String]
 ghcPkgDbOpt GlobalDb = ["--global"]
 ghcPkgDbOpt UserDb   = ["--user"]
 ghcPkgDbOpt (PackageDb pkgDb)
-    | ghcVersion < 706 = ["--no-user-package-conf", "--package-conf=" ++ pkgDb]
-    | otherwise = ["--no-user-package-db",   "--package-db="   ++ pkgDb]
+  | ghcVersion < 706 = ["--no-user-package-conf", "--package-conf=" ++ pkgDb]
+  | otherwise        = ["--no-user-package-db",   "--package-db="   ++ pkgDb]
 
 ghcDbOpt :: GhcPkgDb -> [String]
-ghcDbOpt GlobalDb | ghcVersion < 706 = ["-global-package-conf"]
-                  | otherwise = ["-global-package-db"]
-ghcDbOpt UserDb   | ghcVersion < 706 = ["-user-package-conf"]
-                  | otherwise = ["-user-package-db"]
+ghcDbOpt GlobalDb
+  | ghcVersion < 706 = ["-global-package-conf"]
+  | otherwise        = ["-global-package-db"]
+ghcDbOpt UserDb
+  | ghcVersion < 706 = ["-user-package-conf"]
+  | otherwise        = ["-user-package-db"]
 ghcDbOpt (PackageDb pkgDb)
-    | ghcVersion < 706 = ["-no-user-package-conf", "-package-conf", pkgDb]
-    | otherwise = ["-no-user-package-db",   "-package-db",   pkgDb]
-
--- getPackageDbPackages :: FilePath -> IO [Package]
--- getPackageDbPackages cdir = (getPkgDb >>= listDbPackages) `E.catch` handler
---   where
---     getPkgDb = getPackageDbDir (cdir </> configFile)
---     handler :: SomeException -> IO [Package]
---     handler _ = return []
-
--- listDbPackages :: FilePath -> IO [Package]
--- listDbPackages pkgdir = do
---   files <- filter (".conf" `isSuffixOf`) <$> getDirectoryContents pkgdir
---   mapM (extractPackage . (pkgdir </>)) files
-
--- extractPackage :: FilePath -> IO Package
--- extractPackage pconf = do
---   contents <- lines <$> readFile pconf
---   -- Be strict to ensure that an error can be caught.
---   let !name = extractName $ parseName contents
---       !pid = extractId $ parseId contents
---   return (name, Just pid)
---   where
---     parseName = parse nameKey
---     extractName = extract nameKeyLength
---     parseId = parse idKey
---     extractId = extract idKeyLength
---     parse key = head . filter (key `isPrefixOf`)
---     extract keylen = takeWhile (not . isSpace) . dropWhile isSpace . drop keylen
-
--- nameKey :: String
--- nameKey = "name:"
-
--- idKey :: String
--- idKey = "id:"
-
--- nameKeyLength :: Int
--- nameKeyLength = length nameKey
-
--- idKeyLength :: Int
--- idKeyLength = length idKey
+  | ghcVersion < 706 = ["-no-user-package-conf", "-package-conf", pkgDb]
+  | otherwise        = ["-no-user-package-db",   "-package-db",   pkgDb]
