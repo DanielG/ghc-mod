@@ -77,12 +77,12 @@ ghcPkgList dbs = words <$> readProcess "ghc-pkg" opts ""
 -- | Get options needed to add a list of package dbs to ghc-pkg's db stack
 ghcPkgDbStackOpts :: [GhcPkgDb] -- ^ Package db stack
                   -> [String]
-ghcPkgDbStackOpts dbs = (ghcPkgDbOpt `concatMap` dbs)
+ghcPkgDbStackOpts dbs = ghcPkgDbOpt `concatMap` dbs
 
 -- | Get options needed to add a list of package dbs to ghc's db stack
 ghcDbStackOpts :: [GhcPkgDb] -- ^ Package db stack
                -> [String]
-ghcDbStackOpts dbs = (ghcDbOpt `concatMap` dbs)
+ghcDbStackOpts dbs = ghcDbOpt `concatMap` dbs
 
 ghcPkgDbOpt :: GhcPkgDb -> [String]
 ghcPkgDbOpt GlobalDb = ["--global"]

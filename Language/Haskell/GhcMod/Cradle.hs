@@ -1,5 +1,3 @@
-{-# LANGUAGE BangPatterns #-}
-
 module Language.Haskell.GhcMod.Cradle (
     findCradle
   , findCradleWithoutSandbox

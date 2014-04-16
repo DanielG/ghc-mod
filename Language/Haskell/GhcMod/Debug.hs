@@ -33,7 +33,7 @@ debug opt cradle fileName = do
             return simpleCompilerOption
     void $ initializeFlagsWithCradle opt cradle gopts True
     setTargetFiles [fileName]
-    mglibdir <- liftIO $ getSystemLibDir
+    mglibdir <- liftIO getSystemLibDir
     return [
         "Root directory:      " ++ rootDir
       , "Current directory:   " ++ currentDir
