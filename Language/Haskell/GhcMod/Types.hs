@@ -24,7 +24,7 @@ data Options = Options {
   -- | Line separator string.
   , lineSeparator :: LineSeparator
   -- | Package id of module
-  , packageId :: Maybe String
+  , packageId     :: Maybe String
   }
 
 -- | A default 'Options'.
