@@ -17,8 +17,8 @@ import Control.Exception (SomeException(..))
 import qualified Control.Exception as E
 --import Control.Exception.IOChoice ((||>))
 import Data.Char (isSpace)
-import Data.List (isPrefixOf, tails)
-import System.FilePath ((</>), takeFileName)
+import Data.List (isPrefixOf)
+import System.FilePath ((</>))
 import System.Process (readProcess)
 
 import Config (cProjectVersionInt) -- ghc version
