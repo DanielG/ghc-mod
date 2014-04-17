@@ -11,7 +11,7 @@ module Language.Haskell.GhcMod.GhcPkg (
   ) where
 
 import Config (cProjectVersionInt) -- ghc version
-import Control.Applicative ((<$>), (<*))
+import Control.Applicative ((<$>))
 import Control.Exception (SomeException(..))
 import qualified Control.Exception as E
 import Data.Char (isSpace,isAlphaNum)
@@ -90,9 +90,11 @@ data PackageState = Normal | Hidden | Broken deriving (Eq,Show)
 packageLineP :: ReadP (PackageState, Package)
 packageLineP = do
     skipSpaces
-    choice [ (Hidden,) <$> between (char '(') (char ')') packageP
-           , (Broken,) <$> between (char '{') (char '}') packageP
-           , (Normal,) <$> packageP ] <* eof
+    p <- choice [ (Hidden,) <$> between (char '(') (char ')') packageP
+                , (Broken,) <$> between (char '{') (char '}') packageP
+                , (Normal,) <$> packageP ]
+    eof
+    return p
 
 packageP :: ReadP (PackageBaseName, PackageVersion, PackageId)
 packageP = do
