@@ -2,6 +2,8 @@
 
 module Language.Haskell.GhcMod.Types where
 
+import Data.List
+
 -- | Output style.
 data OutputStyle = LispStyle  -- ^ S expression style.
                  | PlainStyle -- ^ Plain textstyle.
@@ -90,8 +92,6 @@ data Cradle = Cradle {
   , cradleCabalFile  :: Maybe FilePath
   -- | Package database stack
   , cradlePkgDbStack  :: [GhcPkgDb]
-  -- | Package dependencies
-  , cradlePackages   :: [Package]
   } deriving (Eq, Show)
 
 ----------------------------------------------------------------
@@ -108,8 +108,29 @@ type IncludeDir = FilePath
 -- | A package name.
 type PackageBaseName = String
 
--- | A package name and its ID.
-type Package    = (PackageBaseName, Maybe String)
+-- | A package version.
+type PackageVersion  = String
+
+-- | A package id.
+type PackageId  = String
+
+-- | A package's name, verson and id.
+type Package    = (PackageBaseName, PackageVersion, PackageId)
+
+pkgName :: Package -> PackageBaseName
+pkgName (n,_,_) = n
+
+pkgVer :: Package -> PackageVersion
+pkgVer (_,v,_) = v
+
+pkgId :: Package -> PackageId
+pkgId (_,_,i) = i
+
+showPkg :: Package -> String
+showPkg (n,v,_) = intercalate "-" [n,v]
+
+showPkgId :: Package -> String
+showPkgId (n,v,i) = intercalate "-" [n,v,i]
 
 -- | Haskell expression.
 type Expression = String

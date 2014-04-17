@@ -16,12 +16,12 @@ import Control.Applicative ((<$>))
 import Control.Exception (throwIO)
 import Control.Monad (filterM)
 import CoreMonad (liftIO)
-import Data.Maybe (maybeToList)
+import Data.Maybe (maybeToList, catMaybes)
 import Data.Set (fromList, toList)
 import Distribution.ModuleName (ModuleName,toFilePath)
 import Distribution.Package (Dependency(Dependency)
-                           , PackageName(PackageName)
-                           , PackageIdentifier(pkgName))
+                           , PackageName(PackageName))
+import qualified Distribution.Package as C
 import Distribution.PackageDescription (PackageDescription, BuildInfo, TestSuite, TestSuiteInterface(..), Executable)
 import qualified Distribution.PackageDescription as P
 import Distribution.PackageDescription.Configuration (finalizePackageDescription)
@@ -45,29 +45,21 @@ getCompilerOptions :: [GHCOption]
                    -> IO CompilerOptions
 getCompilerOptions ghcopts cradle pkgDesc = do
     gopts <- getGHCOptions ghcopts cradle rdir $ head buildInfos
-    dbPkgs <- getPackageDbPackages rdir
+    dbPkgs <- ghcPkgListEx (cradlePkgDbStack cradle)
     return $ CompilerOptions gopts idirs (depPkgs dbPkgs)
   where
     wdir       = cradleCurrentDir cradle
     rdir       = cradleRootDir    cradle
     Just cfile = cradleCabalFile  cradle
-    pkgs       = cradlePackages   cradle
+    thisPkg    = dropExtension $ takeFileName cfile
     buildInfos = cabalAllBuildInfo pkgDesc
     idirs      = includeDirectories rdir wdir $ cabalSourceDirs buildInfos
-    depPkgs ps = attachPackageIds pkgs
-                   $ removeThem problematicPackages
-                   $ removeMe cfile
-                   $ filter (`elem` ps) -- remove packages not available in any
-                                        -- package dbs
+    depPkgs ps = attachPackageIds ps
+                   $ removeThem (problematicPackages ++ [thisPkg])
                    $ cabalDependPackages buildInfos
 
 ----------------------------------------------------------------
 -- Dependent packages
-
-removeMe :: FilePath -> [PackageBaseName] -> [PackageBaseName]
-removeMe cabalfile = filter (/= me)
-  where
-    me = dropExtension $ takeFileName cabalfile
 
 removeThem :: [PackageBaseName] -> [PackageBaseName] -> [PackageBaseName]
 removeThem badpkgs = filter (`notElem` badpkgs)
@@ -78,11 +70,13 @@ problematicPackages = [
   ]
 
 attachPackageIds :: [Package] -> [PackageBaseName] -> [Package]
-attachPackageIds pkgs = map attachId
-  where
-    attachId x = case lookup x pkgs of
-      Nothing -> (x, Nothing)
-      Just p -> (x, p)
+attachPackageIds pkgs = catMaybes . fmap (flip lookup3 pkgs)
+
+lookup3 :: Eq a => a -> [(a,b,c)] -> Maybe (a,b,c)
+lookup3 _ [] = Nothing
+lookup3 k (t@(a,_,_):ls)
+    | k == a = Just t
+    | otherwise = lookup3 k ls
 
 ----------------------------------------------------------------
 -- Include directories for modules
@@ -114,7 +108,7 @@ parseCabalFile file = do
     toPkgDesc cid = finalizePackageDescription [] (const True) buildPlatform cid []
     nullPkg pd = name == ""
       where
-        PackageName name = pkgName (P.package pd)
+        PackageName name = C.pkgName (P.package pd)
 
 ----------------------------------------------------------------
 

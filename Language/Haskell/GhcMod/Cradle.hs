@@ -34,7 +34,6 @@ cabalCradle wdir = do
       , cradleRootDir    = rdir
       , cradleCabalFile  = Just cfile
       , cradlePkgDbStack = pkgDbStack
-      , cradlePackages   = []
       }
 
 sandboxCradle :: FilePath -> IO Cradle
@@ -46,7 +45,6 @@ sandboxCradle wdir = do
       , cradleRootDir    = rdir
       , cradleCabalFile  = Nothing
       , cradlePkgDbStack = pkgDbStack
-      , cradlePackages   = []
       }
 
 plainCradle :: FilePath -> IO Cradle
@@ -55,14 +53,13 @@ plainCradle wdir = return Cradle {
       , cradleRootDir    = wdir
       , cradleCabalFile  = Nothing
       , cradlePkgDbStack = [GlobalDb]
-      , cradlePackages   = []
       }
 
 -- Just for testing
 findCradleWithoutSandbox :: IO Cradle
 findCradleWithoutSandbox = do
     cradle <- findCradle
-    return cradle { cradlePkgDbStack = [GlobalDb], cradlePackages = [] }
+    return cradle { cradlePkgDbStack = [GlobalDb]}
 
 ----------------------------------------------------------------
 

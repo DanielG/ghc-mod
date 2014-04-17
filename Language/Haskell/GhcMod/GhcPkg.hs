@@ -1,24 +1,26 @@
-{-# LANGUAGE BangPatterns, ScopedTypeVariables #-}
+{-# LANGUAGE BangPatterns, ScopedTypeVariables, TupleSections #-}
 module Language.Haskell.GhcMod.GhcPkg (
     ghcPkgList
+  , ghcPkgListEx
   , ghcPkgDbOpt
   , ghcPkgDbStackOpts
   , ghcDbStackOpts
   , ghcDbOpt
   , getSandboxDb
   , getPackageDbStack
-  , getPackageDbPackages
   ) where
 
 import Config (cProjectVersionInt) -- ghc version
-import Control.Applicative ((<$>))
+import Control.Applicative ((<$>), (<*))
 import Control.Exception (SomeException(..))
 import qualified Control.Exception as E
-import Data.Char (isSpace)
-import Data.List (isPrefixOf)
+import Data.Char (isSpace,isAlphaNum)
+import Data.List (isPrefixOf, intercalate)
+import Data.Maybe (listToMaybe, maybeToList)
 import Language.Haskell.GhcMod.Types
 import System.FilePath ((</>))
 import System.Process (readProcess)
+import Text.ParserCombinators.ReadP
 
 ghcVersion :: Int
 ghcVersion = read cProjectVersionInt
@@ -47,18 +49,6 @@ getSandboxDbDir sconf = do
     dropWhileEnd :: (a -> Bool) -> [a] -> [a]
     dropWhileEnd p = foldr (\x xs -> if p x && null xs then [] else x : xs) []
 
--- | Get a list of packages from the global, user or cabal sandbox package
--- database.
---
---   If a sandbox exists this will return packages from the global package db
---   and the sandbox, otherwise packages from the global and user package db are
---   returned.
-getPackageDbPackages :: FilePath -- ^ Project Directory (where the
-                                 -- cabal.sandbox.config file would be if it
-                                 -- exists)
-                     -> IO [PackageBaseName]
-getPackageDbPackages cdir = ghcPkgList =<< getPackageDbStack cdir
-
 getPackageDbStack :: FilePath -- ^ Project Directory (where the
                                  -- cabal.sandbox.config file would be if it
                                  -- exists)
@@ -68,11 +58,62 @@ getPackageDbStack cdir =
       `E.catch` \(_ :: SomeException) -> return [GlobalDb, UserDb]
 
 
--- | List packages in one or more ghc package stores
+-- | List packages in one or more ghc package store
 ghcPkgList :: [GhcPkgDb] -> IO [PackageBaseName]
-ghcPkgList dbs = words <$> readProcess "ghc-pkg" opts ""
+ghcPkgList dbs = map fst3 <$> ghcPkgListEx dbs
+  where fst3 (x,_,_) = x
+
+ghcPkgListEx :: [GhcPkgDb] -> IO [Package]
+ghcPkgListEx dbs = do
+    output <- readProcess "ghc-pkg" opts ""
+--    hPutStrLn stderr output
+    return $ parseGhcPkgOutput $ lines output
   where
-    opts = ["--simple-output", "--names-only", "list"] ++ ghcPkgDbStackOpts dbs
+    opts = ["list", "-v"] ++ ghcPkgDbStackOpts dbs
+
+parseGhcPkgOutput :: [String] -> [Package]
+parseGhcPkgOutput [] = []
+parseGhcPkgOutput (l:ls) =
+    parseGhcPkgOutput ls ++ case l of
+      [] -> []
+      h:_ | isSpace h -> maybeToList $ packageLine l
+          | otherwise -> []
+
+packageLine :: String -> Maybe Package
+packageLine l =
+    case listToMaybe $ readP_to_S packageLineP l of
+      Just ((Normal,p),_) -> Just p
+      _ -> Nothing
+
+data PackageState = Normal | Hidden | Broken deriving (Eq,Show)
+
+packageLineP :: ReadP (PackageState, Package)
+packageLineP = do
+    skipSpaces
+    choice [ (Hidden,) <$> between (char '(') (char ')') packageP
+           , (Broken,) <$> between (char '{') (char '}') packageP
+           , (Normal,) <$> packageP ] <* eof
+
+packageP :: ReadP (PackageBaseName, PackageVersion, PackageId)
+packageP = do
+    pkgSpec@(name,ver) <- packageSpecP
+    skipSpaces
+    i <- between (char '(') (char ')') $ packageIdSpecP pkgSpec
+    return (name,ver,i)
+
+packageSpecP :: ReadP (PackageBaseName,PackageVersion)
+packageSpecP = do
+  fs <- many1 packageCompCharP `sepBy1` char '-'
+  return (intercalate "-" (init fs), last fs)
+
+packageIdSpecP :: (PackageBaseName,PackageVersion) -> ReadP PackageId
+packageIdSpecP (name,ver) = do
+    string name >> char '-' >> string ver >> char '-' >> return ()
+    many1 (satisfy isAlphaNum)
+
+packageCompCharP :: ReadP Char
+packageCompCharP =
+    satisfy $ \c -> isAlphaNum c || c `elem` "_-."
 
 -- | Get options needed to add a list of package dbs to ghc-pkg's db stack
 ghcPkgDbStackOpts :: [GhcPkgDb] -- ^ Package db stack
