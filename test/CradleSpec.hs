@@ -22,7 +22,6 @@ spec = do
                   , cradleRootDir    = curDir
                   , cradleCabalFile  = Nothing
                   , cradlePkgDbStack = [GlobalDb]
-                  , cradlePackages   = []
                   }
         it "finds a cabal file and a sandbox" $ do
             cwd <- getCurrentDirectory
@@ -33,7 +32,6 @@ spec = do
                   , cradleRootDir    = "test" </> "data"
                   , cradleCabalFile  = Just ("test" </> "data" </> "cabalapi.cabal")
                   , cradlePkgDbStack = [GlobalDb, PackageDb (cwd </> "test/data/.cabal-sandbox/i386-osx-ghc-7.6.3-packages.conf.d")]
-                  , cradlePackages   = []
                   }
         it "works even if a sandbox config file is broken" $ do
             withDirectory "test/data/broken-sandbox" $ \dir -> do
@@ -43,7 +41,6 @@ spec = do
                   , cradleRootDir    = "test" </> "data" </> "broken-sandbox"
                   , cradleCabalFile  = Just ("test" </> "data" </> "broken-sandbox" </> "dummy.cabal")
                   , cradlePkgDbStack = [GlobalDb, UserDb]
-                  , cradlePackages   = []
                   }
 
 relativeCradle :: FilePath -> Cradle -> Cradle
