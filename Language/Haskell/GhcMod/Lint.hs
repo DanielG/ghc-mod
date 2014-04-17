@@ -31,8 +31,9 @@ suppressStdout :: IO a -> IO a
 suppressStdout f = do
     tmpdir <- getTemporaryDirectory
     (path, handle) <- openTempFile tmpdir "ghc-mod-hlint"
-    removeFile path
     dup <- hDuplicate stdout
     hDuplicateTo handle stdout
     hClose handle
-    f `finally` hDuplicateTo dup stdout
+    f `finally` do
+        hDuplicateTo dup stdout
+        removeFile path
