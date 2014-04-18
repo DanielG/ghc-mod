@@ -18,7 +18,7 @@ checkSyntax :: Options
             -> [FilePath]  -- ^ The target files.
             -> IO String
 checkSyntax _   _      []    = error "ghc-mod: checkSyntax: No files given"
-checkSyntax opt cradle files = unlines <$> withGHC sessionName (check opt cradle files)
+checkSyntax opt cradle files = convert opt <$> withGHC sessionName (check opt cradle files)
   where
     sessionName = case files of
       [file] -> file

@@ -31,6 +31,8 @@ module Language.Haskell.GhcMod.Internal (
   , runAnyOne
   -- * 'GhcMonad' Choice
   , (|||>)
+  -- * Misc
+  , convert
   ) where
 
 import Language.Haskell.GhcMod.Browse

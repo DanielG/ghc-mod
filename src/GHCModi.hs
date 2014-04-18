@@ -61,6 +61,9 @@ argspec :: [OptDescr (Options -> Options)]
 argspec = [ Option "b" ["boundary"]
             (ReqArg (\s opts -> opts { lineSeparator = LineSeparator s }) "sep")
             "specify line separator (default is Nul string)"
+          , Option "l" ["tolisp"]
+            (NoArg (\opts -> opts { outputStyle = LispStyle }))
+            "print as a list of Lisp"
           , Option "g" []
             (ReqArg (\s opts -> opts { ghcOpts = s : ghcOpts opts }) "flag") "specify a ghc flag"
           ]
@@ -68,8 +71,7 @@ argspec = [ Option "b" ["boundary"]
 usage :: String
 usage =    "ghc-modi version " ++ showVersion version ++ "\n"
         ++ "Usage:\n"
-        ++ "\t ghc-modi [-b sep]\n"
-        ++ "\t ghc-modi [-g flag]\n"
+        ++ "\t ghc-modi [-l] [-b sep] [-g flag]\n"
         ++ "\t ghc-modi help\n"
 
 parseArgs :: [OptDescr (Options -> Options)] -> [String] -> (Options, [String])
@@ -155,7 +157,7 @@ loop opt set ls mvar readLog  = do
         "info"  -> showInfo set ls readLog arg
         "type"  -> showType opt set ls readLog arg
         _       -> return ([], False, set)
-    mapM_ (liftIO . putStrLn) msgs
+    liftIO $ putStrLn $ convert opt msgs
     liftIO $ putStrLn $ if ok then "OK" else "NG"
     liftIO $ hFlush stdout
     when ok $ loop opt set' ls mvar readLog

@@ -75,7 +75,11 @@ tupToString ((a,b,c,d),s) = show a ++ " "
                          ++ quote s
 
 quote :: String -> String
-quote x = "\"" ++ x ++ "\""
+quote x = "\"" ++ escape x ++ "\""
+  where
+    escape [] = []
+    escape ('"':ys) = '\\':'\"':escape ys
+    escape (y:ys)   = y:escape ys
 
 addNewLine :: String -> String
 addNewLine = (++ "\n")
