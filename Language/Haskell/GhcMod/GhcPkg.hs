@@ -83,6 +83,7 @@ packageLine :: String -> Maybe Package
 packageLine l =
     case listToMaybe $ readP_to_S packageLineP l of
       Just ((Normal,p),_) -> Just p
+      Just ((Hidden,p),_) -> Just p
       _ -> Nothing
 
 data PackageState = Normal | Hidden | Broken deriving (Eq,Show)
