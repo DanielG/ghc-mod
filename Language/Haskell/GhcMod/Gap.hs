@@ -244,8 +244,7 @@ addDevPkgs df pkgs = df''
     df'' = df' {
         packageFlags = map expose pkgs ++ packageFlags df
       }
-    expose (pkg, Nothing) = ExposePackage pkg
-    expose (_, Just pid) = ExposePackageId pid
+    expose pkg = ExposePackageId $ showPkgId pkg
 
 ----------------------------------------------------------------
 ----------------------------------------------------------------

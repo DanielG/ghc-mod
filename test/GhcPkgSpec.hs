@@ -23,5 +23,6 @@ spec = do
 
     describe "getPackageDbPackages" $ do
         it "find a config file and extracts packages" $ do
-            pkgs <- getPackageDbPackages "test/data/check-packageid"
-            pkgs `shouldSatisfy` (\x -> length x >= 1)
+            sdb <- getSandboxDb "test/data/check-packageid"
+            pkgs <- ghcPkgListEx [PackageDb sdb]
+            pkgs `shouldBe` [("template-haskell","2.8.0.0","32d4f24abdbb6bf41272b183b2e23e9c")]
