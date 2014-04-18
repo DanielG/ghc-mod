@@ -13,7 +13,7 @@ lintSyntax :: Options
 lintSyntax opt file = pack <$> lint hopts file
   where
     LineSeparator lsep = lineSeparator opt
-    pack = unlines . map (intercalate lsep . lines)
+    pack = convert opt . map (intercalate lsep . lines)
     hopts = hlintOpts opt
 
 -- | Checking syntax of a target file using hlint.
