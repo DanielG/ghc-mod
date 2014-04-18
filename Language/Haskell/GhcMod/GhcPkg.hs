@@ -18,9 +18,10 @@ import Data.Char (isSpace,isAlphaNum)
 import Data.List (isPrefixOf, intercalate)
 import Data.Maybe (listToMaybe, maybeToList)
 import Language.Haskell.GhcMod.Types
-import Language.Haskell.GhcMod.Utils
 import System.FilePath ((</>))
-import System.Process (readProcess)
+import System.Process (readProcessWithExitCode)
+import System.IO (hPutStrLn,stderr)
+import System.Exit (ExitCode(..))
 import Text.ParserCombinators.ReadP (ReadP, char, between, sepBy1, many1, string, choice, eof)
 import qualified Text.ParserCombinators.ReadP as P
 
@@ -67,7 +68,13 @@ ghcPkgList dbs = map fst3 <$> ghcPkgListEx dbs
 
 ghcPkgListEx :: [GhcPkgDb] -> IO [Package]
 ghcPkgListEx dbs = do
-    output <- suppressStderr $ readProcess "ghc-pkg" opts ""
+    (rv,output,err) <- readProcessWithExitCode "ghc-pkg" opts ""
+    case rv of
+      ExitFailure val -> do
+          hPutStrLn stderr err
+          fail $ "ghc-pkg " ++ intercalate " " opts ++ " (exit " ++ show val ++ ")"
+      ExitSuccess -> return ()
+
     return $ parseGhcPkgOutput $ lines output
   where
     opts = ["list", "-v"] ++ ghcPkgDbStackOpts dbs
