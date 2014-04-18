@@ -87,7 +87,7 @@ parseGhcPkgOutput (l:ls) =
 
 -- | Packages that are normally hidden but should be returned by ghcPkgList
 -- anyways
-exposeHidden = ["ghc"]
+exposeHidden = ["ghc", "haskell2010", "haskell98"]
 
 packageLine :: String -> Maybe Package
 packageLine l =
