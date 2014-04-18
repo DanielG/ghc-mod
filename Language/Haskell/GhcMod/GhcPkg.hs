@@ -21,7 +21,8 @@ import Language.Haskell.GhcMod.Types
 import Language.Haskell.GhcMod.Utils
 import System.FilePath ((</>))
 import System.Process (readProcess)
-import Text.ParserCombinators.ReadP
+import Text.ParserCombinators.ReadP (ReadP, char, between, sepBy1, many1, string, choice, eof)
+import qualified Text.ParserCombinators.ReadP as P
 
 ghcVersion :: Int
 ghcVersion = read cProjectVersionInt
@@ -81,7 +82,7 @@ parseGhcPkgOutput (l:ls) =
 
 packageLine :: String -> Maybe Package
 packageLine l =
-    case listToMaybe $ readP_to_S packageLineP l of
+    case listToMaybe $ P.readP_to_S packageLineP l of
       Just ((Normal,p),_) -> Just p
       Just ((Hidden,p),_) -> Just p
       _ -> Nothing
@@ -90,7 +91,7 @@ data PackageState = Normal | Hidden | Broken deriving (Eq,Show)
 
 packageLineP :: ReadP (PackageState, Package)
 packageLineP = do
-    skipSpaces
+    P.skipSpaces
     p <- choice [ (Hidden,) <$> between (char '(') (char ')') packageP
                 , (Broken,) <$> between (char '{') (char '}') packageP
                 , (Normal,) <$> packageP ]
@@ -100,7 +101,7 @@ packageLineP = do
 packageP :: ReadP (PackageBaseName, PackageVersion, PackageId)
 packageP = do
     pkgSpec@(name,ver) <- packageSpecP
-    skipSpaces
+    P.skipSpaces
     i <- between (char '(') (char ')') $ packageIdSpecP pkgSpec
     return (name,ver,i)
 
@@ -112,11 +113,11 @@ packageSpecP = do
 packageIdSpecP :: (PackageBaseName,PackageVersion) -> ReadP PackageId
 packageIdSpecP (name,ver) = do
     string name >> char '-' >> string ver >> char '-' >> return ()
-    many1 (satisfy isAlphaNum)
+    many1 (P.satisfy isAlphaNum)
 
 packageCompCharP :: ReadP Char
 packageCompCharP =
-    satisfy $ \c -> isAlphaNum c || c `elem` "_-."
+    P.satisfy $ \c -> isAlphaNum c || c `elem` "_-."
 
 -- | Get options needed to add a list of package dbs to ghc-pkg's db stack
 ghcPkgDbStackOpts :: [GhcPkgDb] -- ^ Package db stack
