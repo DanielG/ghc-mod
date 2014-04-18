@@ -56,14 +56,15 @@ Library
                         Language.Haskell.GhcMod.ErrMsg
                         Language.Haskell.GhcMod.Flag
                         Language.Haskell.GhcMod.GHCApi
-                        Language.Haskell.GhcMod.GhcPkg
                         Language.Haskell.GhcMod.GHCChoice
                         Language.Haskell.GhcMod.Gap
+                        Language.Haskell.GhcMod.GhcPkg
                         Language.Haskell.GhcMod.Info
                         Language.Haskell.GhcMod.Lang
                         Language.Haskell.GhcMod.Lint
                         Language.Haskell.GhcMod.List
                         Language.Haskell.GhcMod.PkgDoc
+                        Language.Haskell.GhcMod.Utils
                         Language.Haskell.GhcMod.Types
   Build-Depends:        base >= 4.0 && < 5
                       , containers
