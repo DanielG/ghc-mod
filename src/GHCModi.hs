@@ -157,7 +157,10 @@ loop opt set ls mvar readLog  = do
         "info"  -> showInfo set ls readLog arg
         "type"  -> showType opt set ls readLog arg
         _       -> return ([], False, set)
-    liftIO $ putStrLn $ convert opt msgs
+    let put = case outputStyle opt of
+            LispStyle  -> putStr
+            PlainStyle -> putStrLn
+    liftIO $ put $ convert opt msgs
     liftIO $ putStrLn $ if ok then "OK" else "NG"
     liftIO $ hFlush stdout
     when ok $ loop opt set' ls mvar readLog
