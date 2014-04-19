@@ -65,6 +65,7 @@
     (funcall func)
     (ghc-read-lisp-this-buffer)))
 
+;; OK/NG are ignored.
 (defun ghc-read-lisp-this-buffer ()
   (save-excursion
     (goto-char (point-min))

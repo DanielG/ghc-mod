@@ -91,6 +91,6 @@
 (defun ghc-ins-mod-callback ()
   (let ((mods (ghc-read-lisp-this-buffer)))
     (setq ghc-ins-mod-rendezvous t)
-    (setq ghc-ins-mod-results mods))) ;; fixme -- OK
+    (setq ghc-ins-mod-results mods)))
 
 (provide 'ghc-ins-mod)
