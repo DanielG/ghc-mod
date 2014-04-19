@@ -77,13 +77,8 @@
 
 (defun ghc-show-type ()
   (interactive)
-  (ghc-executable-find ghc-module-command
-    (let ((modname (or (ghc-find-module-name) "Main")))
-      (ghc-show-type0 modname))))
-
-(defun ghc-show-type0 (modname)
-  (let* ((buf (current-buffer))
-	 (tinfos (ghc-type-get-tinfos modname)))
+  (let ((buf (current-buffer))
+	(tinfos (ghc-type-get-tinfos)))
     (if (null tinfos)
 	(progn
 	  (ghc-type-clear-overlay)
@@ -99,11 +94,11 @@
 	(move-overlay ghc-type-overlay (- left 1) (- right 1) buf)
 	(message type)))))
 
-(defun ghc-type-get-tinfos (modname)
+(defun ghc-type-get-tinfos ()
   (if (= (ghc-type-get-point) (point))
       (ghc-type-set-ix
        (mod (1+ (ghc-type-get-ix)) (length (ghc-type-get-types))))
-    (let ((types (ghc-type-obtain-tinfos modname)))
+    (let ((types (ghc-type-obtain-tinfos)))
       (if (not (listp types)) ;; main does not exist in Main
 	  (ghc-type-set-types nil)
 	(ghc-type-set-types types)
@@ -111,19 +106,12 @@
 	(ghc-type-set-ix 0))))
   (ghc-type-get-types))
 
-(defun ghc-type-obtain-tinfos (modname)
+(defun ghc-type-obtain-tinfos ()
   (let* ((ln (int-to-string (line-number-at-pos)))
 	 (cn (int-to-string (1+ (current-column))))
-	 (cdir default-directory)
-	 (file (buffer-file-name)))
-    (ghc-read-lisp
-     (lambda ()
-       (cd cdir)
-       (apply 'ghc-call-process ghc-module-command nil t nil
-	      `(,@(ghc-make-ghc-options) "-l" "type" ,file ,modname ,ln ,cn))
-       (goto-char (point-min))
-       (while (search-forward "[Char]" nil t)
-	 (replace-match "String"))))))
+	 (file (buffer-file-name))
+	 (cmd (format "type %s %s %s\n" file ln cn)))
+    (ghc-sync-process (lambda () cmd))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
