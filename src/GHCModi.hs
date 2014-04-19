@@ -4,6 +4,8 @@
 -- Commands:
 --  check <file>
 --  find <symbol>
+--  info <file> <expr>
+--  type <file> <line> <column>
 --  lint [hlint options] <file>
 --     the format of hlint options is [String] because they may contain
 --     spaces and aslo <file> may contain spaces.
