@@ -160,8 +160,8 @@ nil            does not display errors/warnings.
 	    errs wrns)
 	(dolist (msg msgs)
 	  (if (string-match "^Warning" msg)
-	      (setq wrns (cons msg wrns))
-	    (setq errs (cons msg errs))))
+	      (ghc-add wrns msg)
+	    (ghc-add errs msg)))
 	(ghc-make-file-msgs :file file :msgs (nconc errs wrns))))))
 
 (defun ghc-display-errors ()

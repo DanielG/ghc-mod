@@ -70,7 +70,7 @@
 	(i 0)
 	acc)
     (while (< i len)
-      (setq acc (cons (format "-%d-" (aref symbol i)) acc))
+      (ghc-add acc (format "-%d-" (aref symbol i)))
       (setq i (1+ i)))
     (apply 'concat (nreverse acc))))
 
