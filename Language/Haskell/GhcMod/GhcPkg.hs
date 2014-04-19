@@ -18,10 +18,11 @@ import Data.Char (isSpace,isAlphaNum)
 import Data.List (isPrefixOf, intercalate)
 import Data.Maybe (listToMaybe, maybeToList)
 import Language.Haskell.GhcMod.Types
-import System.FilePath ((</>))
-import System.Process (readProcessWithExitCode)
-import System.IO (hPutStrLn,stderr)
+import Language.Haskell.GhcMod.Utils
 import System.Exit (ExitCode(..))
+import System.FilePath ((</>))
+import System.IO (hPutStrLn,stderr)
+import System.Process (readProcessWithExitCode)
 import Text.ParserCombinators.ReadP (ReadP, char, between, sepBy1, many1, string, choice, eof)
 import qualified Text.ParserCombinators.ReadP as P
 
@@ -48,9 +49,6 @@ getSandboxDbDir sconf = do
 
     parse = head . filter (key `isPrefixOf`) . lines
     extractValue = dropWhileEnd isSpace . dropWhile isSpace . drop keyLen
-    -- dropWhileEnd is not provided prior to base 4.5.0.0.
-    dropWhileEnd :: (a -> Bool) -> [a] -> [a]
-    dropWhileEnd p = foldr (\x xs -> if p x && null xs then [] else x : xs) []
 
 getPackageDbStack :: FilePath -- ^ Project Directory (where the
                                  -- cabal.sandbox.config file would be if it
