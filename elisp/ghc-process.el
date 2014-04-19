@@ -87,6 +87,24 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+(defvar ghc-process-rendezvous nil)
+(defvar ghc-process-results nil)
+
+(defun ghc-sync-process (send)
+  (setq ghc-process-rendezvous nil)
+  (setq ghc-process-results nil)
+  (ghc-with-process send 'ghc-process-callback)
+  (while (null ghc-process-rendezvous)
+    (sit-for 0.01))
+  ghc-process-results)
+
+(defun ghc-process-callback ()
+  (let ((mods (ghc-read-lisp-this-buffer)))
+    (setq ghc-process-results mods)
+    (setq ghc-process-rendezvous t)))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
 (defun ghc-kill-process ()
   (interactive)
   (let* ((name ghc-process-process-name)

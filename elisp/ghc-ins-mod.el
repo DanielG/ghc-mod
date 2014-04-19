@@ -10,9 +10,6 @@
 
 ;;; Code:
 
-(defvar ghc-ins-mod-rendezvous nil)
-(defvar ghc-ins-mod-results nil)
-
 (defun ghc-insert-module ()
   (interactive)
   (let* ((expr0 (ghc-things-at-point))
@@ -76,21 +73,7 @@
     (forward-line)))
 
 (defun ghc-function-to-modules (fun)
-  (setq ghc-ins-mod-rendezvous nil)
-  (setq ghc-ins-mod-results nil)
-  (ghc-with-process
-   (lambda () (ghc-ins-mod-send fun))
-   'ghc-ins-mod-callback)
-  (while (null ghc-ins-mod-rendezvous)
-    (sit-for 0.01))
-  ghc-ins-mod-results)
-
-(defun ghc-ins-mod-send (fun)
-  (concat "find " fun "\n"))
-
-(defun ghc-ins-mod-callback ()
-  (let ((mods (ghc-read-lisp-this-buffer)))
-    (setq ghc-ins-mod-rendezvous t)
-    (setq ghc-ins-mod-results mods)))
+  (let ((cmd (format "find %s\n" fun)))
+    (ghc-sync-process (lambda () cmd))))
 
 (provide 'ghc-ins-mod)

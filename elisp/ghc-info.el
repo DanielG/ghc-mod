@@ -9,6 +9,7 @@
 ;;; Code:
 
 (require 'ghc-func)
+(require 'ghc-process)
 
 (defun ghc-show-info (&optional ask)
   (interactive "P")
@@ -21,10 +22,9 @@
        (lambda () (insert info))))))
 
 (defun ghc-get-info (expr)
-  (let* ((modname (or (ghc-find-module-name) "Main"))
-	 (file (buffer-file-name))
-	 (cmds (list "info" file modname expr)))
-    (ghc-run-ghc-mod cmds)))
+  (let* ((file (buffer-file-name))
+	 (cmd (format "info %s %s\n" file expr)))
+    (car (ghc-sync-process (lambda () cmd)))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
