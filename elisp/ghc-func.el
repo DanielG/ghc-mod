@@ -63,6 +63,10 @@
 (defun ghc-read-lisp (func)
   (with-temp-buffer
     (funcall func)
+    (ghc-read-lisp-this-buffer)))
+
+(defun ghc-read-lisp-this-buffer ()
+  (save-excursion
     (goto-char (point-min))
     (condition-case nil
 	(read (current-buffer))
@@ -83,11 +87,6 @@
 
 (defun ghc-mapconcat (func list)
   (apply 'append (mapcar func list)))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-(defconst ghc-null 0)
-(defconst ghc-newline 10)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -152,7 +151,6 @@
       (with-current-buffer buf
         (erase-buffer)
         (funcall ins-func)
-        (ghc-replace-character-buffer ghc-null ghc-newline)
         (goto-char (point-min))
         (if (not fontify)
             (turn-off-haskell-font-lock)

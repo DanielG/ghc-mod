@@ -89,13 +89,8 @@
   (concat "find " fun "\n"))
 
 (defun ghc-ins-mod-callback ()
-  (let (lines line beg)
-    (while (not (eobp))
-      (setq beg (point))
-      (forward-line)
-      (setq line (buffer-substring-no-properties beg (1- (point))))
-      (setq lines (cons line lines)))
+  (let ((mods (ghc-read-lisp-this-buffer)))
     (setq ghc-ins-mod-rendezvous t)
-    (setq ghc-ins-mod-results (nreverse (cdr lines))))) ;; removing "OK"
+    (setq ghc-ins-mod-results mods))) ;; fixme -- OK
 
 (provide 'ghc-ins-mod)

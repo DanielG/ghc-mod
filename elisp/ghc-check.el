@@ -69,22 +69,8 @@ nil            does not display errors/warnings.
 	    "]")))
 
 (defun ghc-check-callback ()
-  (let ((regex "^\\([^\n\0]*\\):\\([0-9]+\\):\\([0-9]+\\): *\\(.+\\)")
-	info infos)
-    (while (re-search-forward regex nil t)
-      (let* ((file (expand-file-name (match-string 1))) ;; for Windows
-	     (line (string-to-number (match-string 2)))
-	     ;; don't take column to make multiple same errors to a single.
-	     (msg  (match-string 4))
-	     (err  (not (string-match "^Warning" msg)))
-	     (info (ghc-make-hilit-info
-		    :file file
-		    :line line
-		    :msg  msg
-		    :err  err)))
-	(unless (member info infos)
-	  (setq infos (cons info infos)))))
-    (setq infos (nreverse infos))
+  (let* ((errs (ghc-read-lisp-this-buffer))
+	 (infos (ghc-to-info errs)))
     (cond
      (infos
       (let ((file ghc-process-original-file)
@@ -101,6 +87,25 @@ nil            does not display errors/warnings.
 		 (elen (length errs))
 		 (wlen (- len elen)))
 	    (setq mode-line-process (format " %d:%d" elen wlen))))))))
+
+(defun ghc-to-info (errs)
+  ;; [^\t] to include \n.
+  (let ((regex "^\\([^\n]*\\):\\([0-9]+\\):\\([0-9]+\\): *\\([^\t]+\\)")
+	info infos)
+    (dolist (err errs (nreverse infos))
+      (when (string-match regex err)
+	(let* ((file (expand-file-name (match-string 1 err))) ;; for Windows
+	       (line (string-to-number (match-string 2 err)))
+	       ;; don't take column to make multiple same errors to a single.
+	       (msg (match-string 4 err))
+	       (wrn (string-match "^Warning" msg))
+	       (info (ghc-make-hilit-info
+		      :file file
+		      :line line
+		      :msg  msg
+		      :err  (not wrn))))
+	  (unless (member info infos)
+	    (ghc-add infos info)))))))
 
 (defun ghc-check-highlight-original-buffer (ofile buf infos)
   (with-current-buffer buf
@@ -131,8 +136,7 @@ nil            does not display errors/warnings.
 	  (overlay-put ovl 'ghc-check t)
 	  (overlay-put ovl 'ghc-file file)
 	  (overlay-put ovl 'ghc-msg msg)
-	  (let ((echo (ghc-replace-character msg ?\0 ?\n)))
-	    (overlay-put ovl 'help-echo echo))
+	  (overlay-put ovl 'help-echo msg)
 	  (let ((fringe (if err ghc-check-error-fringe ghc-check-warning-fringe))
 		(face (if err 'ghc-face-error 'ghc-face-warn)))
 	    (overlay-put ovl 'before-string fringe)
@@ -179,7 +183,7 @@ nil            does not display errors/warnings.
 	(message "No errors or warnings")
       (let* ((file (ghc-file-msgs-get-file file-msgs))
 	     (msgs (ghc-file-msgs-get-msgs file-msgs))
-	     (errmsg (mapconcat (lambda (x) (replace-regexp-in-string "\0" "\n" x)) msgs "\n"))
+	     (errmsg (mapconcat 'identity msgs "\n"))
 	     (buffile buffer-file-name))
         (if (string-equal buffile file)
             (message "%s" errmsg)
@@ -231,10 +235,10 @@ nil            does not display errors/warnings.
 	    (if (not (bolp)) (insert "\n")))
 	  (insert (match-string 1) " = undefined\n")))
        ;; GHC 7.8 uses Unicode for single-quotes.
-       ((string-match "Not in scope: type constructor or class .\\([^\n\0]+\\)." data)
+       ((string-match "Not in scope: type constructor or class .\\([^\n]+\\)." data)
 	(let ((sym (match-string 1 data)))
 	  (ghc-ins-mod sym)))
-       ((string-match "Not in scope: .\\([^\n\0]+\\)." data)
+       ((string-match "Not in scope: .\\([^\n]+\\)." data)
 	(let ((sym (match-string 1 data)))
 	  (if (or (string-match "\\." sym) ;; qualified
 		  (y-or-n-p (format "Import module for %s?" sym)))
@@ -247,7 +251,8 @@ nil            does not display errors/warnings.
 	(let* ((fn (ghc-get-function-name))
 	       (arity (ghc-get-function-arity fn)))
 	  (ghc-insert-underscore fn arity)))
-       ((string-match "Found:\0[ ]*\\([^\0]+\\)\0Why not:\0[ ]*\\([^\0]+\\)" data)
+       ;; fixme
+       ((string-match "Found:\n[ ]*\\([^\n]+\\)\nWhy not:\n[ ]*\\([^\n]+\\)" data)
 	(let ((old (match-string 1 data))
 	      (new (match-string 2 data)))
 	  (beginning-of-line)
@@ -263,11 +268,11 @@ nil            does not display errors/warnings.
   (with-temp-buffer
     (insert str)
     (goto-char (point-min))
-    (when (re-search-forward "Inferred type: \\|no type signature:\\( \\|\0 +\\)?" nil t)
+    (when (re-search-forward "Inferred type: \\|no type signature:\\( \\|\n +\\)?" nil t)
       (delete-region (point-min) (point)))
     (when (re-search-forward " forall [^.]+\\." nil t)
       (replace-match ""))
-    (while (re-search-forward "\0 +" nil t)
+    (while (re-search-forward "\n +" nil t)
       (replace-match " "))
     (goto-char (point-min))
     (while (re-search-forward "\\[Char\\]" nil t)
