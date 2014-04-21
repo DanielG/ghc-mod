@@ -38,5 +38,3 @@ addPackages :: Options -> Options
 addPackages opt = opt { ghcOpts = pkgs ++ ghcOpts opt}
   where
     pkgs = map ("-package " ++) preBrowsePackages
-
-
