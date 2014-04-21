@@ -8,8 +8,9 @@
 --  type <file> <line> <column>
 --  lint [hlint options] <file>
 --     the format of hlint options is [String] because they may contain
---     spaces and aslo <file> may contain spaces.
+--     spaces and also <file> may contain spaces.
 --  boot
+--  browse <module>
 --
 -- Session separators:
 --   OK -- success
@@ -156,17 +157,15 @@ loop opt set mvar readLog  = do
     let (cmd,arg') = break (== ' ') cmdArg
         arg = dropWhile (== ' ') arg'
     (ret,ok,set') <- case cmd of
-        "check" -> checkStx opt set arg readLog
-        "find"  -> findSym  opt set arg mvar
-        "lint"  -> lintStx  opt set arg
-        "info"  -> showInfo opt set arg readLog
-        "type"  -> showType opt set arg readLog
-        "boot"  -> bootIt   opt set
-        _       -> return ([], False, set)
-    let put = case outputStyle opt of
-            LispStyle  -> putStr
-            PlainStyle -> putStrLn
-    liftIO $ put ret
+        "check"  -> checkStx opt set arg readLog
+        "find"   -> findSym  opt set arg mvar
+        "lint"   -> lintStx  opt set arg
+        "info"   -> showInfo opt set arg readLog
+        "type"   -> showType opt set arg readLog
+        "boot"   -> bootIt   opt set
+        "browse" -> browseIt opt set arg
+        _        -> return ([], False, set)
+    liftIO $ putStr ret
     liftIO $ putStrLn $ if ok then "OK" else "NG"
     liftIO $ hFlush stdout
     when ok $ loop opt set' mvar readLog
@@ -281,4 +280,12 @@ bootIt :: Options
        -> Ghc (String, Bool, Set FilePath)
 bootIt opt set = do
     ret <- boot' opt
+    return (ret, True, set)
+
+browseIt :: Options
+         -> Set FilePath
+         -> ModuleString
+         -> Ghc (String, Bool, Set FilePath)
+browseIt opt set mdl = do
+    ret <- browse opt mdl
     return (ret, True, set)
