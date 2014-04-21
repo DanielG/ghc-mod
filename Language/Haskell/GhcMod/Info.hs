@@ -38,17 +38,18 @@ infoExpr :: Options
          -> Expression   -- ^ A Haskell expression.
          -> IO String
 infoExpr opt cradle file expr = (++ "\n") <$> withGHCDummyFile
-    (inModuleContext opt cradle file (info file expr) "Cannot show info")
+    (inModuleContext opt cradle file (info opt file expr) "Cannot show info")
 
 -- | Obtaining information of a target expression. (GHCi's info:)
-info :: FilePath     -- ^ A target file.
+info :: Options
+     -> FilePath     -- ^ A target file.
      -> Expression   -- ^ A Haskell expression.
      -> Ghc String
-info file expr = do
+info opt file expr = do
     void $ Gap.setCtx file
     sdoc  <- Gap.infoThing expr
     (dflag, style) <- getFlagStyle
-    return $ showPage dflag style sdoc
+    return $ convert opt $ showPage dflag style sdoc
 
 ----------------------------------------------------------------
 

@@ -256,9 +256,9 @@ showInfo :: Options
 showInfo opt set ls readLog fileArg = do
     let [file, expr] = words fileArg
     (_, _, set') <- checkStx opt set ls readLog file
-    msgs <- info file expr -- fixme
+    ret <- info opt file expr
     _ <- liftIO readLog
-    return (msgs, True, set') -- fixme
+    return (ret, True, set')
 
 showType :: Options
          -> Set FilePath
