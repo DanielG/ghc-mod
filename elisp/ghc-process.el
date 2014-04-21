@@ -23,13 +23,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defun ghc-get-project-root ()
-  (let ((file (buffer-file-name)))
-    (when file
-      (with-temp-buffer
-	(ghc-call-process ghc-module-command nil t nil "root" file)
-	(goto-char (point-min))
-	(when (looking-at "^\\(.*\\)$")
-	  (match-string-no-properties 1))))))
+  (ghc-run-ghc-mod '("root")))
 
 (defun ghc-with-process (cmd callback)
   (unless ghc-process-process-name
