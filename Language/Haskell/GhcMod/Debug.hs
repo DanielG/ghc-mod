@@ -1,4 +1,4 @@
-module Language.Haskell.GhcMod.Debug (debugInfo, debug, rootInfo, root) where
+module Language.Haskell.GhcMod.Debug (debugInfo, debug, rootInfo) where
 
 import Control.Applicative ((<$>))
 import Control.Exception.IOChoice ((||>))
@@ -62,13 +62,5 @@ debug opt cradle fileName = do
 -- | Obtaining root information.
 rootInfo :: Options
           -> Cradle
-          -> FilePath   -- ^ A target file.
           -> IO String
-rootInfo opt cradle fileName = withGHC fileName (root opt cradle fileName)
-
--- | Obtaining root information.
-root :: Options
-      -> Cradle
-      -> FilePath     -- ^ A target file.
-      -> Ghc String
-root _ cradle _ = return $ cradleRootDir cradle ++ "\n"
+rootInfo opt cradle = return $ convert opt $ cradleRootDir cradle
