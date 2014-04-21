@@ -99,11 +99,7 @@ unloaded modules are loaded")
 			"Data.Maybe"
 			"System.Directory"
 			"System.FilePath"
-			"System.IO"))
-;; fixme :: ghc-sync-process uses a global var for syncing.
-;;          This may causes race.
-;;  (run-with-idle-timer ghc-idle-timer-interval 'repeat 'ghc-idle-timer)
-  )
+			"System.IO")))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -247,9 +243,6 @@ unloaded modules are loaded")
 		     (not (member mod ghc-loaded-module))))
 	      mods))
 
-(defun ghc-load-module-all-buffers ()
-  (ghc-load-merge-modules (ghc-gather-import-modules-all-buffers)))
-
 (defun ghc-load-module-buffer ()
   (ghc-load-merge-modules (ghc-gather-import-modules-buffer)))
 
@@ -273,26 +266,6 @@ unloaded modules are loaded")
 (defun ghc-module-keyword (mod)
   (symbol-value (ghc-module-symbol mod)))
 
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-(ghc-defstruct buffer name file)
-
-(defun ghc-buffer-name-file (buf)
-  (ghc-make-buffer
-   :name (buffer-name buf)
-   :file (buffer-file-name buf)))
-
-(defun ghc-gather-import-modules-all-buffers ()
-  (let ((bufs (mapcar 'ghc-buffer-name-file (buffer-list)))
-	ret file)
-    (save-excursion
-      (dolist (buf bufs (ghc-uniq-lol ret))
-	(setq file (ghc-buffer-get-file buf))
-	(when (and file (string-match "\\.hs$" file))
-	  (set-buffer (ghc-buffer-get-name buf))
-	  (ghc-add ret (ghc-gather-import-modules-buffer)))))))
-
 (defun ghc-gather-import-modules-buffer ()
   (let (ret)
     (save-excursion
@@ -306,7 +279,5 @@ unloaded modules are loaded")
 ;;;
 ;;; Background Idle Timer
 ;;;
-
-(defalias 'ghc-idle-timer 'ghc-load-module-all-buffers)
 
 (provide 'ghc-comp)
