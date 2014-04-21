@@ -97,6 +97,7 @@
     (define-key haskell-mode-map ghc-deeper-key      'ghc-make-indent-deeper)
     (ghc-comp-init)
     (setq ghc-initialized t))
+  (ghc-import-module)
   (ghc-check-syntax))
 
 (defun ghc-abbrev-init ()

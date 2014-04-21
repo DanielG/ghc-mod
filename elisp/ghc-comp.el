@@ -69,7 +69,6 @@ unloaded modules are loaded")
 (defvar ghc-loaded-module nil)
 
 (defun ghc-comp-init ()
-  (add-hook 'find-file-hook 'ghc-import-module)
   (let* ((syms '(ghc-module-names
 		 ghc-language-extensions
 		 ghc-option-flags
@@ -110,27 +109,19 @@ unloaded modules are loaded")
 ;;;
 
 (defun ghc-boot (n)
-  (ghc-executable-find ghc-module-command
-    (ghc-read-lisp-list
-     (lambda ()
-       (message "Initializing...")
-       (ghc-call-process ghc-module-command nil t nil "-l" "boot")
-       (message "Initializing...done"))
-     n)))
+  (prog2
+      (message "Initializing...")
+      (ghc-sync-process "boot\n" n)
+    (message "Initializing...done")))
 
 (defun ghc-load-modules (mods)
-  (if (null mods)
-      (progn
-	(message "No new modules")
-	nil)
-    (ghc-executable-find ghc-module-command
-      (ghc-read-lisp-list
-       (lambda ()
-	 (message "Loading names...")
-	 (apply 'ghc-call-process ghc-module-command nil '(t nil) nil
-		`(,@(ghc-make-ghc-options) "-l" "browse" ,@mods))
-	 (message "Loading names...done"))
-       (length mods)))))
+  (if mods
+      (mapcar 'ghc-load-module mods)
+    (message "No new modules")
+    nil))
+
+(defun ghc-load-module (mod)
+  (ghc-sync-process (format "browse %s\n" mod)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;

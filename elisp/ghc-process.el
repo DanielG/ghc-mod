@@ -81,19 +81,25 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defvar ghc-process-rendezvous nil)
+(defvar ghc-process-num-of-results nil)
 (defvar ghc-process-results nil)
 
-(defun ghc-sync-process (cmd)
+(defun ghc-sync-process (cmd &optional n)
   (setq ghc-process-rendezvous nil)
   (setq ghc-process-results nil)
+  (setq ghc-process-num-of-results (or n 1))
   (ghc-with-process cmd 'ghc-process-callback)
   (while (null ghc-process-rendezvous)
     (sit-for 0.01))
   ghc-process-results)
 
 (defun ghc-process-callback ()
-  (let ((mods (ghc-read-lisp-this-buffer)))
-    (setq ghc-process-results mods)
+  (let* ((n ghc-process-num-of-results)
+	 (ret (if (= n 1)
+		  (ghc-read-lisp-this-buffer)
+		(ghc-read-lisp-list-this-buffer n))))
+    (setq ghc-process-results ret)
+    (setq ghc-process-num-of-results nil)
     (setq ghc-process-rendezvous t)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
