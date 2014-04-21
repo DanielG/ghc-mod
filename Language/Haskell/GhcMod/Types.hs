@@ -47,62 +47,73 @@ defaultOptions = Options {
 ----------------------------------------------------------------
 
 convert :: ToString a => Options -> a -> String
-convert Options{ outputStyle = LispStyle  } = toLisp
-convert Options{ outputStyle = PlainStyle } = toPlain
+ -- fixme: builder
+convert opt@Options { outputStyle = LispStyle  } x = toLisp  opt x ++ "\n"
+convert opt@Options { outputStyle = PlainStyle } x = toPlain opt x ++ "\n"
 
 class ToString a where
-    toLisp  :: a -> String
-    toPlain :: a -> String
+    toLisp  :: Options -> a -> String
+    toPlain :: Options -> a -> String
+
+lineSep :: Options -> String
+lineSep opt = lsep
+  where
+    LineSeparator lsep = lineSeparator opt
 
 -- |
 --
--- >>> toLisp "fo\"o"
--- "\"fo\\\"o\"\n"
--- >>> toPlain "foo"
--- "foo\n"
+-- >>> toLisp defaultOptions "fo\"o"
+-- "\"fo\\\"o\""
+-- >>> toPlain defaultOptions "foo"
+-- "foo"
 instance ToString String where
-    toLisp  = addNewLine . quote
-    toPlain = addNewLine
+    toLisp  opt = quote opt
+    toPlain opt = replace '\n' (lineSep opt)
 
 -- |
 --
--- >>> toLisp ["foo", "bar", "ba\"z"]
--- "(\"foo\" \"bar\" \"ba\\\"z\")\n"
--- >>> toPlain ["foo", "bar", "baz"]
--- "foo\nbar\nbaz\n"
+-- >>> toLisp defaultOptions ["foo", "bar", "ba\"z"]
+-- "(\"foo\" \"bar\" \"ba\\\"z\")"
+-- >>> toPlain defaultOptions ["foo", "bar", "baz"]
+-- "foo\nbar\nbaz"
 instance ToString [String] where
-    toLisp  = addNewLine . toSexp True
-    toPlain = unlines
+    toLisp  opt = toSexp opt True
+    toPlain opt = intercalate "\n" . map (toPlain opt)
 
 -- |
 --
 -- >>> let inp = [((1,2,3,4),"foo"),((5,6,7,8),"bar")] :: [((Int,Int,Int,Int),String)]
--- >>> toLisp inp
--- "((1 2 3 4 \"foo\") (5 6 7 8 \"bar\"))\n"
--- >>> toPlain inp
--- "1 2 3 4 \"foo\"\n5 6 7 8 \"bar\"\n"
+-- >>> toLisp defaultOptions inp
+-- "((1 2 3 4 \"foo\") (5 6 7 8 \"bar\"))"
+-- >>> toPlain defaultOptions inp
+-- "1 2 3 4 \"foo\"\n5 6 7 8 \"bar\""
 instance ToString [((Int,Int,Int,Int),String)] where
-    toLisp  = addNewLine . toSexp False . map toS
+    toLisp  opt = toSexp opt False . map toS
       where
-        toS x = "(" ++ tupToString x ++ ")"
-    toPlain = unlines . map tupToString
+        toS x = "(" ++ tupToString opt x ++ ")"
+    toPlain opt = intercalate "\n" . map (tupToString opt)
 
-toSexp :: Bool -> [String] -> String
-toSexp False ss = "(" ++ unwords ss ++ ")"
-toSexp True ss  = "(" ++ unwords (map quote ss) ++ ")"
+toSexp :: Options -> Bool -> [String] -> String
+toSexp _   False ss = "(" ++ unwords ss ++ ")"
+toSexp opt True ss  = "(" ++ unwords (map (quote opt) ss) ++ ")"
 
-tupToString :: ((Int,Int,Int,Int),String) -> String
-tupToString ((a,b,c,d),s) = show a ++ " "
-                         ++ show b ++ " "
-                         ++ show c ++ " "
-                         ++ show d ++ " "
-                         ++ quote s -- fixme: quote is not necessary
+tupToString :: Options -> ((Int,Int,Int,Int),String) -> String
+tupToString opt ((a,b,c,d),s) = show a ++ " "
+                             ++ show b ++ " "
+                             ++ show c ++ " "
+                             ++ show d ++ " "
+                             ++ quote opt s -- fixme: quote is not necessary
 
-quote :: String -> String
-quote x = "\"" ++ replace '"' "\\\"" x ++ "\""
-
-addNewLine :: String -> String
-addNewLine = (++ "\n")
+quote :: Options -> String -> String
+quote opt str = "\"" ++ quote' str ++ "\"" -- fixme: builder
+  where
+    lsep = lineSep opt
+    quote' [] = []
+    quote' (x:xs)
+      | x == '\n' = lsep   ++ quote' xs
+      | x == '\\' = "\\\\" ++ quote' xs
+      | x == '"'  = "\\\"" ++ quote' xs
+      | otherwise = x       : quote' xs
 
 ----------------------------------------------------------------
 

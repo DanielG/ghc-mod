@@ -180,12 +180,11 @@ checkStx opt set file readLog = do
         mdel <- removeMainTarget
         when add $ addTargetFiles [file]
         void $ G.load LoadAllTargets
-        msgs <- liftIO readLog
+        ret <- liftIO readLog
         let set1 = if add then S.insert file set else set
             set2 = case mdel of
                 Nothing    -> set1
                 Just delfl -> S.delete delfl set1
-        let ret = convert opt msgs
         return (ret, True, set2)
   where
     handler :: SourceError -> Ghc (String, Bool, Set FilePath)
@@ -213,7 +212,7 @@ findSym :: Options -> Set FilePath -> String -> MVar DB
         -> Ghc (String, Bool, Set FilePath)
 findSym opt set sym mvar = do
     db <- liftIO $ readMVar mvar
-    let ret = convert opt $ fromMaybe [] (M.lookup sym db)
+    let ret = convert opt $ fromMaybe [] (M.lookup sym db) -- fixme
     return (ret, True, set)
 
 lintStx :: Options -> Set FilePath -> FilePath
