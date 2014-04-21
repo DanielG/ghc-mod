@@ -31,7 +31,7 @@ browseModule :: Options
              -> Cradle
              -> ModuleString -- ^ A module name. (e.g. \"Data.List\")
              -> IO String
-browseModule opt cradle mdlName = convert opt . sort <$> withGHCDummyFile (browse opt cradle mdlName)
+browseModule opt cradle mdlName = withGHCDummyFile (browse opt cradle mdlName)
 
 -- | Getting functions, classes, etc from a module.
 --   If 'detailed' is 'True', their types are also obtained.
@@ -39,10 +39,10 @@ browseModule opt cradle mdlName = convert opt . sort <$> withGHCDummyFile (brows
 browse :: Options
        -> Cradle
        -> ModuleString -- ^ A module name. (e.g. \"Data.List\")
-       -> Ghc [String]
+       -> Ghc String
 browse opt cradle mdlName = do
     void $ initializeFlagsWithCradle opt cradle [] False
-    getModule >>= G.getModuleInfo >>= listExports
+    convert opt . sort <$> (getModule >>= G.getModuleInfo >>= listExports)
   where
     getModule = G.findModule mdlname mpkgid `G.gcatch` fallback
     mdlname = G.mkModuleName mdlName

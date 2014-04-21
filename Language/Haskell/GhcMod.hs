@@ -32,7 +32,7 @@ module Language.Haskell.GhcMod (
   , check
   , info
   , typeOf
-  , listMods
+  , modules
   , lint
   ) where
 

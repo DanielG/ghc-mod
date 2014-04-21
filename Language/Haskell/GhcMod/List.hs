@@ -1,4 +1,4 @@
-module Language.Haskell.GhcMod.List (listModules, listMods) where
+module Language.Haskell.GhcMod.List (listModules, modules) where
 
 import Control.Applicative ((<$>))
 import Control.Monad (void)
@@ -14,17 +14,13 @@ import UniqFM (eltsUFM)
 
 -- | Listing installed modules.
 listModules :: Options -> Cradle -> IO String
-listModules opt cradle = convert opt . nub . sort . map dropPkgs <$> withGHCDummyFile (listMods opt cradle)
-  where
-    dropPkgs (name, pkg)
-      | detailed opt = name ++ " " ++ pkg
-      | otherwise = name
+listModules opt cradle = withGHCDummyFile (modules opt cradle)
 
 -- | Listing installed modules.
-listMods :: Options -> Cradle -> Ghc [(String, String)]
-listMods opt cradle = do
+modules :: Options -> Cradle -> Ghc String
+modules opt cradle = do
     void $ initializeFlagsWithCradle opt cradle [] False
-    getExposedModules <$> G.getSessionDynFlags
+    convert opt . nub . sort . map dropPkgs . getExposedModules <$> G.getSessionDynFlags
   where
     getExposedModules = concatMap exposedModules'
                       . eltsUFM . pkgIdMap . G.pkgState
@@ -32,3 +28,6 @@ listMods opt cradle = do
         map G.moduleNameString (exposedModules p)
     	`zip`
         repeat (display $ sourcePackageId p)
+    dropPkgs (name, pkg)
+      | detailed opt = name ++ " " ++ pkg
+      | otherwise = name
