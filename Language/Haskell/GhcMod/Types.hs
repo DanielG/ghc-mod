@@ -53,10 +53,33 @@ class ToString a where
     toLisp  :: a -> String
     toPlain :: a -> String
 
+-- |
+--
+-- >>> toLisp "fo\"o"
+-- "\"fo\\\"o\"\n"
+-- >>> toPlain "foo"
+-- "foo\n"
+instance ToString String where
+    toLisp  = addNewLine . quote
+    toPlain = addNewLine
+
+-- |
+--
+-- >>> toLisp ["foo", "bar", "ba\"z"]
+-- "(\"foo\" \"bar\" \"ba\\\"z\")\n"
+-- >>> toPlain ["foo", "bar", "baz"]
+-- "foo\nbar\nbaz\n"
 instance ToString [String] where
     toLisp  = addNewLine . toSexp True
     toPlain = unlines
 
+-- |
+--
+-- >>> let inp = [((1,2,3,4),"foo"),((5,6,7,8),"bar")] :: [((Int,Int,Int,Int),String)]
+-- >>> toLisp inp
+-- "((1 2 3 4 \"foo\") (5 6 7 8 \"bar\"))\n"
+-- >>> toPlain inp
+-- "1 2 3 4 \"foo\"\n5 6 7 8 \"bar\"\n"
 instance ToString [((Int,Int,Int,Int),String)] where
     toLisp  = addNewLine . toSexp False . map toS
       where
@@ -72,7 +95,7 @@ tupToString ((a,b,c,d),s) = show a ++ " "
                          ++ show b ++ " "
                          ++ show c ++ " "
                          ++ show d ++ " "
-                         ++ quote s
+                         ++ quote s -- fixme: quote is not necessary
 
 quote :: String -> String
 quote x = "\"" ++ escape x ++ "\""
