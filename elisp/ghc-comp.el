@@ -100,6 +100,8 @@ unloaded modules are loaded")
 			"System.Directory"
 			"System.FilePath"
 			"System.IO"))
+;; fixme :: ghc-sync-process uses a global var for syncing.
+;;          This may causes race.
 ;;  (run-with-idle-timer ghc-idle-timer-interval 'repeat 'ghc-idle-timer)
   )
 
