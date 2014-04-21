@@ -73,17 +73,6 @@
 	(read (current-buffer))
       (error ()))))
 
-(defun ghc-read-lisp-list (func n)
-  (with-temp-buffer
-    (funcall func)
-    (goto-char (point-min))
-    (condition-case nil
-	(let ((m (set-marker (make-marker) 1 (current-buffer)))
-	      ret)
-	  (dotimes (i n (nreverse ret))
-	    (ghc-add ret (read m))))
-      (error ()))))
-
 (defun ghc-read-lisp-list-this-buffer (n)
   (save-excursion
     (goto-char (point-min))
