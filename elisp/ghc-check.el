@@ -46,21 +46,21 @@ nil            does not display errors/warnings.
 
 (defun ghc-check-syntax ()
   (interactive)
-  (ghc-with-process 'ghc-check-send 'ghc-check-callback))
+  (setq mode-line-process " -:-") ;; fixme
+  (ghc-with-process (ghc-check-send) 'ghc-check-callback))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (ghc-defstruct hilit-info file line msg err)
 
 (defun ghc-check-send ()
-  (with-current-buffer ghc-process-original-buffer
-    (setq mode-line-process " -:-"))
-  (if ghc-check-command
-      (let ((opts (ghc-haskell-list-of-string ghc-hlint-options)))
-	(if opts
-	    (concat "lint " opts " " ghc-process-original-file "\n")
-	  (concat "lint " ghc-process-original-file "\n")))
-    (concat "check " ghc-process-original-file "\n")))
+  (let ((file (buffer-file-name)))
+    (if ghc-check-command
+	(let ((opts (ghc-haskell-list-of-string ghc-hlint-options)))
+	  (if opts
+	      (format "lint %s %s\n" opts file)
+	    (format "lint %s\n" file)))
+      (format "check %s\n" file))))
 
 (defun ghc-haskell-list-of-string (los)
   (when los

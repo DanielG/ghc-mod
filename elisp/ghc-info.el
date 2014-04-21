@@ -24,7 +24,7 @@
 (defun ghc-get-info (expr)
   (let* ((file (buffer-file-name))
 	 (cmd (format "info %s %s\n" file expr)))
-    (car (ghc-sync-process (lambda () cmd)))))
+    (ghc-sync-process cmd)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -111,7 +111,7 @@
 	 (cn (int-to-string (1+ (current-column))))
 	 (file (buffer-file-name))
 	 (cmd (format "type %s %s %s\n" file ln cn)))
-    (ghc-sync-process (lambda () cmd))))
+    (ghc-sync-process cmd)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;

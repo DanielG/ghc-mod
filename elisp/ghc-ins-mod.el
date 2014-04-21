@@ -74,6 +74,6 @@
 
 (defun ghc-function-to-modules (fun)
   (let ((cmd (format "find %s\n" fun)))
-    (ghc-sync-process (lambda () cmd))))
+    (ghc-sync-process cmd)))
 
 (provide 'ghc-ins-mod)

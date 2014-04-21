@@ -31,7 +31,7 @@
 	(when (looking-at "^\\(.*\\)$")
 	  (match-string-no-properties 1))))))
 
-(defun ghc-with-process (send callback)
+(defun ghc-with-process (cmd callback)
   (unless ghc-process-process-name
     (setq ghc-process-process-name (ghc-get-project-root)))
   (when ghc-process-process-name
@@ -47,8 +47,7 @@
 	  (setq ghc-process-original-file file)
 	  (setq ghc-process-callback callback)
 	  (erase-buffer)
-	  (let ((pro (ghc-get-process cpro name buf))
-		(cmd (funcall send)))
+	  (let ((pro (ghc-get-process cpro name buf)))
 	    (process-send-string pro cmd)
 	    (when ghc-debug
 	      (ghc-with-debug-buffer
@@ -90,10 +89,10 @@
 (defvar ghc-process-rendezvous nil)
 (defvar ghc-process-results nil)
 
-(defun ghc-sync-process (send)
+(defun ghc-sync-process (cmd)
   (setq ghc-process-rendezvous nil)
   (setq ghc-process-results nil)
-  (ghc-with-process send 'ghc-process-callback)
+  (ghc-with-process cmd 'ghc-process-callback)
   (while (null ghc-process-rendezvous)
     (sit-for 0.01))
   ghc-process-results)
