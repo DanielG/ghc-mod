@@ -45,6 +45,7 @@ import GHC (Ghc, LoadHowMuch(LoadAllTargets), TargetId(TargetFile))
 import qualified GHC as G
 import HscTypes (SourceError)
 import Language.Haskell.GhcMod
+import Language.Haskell.GhcMod.Ghc
 import Language.Haskell.GhcMod.Internal
 import Paths_ghc_mod
 import System.Console.GetOpt

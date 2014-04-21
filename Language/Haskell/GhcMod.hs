@@ -24,16 +24,6 @@ module Language.Haskell.GhcMod (
   , debugInfo
   , rootInfo
   , packageDoc
-  -- * Converting the 'Ghc' monad to the 'IO' monad
-  , withGHC
-  , withGHCDummyFile
-  -- * 'Ghc' utilities
-  , browse
-  , check
-  , info
-  , typeOf
-  , modules
-  , lint
   ) where
 
 import Language.Haskell.GhcMod.Browse
@@ -41,7 +31,6 @@ import Language.Haskell.GhcMod.Check
 import Language.Haskell.GhcMod.Cradle
 import Language.Haskell.GhcMod.Debug
 import Language.Haskell.GhcMod.Flag
-import Language.Haskell.GhcMod.GHCApi
 import Language.Haskell.GhcMod.Info
 import Language.Haskell.GhcMod.Lang
 import Language.Haskell.GhcMod.Lint
