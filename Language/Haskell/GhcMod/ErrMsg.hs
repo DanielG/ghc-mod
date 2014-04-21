@@ -18,6 +18,7 @@ import HscTypes (SourceError, srcErrorMessages)
 import Language.Haskell.GhcMod.Doc (showPage, getStyle)
 import qualified Language.Haskell.GhcMod.Gap as Gap
 import Language.Haskell.GhcMod.Types (LineSeparator(..), Options(..), convert)
+import Language.Haskell.GhcMod.Utils (replace)
 import Outputable (PprStyle, SDoc)
 import System.FilePath (normalise)
 
@@ -41,9 +42,9 @@ readAndClearLogRef opt (LogRef ref) = do
     writeIORef ref id
     return $! convert opt (b [])
 
-appendLogRef :: DynFlags -> LineSeparator -> LogRef -> DynFlags -> Severity -> SrcSpan -> PprStyle -> SDoc -> IO ()
-appendLogRef df ls (LogRef ref) _ sev src style msg = do
-        let !l = ppMsg src sev df ls style msg
+appendLogRef :: DynFlags -> Options -> LogRef -> DynFlags -> Severity -> SrcSpan -> PprStyle -> SDoc -> IO ()
+appendLogRef df opt (LogRef ref) _ sev src style msg = do
+        let !l = ppMsg src sev df opt style msg
         modifyIORef ref (\b -> b . (l:))
 
 ----------------------------------------------------------------
@@ -54,10 +55,8 @@ setLogger False df _ = return (newdf, undefined)
     newdf = Gap.setLogAction df $ \_ _ _ _ _ -> return ()
 setLogger True  df opt = do
     logref <- newLogRef
-    let newdf = Gap.setLogAction df $ appendLogRef df ls logref
+    let newdf = Gap.setLogAction df $ appendLogRef df opt logref
     return (newdf, readAndClearLogRef opt logref)
-  where
-    ls = lineSeparator opt
 
 ----------------------------------------------------------------
 
@@ -66,27 +65,25 @@ handleErrMsg :: Options -> SourceError -> Ghc String
 handleErrMsg opt err = do
     dflag <- G.getSessionDynFlags
     style <- getStyle
-    let ret = convert opt . errBagToStrList dflag ls style . srcErrorMessages $ err
+    let ret = convert opt . errBagToStrList dflag opt style . srcErrorMessages $ err
     return ret
-  where
-    ls = lineSeparator opt
 
-errBagToStrList :: DynFlags -> LineSeparator -> PprStyle -> Bag ErrMsg -> [String]
-errBagToStrList dflag ls style = map (ppErrMsg dflag ls style) . reverse . bagToList
+errBagToStrList :: DynFlags -> Options -> PprStyle -> Bag ErrMsg -> [String]
+errBagToStrList dflag opt style = map (ppErrMsg dflag opt style) . reverse . bagToList
 
 ----------------------------------------------------------------
 
-ppErrMsg :: DynFlags -> LineSeparator -> PprStyle -> ErrMsg -> String
-ppErrMsg dflag ls style err = ppMsg spn SevError dflag ls style msg ++ ext
+ppErrMsg :: DynFlags -> Options -> PprStyle -> ErrMsg -> String
+ppErrMsg dflag opt style err = ppMsg spn SevError dflag opt style msg ++ ext
    where
      spn = Gap.errorMsgSpan err
      msg = errMsgShortDoc err
-     ext = showMsg dflag ls style (errMsgExtraInfo err)
+     ext = showMsg dflag opt style (errMsgExtraInfo err)
 
-ppMsg :: SrcSpan -> Severity-> DynFlags -> LineSeparator -> PprStyle -> SDoc -> String
-ppMsg spn sev dflag ls style msg = prefix ++ cts
+ppMsg :: SrcSpan -> Severity-> DynFlags -> Options -> PprStyle -> SDoc -> String
+ppMsg spn sev dflag opt style msg = prefix ++ cts
   where
-    cts  = showMsg dflag ls style msg
+    cts  = showMsg dflag opt style msg
     defaultPrefix
       | dopt Gap.dumpSplicesFlag dflag = ""
       | otherwise                      = "Dummy:0:0:Error:"
@@ -98,9 +95,7 @@ ppMsg spn sev dflag ls style msg = prefix ++ cts
 
 ----------------------------------------------------------------
 
-showMsg :: DynFlags -> LineSeparator -> PprStyle -> SDoc -> String
-showMsg dflag (LineSeparator lsep) style sdoc = replaceNull $ showPage dflag style sdoc
+showMsg :: DynFlags -> Options -> PprStyle -> SDoc -> String
+showMsg dflag opt style sdoc = replace '\n' lsep $ showPage dflag style sdoc
   where
-    replaceNull []        = []
-    replaceNull ('\n':xs) = lsep ++ replaceNull xs
-    replaceNull (x:xs)    = x : replaceNull xs
+    LineSeparator lsep = lineSeparator opt

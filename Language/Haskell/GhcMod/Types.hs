@@ -2,7 +2,8 @@
 
 module Language.Haskell.GhcMod.Types where
 
-import Data.List
+import Data.List (intercalate)
+import Language.Haskell.GhcMod.Utils (replace)
 
 -- | Output style.
 data OutputStyle = LispStyle  -- ^ S expression style.
@@ -98,11 +99,7 @@ tupToString ((a,b,c,d),s) = show a ++ " "
                          ++ quote s -- fixme: quote is not necessary
 
 quote :: String -> String
-quote x = "\"" ++ escape x ++ "\""
-  where
-    escape [] = []
-    escape ('"':ys) = '\\':'\"':escape ys
-    escape (y:ys)   = y:escape ys
+quote x = "\"" ++ replace '"' "\\\"" x ++ "\""
 
 addNewLine :: String -> String
 addNewLine = (++ "\n")
