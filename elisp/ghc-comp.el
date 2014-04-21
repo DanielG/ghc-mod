@@ -237,8 +237,7 @@ unloaded modules are loaded")
 
 (defun ghc-import-module ()
   (interactive)
-  (when (eq major-mode 'haskell-mode)
-    (ghc-load-module-buffer)))
+  (ghc-load-module-buffer))
 
 (defun ghc-unloaded-modules (mods)
   (ghc-filter (lambda (mod)
