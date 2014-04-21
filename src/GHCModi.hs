@@ -56,7 +56,7 @@ import System.IO (hFlush,stdout)
 ----------------------------------------------------------------
 
 type DB = Map String [String]
-type Logger = IO [String]
+type Logger = IO String
 
 ----------------------------------------------------------------
 
@@ -119,12 +119,11 @@ main = handle [GE.Handler cmdHandler, GE.Handler someHandler] $
         cradle0 <- findCradle
         let rootdir = cradleRootDir cradle0
             cradle = cradle0 { cradleCurrentDir = rootdir }
-            ls = lineSeparator opt
         setCurrentDirectory rootdir
         mvar <- liftIO newEmptyMVar
         mlibdir <- getSystemLibDir
         void $ forkIO $ setupDB cradle mlibdir opt mvar
-        run cradle mlibdir opt $ loop opt S.empty ls mvar
+        run cradle mlibdir opt $ loop opt S.empty mvar
 
 ----------------------------------------------------------------
 
@@ -148,17 +147,17 @@ setupDB cradle mlibdir opt mvar = E.handle handler $ do
 
 ----------------------------------------------------------------
 
-loop :: Options -> Set FilePath -> LineSeparator -> MVar DB -> Logger -> Ghc ()
-loop opt set ls mvar readLog  = do
+loop :: Options -> Set FilePath -> MVar DB -> Logger -> Ghc ()
+loop opt set mvar readLog  = do
     cmdArg <- liftIO getLine
     let (cmd,arg') = break (== ' ') cmdArg
         arg = dropWhile (== ' ') arg'
     (ret,ok,set') <- case cmd of
-        "check" -> checkStx opt set ls readLog arg
-        "find"  -> findSym  opt set mvar arg
-        "lint"  -> lintStx  opt set ls arg
-        "info"  -> showInfo opt set ls readLog arg
-        "type"  -> showType opt set ls readLog arg
+        "check" -> checkStx opt set arg readLog
+        "find"  -> findSym  opt set arg mvar
+        "lint"  -> lintStx  opt set arg
+        "info"  -> showInfo opt set arg readLog
+        "type"  -> showType opt set arg readLog
         _       -> return ([], False, set)
     let put = case outputStyle opt of
             LispStyle  -> putStr
@@ -166,17 +165,16 @@ loop opt set ls mvar readLog  = do
     liftIO $ put ret
     liftIO $ putStrLn $ if ok then "OK" else "NG"
     liftIO $ hFlush stdout
-    when ok $ loop opt set' ls mvar readLog
+    when ok $ loop opt set' mvar readLog
 
 ----------------------------------------------------------------
 
 checkStx :: Options
          -> Set FilePath
-         -> LineSeparator
-         -> Logger
          -> FilePath
+         -> Logger
          -> Ghc (String, Bool, Set FilePath)
-checkStx opt set ls readLog file = do
+checkStx opt set file readLog = do
     let add = not $ S.member file set
     GE.ghandle handler $ do
         mdel <- removeMainTarget
@@ -192,8 +190,7 @@ checkStx opt set ls readLog file = do
   where
     handler :: SourceError -> Ghc (String, Bool, Set FilePath)
     handler err = do
-        errmsgs <- handleErrMsg ls err
-        let ret = convert opt errmsgs
+        ret <- handleErrMsg opt err
         return (ret, False, set)
     removeMainTarget = do
         mx <- find isMain <$> G.getModuleGraph
@@ -212,22 +209,22 @@ checkStx opt set ls readLog file = do
                     return $ Just mainfile
     isMain m = G.moduleNameString (G.moduleName (G.ms_mod m)) == "Main"
 
-findSym :: Options -> Set FilePath -> MVar DB -> String
+findSym :: Options -> Set FilePath -> String -> MVar DB
         -> Ghc (String, Bool, Set FilePath)
-findSym opt set mvar sym = do
+findSym opt set sym mvar = do
     db <- liftIO $ readMVar mvar
     let ret = convert opt $ fromMaybe [] (M.lookup sym db)
     return (ret, True, set)
 
-lintStx :: Options -> Set FilePath -> LineSeparator -> FilePath
+lintStx :: Options -> Set FilePath -> FilePath
         -> Ghc (String, Bool, Set FilePath)
-lintStx opt set (LineSeparator lsep) optFile = liftIO $ E.handle handler $ do
-    msgs <- map (intercalate lsep . lines) <$> lint hopts file
-    let ret = convert opt msgs
+lintStx opt set optFile = liftIO $ E.handle handler $ do
+    ret <-lintSyntax opt' file
     return (ret, True, set)
   where
     (opts,file) = parseLintOptions optFile
     hopts = if opts == "" then [] else read opts
+    opt' = opt { hlintOpts = hopts }
     -- let's continue the session
     handler (SomeException e) = do
         print e
@@ -250,26 +247,24 @@ parseLintOptions optFile = case brk (== ']') (dropWhile (/= '[') optFile) of
 
 showInfo :: Options
          -> Set FilePath
-         -> LineSeparator
-         -> Logger
          -> FilePath
+         -> Logger
          -> Ghc (String, Bool, Set FilePath)
-showInfo opt set ls readLog fileArg = do
+showInfo opt set fileArg readLog = do
     let [file, expr] = words fileArg
-    (_, _, set') <- checkStx opt set ls readLog file
+    (_, _, set') <- checkStx opt set file readLog
     ret <- info opt file expr
     _ <- liftIO readLog
     return (ret, True, set')
 
 showType :: Options
          -> Set FilePath
-         -> LineSeparator
-         -> Logger
          -> FilePath
+         -> Logger
          -> Ghc (String, Bool, Set FilePath)
-showType opt set ls readLog fileArg = do
+showType opt set fileArg readLog = do
     let [file, line, column] = words fileArg
-    (_, _, set') <- checkStx opt set ls readLog file
-    ret <- typeOf opt file (read line) (read column)
+    (_, _, set') <- checkStx opt set file readLog
+    ret <- types opt file (read line) (read column)
     _ <- liftIO readLog
     return (ret, True, set')

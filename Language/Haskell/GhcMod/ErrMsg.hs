@@ -17,14 +17,14 @@ import qualified GHC as G
 import HscTypes (SourceError, srcErrorMessages)
 import Language.Haskell.GhcMod.Doc (showPage, getStyle)
 import qualified Language.Haskell.GhcMod.Gap as Gap
-import Language.Haskell.GhcMod.Types (LineSeparator(..))
+import Language.Haskell.GhcMod.Types (LineSeparator(..), Options(..), convert)
 import Outputable (PprStyle, SDoc)
 import System.FilePath (normalise)
 
 ----------------------------------------------------------------
 
 -- | A means to read the log.
-type LogReader = IO [String]
+type LogReader = IO String
 
 ----------------------------------------------------------------
 
@@ -35,11 +35,11 @@ newtype LogRef = LogRef (IORef Builder)
 newLogRef :: IO LogRef
 newLogRef = LogRef <$> newIORef id
 
-readAndClearLogRef :: LogRef -> IO [String]
-readAndClearLogRef (LogRef ref) = do
+readAndClearLogRef :: Options -> LogRef -> IO String
+readAndClearLogRef opt (LogRef ref) = do
     b <- readIORef ref
     writeIORef ref id
-    return $! b []
+    return $! convert opt (b [])
 
 appendLogRef :: DynFlags -> LineSeparator -> LogRef -> DynFlags -> Severity -> SrcSpan -> PprStyle -> SDoc -> IO ()
 appendLogRef df ls (LogRef ref) _ sev src style msg = do
@@ -48,23 +48,28 @@ appendLogRef df ls (LogRef ref) _ sev src style msg = do
 
 ----------------------------------------------------------------
 
-setLogger :: Bool -> DynFlags -> LineSeparator -> IO (DynFlags, LogReader)
+setLogger :: Bool -> DynFlags -> Options -> IO (DynFlags, LogReader)
 setLogger False df _ = return (newdf, undefined)
   where
     newdf = Gap.setLogAction df $ \_ _ _ _ _ -> return ()
-setLogger True  df ls = do
+setLogger True  df opt = do
     logref <- newLogRef
     let newdf = Gap.setLogAction df $ appendLogRef df ls logref
-    return (newdf, readAndClearLogRef logref)
+    return (newdf, readAndClearLogRef opt logref)
+  where
+    ls = lineSeparator opt
 
 ----------------------------------------------------------------
 
 -- | Converting 'SourceError' to 'String'.
-handleErrMsg :: LineSeparator -> SourceError -> Ghc [String]
-handleErrMsg ls err = do
+handleErrMsg :: Options -> SourceError -> Ghc String
+handleErrMsg opt err = do
     dflag <- G.getSessionDynFlags
     style <- getStyle
-    return . errBagToStrList dflag ls style . srcErrorMessages $ err
+    let ret = convert opt . errBagToStrList dflag ls style . srcErrorMessages $ err
+    return ret
+  where
+    ls = lineSeparator opt
 
 errBagToStrList :: DynFlags -> LineSeparator -> PprStyle -> Bag ErrMsg -> [String]
 errBagToStrList dflag ls style = map (ppErrMsg dflag ls style) . reverse . bagToList

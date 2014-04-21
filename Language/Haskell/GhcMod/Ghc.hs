@@ -6,14 +6,12 @@ module Language.Haskell.GhcMod.Ghc (
   , browse
   , check
   , info
-  , typeOf
+  , types
   , modules
-  , lint
   ) where
 
 import Language.Haskell.GhcMod.Browse
 import Language.Haskell.GhcMod.Check
 import Language.Haskell.GhcMod.GHCApi
 import Language.Haskell.GhcMod.Info
-import Language.Haskell.GhcMod.Lint
 import Language.Haskell.GhcMod.List

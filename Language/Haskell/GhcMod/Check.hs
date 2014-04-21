@@ -1,6 +1,5 @@
 module Language.Haskell.GhcMod.Check (checkSyntax, check) where
 
-import Control.Applicative ((<$>))
 import Control.Monad (void)
 import CoreMonad (liftIO)
 import GHC (Ghc, LoadHowMuch(LoadAllTargets))
@@ -18,7 +17,7 @@ checkSyntax :: Options
             -> [FilePath]  -- ^ The target files.
             -> IO String
 checkSyntax _   _      []    = error "ghc-mod: checkSyntax: No files given"
-checkSyntax opt cradle files = convert opt <$> withGHC sessionName (check opt cradle files)
+checkSyntax opt cradle files = withGHC sessionName (check opt cradle files)
   where
     sessionName = case files of
       [file] -> file
@@ -31,9 +30,9 @@ checkSyntax opt cradle files = convert opt <$> withGHC sessionName (check opt cr
 check :: Options
       -> Cradle
       -> [FilePath]  -- ^ The target files.
-      -> Ghc [String]
+      -> Ghc String
 check _   _      []        = error "ghc-mod: check: No files given"
-check opt cradle fileNames = checkIt `G.gcatch` handleErrMsg ls
+check opt cradle fileNames = checkIt `G.gcatch` handleErrMsg opt
   where
     checkIt = do
         (readLog,_) <- initializeFlagsWithCradle opt cradle options True
@@ -43,4 +42,3 @@ check opt cradle fileNames = checkIt `G.gcatch` handleErrMsg ls
     options
       | expandSplice opt = "-w:"   : ghcOpts opt
       | otherwise        = "-Wall" : ghcOpts opt
-    ls = lineSeparator opt

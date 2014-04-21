@@ -113,12 +113,11 @@ initSession build opt compOpts logging = do
     cmdOpts = ghcOptions compOpts
     idirs   = includeDirs compOpts
     depPkgs = depPackages compOpts
-    ls = lineSeparator opt
     setupDynamicFlags df0 = do
         df1 <- modifyFlagsWithOpts df0 cmdOpts
         let df2 = modifyFlags df1 idirs depPkgs (expandSplice opt) build
         df3 <- modifyFlagsWithOpts df2 $ ghcOpts opt
-        liftIO $ setLogger logging df3 ls
+        liftIO $ setLogger logging df3 opt
 
 ----------------------------------------------------------------
 

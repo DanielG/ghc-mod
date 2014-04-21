@@ -5,7 +5,7 @@ module Language.Haskell.GhcMod.Info (
     infoExpr
   , info
   , typeExpr
-  , typeOf
+  , types
   ) where
 
 import Control.Applicative ((<$>))
@@ -13,7 +13,7 @@ import Control.Monad (void)
 import CoreMonad (liftIO)
 import CoreUtils (exprType)
 import Data.Function (on)
-import Data.Generics hiding (typeOf)
+import Data.Generics
 import Data.List (sortBy)
 import Data.Maybe (catMaybes, fromMaybe)
 import Data.Ord as O
@@ -72,17 +72,17 @@ typeExpr :: Options
          -> Int          -- ^ Column number.
          -> IO String
 typeExpr opt cradle file lineNo colNo = withGHCDummyFile $
-    inModuleContext opt cradle file (typeOf opt file lineNo colNo) errmsg
+    inModuleContext opt cradle file (types opt file lineNo colNo) errmsg
   where
     errmsg = convert opt ([] :: [((Int,Int,Int,Int),String)])
 
 -- | Obtaining type of a target expression. (GHCi's type:)
-typeOf :: Options
-       -> FilePath     -- ^ A target file.
-       -> Int          -- ^ Line number.
-       -> Int          -- ^ Column number.
-       -> Ghc String
-typeOf opt file lineNo colNo = do
+types :: Options
+      -> FilePath     -- ^ A target file.
+      -> Int          -- ^ Line number.
+      -> Int          -- ^ Column number.
+      -> Ghc String
+types opt file lineNo colNo = do
     modSum <- Gap.setCtx file
     (dflag, style) <- getFlagStyle
     srcSpanTypes <- getSrcSpanType modSum lineNo colNo
