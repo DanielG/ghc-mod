@@ -16,6 +16,8 @@ import System.Environment (getArgs)
 import System.Exit (exitFailure)
 import System.IO (hPutStr, hPutStrLn, stdout, stderr, hSetEncoding, utf8)
 
+import Boot
+
 ----------------------------------------------------------------
 
 ghcOptHelp :: String
@@ -118,13 +120,7 @@ main = flip E.catches handlers $ do
       "lint"   -> nArgs 1 withFile (lintSyntax opt) cmdArg1
       "root"   -> rootInfo opt cradle
       "doc"    -> nArgs 1 $ packageDoc opt cradle cmdArg1
-      "boot"   -> do
-         mods  <- listModules opt cradle
-         langs <- listLanguages opt
-         flags <- listFlags opt
-         let opt' = addPackages opt
-         pre   <- concat <$> mapM (browseModule opt' cradle) preBrowsedModules
-         return $ mods ++ langs ++ flags ++ pre
+      "boot"   -> boot opt cradle
       "help"   -> return $ O.usageInfo usage argspec
       cmd      -> E.throw (NoSuchCommand cmd)
     putStr res
@@ -156,32 +152,3 @@ main = flip E.catches handlers $ do
     xs !. idx
       | length xs <= idx = E.throw SafeList
       | otherwise = xs !! idx
-
-----------------------------------------------------------------
-
-preBrowsedModules :: [String]
-preBrowsedModules = [
-    "Prelude"
-  , "Control.Applicative"
-  , "Control.Exception"
-  , "Control.Monad"
-  , "Data.ByteString"
-  , "Data.Char"
-  , "Data.List"
-  , "Data.Maybe"
-  , "System.Directory"
-  , "System.FilePath"
-  , "System.IO"
-  ]
-
-preBrowsePackages :: [String]
-preBrowsePackages = [
-    "bytestring"
-  , "directory"
-  , "filepath"
-  ]
-
-addPackages :: Options -> Options
-addPackages opt = opt { ghcOpts = pkgs ++ ghcOpts opt}
-  where
-    pkgs = map ("-package " ++) preBrowsePackages

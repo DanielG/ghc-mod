@@ -88,7 +88,8 @@ Library
 Executable ghc-mod
   Default-Language:     Haskell2010
   Main-Is:              GHCMod.hs
-  Other-Modules:        Paths_ghc_mod
+  Other-Modules:        Boot
+                        Paths_ghc_mod
   GHC-Options:          -Wall
   HS-Source-Dirs:       src
   Build-Depends:        base >= 4.0 && < 5
@@ -100,7 +101,8 @@ Executable ghc-mod
 Executable ghc-modi
   Default-Language:     Haskell2010
   Main-Is:              GHCModi.hs
-  Other-Modules:        Paths_ghc_mod
+  Other-Modules:        Boot
+                        Paths_ghc_mod
   GHC-Options:          -Wall
   HS-Source-Dirs:       src
   Build-Depends:        base >= 4.0 && < 5
