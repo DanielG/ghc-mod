@@ -33,7 +33,6 @@ module Language.Haskell.GhcMod (
   , info
   , typeOf
   , listMods
-  , debug
   , lint
   ) where
 

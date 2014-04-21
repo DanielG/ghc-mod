@@ -30,7 +30,7 @@ usage =    "ghc-mod version " ++ showVersion version ++ "\n"
         ++ "\t ghc-mod browse" ++ ghcOptHelp ++ "[-l] [-o] [-d] [-q] [-p package] <module> [<module> ...]\n"
         ++ "\t ghc-mod check" ++ ghcOptHelp ++ "<HaskellFiles...>\n"
         ++ "\t ghc-mod expand" ++ ghcOptHelp ++ "<HaskellFiles...>\n"
-        ++ "\t ghc-mod debug" ++ ghcOptHelp ++ "<HaskellFile>\n"
+        ++ "\t ghc-mod debug" ++ ghcOptHelp ++ "\n"
         ++ "\t ghc-mod info" ++ ghcOptHelp ++ "<HaskellFile> <module> <expression>\n"
         ++ "\t ghc-mod type" ++ ghcOptHelp ++ "<HaskellFile> <module> <line-no> <column-no>\n"
         ++ "\t ghc-mod lint [-h opt] <HaskellFile>\n"
@@ -112,7 +112,7 @@ main = flip E.catches handlers $ do
       "browse" -> concat <$> mapM (browseModule opt cradle) remainingArgs
       "check"  -> checkSyntax opt cradle remainingArgs
       "expand" -> checkSyntax opt { expandSplice = True } cradle remainingArgs
-      "debug"  -> nArgs 1 $ debugInfo opt cradle cmdArg1
+      "debug"  -> debugInfo opt cradle
       "info"   -> nArgs 3 infoExpr opt cradle cmdArg1 cmdArg3
       "type"   -> nArgs 4 $ typeExpr opt cradle cmdArg1 (read cmdArg3) (read cmdArg4)
       "lint"   -> nArgs 1 withFile (lintSyntax opt) cmdArg1

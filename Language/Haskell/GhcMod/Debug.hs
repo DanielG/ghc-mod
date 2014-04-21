@@ -1,12 +1,10 @@
-module Language.Haskell.GhcMod.Debug (debugInfo, debug, rootInfo) where
+module Language.Haskell.GhcMod.Debug (debugInfo, rootInfo) where
 
 import Control.Applicative ((<$>))
 import Control.Exception.IOChoice ((||>))
-import Control.Monad (void)
 import CoreMonad (liftIO)
 import Data.List (intercalate)
 import Data.Maybe (fromMaybe, isJust, fromJust)
-import GHC (Ghc)
 import Language.Haskell.GhcMod.CabalApi
 import Language.Haskell.GhcMod.GHCApi
 import Language.Haskell.GhcMod.Types
@@ -16,23 +14,13 @@ import Language.Haskell.GhcMod.Types
 -- | Obtaining debug information.
 debugInfo :: Options
           -> Cradle
-          -> FilePath   -- ^ A target file.
           -> IO String
-debugInfo opt cradle fileName = unlines <$> withGHC fileName (debug opt cradle fileName)
-
--- | Obtaining debug information.
-debug :: Options
-      -> Cradle
-      -> FilePath     -- ^ A target file.
-      -> Ghc [String]
-debug opt cradle fileName = do
+debugInfo opt cradle = convert opt <$> do
     CompilerOptions gopts incDir pkgs <-
         if cabal then
             liftIO (fromCabalFile ||> return simpleCompilerOption)
           else
             return simpleCompilerOption
-    void $ initializeFlagsWithCradle opt cradle gopts True
-    setTargetFiles [fileName]
     mglibdir <- liftIO getSystemLibDir
     return [
         "Root directory:      " ++ rootDir
