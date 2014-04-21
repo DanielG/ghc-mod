@@ -16,7 +16,7 @@
 ;;;
 
 (defvar ghc-idle-timer-interval 30
- "*Period of idele timer in second. When timeout, the names of
+ "*Period of idle timer in second. When timeout, the names of
 unloaded modules are loaded")
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -101,7 +101,8 @@ unloaded modules are loaded")
 			"System.Directory"
 			"System.FilePath"
 			"System.IO"))
-  (run-with-idle-timer ghc-idle-timer-interval 'repeat 'ghc-idle-timer))
+;;  (run-with-idle-timer ghc-idle-timer-interval 'repeat 'ghc-idle-timer)
+  )
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -314,8 +315,6 @@ unloaded modules are loaded")
 ;;; Background Idle Timer
 ;;;
 
-(defalias 'ghc-idle-timer 'ghc-load-module-all-buffer)
-
-(defun ghc-load-module-all-buffer () nil)
+(defalias 'ghc-idle-timer 'ghc-load-module-all-buffers)
 
 (provide 'ghc-comp)
