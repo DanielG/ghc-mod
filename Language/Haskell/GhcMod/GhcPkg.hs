@@ -70,7 +70,7 @@ ghcPkgListEx dbs = do
     case rv of
       ExitFailure val -> do
           hPutStrLn stderr err
-          fail $ "ghc-pkg " ++ intercalate " " opts ++ " (exit " ++ show val ++ ")"
+          fail $ "ghc-pkg " ++ unwords opts ++ " (exit " ++ show val ++ ")"
       ExitSuccess -> return ()
 
     return $ parseGhcPkgOutput $ lines output

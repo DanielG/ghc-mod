@@ -77,12 +77,12 @@ ppErrMsg dflag style err = ppMsg spn SevError dflag style msg ++ ext
    where
      spn = Gap.errorMsgSpan err
      msg = errMsgShortDoc err
-     ext = showMsg dflag style (errMsgExtraInfo err)
+     ext = showPage dflag style (errMsgExtraInfo err)
 
 ppMsg :: SrcSpan -> Severity-> DynFlags -> PprStyle -> SDoc -> String
 ppMsg spn sev dflag style msg = prefix ++ cts
   where
-    cts  = showMsg dflag style msg
+    cts  = showPage dflag style msg
     defaultPrefix
       | dopt Gap.dumpSplicesFlag dflag = ""
       | otherwise                      = "Dummy:0:0:Error:"
@@ -91,8 +91,3 @@ ppMsg spn sev dflag style msg = prefix ++ cts
         file <- normalise <$> Gap.getSrcFile spn
         let severityCaption = Gap.showSeverityCaption sev
         return $ file ++ ":" ++ show line ++ ":" ++ show col ++ ":" ++ severityCaption
-
-----------------------------------------------------------------
-
-showMsg :: DynFlags -> PprStyle -> SDoc -> String
-showMsg dflag style sdoc = showPage dflag style sdoc

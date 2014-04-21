@@ -70,7 +70,7 @@ problematicPackages = [
   ]
 
 attachPackageIds :: [Package] -> [PackageBaseName] -> [Package]
-attachPackageIds pkgs = catMaybes . fmap (flip lookup3 pkgs)
+attachPackageIds pkgs = catMaybes . fmap (`lookup3` pkgs)
 
 lookup3 :: Eq a => a -> [(a,b,c)] -> Maybe (a,b,c)
 lookup3 _ [] = Nothing
