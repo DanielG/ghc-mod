@@ -9,6 +9,7 @@
 --  lint [hlint options] <file>
 --     the format of hlint options is [String] because they may contain
 --     spaces and aslo <file> may contain spaces.
+--  boot
 --
 -- Session separators:
 --   OK -- success
@@ -52,6 +53,8 @@ import System.Console.GetOpt
 import System.Directory (setCurrentDirectory)
 import System.Environment (getArgs)
 import System.IO (hFlush,stdout)
+
+import Boot
 
 ----------------------------------------------------------------
 
@@ -158,6 +161,7 @@ loop opt set mvar readLog  = do
         "lint"  -> lintStx  opt set arg
         "info"  -> showInfo opt set arg readLog
         "type"  -> showType opt set arg readLog
+        "boot"  -> bootIt   opt set
         _       -> return ([], False, set)
     let put = case outputStyle opt of
             LispStyle  -> putStr
@@ -244,6 +248,8 @@ parseLintOptions optFile = case brk (== ']') (dropWhile (/= '[') optFile) of
         | p x        =  ([x],xs')
         | otherwise  =  let (ys,zs) = brk p xs' in (x:ys,zs)
 
+----------------------------------------------------------------
+
 showInfo :: Options
          -> Set FilePath
          -> FilePath
@@ -267,3 +273,12 @@ showType opt set fileArg readLog = do
     ret <- types opt file (read line) (read column)
     _ <- liftIO readLog
     return (ret, True, set')
+
+----------------------------------------------------------------
+
+bootIt :: Options
+       -> Set FilePath
+       -> Ghc (String, Bool, Set FilePath)
+bootIt opt set = do
+    ret <- boot' opt
+    return (ret, True, set)

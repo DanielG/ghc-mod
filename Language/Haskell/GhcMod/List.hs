@@ -14,14 +14,15 @@ import UniqFM (eltsUFM)
 
 -- | Listing installed modules.
 listModules :: Options -> Cradle -> IO String
-listModules opt cradle = withGHCDummyFile (modules opt cradle)
+listModules opt cradle = withGHCDummyFile $ do
+    void $ initializeFlagsWithCradle opt cradle [] False
+    modules opt
 
 -- | Listing installed modules.
-modules :: Options -> Cradle -> Ghc String
-modules opt cradle = do
-    void $ initializeFlagsWithCradle opt cradle [] False
-    convert opt . nub . sort . map dropPkgs . getExposedModules <$> G.getSessionDynFlags
+modules :: Options -> Ghc String
+modules opt = convert opt . arrange <$> G.getSessionDynFlags
   where
+    arrange = nub . sort . map dropPkgs . getExposedModules
     getExposedModules = concatMap exposedModules'
                       . eltsUFM . pkgIdMap . G.pkgState
     exposedModules' p =

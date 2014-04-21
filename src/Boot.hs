@@ -1,7 +1,10 @@
 module Boot where
 
-import Language.Haskell.GhcMod
 import Control.Applicative ((<$>))
+import CoreMonad (liftIO)
+import GHC (Ghc)
+import Language.Haskell.GhcMod
+import Language.Haskell.GhcMod.Ghc
 
 boot :: Options -> Cradle -> IO String
 boot opt cradle = do
@@ -10,6 +13,15 @@ boot opt cradle = do
     flags <- listFlags opt
     let opt' = addPackages opt
     pre   <- concat <$> mapM (browseModule opt' cradle) preBrowsedModules
+    return $ mods ++ langs ++ flags ++ pre
+
+boot' :: Options -> Ghc String
+boot' opt = do
+    mods  <- modules opt
+    langs <- liftIO $ listLanguages opt
+    flags <- liftIO $ listFlags opt
+    let opt' = addPackages opt
+    pre   <- concat <$> mapM (browse opt') preBrowsedModules
     return $ mods ++ langs ++ flags ++ pre
 
 preBrowsedModules :: [String]
