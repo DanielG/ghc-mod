@@ -85,11 +85,15 @@ parseGhcPkgOutput (l:ls) =
       h:_ | isSpace h -> maybeToList $ packageLine l
           | otherwise -> []
 
+-- | Packages that are normally hidden but should be returned by ghcPkgList
+-- anyways
+exposeHidden = ["ghc", "haskell2010", "haskell98"]
+
 packageLine :: String -> Maybe Package
 packageLine l =
     case listToMaybe $ P.readP_to_S packageLineP l of
       Just ((Normal,p),_) -> Just p
-      Just ((Hidden,p),_) -> Just p
+      Just ((Hidden,p),_) | pkgName p `elem` exposeHidden -> Just p
       _ -> Nothing
 
 data PackageState = Normal | Hidden | Broken deriving (Eq,Show)
