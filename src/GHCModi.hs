@@ -1,4 +1,4 @@
-{-# LANGUAGE CPP #-}
+{-# LANGUAGE CPP, BangPatterns #-}
 {-# LANGUAGE DeriveDataTypeable #-}
 
 -- Commands:
@@ -25,6 +25,7 @@ module Main where
 import Control.Applicative ((<$>))
 import Control.Concurrent (forkIO, MVar, newEmptyMVar, putMVar, readMVar)
 import Control.Exception (SomeException(..))
+import Control.DeepSeq (force)
 import qualified Control.Exception as E
 import Control.Monad (when, void)
 import CoreMonad (liftIO)
@@ -142,8 +143,8 @@ run cradle mlibdir opt body = G.runGhc mlibdir $ do
 setupDB :: Cradle -> Maybe FilePath -> Options -> MVar DB -> IO ()
 setupDB cradle mlibdir opt mvar = E.handle handler $ do
     sm <- run cradle mlibdir opt $ \_ -> G.getSessionDynFlags >>= browseAll
-    let sms = map tieup $ groupBy ((==) `on` fst) $ sort sm
-        m = M.fromList sms
+    let !sms = force $ map tieup $ groupBy ((==) `on` fst) $ sort sm
+        !m = force $ M.fromList sms
     putMVar mvar m
   where
     tieup x = (head (map fst x), map snd x)
