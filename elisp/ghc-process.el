@@ -25,10 +25,11 @@
 (defun ghc-get-project-root ()
   (ghc-run-ghc-mod '("root")))
 
-(defun ghc-with-process (cmd callback)
+(defun ghc-with-process (cmd callback &optional hook)
   (unless ghc-process-process-name
     (setq ghc-process-process-name (ghc-get-project-root)))
   (when ghc-process-process-name
+    (if hook (funcall hook))
     (let* ((cbuf (current-buffer))
 	   (name ghc-process-process-name)
 	   (buf (get-buffer-create (concat " ghc-modi:" name)))

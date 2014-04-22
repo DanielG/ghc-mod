@@ -46,8 +46,9 @@ nil            does not display errors/warnings.
 
 (defun ghc-check-syntax ()
   (interactive)
-  (setq mode-line-process " -:-") ;; fixme
-  (ghc-with-process (ghc-check-send) 'ghc-check-callback))
+  (ghc-with-process (ghc-check-send)
+		    'ghc-check-callback
+		    (lambda () (setq mode-line-process " -:-"))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
