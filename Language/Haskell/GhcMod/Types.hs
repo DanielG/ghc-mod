@@ -62,7 +62,6 @@ inter _ [] = id
 inter c bs = foldr1 (\x y -> x . (c:) . y) bs
 
 convert :: ToString a => Options -> a -> String
- -- fixme: builder
 convert opt@Options { outputStyle = LispStyle  } x = toLisp  opt x "\n"
 convert opt@Options { outputStyle = PlainStyle } x = toPlain opt x "\n"
 
