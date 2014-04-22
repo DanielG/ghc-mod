@@ -17,6 +17,7 @@
 (defvar-local ghc-process-original-buffer nil)
 (defvar-local ghc-process-original-file nil)
 (defvar-local ghc-process-callback nil)
+(defvar-local ghc-process-hook nil)
 
 (defvar ghc-interactive-command "ghc-modi")
 
@@ -25,11 +26,11 @@
 (defun ghc-get-project-root ()
   (ghc-run-ghc-mod '("root")))
 
-(defun ghc-with-process (cmd callback &optional hook)
+(defun ghc-with-process (cmd callback &optional hook1 hook2)
   (unless ghc-process-process-name
     (setq ghc-process-process-name (ghc-get-project-root)))
   (when ghc-process-process-name
-    (if hook (funcall hook))
+    (if hook1 (funcall hook1))
     (let* ((cbuf (current-buffer))
 	   (name ghc-process-process-name)
 	   (buf (get-buffer-create (concat " ghc-modi:" name)))
@@ -41,6 +42,7 @@
 	  (setq ghc-process-original-buffer cbuf)
 	  (setq ghc-process-original-file file)
 	  (setq ghc-process-callback callback)
+	  (setq ghc-process-hook hook2)
 	  (erase-buffer)
 	  (let ((pro (ghc-get-process cpro name buf)))
 	    (process-send-string pro cmd)
@@ -71,6 +73,7 @@
     (insert string)
     (forward-line -1)
     (when (looking-at "^\\(OK\\|NG\\)$")
+      (if ghc-process-hook (funcall ghc-process-hook))
       (goto-char (point-min))
       (funcall ghc-process-callback)
       (when ghc-debug
@@ -85,11 +88,11 @@
 (defvar ghc-process-num-of-results nil)
 (defvar ghc-process-results nil)
 
-(defun ghc-sync-process (cmd &optional n)
+(defun ghc-sync-process (cmd &optional n hook)
   (setq ghc-process-rendezvous nil)
   (setq ghc-process-results nil)
   (setq ghc-process-num-of-results (or n 1))
-  (ghc-with-process cmd 'ghc-process-callback)
+  (ghc-with-process cmd 'ghc-process-callback nil hook)
   (while (null ghc-process-rendezvous)
     (sit-for 0.01))
   ghc-process-results)

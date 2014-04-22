@@ -111,7 +111,13 @@
 	 (cn (int-to-string (1+ (current-column))))
 	 (file (buffer-file-name))
 	 (cmd (format "type %s %s %s\n" file ln cn)))
-    (ghc-sync-process cmd)))
+    (ghc-sync-process cmd nil 'ghc-type-fix-string)))
+
+(defun ghc-type-fix-string ()
+  (save-excursion
+    (goto-char (point-min))
+    (while (search-forward "[Char]" nil t)
+      (replace-match "String"))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
