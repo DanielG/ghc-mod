@@ -3,7 +3,6 @@
 module Language.Haskell.GhcMod.Types where
 
 import Data.List (intercalate)
-import Language.Haskell.GhcMod.Utils (replace)
 
 -- | Output style.
 data OutputStyle = LispStyle  -- ^ S expression style.
@@ -46,14 +45,30 @@ defaultOptions = Options {
 
 ----------------------------------------------------------------
 
+type Builder = String -> String
+
+-- |
+--
+-- >>> replace '"' "\\\"" "foo\"bar" ""
+-- "foo\\\"bar"
+replace :: Char -> String -> String -> Builder
+replace _ _  [] = id
+replace c cs (x:xs)
+  | x == c    = (cs ++) . replace c cs xs
+  | otherwise = (x :) . replace c cs xs
+
+inter :: Char -> [Builder] -> Builder
+inter _ [] = id
+inter c bs = foldr1 (\x y -> x . (c:) . y) bs
+
 convert :: ToString a => Options -> a -> String
  -- fixme: builder
-convert opt@Options { outputStyle = LispStyle  } x = toLisp  opt x ++ "\n"
-convert opt@Options { outputStyle = PlainStyle } x = toPlain opt x ++ "\n"
+convert opt@Options { outputStyle = LispStyle  } x = toLisp  opt x "\n"
+convert opt@Options { outputStyle = PlainStyle } x = toPlain opt x "\n"
 
 class ToString a where
-    toLisp  :: Options -> a -> String
-    toPlain :: Options -> a -> String
+    toLisp  :: Options -> a -> Builder
+    toPlain :: Options -> a -> Builder
 
 lineSep :: Options -> String
 lineSep opt = lsep
@@ -62,9 +77,9 @@ lineSep opt = lsep
 
 -- |
 --
--- >>> toLisp defaultOptions "fo\"o"
+-- >>> toLisp defaultOptions "fo\"o" ""
 -- "\"fo\\\"o\""
--- >>> toPlain defaultOptions "foo"
+-- >>> toPlain defaultOptions "foo" ""
 -- "foo"
 instance ToString String where
     toLisp  opt = quote opt
@@ -72,40 +87,42 @@ instance ToString String where
 
 -- |
 --
--- >>> toLisp defaultOptions ["foo", "bar", "ba\"z"]
+-- >>> toLisp defaultOptions ["foo", "bar", "ba\"z"] ""
 -- "(\"foo\" \"bar\" \"ba\\\"z\")"
--- >>> toPlain defaultOptions ["foo", "bar", "baz"]
+-- >>> toPlain defaultOptions ["foo", "bar", "baz"] ""
 -- "foo\nbar\nbaz"
 instance ToString [String] where
-    toLisp  opt = toSexp opt True
-    toPlain opt = intercalate "\n" . map (toPlain opt)
+    toLisp  opt = toSexp1 opt
+    toPlain opt = inter '\n' . map (toPlain opt)
 
 -- |
 --
 -- >>> let inp = [((1,2,3,4),"foo"),((5,6,7,8),"bar")] :: [((Int,Int,Int,Int),String)]
--- >>> toLisp defaultOptions inp
+-- >>> toLisp defaultOptions inp ""
 -- "((1 2 3 4 \"foo\") (5 6 7 8 \"bar\"))"
--- >>> toPlain defaultOptions inp
+-- >>> toPlain defaultOptions inp ""
 -- "1 2 3 4 \"foo\"\n5 6 7 8 \"bar\""
 instance ToString [((Int,Int,Int,Int),String)] where
-    toLisp  opt = toSexp opt False . map toS
+    toLisp  opt = toSexp2 . map toS
       where
-        toS x = "(" ++ tupToString opt x ++ ")"
-    toPlain opt = intercalate "\n" . map (tupToString opt)
+        toS x = ('(' :) . tupToString opt x . (')' :)
+    toPlain opt = inter '\n' . map (tupToString opt)
 
-toSexp :: Options -> Bool -> [String] -> String
-toSexp _   False ss = "(" ++ unwords ss ++ ")"
-toSexp opt True ss  = "(" ++ unwords (map (quote opt) ss) ++ ")"
+toSexp1 :: Options -> [String] -> Builder
+toSexp1 opt ss = ('(' :) . inter ' ' (map (quote opt) ss) . (')' :)
 
-tupToString :: Options -> ((Int,Int,Int,Int),String) -> String
-tupToString opt ((a,b,c,d),s) = show a ++ " "
-                             ++ show b ++ " "
-                             ++ show c ++ " "
-                             ++ show d ++ " "
-                             ++ quote opt s -- fixme: quote is not necessary
+toSexp2 :: [Builder] -> Builder
+toSexp2 ss = ('(' :) . (inter ' ' ss) . (')' :)
 
-quote :: Options -> String -> String
-quote opt str = "\"" ++ quote' str ++ "\"" -- fixme: builder
+tupToString :: Options -> ((Int,Int,Int,Int),String) -> Builder
+tupToString opt ((a,b,c,d),s) = (show a ++) . (' ' :)
+                              . (show b ++) . (' ' :)
+                              . (show c ++) . (' ' :)
+                              . (show d ++) . (' ' :)
+                              . quote opt s -- fixme: quote is not necessary
+
+quote :: Options -> String -> Builder
+quote opt str = ("\"" ++) .  (quote' str ++) . ("\"" ++)
   where
     lsep = lineSep opt
     quote' [] = []
