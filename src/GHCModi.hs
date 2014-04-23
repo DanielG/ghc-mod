@@ -18,26 +18,14 @@
 
 module Main where
 
-#ifndef MIN_VERSION_containers
-#define MIN_VERSION_containers(x,y,z) 1
-#endif
-
 import Control.Applicative ((<$>))
 import Control.Concurrent (forkIO, MVar, newEmptyMVar, putMVar, readMVar)
 import Control.Exception (SomeException(..))
-import Control.DeepSeq (force)
 import qualified Control.Exception as E
 import Control.Monad (when, void)
 import CoreMonad (liftIO)
 import Data.Function (on)
 import Data.List (intercalate, groupBy, sort, find)
-#if MIN_VERSION_containers(0,5,0)
-import Data.Map.Strict (Map)
-import qualified Data.Map.Strict as M
-#else
-import Data.Map (Map)
-import qualified Data.Map as M
-#endif
 import Data.Maybe (fromMaybe)
 import Data.Set (Set)
 import qualified Data.Set as S
@@ -55,6 +43,19 @@ import System.Console.GetOpt
 import System.Directory (setCurrentDirectory)
 import System.Environment (getArgs)
 import System.IO (hFlush,stdout)
+
+#ifndef MIN_VERSION_containers
+#define MIN_VERSION_containers(x,y,z) 1
+#endif
+
+#if MIN_VERSION_containers(0,5,0)
+import Control.DeepSeq (force)
+import Data.Map.Strict (Map)
+import qualified Data.Map.Strict as M
+#else
+import Data.Map (Map)
+import qualified Data.Map as M
+#endif
 
 import Boot
 
@@ -143,8 +144,13 @@ run cradle mlibdir opt body = G.runGhc mlibdir $ do
 setupDB :: Cradle -> Maybe FilePath -> Options -> MVar DB -> IO ()
 setupDB cradle mlibdir opt mvar = E.handle handler $ do
     sm <- run cradle mlibdir opt $ \_ -> G.getSessionDynFlags >>= browseAll
+#if MIN_VERSION_containers(0,5,0)
     let !sms = force $ map tieup $ groupBy ((==) `on` fst) $ sort sm
         !m = force $ M.fromList sms
+#else
+    let !sms = map tieup $ groupBy ((==) `on` fst) $ sort sm
+        !m = M.fromList sms
+#endif
     putMVar mvar m
   where
     tieup x = (head (map fst x), map snd x)
