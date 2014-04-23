@@ -16,7 +16,7 @@ import Language.Haskell.GhcMod.ErrMsg
 import Language.Haskell.GhcMod.GHCChoice
 import Language.Haskell.GhcMod.GhcPkg
 
-import Control.Applicative (Alternative, (<$>))
+import Control.Applicative ((<$>))
 import Control.Monad (void, forM)
 import CoreMonad (liftIO)
 import Data.Maybe (isJust, fromJust)
@@ -44,21 +44,21 @@ getSystemLibDir = do
 ----------------------------------------------------------------
 
 -- | Converting the 'Ghc' monad to the 'IO' monad.
-withGHCDummyFile :: Alternative m => Ghc (m a) -- ^ 'Ghc' actions created by the Ghc utilities.
-                                  -> IO (m a)
+withGHCDummyFile :: Ghc a -- ^ 'Ghc' actions created by the Ghc utilities.
+                 -> IO a
 withGHCDummyFile = withGHC "Dummy"
 
 -- | Converting the 'Ghc' monad to the 'IO' monad.
-withGHC :: Alternative m => FilePath  -- ^ A target file displayed in an error message.
-                         -> Ghc (m a) -- ^ 'Ghc' actions created by the Ghc utilities.
-                         -> IO (m a)
+withGHC :: FilePath  -- ^ A target file displayed in an error message.
+        -> Ghc a -- ^ 'Ghc' actions created by the Ghc utilities.
+        -> IO a
 withGHC file body = do
     mlibdir <- getSystemLibDir
     ghandle ignore $ G.runGhc mlibdir $ do
         dflags <- G.getSessionDynFlags
         G.defaultCleanupHandler dflags body
   where
-    ignore :: Alternative m => SomeException -> IO (m a)
+    ignore :: SomeException -> IO a
     ignore e = do
         hPutStr stderr $ file ++ ":0:0:Error:"
         hPrint stderr e
