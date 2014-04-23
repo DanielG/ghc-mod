@@ -41,7 +41,7 @@ usage =    "ghc-mod version " ++ showVersion version ++ "\n"
         ++ "\t ghc-mod boot\n"
         ++ "\t ghc-mod help\n"
         ++ "\n"
-        ++ "<module> is not used, anything is OK.\n"
+        ++ "<module> for \"info\" and \"type\" is not used, anything is OK.\n"
         ++ "It is necessary to maintain backward compatibility.\n"
 
 ----------------------------------------------------------------
