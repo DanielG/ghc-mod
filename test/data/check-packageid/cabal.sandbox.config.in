@@ -4,15 +4,15 @@
 -- if you want to change the default settings for this sandbox.
 
 
-local-repo: @CWD@/test/data/.cabal-sandbox/packages
-logs-dir: @CWD@/test/data/.cabal-sandbox/logs
-world-file: @CWD@/test/data/.cabal-sandbox/world
+local-repo: @CWD@/test/data/check-packageid/.cabal-sandbox/packages
+logs-dir: @CWD@/test/data/check-packageid/.cabal-sandbox/logs
+world-file: @CWD@/test/data/check-packageid/.cabal-sandbox/world
 user-install: False
-package-db: test/data/check-packageid/.cabal-sandbox/i386-osx-ghc-7.6.3-packages.conf.d
-build-summary: @CWD@/test/data/.cabal-sandbox/logs/build.log
+package-db: @CWD@/test/data/check-packageid/.cabal-sandbox/i386-osx-ghc-7.6.3-packages.conf.d
+build-summary: @CWD@/test/data/check-packageid/.cabal-sandbox/logs/build.log
 
 install-dirs
-  prefix: @CWD@/test/data/.cabal-sandbox
+  prefix: @CWD@/test/data/check-packageid/.cabal-sandbox
   bindir: $prefix/bin
   libdir: $prefix/lib
   libsubdir: $arch-$os-$compiler/$pkgid
