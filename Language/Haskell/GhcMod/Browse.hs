@@ -31,7 +31,7 @@ browseModule :: Options
              -> Cradle
              -> ModuleString -- ^ A module name. (e.g. \"Data.List\")
              -> IO String
-browseModule opt cradle mdlName = withGHCDummyFile $ do
+browseModule opt cradle mdlName = withGHC' $ do
     void $ initializeFlagsWithCradle opt cradle [] False
     browse opt mdlName
 

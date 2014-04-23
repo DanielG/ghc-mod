@@ -14,7 +14,7 @@ import UniqFM (eltsUFM)
 
 -- | Listing installed modules.
 listModules :: Options -> Cradle -> IO String
-listModules opt cradle = withGHCDummyFile $ do
+listModules opt cradle = withGHC' $ do
     void $ initializeFlagsWithCradle opt cradle [] False
     modules opt
 

@@ -2,7 +2,7 @@
 
 module Language.Haskell.GhcMod.GHCApi (
     withGHC
-  , withGHCDummyFile
+  , withGHC'
   , initializeFlagsWithCradle
   , setTargetFiles
   , addTargetFiles
@@ -43,25 +43,23 @@ getSystemLibDir = do
 ----------------------------------------------------------------
 
 -- | Converting the 'Ghc' monad to the 'IO' monad.
-withGHCDummyFile :: Ghc a -- ^ 'Ghc' actions created by the Ghc utilities.
-                 -> IO a
-withGHCDummyFile = withGHC "Dummy"
-
--- | Converting the 'Ghc' monad to the 'IO' monad.
 withGHC :: FilePath  -- ^ A target file displayed in an error message.
         -> Ghc a -- ^ 'Ghc' actions created by the Ghc utilities.
         -> IO a
-withGHC file body = do
-    mlibdir <- getSystemLibDir
-    ghandle ignore $ G.runGhc mlibdir $ do
-        dflags <- G.getSessionDynFlags
-        G.defaultCleanupHandler dflags body
+withGHC file body = ghandle ignore $ withGHC' body
   where
     ignore :: SomeException -> IO a
     ignore e = do
         hPutStr stderr $ file ++ ":0:0:Error:"
         hPrint stderr e
         exitSuccess
+
+withGHC' :: Ghc a -> IO a
+withGHC' body = do
+    mlibdir <- getSystemLibDir
+    G.runGhc mlibdir $ do
+        dflags <- G.getSessionDynFlags
+        G.defaultCleanupHandler dflags body
 
 ----------------------------------------------------------------
 

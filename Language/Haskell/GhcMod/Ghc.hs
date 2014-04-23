@@ -1,7 +1,7 @@
 module Language.Haskell.GhcMod.Ghc (
   -- * Converting the 'Ghc' monad to the 'IO' monad
     withGHC
-  , withGHCDummyFile
+  , withGHC'
   -- * 'Ghc' utilities
   , browse
   , check
