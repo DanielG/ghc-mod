@@ -1,9 +1,8 @@
-{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE ScopedTypeVariables, RecordWildCards #-}
 
 module Language.Haskell.GhcMod.GHCApi (
     withGHC
   , withGHCDummyFile
-  , initializeFlags
   , initializeFlagsWithCradle
   , setTargetFiles
   , addTargetFiles
@@ -17,7 +16,7 @@ import Language.Haskell.GhcMod.GHCChoice
 import Language.Haskell.GhcMod.GhcPkg
 
 import Control.Applicative ((<$>))
-import Control.Monad (void, forM)
+import Control.Monad (forM)
 import CoreMonad (liftIO)
 import Data.Maybe (isJust, fromJust)
 import Distribution.PackageDescription (PackageDescription)
@@ -74,7 +73,12 @@ data Build = CabalPkg | SingleFile deriving Eq
 -- | Initialize the 'DynFlags' relating to the compilation of a single
 -- file or GHC session according to the 'Cradle' and 'Options'
 -- provided.
-initializeFlagsWithCradle :: GhcMonad m =>  Options -> Cradle -> [GHCOption] -> Bool -> m (LogReader, Maybe PackageDescription)
+initializeFlagsWithCradle :: GhcMonad m
+        => Options
+        -> Cradle
+        -> [GHCOption]
+        -> Bool
+        -> m (LogReader, Maybe PackageDescription)
 initializeFlagsWithCradle opt cradle ghcopts logging
   | cabal     = withCabal |||> withSandbox
   | otherwise = withSandbox
@@ -99,60 +103,69 @@ initializeFlagsWithCradle opt cradle ghcopts logging
 
 ----------------------------------------------------------------
 
-initSession :: GhcMonad m => Build
+initSession :: GhcMonad m
+            => Build
             -> Options
             -> CompilerOptions
             -> Bool
             -> m LogReader
 initSession build opt compOpts logging = do
-    dflags0 <- G.getSessionDynFlags
-    (dflags1,readLog) <- setupDynamicFlags dflags0
-    _ <- G.setSessionDynFlags dflags1
-    return readLog
-  where
-    cmdOpts = ghcOptions compOpts
-    idirs   = includeDirs compOpts
-    depPkgs = depPackages compOpts
-    setupDynamicFlags df0 = do
-        df1 <- modifyFlagsWithOpts df0 cmdOpts
-        let df2 = modifyFlags df1 idirs depPkgs (expandSplice opt) build
-        df3 <- modifyFlagsWithOpts df2 $ ghcOpts opt
-        liftIO $ setLogger logging df3 opt
+    df <- initDynFlags build opt compOpts
+    (df', lg) <- liftIO $ setLogger logging df opt
+    _ <- G.setSessionDynFlags df'
+    return lg
+
+initDynFlags :: GhcMonad m => Build -> Options -> CompilerOptions -> m DynFlags
+initDynFlags build Options {..} CompilerOptions {..} = do
+    df <- G.getSessionDynFlags
+    _ <- G.setSessionDynFlags =<< (addCmdOpts ghcOptions
+      $ setLinkerOptions
+      $ setIncludeDirs includeDirs
+      $ setSplice expandSplice
+      $ setBuildEnv build
+      $ Gap.addPackageFlags depPackages df)
+    G.getSessionDynFlags
+
 
 ----------------------------------------------------------------
 
--- | Initialize the 'DynFlags' relating to the compilation of a single
--- file or GHC session.
-initializeFlags :: GhcMonad m => Options -> m ()
-initializeFlags opt = do
-    dflags0 <- G.getSessionDynFlags
-    dflags1 <- modifyFlagsWithOpts dflags0 $ ghcOpts opt
-    void $ G.setSessionDynFlags dflags1
+-- we don't want to generate object code so we compile to bytecode
+-- (HscInterpreted) which implies LinkInMemory
+-- HscInterpreted
+setLinkerOptions :: DynFlags -> DynFlags
+setLinkerOptions df = df {
+    ghcLink   = LinkInMemory
+  , hscTarget = HscInterpreted
+  }
 
-----------------------------------------------------------------
+setIncludeDirs :: [IncludeDir] -> DynFlags -> DynFlags
+setIncludeDirs idirs df = df { importPaths = idirs }
 
-modifyFlags :: DynFlags -> [IncludeDir] -> [Package] -> Bool -> Build -> DynFlags
-modifyFlags d0 idirs depPkgs splice build
-  | splice    = setSplice d4
-  | otherwise = d4
-  where
-    d1 = d0 { importPaths = idirs }
-    d2 = d1 {
-        ghcLink   = LinkInMemory
-      , hscTarget = HscInterpreted
-      }
-    d3 = Gap.addDevPkgs d2 depPkgs
-    d4 | build == CabalPkg = Gap.setCabalPkg d3
-       | otherwise         = d3
+setBuildEnv :: Build -> DynFlags -> DynFlags
+setBuildEnv build = setHideAllPackages build . setCabalPackage build
 
-setSplice :: DynFlags -> DynFlags
-setSplice dflag = dopt_set dflag Gap.dumpSplicesFlag
+-- | Set option in 'DynFlags' to Expand template haskell if first argument is
+-- True
+setSplice :: Bool -> DynFlags -> DynFlags
+setSplice False df = df
+setSplice True df  = dopt_set df Gap.dumpSplicesFlag
 
-----------------------------------------------------------------
+-- At the moment with this option set ghc only prints different error messages,
+-- suggesting the user to add a hidden package to the build-depends in his cabal
+-- file for example
+setCabalPackage :: Build -> DynFlags -> DynFlags
+setCabalPackage CabalPkg df = Gap.setCabalPkg df
+setCabalPackage _ df = df
 
-modifyFlagsWithOpts :: GhcMonad m => DynFlags -> [GHCOption] -> m DynFlags
-modifyFlagsWithOpts dflags cmdOpts =
-    tfst <$> G.parseDynamicFlags dflags (map G.noLoc cmdOpts)
+-- | Enable hiding of all package not explicitly exposed (like Cabal does)
+setHideAllPackages :: Build -> DynFlags -> DynFlags
+setHideAllPackages CabalPkg df = Gap.setHideAllPackages df
+setHideAllPackages _ df = df
+
+-- | Parse command line ghc options and add them to the 'DynFlags' passed
+addCmdOpts :: GhcMonad m => [GHCOption] -> DynFlags -> m DynFlags
+addCmdOpts cmdOpts df =
+    tfst <$> G.parseDynamicFlags df (map G.noLoc cmdOpts)
   where
     tfst (a,_,_) = a
 
