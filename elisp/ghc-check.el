@@ -240,8 +240,14 @@ nil            does not display errors/warnings.
 	(let ((sym (match-string 1 data)))
 	  (ghc-ins-mod sym)))
        ((string-match "Not in scope: data constructor .\\([^\n]+\\)." data)
+	;; if the type of data constructor, it would be nice.
 	(let ((sym (match-string 1 data)))
 	  (ghc-ins-mod sym)))
+       ((string-match "\n[ ]+.\\([^ ]+\\). is a data constructor of .\\([^\n]+\\).\n" data)
+	(let* ((old (match-string 1 data))
+	       (type-const (match-string 2 data))
+	       (new (format "%s(%s)" type-const old)))
+	  (ghc-check-replace old new)))
        ((string-match "Not in scope: .\\([^\n]+\\)." data)
 	(let ((sym (match-string 1 data)))
 	  (if (or (string-match "\\." sym) ;; qualified
@@ -258,14 +264,17 @@ nil            does not display errors/warnings.
        ((string-match "Found:\n[ ]+\\([^\t]+\\)\nWhy not:\n[ ]+\\([^\t]+\\)" data)
 	(let ((old (match-string 1 data))
 	      (new (match-string 2 data)))
-	  (beginning-of-line)
-	  (when (search-forward old nil t)
-	    (let ((end (point)))
-	      (search-backward old nil t)
-	      (delete-region (point) end))
-	    (insert new))))
+	  (ghc-check-replace old new)))
        (t
 	(message "Nothing was done"))))))
+
+(defun ghc-check-replace (old new)
+  (beginning-of-line)
+  (when (search-forward old nil t)
+    (let ((end (point)))
+      (search-backward old nil t)
+      (delete-region (point) end))
+    (insert new)))
 
 (defun ghc-extract-type (str)
   (with-temp-buffer
