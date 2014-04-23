@@ -239,6 +239,9 @@ nil            does not display errors/warnings.
        ((string-match "Not in scope: type constructor or class .\\([^\n]+\\)." data)
 	(let ((sym (match-string 1 data)))
 	  (ghc-ins-mod sym)))
+       ((string-match "Not in scope: data constructor .\\([^\n]+\\)." data)
+	(let ((sym (match-string 1 data)))
+	  (ghc-ins-mod sym)))
        ((string-match "Not in scope: .\\([^\n]+\\)." data)
 	(let ((sym (match-string 1 data)))
 	  (if (or (string-match "\\." sym) ;; qualified
@@ -252,8 +255,7 @@ nil            does not display errors/warnings.
 	(let* ((fn (ghc-get-function-name))
 	       (arity (ghc-get-function-arity fn)))
 	  (ghc-insert-underscore fn arity)))
-       ;; fixme
-       ((string-match "Found:\n[ ]*\\([^\n]+\\)\nWhy not:\n[ ]*\\([^\n]+\\)" data)
+       ((string-match "Found:\n[ ]+\\([^\t]+\\)\nWhy not:\n[ ]+\\([^\t]+\\)" data)
 	(let ((old (match-string 1 data))
 	      (new (match-string 2 data)))
 	  (beginning-of-line)
@@ -311,7 +313,7 @@ nil            does not display errors/warnings.
 	(insert fn)
 	(dotimes (i arity)
 	  (insert " _"))
-	(insert  " = error \"" fn "\"")))))
+	(insert  " = error \"" fn "\"\n")))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
