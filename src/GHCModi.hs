@@ -20,12 +20,12 @@ module Main where
 
 import Control.Applicative ((<$>))
 import Control.Concurrent (forkIO, MVar, newEmptyMVar, putMVar, readMVar)
-import Control.Exception (SomeException(..))
+import Control.Exception (SomeException(..), Exception)
 import qualified Control.Exception as E
 import Control.Monad (when, void)
 import CoreMonad (liftIO)
 import Data.Function (on)
-import Data.List (intercalate, groupBy, sort, find)
+import Data.List (groupBy, sort, find)
 import Data.Maybe (fromMaybe)
 import Data.Set (Set)
 import qualified Data.Set as S
@@ -87,14 +87,14 @@ parseArgs :: [OptDescr (Options -> Options)] -> [String] -> (Options, [String])
 parseArgs spec argv
     = case getOpt Permute spec argv of
         (o,n,[]  ) -> (foldr id defaultOptions o, n)
-        (_,_,errs) -> GE.throw (CmdArg errs)
+        (_,_,errs) -> E.throw (CmdArg errs)
 
 ----------------------------------------------------------------
 
 data GHCModiError = CmdArg [String]
                   deriving (Show, Typeable)
 
-instance GE.Exception GHCModiError
+instance Exception GHCModiError
 
 ----------------------------------------------------------------
 
@@ -102,26 +102,12 @@ instance GE.Exception GHCModiError
 -- C-c since installSignalHandlers is called twice, sigh.
 
 main :: IO ()
-main = handle [GE.Handler cmdHandler, GE.Handler someHandler] $
+main = E.handle cmdHandler $
     go =<< parseArgs argspec <$> getArgs
   where
-    handle = flip GE.catches
-    LineSeparator lsc = lineSeparator defaultOptions
-    cmdHandler (CmdArg e) = do
-        putStr "ghc-modi:0:0:"
-        let x = intercalate lsc e
-        putStrLn x
-        putStr $ usageInfo usage argspec
-        putStrLn "NG"
-    someHandler (SomeException e) = do
-        putStr "ghc-modi:0:0:"
-        let x = intercalate lsc $ lines $ show e
-        putStrLn x
-        putStrLn "NG"
-    go (_,"help":_) = do
-        putStr $ usageInfo usage argspec
-        putStrLn "NG"
-    go (opt,_) = do
+    cmdHandler (CmdArg _) = putStr $ usageInfo usage argspec
+    go (_,"help":_) = putStr $ usageInfo usage argspec
+    go (opt,_) = E.handle someHandler $ do
         cradle0 <- findCradle
         let rootdir = cradleRootDir cradle0
             cradle = cradle0 { cradleCurrentDir = rootdir }
@@ -130,6 +116,13 @@ main = handle [GE.Handler cmdHandler, GE.Handler someHandler] $
         mlibdir <- getSystemLibDir
         void $ forkIO $ setupDB cradle mlibdir opt mvar
         run cradle mlibdir opt $ loop opt S.empty mvar
+      where
+        someHandler (SomeException e) = do
+            -- fixme: this is not perfece for -l
+            --        because each command expect its own s-expression.
+            let ret = convert opt $ "ghc-modi:0:0:" ++ show e
+            putStr ret
+            putStrLn "NG"
 
 ----------------------------------------------------------------
 
