@@ -14,7 +14,7 @@ newtype LineSeparator = LineSeparator String
 data Options = Options {
     outputStyle   :: OutputStyle
   , hlintOpts     :: [String]
-  , ghcOpts       :: [String]
+  , ghcOpts       :: [GHCOption]
   -- | If 'True', 'browse' also returns operators.
   , operators     :: Bool
   -- | If 'True', 'browse' also returns types.

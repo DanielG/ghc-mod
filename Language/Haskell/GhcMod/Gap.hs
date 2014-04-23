@@ -13,7 +13,8 @@ module Language.Haskell.GhcMod.Gap (
   , toStringBuffer
   , showSeverityCaption
   , setCabalPkg
-  , addDevPkgs
+  , setHideAllPackages
+  , addPackageFlags
   , filterOutChildren
   , infoThing
   , pprInfo
@@ -232,18 +233,19 @@ setCabalPkg dflag = dopt_set dflag Opt_BuildingCabalPackage
 
 ----------------------------------------------------------------
 
-addDevPkgs :: DynFlags -> [Package] -> DynFlags
-addDevPkgs df []   = df
-addDevPkgs df pkgs = df''
+setHideAllPackages :: DynFlags -> DynFlags
+setHideAllPackages df = df'
   where
 #if __GLASGOW_HASKELL__ >= 707
     df' = gopt_set df Opt_HideAllPackages
 #else
     df' = dopt_set df Opt_HideAllPackages
 #endif
-    df'' = df' {
-        packageFlags = map expose pkgs ++ packageFlags df
-      }
+
+addPackageFlags :: [Package] -> DynFlags -> DynFlags
+addPackageFlags pkgs df =
+    df { packageFlags = packageFlags df ++ expose `map` pkgs }
+  where
     expose pkg = ExposePackageId $ showPkgId pkg
 
 ----------------------------------------------------------------

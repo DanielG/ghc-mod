@@ -18,7 +18,6 @@ module Language.Haskell.GhcMod.Internal (
   , getSystemLibDir
   , getDynamicFlags
   -- * Initializing 'DynFlags'
-  , initializeFlags
   , initializeFlagsWithCradle
   -- * 'Ghc' Monad
   , setTargetFiles
