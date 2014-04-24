@@ -5,6 +5,9 @@ module Language.Haskell.GhcMod.Internal (
     LogReader
   , GHCOption
   , Package
+  , PackageBaseName
+  , PackageVersion
+  , PackageId
   , IncludeDir
   , CompilerOptions(..)
   -- * Cabal API
