@@ -94,7 +94,7 @@
   (setq ghc-process-num-of-results (or n 1))
   (ghc-with-process cmd 'ghc-process-callback nil hook)
   (while (null ghc-process-rendezvous)
-    (sit-for 0.01))
+    (sit-for 0.1 t))
   ghc-process-results)
 
 (defun ghc-process-callback ()
