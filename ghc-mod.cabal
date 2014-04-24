@@ -142,6 +142,7 @@ Test-Suite spec
                         GhcPkgSpec
   Build-Depends:        base >= 4.0 && < 5
                       , containers
+                      , deepseq
                       , directory
                       , filepath
                       , ghc
