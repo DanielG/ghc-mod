@@ -31,9 +31,9 @@ browseModule :: Options
              -> Cradle
              -> ModuleString -- ^ A module name. (e.g. \"Data.List\")
              -> IO String
-browseModule opt cradle mdlName = withGHC' $ do
+browseModule opt cradle pkgmdl = withGHC' $ do
     void $ initializeFlagsWithCradle opt cradle [] False
-    browse opt mdlName
+    browse opt pkgmdl
 
 -- | Getting functions, classes, etc from a module.
 --   If 'detailed' is 'True', their types are also obtained.
@@ -41,12 +41,13 @@ browseModule opt cradle mdlName = withGHC' $ do
 browse :: Options
        -> ModuleString -- ^ A module name. (e.g. \"Data.List\")
        -> Ghc String
-browse opt mdlName = do
+browse opt pkgmdl = do
     convert opt . sort <$> (getModule >>= G.getModuleInfo >>= listExports)
   where
+    (mpkg,mdl) = splitPkgMdl pkgmdl
+    mdlname = G.mkModuleName mdl
+    mpkgid = mkFastString <$> mpkg
     getModule = G.findModule mdlname mpkgid `G.gcatch` fallback
-    mdlname = G.mkModuleName mdlName
-    mpkgid = mkFastString <$> packageId opt
     listExports Nothing       = return []
     listExports (Just mdinfo) = processExports opt mdinfo
     -- findModule works only for package modules, moreover,
@@ -57,9 +58,20 @@ browse opt mdlName = do
     fallback (CmdLineError _) = loadAndFind
     fallback e                = throwGhcException e
     loadAndFind = do
-      setTargetFiles [mdlName]
+      setTargetFiles [mdl]
       void $ G.load G.LoadAllTargets
       G.findModule mdlname Nothing
+
+-- |
+--
+-- >>> splitPkgMdl "base:Prelude"
+-- (Just "base","Prelude")
+-- >>> splitPkgMdl "Prelude"
+-- (Nothing,"Prelude")
+splitPkgMdl :: String -> (Maybe String,String)
+splitPkgMdl pkgmdl = case break (==':') pkgmdl of
+    (mdl,"")    -> (Nothing,mdl)
+    (pkg,_:mdl) -> (Just pkg,mdl)
 
 processExports :: Options -> ModuleInfo -> Ghc [String]
 processExports opt minfo = mapM (showExport opt minfo) $ removeOps $ G.modInfoExports minfo

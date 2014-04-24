@@ -10,7 +10,7 @@
 --     the format of hlint options is [String] because they may contain
 --     spaces and also <file> may contain spaces.
 --  boot
---  browse <module>
+--  browse [<package>:]<module>
 --
 -- Session separators:
 --   OK -- success

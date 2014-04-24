@@ -25,8 +25,6 @@ data Options = Options {
   , expandSplice  :: Bool
   -- | Line separator string.
   , lineSeparator :: LineSeparator
-  -- | Package id of module
-  , packageId     :: Maybe String
   }
 
 -- | A default 'Options'.
@@ -40,7 +38,6 @@ defaultOptions = Options {
   , qualified     = False
   , expandSplice  = False
   , lineSeparator = LineSeparator "\0"
-  , packageId     = Nothing
   }
 
 ----------------------------------------------------------------
