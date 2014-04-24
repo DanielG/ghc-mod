@@ -117,9 +117,9 @@ main = E.handle cmdHandler $
         void $ forkIO $ setupDB cradle mlibdir opt mvar
         run cradle mlibdir opt $ loop opt S.empty mvar
       where
+        -- this is just in case.
+        -- If an error is caught here, it is a bug of GhcMod library.
         someHandler (SomeException e) = do
-            -- fixme: this is not perfece for -l
-            --        because each command expect its own s-expression.
             let ret = convert opt $ "ghc-modi:0:0:" ++ show e
             putStr ret
             putStrLn "NG"
