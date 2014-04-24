@@ -1,6 +1,7 @@
 module Language.Haskell.GhcMod.List (listModules, modules) where
 
 import Control.Applicative ((<$>))
+import Control.Exception (SomeException(..))
 import Control.Monad (void)
 import Data.List (nub, sort)
 import GHC (Ghc)
@@ -20,15 +21,17 @@ listModules opt cradle = withGHC' $ do
 
 -- | Listing installed modules.
 modules :: Options -> Ghc String
-modules opt = convert opt . arrange <$> G.getSessionDynFlags
+modules opt = convert opt . arrange <$> (getModules `G.gcatch` handler)
   where
-    arrange = nub . sort . map dropPkgs . getExposedModules
+    getModules = getExposedModules <$> G.getSessionDynFlags
     getExposedModules = concatMap exposedModules'
                       . eltsUFM . pkgIdMap . G.pkgState
     exposedModules' p =
         map G.moduleNameString (exposedModules p)
     	`zip`
         repeat (display $ sourcePackageId p)
+    arrange = nub . sort . map dropPkgs
     dropPkgs (name, pkg)
       | detailed opt = name ++ " " ++ pkg
       | otherwise = name
+    handler (SomeException _) = return []
