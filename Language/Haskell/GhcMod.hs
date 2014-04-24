@@ -24,12 +24,14 @@ module Language.Haskell.GhcMod (
   , debugInfo
   , rootInfo
   , packageDoc
+  , findSymbol
   ) where
 
 import Language.Haskell.GhcMod.Browse
 import Language.Haskell.GhcMod.Check
 import Language.Haskell.GhcMod.Cradle
 import Language.Haskell.GhcMod.Debug
+import Language.Haskell.GhcMod.Find
 import Language.Haskell.GhcMod.Flag
 import Language.Haskell.GhcMod.Info
 import Language.Haskell.GhcMod.Lang

@@ -2,14 +2,15 @@
 
 module Language.Haskell.GhcMod.Find where
 
+import Control.Monad (void)
 import Data.Function (on)
 import Data.List (groupBy, sort)
 import Data.Maybe (fromMaybe)
 import GHC (Ghc)
 import qualified GHC as G
-import Language.Haskell.GhcMod
 import Language.Haskell.GhcMod.Browse (browseAll)
-import Language.Haskell.GhcMod.Types (convert)
+import Language.Haskell.GhcMod.GHCApi
+import Language.Haskell.GhcMod.Types
 
 #ifndef MIN_VERSION_containers
 #define MIN_VERSION_containers(x,y,z) 1
@@ -23,11 +24,17 @@ import qualified Data.Map.Strict as M
 import Data.Map (Map)
 import qualified Data.Map as M
 #endif
+import Control.Applicative ((<$>))
 
 -- | Type of key for `SymMdlDb`.
 type Symbol = String
 -- | Database from 'Symbol' to modules.
 newtype SymMdlDb = SymMdlDb (Map Symbol [ModuleString])
+
+findSymbol :: Options -> Cradle -> Symbol -> IO String
+findSymbol opt cradle sym = withGHC' $ do
+    void $ initializeFlagsWithCradle opt cradle [] False
+    lookupSym opt sym <$> getSymMdlDb
 
 -- | Creating 'SymMdlDb'.
 getSymMdlDb :: Ghc SymMdlDb
