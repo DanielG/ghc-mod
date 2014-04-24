@@ -26,18 +26,14 @@ module Language.Haskell.GhcMod.Internal (
   , setTargetFiles
   , addTargetFiles
   , handleErrMsg
-  , browseAll
   -- * 'Ghc' Choice
   , (||>)
   , goNext
   , runAnyOne
   -- * 'GhcMonad' Choice
   , (|||>)
-  -- * Misc
-  , convert
   ) where
 
-import Language.Haskell.GhcMod.Browse
 import Language.Haskell.GhcMod.CabalApi
 import Language.Haskell.GhcMod.ErrMsg
 import Language.Haskell.GhcMod.GHCApi

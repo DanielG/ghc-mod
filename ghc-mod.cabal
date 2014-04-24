@@ -57,6 +57,7 @@ Library
                         Language.Haskell.GhcMod.ErrMsg
                         Language.Haskell.GhcMod.Flag
                         Language.Haskell.GhcMod.GHCApi
+                        Language.Haskell.GhcMod.Find
                         Language.Haskell.GhcMod.GHCChoice
                         Language.Haskell.GhcMod.Gap
                         Language.Haskell.GhcMod.GhcPkg
@@ -69,6 +70,7 @@ Library
                         Language.Haskell.GhcMod.Types
   Build-Depends:        base >= 4.0 && < 5
                       , containers
+                      , deepseq
                       , directory
                       , filepath
                       , ghc
@@ -108,7 +110,6 @@ Executable ghc-modi
   HS-Source-Dirs:       src
   Build-Depends:        base >= 4.0 && < 5
                       , containers
-                      , deepseq
                       , directory
                       , filepath
                       , ghc

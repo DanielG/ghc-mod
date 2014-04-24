@@ -1,4 +1,3 @@
-{-# LANGUAGE CPP, BangPatterns #-}
 {-# LANGUAGE DeriveDataTypeable #-}
 
 -- Commands:
@@ -24,8 +23,7 @@ import Control.Exception (SomeException(..), Exception)
 import qualified Control.Exception as E
 import Control.Monad (when, void)
 import CoreMonad (liftIO)
-import Data.Function (on)
-import Data.List (groupBy, sort, find)
+import Data.List (find)
 import Data.Maybe (fromMaybe)
 import Data.Set (Set)
 import qualified Data.Set as S
@@ -44,24 +42,10 @@ import System.Directory (setCurrentDirectory)
 import System.Environment (getArgs)
 import System.IO (hFlush,stdout)
 
-#ifndef MIN_VERSION_containers
-#define MIN_VERSION_containers(x,y,z) 1
-#endif
-
-#if MIN_VERSION_containers(0,5,0)
-import Control.DeepSeq (force)
-import Data.Map.Strict (Map)
-import qualified Data.Map.Strict as M
-#else
-import Data.Map (Map)
-import qualified Data.Map as M
-#endif
-
 import Boot
 
 ----------------------------------------------------------------
 
-type DB = Map String [String]
 type Logger = IO String
 
 ----------------------------------------------------------------
@@ -119,9 +103,7 @@ main = E.handle cmdHandler $
       where
         -- this is just in case.
         -- If an error is caught here, it is a bug of GhcMod library.
-        someHandler (SomeException e) = do
-            let ret = convert opt $ "ghc-modi:0:0:" ++ show e
-            putStr ret
+        someHandler (SomeException _) = do
             putStrLn "NG"
 
 ----------------------------------------------------------------
@@ -134,24 +116,16 @@ run cradle mlibdir opt body = G.runGhc mlibdir $ do
 
 ----------------------------------------------------------------
 
-setupDB :: Cradle -> Maybe FilePath -> Options -> MVar DB -> IO ()
+setupDB :: Cradle -> Maybe FilePath -> Options -> MVar SymMdlDb -> IO ()
 setupDB cradle mlibdir opt mvar = E.handle handler $ do
-    sm <- run cradle mlibdir opt $ \_ -> G.getSessionDynFlags >>= browseAll
-#if MIN_VERSION_containers(0,5,0)
-    let !sms = force $ map tieup $ groupBy ((==) `on` fst) $ sort sm
-        !m = force $ M.fromList sms
-#else
-    let !sms = map tieup $ groupBy ((==) `on` fst) $ sort sm
-        !m = M.fromList sms
-#endif
-    putMVar mvar m
+    db <- run cradle mlibdir opt $ \_ -> getSymMdlDb
+    putMVar mvar db
   where
-    tieup x = (head (map fst x), map snd x)
-    handler (SomeException _) = return ()
+    handler (SomeException _) = return () -- fixme: put emptyDb?
 
 ----------------------------------------------------------------
 
-loop :: Options -> Set FilePath -> MVar DB -> Logger -> Ghc ()
+loop :: Options -> Set FilePath -> MVar SymMdlDb -> Logger -> Ghc ()
 loop opt set mvar readLog  = do
     cmdArg <- liftIO getLine
     let (cmd,arg') = break (== ' ') cmdArg
@@ -211,11 +185,11 @@ checkStx opt set file readLog = do
                     return $ Just mainfile
     isMain m = G.moduleNameString (G.moduleName (G.ms_mod m)) == "Main"
 
-findSym :: Options -> Set FilePath -> String -> MVar DB
+findSym :: Options -> Set FilePath -> String -> MVar SymMdlDb
         -> Ghc (String, Bool, Set FilePath)
 findSym opt set sym mvar = do
     db <- liftIO $ readMVar mvar
-    let ret = convert opt $ fromMaybe [] (M.lookup sym db) -- fixme
+    let ret = lookupSym opt sym db
     return (ret, True, set)
 
 lintStx :: Options -> Set FilePath -> FilePath
