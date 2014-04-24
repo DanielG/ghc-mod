@@ -18,7 +18,7 @@ import Data.List (sortBy)
 import Data.Maybe (catMaybes, fromMaybe)
 import Data.Ord as O
 import Exception (ghandle, SomeException(..))
-import GHC (Ghc, LHsBind, LHsExpr, LPat, Id, TypecheckedModule(..), DynFlags, SrcSpan, Type, Located, TypecheckedSource, GenLocated(L), LoadHowMuch(..))
+import GHC (Ghc, LHsBind, LHsExpr, LPat, Id, TypecheckedModule(..), DynFlags, SrcSpan, Type, Located, TypecheckedSource, GenLocated(L))
 import qualified GHC as G
 import GHC.SYB.Utils (Stage(TypeChecker), everythingStaged)
 import Language.Haskell.GhcMod.Doc (showPage, showOneLine, getStyle)
@@ -138,7 +138,6 @@ inModuleContext :: Options -> Cradle -> FilePath -> Ghc String -> Ghc String
 inModuleContext opt cradle file action = do
     void $ initializeFlagsWithCradle opt cradle noWaringOptions False
     setTargetFiles [file]
-    void $ G.load LoadAllTargets
     action
 
 ----------------------------------------------------------------

@@ -16,13 +16,13 @@ import Language.Haskell.GhcMod.GHCChoice
 import Language.Haskell.GhcMod.GhcPkg
 
 import Control.Applicative ((<$>))
-import Control.Monad (forM)
+import Control.Monad (forM, void)
 import CoreMonad (liftIO)
 import Data.Maybe (isJust, fromJust)
 import Distribution.PackageDescription (PackageDescription)
 import DynFlags (dopt_set)
 import Exception (ghandle, SomeException(..))
-import GHC (Ghc, GhcMonad, DynFlags(..), GhcLink(..), HscTarget(..))
+import GHC (Ghc, GhcMonad, DynFlags(..), GhcLink(..), HscTarget(..), LoadHowMuch(..))
 import qualified GHC as G
 import qualified Language.Haskell.GhcMod.Gap as Gap
 import Language.Haskell.GhcMod.Types
@@ -169,12 +169,13 @@ addCmdOpts cmdOpts df =
 
 ----------------------------------------------------------------
 
--- | Set the files that GHC will load / compile.
+-- | Set the files and load
 setTargetFiles :: (GhcMonad m) => [FilePath] -> m ()
 setTargetFiles [] = error "ghc-mod: setTargetFiles: No target files given"
 setTargetFiles files = do
     targets <- forM files $ \file -> G.guessTarget file Nothing
     G.setTargets targets
+    void $ G.load LoadAllTargets
 
 -- | Adding the files to the targets.
 addTargetFiles :: (GhcMonad m) => [FilePath] -> m ()

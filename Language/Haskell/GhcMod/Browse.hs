@@ -59,7 +59,6 @@ browse opt pkgmdl = do
     fallback e                = throwGhcException e
     loadAndFind = do
       setTargetFiles [mdl]
-      void $ G.load G.LoadAllTargets
       G.findModule mdlname Nothing
 
 -- |

@@ -1,8 +1,7 @@
 module Language.Haskell.GhcMod.Check (checkSyntax, check) where
 
-import Control.Monad (void)
 import CoreMonad (liftIO)
-import GHC (Ghc, LoadHowMuch(LoadAllTargets))
+import GHC (Ghc)
 import qualified GHC as G
 import Language.Haskell.GhcMod.ErrMsg
 import Language.Haskell.GhcMod.GHCApi
@@ -37,7 +36,6 @@ check opt cradle fileNames = checkIt `G.gcatch` handleErrMsg opt
     checkIt = do
         (readLog,_) <- initializeFlagsWithCradle opt cradle options True
         setTargetFiles fileNames
-        void $ G.load LoadAllTargets
         liftIO readLog
     options
       | expandSplice opt = "-w:"   : ghcOpts opt
