@@ -5,10 +5,12 @@ module Language.Haskell.GhcMod.Browse (
   where
 
 import Control.Applicative ((<$>))
+import Control.Exception (SomeException(..))
 import Control.Monad (void)
 import Data.Char (isAlpha)
 import Data.List (sort)
 import Data.Maybe (catMaybes)
+import Exception (ghandle)
 import FastString (mkFastString)
 import GHC (Ghc, GhcException(CmdLineError), ModuleInfo, Name, TyThing, DynFlags, Type, TyCon, Module)
 import qualified GHC as G
@@ -18,7 +20,6 @@ import Language.Haskell.GhcMod.Gap
 import Language.Haskell.GhcMod.Types
 import Name (getOccString)
 import Outputable (ppr, Outputable)
-import Panic (throwGhcException)
 import TyCon (isAlgTyCon)
 import Type (dropForAlls, splitFunTy_maybe, mkFunTy, isPredTy)
 
@@ -42,12 +43,11 @@ browse :: Options
        -> ModuleString -- ^ A module name. (e.g. \"Data.List\")
        -> Ghc String
 browse opt pkgmdl = do
-    convert opt . sort <$> (getModule >>= G.getModuleInfo >>= listExports)
+    convert opt . sort <$> (getModule >>= listExports)
   where
     (mpkg,mdl) = splitPkgMdl pkgmdl
     mdlname = G.mkModuleName mdl
     mpkgid = mkFastString <$> mpkg
-    getModule = G.findModule mdlname mpkgid `G.gcatch` fallback
     listExports Nothing       = return []
     listExports (Just mdinfo) = processExports opt mdinfo
     -- findModule works only for package modules, moreover,
@@ -55,12 +55,14 @@ browse opt pkgmdl = do
     -- to browse a local module you need to load it first.
     -- If CmdLineError is signalled, we assume the user
     -- tried browsing a local module.
-    fallback (CmdLineError _) = loadAndFind
-    fallback e                = throwGhcException e
-    loadAndFind = do
+    getModule = browsePackageModule `G.gcatch` fallback `G.gcatch` handler
+    browsePackageModule = G.findModule mdlname mpkgid >>= G.getModuleInfo
+    browseLocalModule = ghandle handler $ do
       setTargetFiles [mdl]
-      G.findModule mdlname Nothing
-
+      G.findModule mdlname Nothing >>= G.getModuleInfo
+    fallback (CmdLineError _) = browseLocalModule
+    fallback _                = return Nothing
+    handler (SomeException _) = return Nothing
 -- |
 --
 -- >>> splitPkgMdl "base:Prelude"
