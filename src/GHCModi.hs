@@ -65,6 +65,7 @@ usage :: String
 usage =    "ghc-modi version " ++ showVersion version ++ "\n"
         ++ "Usage:\n"
         ++ "\t ghc-modi [-l] [-b sep] [-g flag]\n"
+        ++ "\t ghc-modi version\n"
         ++ "\t ghc-modi help\n"
 
 parseArgs :: [OptDescr (Options -> Options)] -> [String] -> (Options, [String])
@@ -91,6 +92,7 @@ main = E.handle cmdHandler $
   where
     cmdHandler (CmdArg _) = putStr $ usageInfo usage argspec
     go (_,"help":_) = putStr $ usageInfo usage argspec
+    go (_,"version":_) = putStr $ "ghc-modi version " ++ showVersion version ++ "\n"
     go (opt,_) = E.handle someHandler $ do
         cradle0 <- findCradle
         let rootdir = cradleRootDir cradle0

@@ -40,6 +40,7 @@ usage =    "ghc-mod version " ++ showVersion version ++ "\n"
         ++ "\t ghc-mod root\n"
         ++ "\t ghc-mod doc <module>\n"
         ++ "\t ghc-mod boot\n"
+        ++ "\t ghc-mod version\n"
         ++ "\t ghc-mod help\n"
         ++ "\n"
         ++ "<module> for \"info\" and \"type\" is not used, anything is OK.\n"
@@ -106,22 +107,23 @@ main = flip E.catches handlers $ do
                         then f
                         else E.throw (TooManyArguments cmdArg0)
     res <- case cmdArg0 of
-      "list"   -> listModules opt cradle
-      "lang"   -> listLanguages opt
-      "flag"   -> listFlags opt
-      "browse" -> concat <$> mapM (browseModule opt cradle) remainingArgs
-      "check"  -> checkSyntax opt cradle remainingArgs
-      "expand" -> checkSyntax opt { expandSplice = True } cradle remainingArgs
-      "debug"  -> debugInfo opt cradle
-      "info"   -> nArgs 3 infoExpr opt cradle cmdArg1 cmdArg3
-      "type"   -> nArgs 4 $ typeExpr opt cradle cmdArg1 (read cmdArg3) (read cmdArg4)
-      "find"   -> nArgs 1 $ findSymbol opt cradle cmdArg1
-      "lint"   -> nArgs 1 withFile (lintSyntax opt) cmdArg1
-      "root"   -> rootInfo opt cradle
-      "doc"    -> nArgs 1 $ packageDoc opt cradle cmdArg1
-      "boot"   -> boot opt cradle
-      "help"   -> return $ O.usageInfo usage argspec
-      cmd      -> E.throw (NoSuchCommand cmd)
+      "list"    -> listModules opt cradle
+      "lang"    -> listLanguages opt
+      "flag"    -> listFlags opt
+      "browse"  -> concat <$> mapM (browseModule opt cradle) remainingArgs
+      "check"   -> checkSyntax opt cradle remainingArgs
+      "expand"  -> checkSyntax opt { expandSplice = True } cradle remainingArgs
+      "debug"   -> debugInfo opt cradle
+      "info"    -> nArgs 3 infoExpr opt cradle cmdArg1 cmdArg3
+      "type"    -> nArgs 4 $ typeExpr opt cradle cmdArg1 (read cmdArg3) (read cmdArg4)
+      "find"    -> nArgs 1 $ findSymbol opt cradle cmdArg1
+      "lint"    -> nArgs 1 withFile (lintSyntax opt) cmdArg1
+      "root"    -> rootInfo opt cradle
+      "doc"     -> nArgs 1 $ packageDoc opt cradle cmdArg1
+      "boot"    -> boot opt cradle
+      "version" -> return $ "ghc-mod version " ++ showVersion version ++ "\n"
+      "help"    -> return $ O.usageInfo usage argspec
+      cmd       -> E.throw (NoSuchCommand cmd)
     putStr res
   where
     handlers = [Handler (handleThenExit handler1), Handler (handleThenExit handler2)]
