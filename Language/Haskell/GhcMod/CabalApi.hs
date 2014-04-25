@@ -138,11 +138,12 @@ cabalCppOptions dir = do
 
 -- | Extracting all 'BuildInfo' for libraries, executables, and tests.
 cabalAllBuildInfo :: PackageDescription -> [BuildInfo]
-cabalAllBuildInfo pd = libBI ++ execBI ++ testBI
+cabalAllBuildInfo pd = libBI ++ execBI ++ testBI ++ benchBI
   where
     libBI   = map P.libBuildInfo       $ maybeToList $ P.library pd
     execBI  = map P.buildInfo          $ P.executables pd
     testBI  = map P.testBuildInfo      $ P.testSuites pd
+    benchBI = map P.benchmarkBuildInfo $ P.benchmarks pd
 
 ----------------------------------------------------------------
 
