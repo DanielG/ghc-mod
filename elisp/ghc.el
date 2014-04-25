@@ -7,6 +7,7 @@
 ;; Put the following code to your "~/.emacs".
 ;;
 ;; (autoload 'ghc-init "ghc" nil t)
+;; (autoload 'ghc-debug "ghc" nil t)
 ;; (add-hook 'haskell-mode-hook (lambda () (ghc-init)))
 ;;
 ;; Or if you wish to display error each goto next/prev error,
@@ -102,5 +103,25 @@
 
 (defun ghc-abbrev-init ()
   (set (make-local-variable 'dabbrev-case-fold-search) nil))
+
+;;;###autoload
+(defun ghc-debug ()
+  (interactive)
+  (let ((el-path (locate-file "ghc.el" load-path))
+	(ghc-mod-path (executable-find ghc-module-command))
+	(ghc-modi-path (executable-find ghc-interactive-command))
+	(el-ver ghc-version)
+	(ghc-mod-ver (ghc-run-ghc-mod '("version")))
+	(ghc-modi-ver (ghc-run-ghc-mod '("version") ghc-interactive-command)))
+    (switch-to-buffer (get-buffer-create "**GHC Debug**"))
+    (erase-buffer)
+    (insert "Path: check if you are using intended programs.\n")
+    (insert (format "\tghc.el path: \t%s\n" el-path))
+    (insert (format "\tghc-mod path: \t%s\n" ghc-mod-path))
+    (insert (format "\tghc-modi path: \t%s\n" ghc-modi-path))
+    (insert "\nVersion: all versions must be the same.\n")
+    (insert (format "\t  ghc.el version %s\n" el-ver))
+    (insert (format "\t %s\n" ghc-mod-ver))
+    (insert (format "\t%s\n" ghc-modi-ver))))
 
 (provide 'ghc)
