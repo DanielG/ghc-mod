@@ -103,8 +103,13 @@ main = E.handle cmdHandler $
       where
         -- this is just in case.
         -- If an error is caught here, it is a bug of GhcMod library.
-        someHandler (SomeException _) = do
-            putStrLn "NG"
+        someHandler (SomeException e) = do
+            putStrLn $ "NG " ++ replace (show e)
+
+replace :: String -> String
+replace [] = []
+replace ('\n':xs) = ';' : replace xs
+replace (x:xs)    =  x  : replace xs
 
 ----------------------------------------------------------------
 
@@ -138,9 +143,14 @@ loop opt set mvar readLog  = do
         "type"   -> showType opt set arg readLog
         "boot"   -> bootIt   opt set
         "browse" -> browseIt opt set arg
-        _        -> return ([], False, set)
-    liftIO $ putStr ret
-    liftIO $ putStrLn $ if ok then "OK" else "NG"
+        "quit"   -> return ("quit", False, set)
+        ""       -> return ("quit", False, set)
+        _        -> return ([], True, set)
+    if ok then do
+        liftIO $ putStr ret
+        liftIO $ putStrLn "OK"
+      else do
+        liftIO $ putStrLn $ "NG " ++ replace ret
     liftIO $ hFlush stdout
     when ok $ loop opt set' mvar readLog
 
@@ -167,7 +177,7 @@ checkStx opt set file readLog = do
     handler :: SourceError -> Ghc (String, Bool, Set FilePath)
     handler err = do
         ret <- handleErrMsg opt err
-        return (ret, False, set)
+        return (ret, True, set)
     removeMainTarget = do
         mx <- find isMain <$> G.getModuleGraph
         case mx of
@@ -194,17 +204,13 @@ findSym opt set sym mvar = do
 
 lintStx :: Options -> Set FilePath -> FilePath
         -> Ghc (String, Bool, Set FilePath)
-lintStx opt set optFile = liftIO $ E.handle handler $ do
+lintStx opt set optFile = liftIO $ do
     ret <-lintSyntax opt' file
     return (ret, True, set)
   where
     (opts,file) = parseLintOptions optFile
     hopts = if opts == "" then [] else read opts
     opt' = opt { hlintOpts = hopts }
-    -- let's continue the session
-    handler (SomeException e) = do
-        print e
-        return ("", True, set)
 
 -- |
 -- >>> parseLintOptions "[\"--ignore=Use camelCase\", \"--ignore=Eta reduce\"] file name"

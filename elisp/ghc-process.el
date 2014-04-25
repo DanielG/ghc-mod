@@ -72,7 +72,7 @@
     (goto-char (point-max))
     (insert string)
     (forward-line -1)
-    (when (looking-at "^\\(OK\\|NG\\)$")
+    (when (looking-at "^OK$\\|^NG ")
       (if ghc-process-hook (funcall ghc-process-hook))
       (goto-char (point-min))
       (funcall ghc-process-callback)

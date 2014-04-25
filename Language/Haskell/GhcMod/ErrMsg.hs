@@ -4,6 +4,7 @@ module Language.Haskell.GhcMod.ErrMsg (
     LogReader
   , setLogger
   , handleErrMsg
+  , checkErrorPrefix
   ) where
 
 import Bag (Bag, bagToList)
@@ -85,9 +86,12 @@ ppMsg spn sev dflag style msg = prefix ++ cts
     cts  = showPage dflag style msg
     defaultPrefix
       | dopt Gap.dumpSplicesFlag dflag = ""
-      | otherwise                      = "Dummy:0:0:Error:"
+      | otherwise                      = checkErrorPrefix
     prefix = fromMaybe defaultPrefix $ do
         (line,col,_,_) <- Gap.getSrcSpan spn
         file <- normalise <$> Gap.getSrcFile spn
         let severityCaption = Gap.showSeverityCaption sev
         return $ file ++ ":" ++ show line ++ ":" ++ show col ++ ":" ++ severityCaption
+
+checkErrorPrefix :: String
+checkErrorPrefix = "Dummy:0:0:Error:"

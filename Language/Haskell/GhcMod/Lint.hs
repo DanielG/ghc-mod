@@ -1,6 +1,8 @@
 module Language.Haskell.GhcMod.Lint where
 
 import Control.Applicative ((<$>))
+import Control.Exception (handle, SomeException(..))
+import Language.Haskell.GhcMod.ErrMsg (checkErrorPrefix)
 import Language.Haskell.GhcMod.Types
 import Language.Haskell.HLint (hlint)
 
@@ -9,7 +11,8 @@ import Language.Haskell.HLint (hlint)
 lintSyntax :: Options
            -> FilePath  -- ^ A target file.
            -> IO String
-lintSyntax opt file = pack <$> hlint (file : "--quiet" : hopts)
+lintSyntax opt file = handle handler $ pack <$> hlint (file : "--quiet" : hopts)
   where
     pack = convert opt . map (init . show) -- init drops the last \n.
     hopts = hlintOpts opt
+    handler (SomeException e) = return $ checkErrorPrefix ++ show e ++ "\n"
