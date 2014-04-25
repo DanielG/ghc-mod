@@ -17,6 +17,7 @@
 
 module Main where
 
+import Config (cProjectVersion)
 import Control.Applicative ((<$>))
 import Control.Concurrent (forkIO, MVar, newEmptyMVar, putMVar, readMVar)
 import Control.Exception (SomeException(..), Exception)
@@ -50,6 +51,9 @@ type Logger = IO String
 
 ----------------------------------------------------------------
 
+progVersion :: String
+progVersion = "ghc-modi version " ++ showVersion version ++ " compiled by GHC " ++ cProjectVersion ++ "\n"
+
 argspec :: [OptDescr (Options -> Options)]
 argspec = [ Option "b" ["boundary"]
             (ReqArg (\s opts -> opts { lineSeparator = LineSeparator s }) "sep")
@@ -62,7 +66,7 @@ argspec = [ Option "b" ["boundary"]
           ]
 
 usage :: String
-usage =    "ghc-modi version " ++ showVersion version ++ "\n"
+usage =    progVersion
         ++ "Usage:\n"
         ++ "\t ghc-modi [-l] [-b sep] [-g flag]\n"
         ++ "\t ghc-modi version\n"
@@ -92,7 +96,7 @@ main = E.handle cmdHandler $
   where
     cmdHandler (CmdArg _) = putStr $ usageInfo usage argspec
     go (_,"help":_) = putStr $ usageInfo usage argspec
-    go (_,"version":_) = putStr $ "ghc-modi version " ++ showVersion version ++ "\n"
+    go (_,"version":_) = putStr progVersion
     go (opt,_) = E.handle someHandler $ do
         cradle0 <- findCradle
         let rootdir = cradleRootDir cradle0

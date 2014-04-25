@@ -2,6 +2,7 @@
 
 module Main where
 
+import Config (cProjectVersion)
 import Control.Applicative ((<$>))
 import Control.Exception (Exception, Handler(..), ErrorCall(..))
 import qualified Control.Exception as E
@@ -20,11 +21,14 @@ import Boot
 
 ----------------------------------------------------------------
 
+progVersion :: String
+progVersion = "ghc-mod version " ++ showVersion version ++ " compiled by GHC " ++ cProjectVersion ++ "\n"
+
 ghcOptHelp :: String
 ghcOptHelp = " [-g GHC_opt1 -g GHC_opt2 ...] "
 
 usage :: String
-usage =    "ghc-mod version " ++ showVersion version ++ "\n"
+usage =    progVersion
         ++ "Usage:\n"
         ++ "\t ghc-mod list" ++ ghcOptHelp ++ "[-l] [-d]\n"
         ++ "\t ghc-mod lang [-l]\n"
@@ -121,7 +125,7 @@ main = flip E.catches handlers $ do
       "root"    -> rootInfo opt cradle
       "doc"     -> nArgs 1 $ packageDoc opt cradle cmdArg1
       "boot"    -> boot opt cradle
-      "version" -> return $ "ghc-mod version " ++ showVersion version ++ "\n"
+      "version" -> return progVersion
       "help"    -> return $ O.usageInfo usage argspec
       cmd       -> E.throw (NoSuchCommand cmd)
     putStr res
