@@ -26,6 +26,7 @@ module Language.Haskell.GhcMod.Internal (
   , setTargetFiles
   , addTargetFiles
   , handleErrMsg
+  , withLogger
   -- * 'Ghc' Choice
   , (||>)
   , goNext

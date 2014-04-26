@@ -2,13 +2,14 @@
 
 module Language.Haskell.GhcMod.ErrMsg (
     LogReader
-  , setLogger
+  , withLogger
   , handleErrMsg
   , checkErrorPrefix
   ) where
 
 import Bag (Bag, bagToList)
 import Control.Applicative ((<$>))
+import CoreMonad (liftIO)
 import Data.IORef (IORef, newIORef, readIORef, writeIORef, modifyIORef)
 import Data.Maybe (fromMaybe)
 import ErrUtils (ErrMsg, errMsgShortDoc, errMsgExtraInfo)
@@ -16,6 +17,7 @@ import GHC (Ghc, DynFlags, SrcSpan, Severity(SevError))
 import qualified GHC as G
 import HscTypes (SourceError, srcErrorMessages)
 import Language.Haskell.GhcMod.Doc (showPage, getStyle)
+import Language.Haskell.GhcMod.GHCApi (withDynFlags)
 import qualified Language.Haskell.GhcMod.Gap as Gap
 import Language.Haskell.GhcMod.Types (Options, convert)
 import Outputable (PprStyle, SDoc)
@@ -48,14 +50,12 @@ appendLogRef df (LogRef ref) _ sev src style msg = do
 
 ----------------------------------------------------------------
 
-setLogger :: Bool -> DynFlags -> Options -> IO (DynFlags, LogReader)
-setLogger False df _ = return (newdf, undefined)
-  where
-    newdf = Gap.setLogAction df $ \_ _ _ _ _ -> return ()
-setLogger True  df opt = do
-    logref <- newLogRef
-    let newdf = Gap.setLogAction df $ appendLogRef df logref
-    return (newdf, readAndClearLogRef opt logref)
+withLogger :: Options -> Ghc () -> Ghc String
+withLogger opt body = do
+    logref <- liftIO $ newLogRef
+    withDynFlags (\df -> Gap.setLogAction df $ appendLogRef df logref) $ do
+        body
+        liftIO $ readAndClearLogRef opt logref
 
 ----------------------------------------------------------------
 

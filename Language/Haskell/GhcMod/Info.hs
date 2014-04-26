@@ -41,7 +41,7 @@ infoExpr :: Options
          -> Expression   -- ^ A Haskell expression.
          -> IO String
 infoExpr opt cradle file expr = withGHC' $ do
-    void $ initializeFlagsWithCradle opt cradle noWaringOptions False
+    initializeFlagsWithCradle opt cradle noWaringOptions
     info opt file expr
 
 -- | Obtaining information of a target expression. (GHCi's info:)
@@ -79,7 +79,7 @@ typeExpr :: Options
          -> Int          -- ^ Column number.
          -> IO String
 typeExpr opt cradle file lineNo colNo = withGHC' $ do
-    void $ initializeFlagsWithCradle opt cradle noWaringOptions False
+    initializeFlagsWithCradle opt cradle noWaringOptions
     types opt file lineNo colNo
 
 -- | Obtaining type of a target expression. (GHCi's type:)

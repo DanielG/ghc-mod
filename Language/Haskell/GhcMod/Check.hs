@@ -1,10 +1,15 @@
-module Language.Haskell.GhcMod.Check (checkSyntax, check) where
+module Language.Haskell.GhcMod.Check (
+    checkSyntax
+  , check
+  , expandTemplate
+  , expand
+  ) where
 
-import CoreMonad (liftIO)
+import Exception (ghandle)
 import GHC (Ghc)
-import qualified GHC as G
 import Language.Haskell.GhcMod.ErrMsg
 import Language.Haskell.GhcMod.GHCApi
+import qualified Language.Haskell.GhcMod.Gap as Gap
 import Language.Haskell.GhcMod.Types
 
 ----------------------------------------------------------------
@@ -15,28 +20,51 @@ checkSyntax :: Options
             -> Cradle
             -> [FilePath]  -- ^ The target files.
             -> IO String
-checkSyntax _   _      []    = error "ghc-mod: checkSyntax: No files given"
-checkSyntax opt cradle files = withGHC sessionName (check opt cradle files)
+checkSyntax _   _      []    = return ""
+checkSyntax opt cradle files = withGHC sessionName $ do
+    initializeFlagsWithCradle opt cradle options
+    check opt files
   where
     sessionName = case files of
       [file] -> file
       _      -> "MultipleFiles"
+    options = "-Wall" : ghcOpts opt
 
 ----------------------------------------------------------------
 
 -- | Checking syntax of a target file using GHC.
 --   Warnings and errors are returned.
 check :: Options
-      -> Cradle
       -> [FilePath]  -- ^ The target files.
       -> Ghc String
-check _   _      []        = error "ghc-mod: check: No files given"
-check opt cradle fileNames = checkIt `G.gcatch` handleErrMsg opt
+check opt fileNames = ghandle (handleErrMsg opt) $
+    withLogger opt $ setTargetFiles fileNames
+
+----------------------------------------------------------------
+
+-- | Expanding syntax of a target file using GHC.
+--   Warnings and errors are returned.
+expandTemplate :: Options
+               -> Cradle
+               -> [FilePath]  -- ^ The target files.
+               -> IO String
+expandTemplate _   _      []    = return ""
+expandTemplate opt cradle files = withGHC sessionName $ do
+    initializeFlagsWithCradle opt cradle options
+    expand opt files
   where
-    checkIt = do
-        (readLog,_) <- initializeFlagsWithCradle opt cradle options True
-        setTargetFiles fileNames
-        liftIO readLog
-    options
-      | expandSplice opt = "-w:"   : ghcOpts opt
-      | otherwise        = "-Wall" : ghcOpts opt
+    sessionName = case files of
+      [file] -> file
+      _      -> "MultipleFiles"
+    options = "-w:" : ghcOpts opt
+
+----------------------------------------------------------------
+
+-- | Expanding syntax of a target file using GHC.
+--   Warnings and errors are returned.
+expand :: Options
+      -> [FilePath]  -- ^ The target files.
+      -> Ghc String
+expand opt fileNames = ghandle (handleErrMsg opt) $
+    withDynFlags Gap.setDumpSplices $
+    withLogger opt $ setTargetFiles fileNames

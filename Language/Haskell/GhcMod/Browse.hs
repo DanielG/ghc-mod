@@ -6,7 +6,6 @@ module Language.Haskell.GhcMod.Browse (
 
 import Control.Applicative ((<$>))
 import Control.Exception (SomeException(..))
-import Control.Monad (void)
 import Data.Char (isAlpha)
 import Data.List (sort)
 import Data.Maybe (catMaybes)
@@ -33,7 +32,7 @@ browseModule :: Options
              -> ModuleString -- ^ A module name. (e.g. \"Data.List\")
              -> IO String
 browseModule opt cradle pkgmdl = withGHC' $ do
-    void $ initializeFlagsWithCradle opt cradle [] False
+    initializeFlagsWithCradle opt cradle []
     browse opt pkgmdl
 
 -- | Getting functions, classes, etc from a module.

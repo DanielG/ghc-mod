@@ -16,6 +16,7 @@ module Language.Haskell.GhcMod (
   , browseModule
   , checkSyntax
   , lintSyntax
+  , expandTemplate
   , infoExpr
   , typeExpr
   , listModules

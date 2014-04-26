@@ -2,7 +2,6 @@ module Language.Haskell.GhcMod.List (listModules, modules) where
 
 import Control.Applicative ((<$>))
 import Control.Exception (SomeException(..))
-import Control.Monad (void)
 import Data.List (nub, sort)
 import GHC (Ghc)
 import qualified GHC as G
@@ -16,7 +15,7 @@ import UniqFM (eltsUFM)
 -- | Listing installed modules.
 listModules :: Options -> Cradle -> IO String
 listModules opt cradle = withGHC' $ do
-    void $ initializeFlagsWithCradle opt cradle [] False
+    initializeFlagsWithCradle opt cradle []
     modules opt
 
 -- | Listing installed modules.

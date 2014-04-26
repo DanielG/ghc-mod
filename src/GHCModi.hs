@@ -119,34 +119,34 @@ replace (x:xs)    =  x  : replace xs
 
 ----------------------------------------------------------------
 
-run :: Cradle -> Maybe FilePath -> Options -> (Logger -> Ghc a) -> IO a
+run :: Cradle -> Maybe FilePath -> Options -> Ghc a -> IO a
 run cradle mlibdir opt body = G.runGhc mlibdir $ do
-    (readLog,_) <- initializeFlagsWithCradle opt cradle ["-Wall"] True
+    initializeFlagsWithCradle opt cradle ["-Wall"]
     dflags <- G.getSessionDynFlags
-    G.defaultCleanupHandler dflags $ body readLog
+    G.defaultCleanupHandler dflags body
 
 ----------------------------------------------------------------
 
 setupDB :: Cradle -> Maybe FilePath -> Options -> MVar SymMdlDb -> IO ()
 setupDB cradle mlibdir opt mvar = E.handle handler $ do
-    db <- run cradle mlibdir opt $ \_ -> getSymMdlDb
+    db <- run cradle mlibdir opt getSymMdlDb
     putMVar mvar db
   where
     handler (SomeException _) = return () -- fixme: put emptyDb?
 
 ----------------------------------------------------------------
 
-loop :: Options -> Set FilePath -> MVar SymMdlDb -> Logger -> Ghc ()
-loop opt set mvar readLog  = do
+loop :: Options -> Set FilePath -> MVar SymMdlDb -> Ghc ()
+loop opt set mvar = do
     cmdArg <- liftIO getLine
     let (cmd,arg') = break (== ' ') cmdArg
         arg = dropWhile (== ' ') arg'
     (ret,ok,set') <- case cmd of
-        "check"  -> checkStx opt set arg readLog
+        "check"  -> checkStx opt set arg
         "find"   -> findSym  opt set arg mvar
         "lint"   -> lintStx  opt set arg
-        "info"   -> showInfo opt set arg readLog
-        "type"   -> showType opt set arg readLog
+        "info"   -> showInfo opt set arg
+        "type"   -> showType opt set arg
         "boot"   -> bootIt   opt set
         "browse" -> browseIt opt set arg
         "quit"   -> return ("quit", False, set)
@@ -158,22 +158,21 @@ loop opt set mvar readLog  = do
       else do
         liftIO $ putStrLn $ "NG " ++ replace ret
     liftIO $ hFlush stdout
-    when ok $ loop opt set' mvar readLog
+    when ok $ loop opt set' mvar
 
 ----------------------------------------------------------------
 
 checkStx :: Options
          -> Set FilePath
          -> FilePath
-         -> Logger
          -> Ghc (String, Bool, Set FilePath)
-checkStx opt set file readLog = do
+checkStx opt set file = do
     let add = not $ S.member file set
     GE.ghandle handler $ do
         mdel <- removeMainTarget
-        when add $ addTargetFiles [file]
-        void $ G.load LoadAllTargets
-        ret <- liftIO readLog
+        ret <- withLogger opt $ do
+            when add $ addTargetFiles [file]
+            void $ G.load LoadAllTargets
         let set1 = if add then S.insert file set else set
             set2 = case mdel of
                 Nothing    -> set1
@@ -238,25 +237,21 @@ parseLintOptions optFile = case brk (== ']') (dropWhile (/= '[') optFile) of
 showInfo :: Options
          -> Set FilePath
          -> FilePath
-         -> Logger
          -> Ghc (String, Bool, Set FilePath)
-showInfo opt set fileArg readLog = do
+showInfo opt set fileArg = do
     let [file, expr] = words fileArg
-    (_, _, set') <- checkStx opt set file readLog
+    (_, _, set') <- checkStx opt set file
     ret <- info opt file expr
-    _ <- liftIO readLog
     return (ret, True, set')
 
 showType :: Options
          -> Set FilePath
          -> FilePath
-         -> Logger
          -> Ghc (String, Bool, Set FilePath)
-showType opt set fileArg readLog = do
+showType opt set fileArg  = do
     let [file, line, column] = words fileArg
-    (_, _, set') <- checkStx opt set file readLog
+    (_, _, set') <- checkStx opt set file
     ret <- types opt file (read line) (read column)
-    _ <- liftIO readLog
     return (ret, True, set')
 
 ----------------------------------------------------------------

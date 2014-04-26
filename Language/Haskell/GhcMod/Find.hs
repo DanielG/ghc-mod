@@ -2,7 +2,6 @@
 
 module Language.Haskell.GhcMod.Find where
 
-import Control.Monad (void)
 import Data.Function (on)
 import Data.List (groupBy, sort)
 import Data.Maybe (fromMaybe)
@@ -34,7 +33,7 @@ newtype SymMdlDb = SymMdlDb (Map Symbol [ModuleString])
 -- | Find modules to which the symbol belong.
 findSymbol :: Options -> Cradle -> Symbol -> IO String
 findSymbol opt cradle sym = withGHC' $ do
-    void $ initializeFlagsWithCradle opt cradle [] False
+    initializeFlagsWithCradle opt cradle []
     lookupSym opt sym <$> getSymMdlDb
 
 -- | Creating 'SymMdlDb'.

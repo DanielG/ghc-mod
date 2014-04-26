@@ -116,7 +116,7 @@ main = flip E.catches handlers $ do
       "flag"    -> listFlags opt
       "browse"  -> concat <$> mapM (browseModule opt cradle) remainingArgs
       "check"   -> checkSyntax opt cradle remainingArgs
-      "expand"  -> checkSyntax opt { expandSplice = True } cradle remainingArgs
+      "expand"  -> expandTemplate opt cradle remainingArgs
       "debug"   -> debugInfo opt cradle
       "info"    -> nArgs 3 infoExpr opt cradle cmdArg1 cmdArg3
       "type"    -> nArgs 4 $ typeExpr opt cradle cmdArg1 (read cmdArg3) (read cmdArg4)

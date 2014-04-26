@@ -12,7 +12,6 @@ module Language.Haskell.GhcMod.GHCApi (
   ) where
 
 import Language.Haskell.GhcMod.CabalApi
-import Language.Haskell.GhcMod.ErrMsg
 import Language.Haskell.GhcMod.GHCChoice
 import Language.Haskell.GhcMod.GhcPkg
 
@@ -20,7 +19,6 @@ import Control.Applicative ((<$>))
 import Control.Monad (forM, void, unless)
 import CoreMonad (liftIO)
 import Data.Maybe (isJust, fromJust)
-import Distribution.PackageDescription (PackageDescription)
 import Exception (ghandle, SomeException(..))
 import GHC (Ghc, GhcMonad, DynFlags(..), GhcLink(..), HscTarget(..), LoadHowMuch(..))
 import qualified GHC as G
@@ -75,9 +73,8 @@ initializeFlagsWithCradle :: GhcMonad m
         => Options
         -> Cradle
         -> [GHCOption]
-        -> Bool
-        -> m (LogReader, Maybe PackageDescription)
-initializeFlagsWithCradle opt cradle ghcopts logging
+        -> m ()
+initializeFlagsWithCradle opt cradle ghcopts
   | cabal     = withCabal |||> withSandbox
   | otherwise = withSandbox
   where
@@ -86,11 +83,8 @@ initializeFlagsWithCradle opt cradle ghcopts logging
     withCabal = do
         pkgDesc <- liftIO $ parseCabalFile $ fromJust mCradleFile
         compOpts <- liftIO $ getCompilerOptions ghcopts cradle pkgDesc
-        logger <- initSession CabalPkg opt compOpts logging
-        return (logger, Just pkgDesc)
-    withSandbox = do
-        logger <- initSession SingleFile opt compOpts logging
-        return (logger, Nothing)
+        initSession CabalPkg opt compOpts
+    withSandbox = initSession SingleFile opt compOpts
       where
         pkgOpts = ghcDbStackOpts $ cradlePkgDbStack cradle
         compOpts
@@ -105,25 +99,18 @@ initSession :: GhcMonad m
             => Build
             -> Options
             -> CompilerOptions
-            -> Bool
-            -> m LogReader
-initSession build opt compOpts logging = do
-    df <- initDynFlags build opt compOpts
-    (df', lg) <- liftIO $ setLogger logging df opt
-    _ <- G.setSessionDynFlags df'
-    return lg
-
-initDynFlags :: GhcMonad m => Build -> Options -> CompilerOptions -> m DynFlags
-initDynFlags build Options {..} CompilerOptions {..} = do
+            -> m ()
+initSession build Options {..} CompilerOptions {..} = do
     df <- G.getSessionDynFlags
-    _ <- G.setSessionDynFlags =<< (addCmdOpts ghcOptions
+    void $ G.setSessionDynFlags =<< (addCmdOpts ghcOptions
       $ setLinkerOptions
       $ setIncludeDirs includeDirs
-      $ setSplice expandSplice
       $ setBuildEnv build
+      $ setEmptyLogger
       $ Gap.addPackageFlags depPackages df)
-    G.getSessionDynFlags
 
+setEmptyLogger :: DynFlags -> DynFlags
+setEmptyLogger df = Gap.setLogAction df $ \_ _ _ _ _ -> return ()
 
 ----------------------------------------------------------------
 
@@ -141,12 +128,6 @@ setIncludeDirs idirs df = df { importPaths = idirs }
 
 setBuildEnv :: Build -> DynFlags -> DynFlags
 setBuildEnv build = setHideAllPackages build . setCabalPackage build
-
--- | Set option in 'DynFlags' to Expand template haskell if first argument is
--- True
-setSplice :: Bool -> DynFlags -> DynFlags
-setSplice False = id
-setSplice True  = Gap.setDumpSplices
 
 -- At the moment with this option set ghc only prints different error messages,
 -- suggesting the user to add a hidden package to the build-depends in his cabal

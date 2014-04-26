@@ -21,8 +21,6 @@ data Options = Options {
   , detailed      :: Bool
   -- | If 'True', 'browse' will return fully qualified name
   , qualified     :: Bool
-  -- | Whether or not Template Haskell should be expanded.
-  , expandSplice  :: Bool
   -- | Line separator string.
   , lineSeparator :: LineSeparator
   }
@@ -36,7 +34,6 @@ defaultOptions = Options {
   , operators     = False
   , detailed      = False
   , qualified     = False
-  , expandSplice  = False
   , lineSeparator = LineSeparator "\0"
   }
 
