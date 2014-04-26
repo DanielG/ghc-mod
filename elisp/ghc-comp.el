@@ -105,15 +105,15 @@ unloaded modules are loaded")
 
 (defun ghc-load-modules (mods)
   (if mods
-      (prog2
-	  (message "Loading symbols...")
-	  (mapcar 'ghc-load-module mods)
-	  (message "Loading symbols...done"))
+      (mapcar 'ghc-load-module mods)
     (message "No new modules")
     nil))
 
 (defun ghc-load-module (mod)
-  (ghc-sync-process (format "browse %s\n" mod)))
+  (prog2
+      (message "Loading symbols for %s..." mod)
+      (ghc-sync-process (format "browse %s\n" mod))
+    (message "Loading symbols for %s...done" mod)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
