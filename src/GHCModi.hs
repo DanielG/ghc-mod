@@ -167,38 +167,42 @@ checkStx :: Options
          -> FilePath
          -> Ghc (String, Bool, Set FilePath)
 checkStx opt set file = do
-    let add = not $ S.member file set
     GE.ghandle handler $ do
-        mdel <- removeMainTarget
+        (set',add) <- removeMainTarget file set
         ret <- withLogger opt $ do
             when add $ addTargetFiles [file]
             void $ G.load LoadAllTargets
-        let set1 = if add then S.insert file set else set
-            set2 = case mdel of
-                Nothing    -> set1
-                Just delfl -> S.delete delfl set1
-        return (ret, True, set2)
+        return (ret, True, set')
   where
     handler :: SourceError -> Ghc (String, Bool, Set FilePath)
     handler err = do
         ret <- handleErrMsg opt err
         return (ret, True, set)
-    removeMainTarget = do
-        mx <- find isMain <$> G.getModuleGraph
-        case mx of
-            Nothing -> return Nothing
-            Just x  -> do
-                let mmainfile = G.ml_hs_file (G.ms_location x)
-                    -- G.ms_hspp_file x is a temporary file with CPP.
-                    -- this is a just fake.
-                    mainfile = fromMaybe (G.ms_hspp_file x) mmainfile
-                if mainfile == file then
-                    return Nothing
-                  else do
-                    let target = TargetFile mainfile Nothing
-                    G.removeTarget target
-                    return $ Just mainfile
+
+removeMainTarget :: FilePath -> Set FilePath -> Ghc (Set FilePath, Bool)
+removeMainTarget file set = do
+    mx <- find isMain <$> G.getModuleGraph
+    mdel <- tryRemove mx
+    let set' = del mdel
+    return (set',add)
+  where
+    add = not $ S.member file set
+    set1 = if add then S.insert file set else set
+    del Nothing      = set1
+    del (Just delfl) = S.delete delfl set1
     isMain m = G.moduleNameString (G.moduleName (G.ms_mod m)) == "Main"
+    tryRemove Nothing = return Nothing
+    tryRemove (Just x) = do
+        let mmainfile = G.ml_hs_file (G.ms_location x)
+            -- G.ms_hspp_file x is a temporary file with CPP.
+            -- this is a just fake.
+            mainfile = fromMaybe (G.ms_hspp_file x) mmainfile
+        if mainfile == file then
+            return Nothing
+          else do
+            let target = TargetFile mainfile Nothing
+            G.removeTarget target
+            return $ Just mainfile
 
 findSym :: Options -> Set FilePath -> String -> MVar SymMdlDb
         -> Ghc (String, Bool, Set FilePath)
@@ -240,7 +244,7 @@ showInfo :: Options
          -> Ghc (String, Bool, Set FilePath)
 showInfo opt set fileArg = do
     let [file, expr] = words fileArg
-    (_, _, set') <- checkStx opt set file
+    (set',_) <- removeMainTarget file set
     ret <- info opt file expr
     return (ret, True, set')
 
@@ -250,7 +254,7 @@ showType :: Options
          -> Ghc (String, Bool, Set FilePath)
 showType opt set fileArg  = do
     let [file, line, column] = words fileArg
-    (_, _, set') <- checkStx opt set file
+    (set',_) <- removeMainTarget file set
     ret <- types opt file (read line) (read column)
     return (ret, True, set')
 
