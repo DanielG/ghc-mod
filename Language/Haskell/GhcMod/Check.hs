@@ -55,7 +55,7 @@ expandTemplate opt cradle files = withGHC sessionName $ do
     sessionName = case files of
       [file] -> file
       _      -> "MultipleFiles"
-    options = "-w:" : ghcOpts opt
+    options = noWaringOption : ghcOpts opt
 
 ----------------------------------------------------------------
 

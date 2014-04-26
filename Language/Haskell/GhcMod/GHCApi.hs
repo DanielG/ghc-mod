@@ -9,6 +9,7 @@ module Language.Haskell.GhcMod.GHCApi (
   , getDynamicFlags
   , getSystemLibDir
   , withDynFlags
+  , noWaringOption
   ) where
 
 import Language.Haskell.GhcMod.CabalApi
@@ -180,3 +181,9 @@ withDynFlags setFlag body = G.gbracket setup teardown (\_ -> body)
         void $ G.setSessionDynFlags (setFlag dflag)
         return dflag
     teardown = void . G.setSessionDynFlags
+
+----------------------------------------------------------------
+
+-- probably this is not necessary anymore.
+noWaringOption :: String
+noWaringOption = "-w:"
