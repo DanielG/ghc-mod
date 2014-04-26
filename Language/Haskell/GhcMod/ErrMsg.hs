@@ -11,7 +11,6 @@ import Bag (Bag, bagToList)
 import Control.Applicative ((<$>))
 import Data.IORef (IORef, newIORef, readIORef, writeIORef, modifyIORef)
 import Data.Maybe (fromMaybe)
-import DynFlags (dopt)
 import ErrUtils (ErrMsg, errMsgShortDoc, errMsgExtraInfo)
 import GHC (Ghc, DynFlags, SrcSpan, Severity(SevError))
 import qualified GHC as G
@@ -85,8 +84,8 @@ ppMsg spn sev dflag style msg = prefix ++ cts
   where
     cts  = showPage dflag style msg
     defaultPrefix
-      | dopt Gap.dumpSplicesFlag dflag = ""
-      | otherwise                      = checkErrorPrefix
+      | Gap.isDumpSplices dflag = ""
+      | otherwise               = checkErrorPrefix
     prefix = fromMaybe defaultPrefix $ do
         (line,col,_,_) <- Gap.getSrcSpan spn
         file <- normalise <$> Gap.getSrcFile spn

@@ -1,7 +1,6 @@
 module Language.Haskell.GhcMod.Doc where
 
-import DynFlags (DynFlags)
-import GHC (Ghc)
+import GHC (Ghc, DynFlags)
 import qualified GHC as G
 import Language.Haskell.GhcMod.Gap (withStyle, showDocWith)
 import Outputable (SDoc, PprStyle, mkUserStyle, Depth(AllTheWay), neverQualify)

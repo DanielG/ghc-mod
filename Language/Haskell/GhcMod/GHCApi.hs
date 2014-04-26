@@ -21,7 +21,6 @@ import Control.Monad (forM, void)
 import CoreMonad (liftIO)
 import Data.Maybe (isJust, fromJust)
 import Distribution.PackageDescription (PackageDescription)
-import DynFlags (dopt_set)
 import Exception (ghandle, SomeException(..))
 import GHC (Ghc, GhcMonad, DynFlags(..), GhcLink(..), HscTarget(..), LoadHowMuch(..))
 import qualified GHC as G
@@ -146,8 +145,8 @@ setBuildEnv build = setHideAllPackages build . setCabalPackage build
 -- | Set option in 'DynFlags' to Expand template haskell if first argument is
 -- True
 setSplice :: Bool -> DynFlags -> DynFlags
-setSplice False df = df
-setSplice True df  = dopt_set df Gap.dumpSplicesFlag
+setSplice False = id
+setSplice True  = Gap.setDumpSplices
 
 -- At the moment with this option set ghc only prints different error messages,
 -- suggesting the user to add a hidden package to the build-depends in his cabal

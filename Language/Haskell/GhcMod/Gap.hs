@@ -15,6 +15,9 @@ module Language.Haskell.GhcMod.Gap (
   , setCabalPkg
   , setHideAllPackages
   , addPackageFlags
+  , setDeferTypeErrors
+  , setDumpSplices
+  , isDumpSplices
   , filterOutChildren
   , infoThing
   , pprInfo
@@ -29,8 +32,6 @@ module Language.Haskell.GhcMod.Gap (
   , showDocWith
   , GapThing(..)
   , fromTyThing
-  , dumpSplicesFlag
-  , setDeferTypeErrors
   ) where
 
 import Control.Applicative hiding (empty)
@@ -235,12 +236,10 @@ setCabalPkg dflag = dopt_set dflag Opt_BuildingCabalPackage
 ----------------------------------------------------------------
 
 setHideAllPackages :: DynFlags -> DynFlags
-setHideAllPackages df = df'
-  where
 #if __GLASGOW_HASKELL__ >= 707
-    df' = gopt_set df Opt_HideAllPackages
+setHideAllPackages df = gopt_set df Opt_HideAllPackages
 #else
-    df' = dopt_set df Opt_HideAllPackages
+setHideAllPackages df = dopt_set df Opt_HideAllPackages
 #endif
 
 addPackageFlags :: [Package] -> DynFlags -> DynFlags
@@ -248,6 +247,26 @@ addPackageFlags pkgs df =
     df { packageFlags = packageFlags df ++ expose `map` pkgs }
   where
     expose pkg = ExposePackageId $ showPkgId pkg
+
+----------------------------------------------------------------
+
+setDumpSplices :: DynFlags -> DynFlags
+setDumpSplices dflag = dopt_set dflag Opt_D_dump_splices
+
+isDumpSplices :: DynFlags -> Bool
+isDumpSplices dflag = dopt Opt_D_dump_splices dflag
+
+----------------------------------------------------------------
+
+
+setDeferTypeErrors :: DynFlags -> DynFlags
+#if __GLASGOW_HASKELL__ >= 707
+setDeferTypeErrors dflag = gopt_set dflag Opt_DeferTypeErrors
+#elif __GLASGOW_HASKELL__ >= 706
+setDeferTypeErrors dflag = dopt_set dflag Opt_DeferTypeErrors
+#else
+setDeferTypeErrors = id
+#endif
 
 ----------------------------------------------------------------
 ----------------------------------------------------------------
@@ -355,21 +374,3 @@ fromTyThing (ADataCon d)               = GtA $ dataConRepType d
 #endif
 fromTyThing (ATyCon t)                 = GtT t
 fromTyThing _                          = GtN
-
-----------------------------------------------------------------
-
-#if __GLASGOW_HASKELL__ >= 707
-dumpSplicesFlag :: DumpFlag
-#else
-dumpSplicesFlag :: DynFlag
-#endif
-dumpSplicesFlag = Opt_D_dump_splices
-
-setDeferTypeErrors :: DynFlags -> DynFlags
-#if __GLASGOW_HASKELL__ >= 707
-setDeferTypeErrors dflag = gopt_set dflag Opt_DeferTypeErrors
-#elif __GLASGOW_HASKELL__ >= 706
-setDeferTypeErrors dflag = dopt_set dflag Opt_DeferTypeErrors
-#else
-setDeferTypeErrors = id
-#endif
