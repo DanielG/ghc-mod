@@ -2,8 +2,7 @@
 
 module Language.Haskell.GhcMod.Internal (
   -- * Types
-    LogReader
-  , GHCOption
+   GHCOption
   , Package
   , PackageBaseName
   , PackageVersion

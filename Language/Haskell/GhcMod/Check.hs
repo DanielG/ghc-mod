@@ -42,8 +42,7 @@ check opt fileNames = ghandle (handleErrMsg opt) $
 
 ----------------------------------------------------------------
 
--- | Expanding syntax of a target file using GHC.
---   Warnings and errors are returned.
+-- | Expanding Haskell Template.
 expandTemplate :: Options
                -> Cradle
                -> [FilePath]  -- ^ The target files.
@@ -60,8 +59,7 @@ expandTemplate opt cradle files = withGHC sessionName $ do
 
 ----------------------------------------------------------------
 
--- | Expanding syntax of a target file using GHC.
---   Warnings and errors are returned.
+-- | Expanding Haskell Template.
 expand :: Options
       -> [FilePath]  -- ^ The target files.
       -> Ghc String
