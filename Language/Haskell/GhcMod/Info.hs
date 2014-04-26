@@ -9,7 +9,6 @@ module Language.Haskell.GhcMod.Info (
   ) where
 
 import Control.Applicative ((<$>))
-import Control.Monad (void)
 import CoreMonad (liftIO)
 import CoreUtils (exprType)
 import Data.Function (on)
@@ -48,10 +47,8 @@ info :: Options
      -> Ghc String
 info opt file expr = convert opt <$> ghandle handler body
   where
-    body = inModuleContext file $ do
-        void $ Gap.setCtx file
+    body = inModuleContext file $ \_ dflag style -> do
         sdoc <- Gap.infoThing expr
-        (dflag, style) <- getFlagStyle
         return $ showPage dflag style sdoc
     handler (SomeException _) = return "Cannot show info"
 
@@ -87,12 +84,9 @@ types :: Options
       -> Ghc String
 types opt file lineNo colNo = convert opt <$> ghandle handler body
   where
-    body = inModuleContext file $ do
-        modSum <- Gap.setCtx file
-        (dflag, style) <- getFlagStyle
+    body = inModuleContext file $ \modSum dflag style -> do
         srcSpanTypes <- getSrcSpanType modSum lineNo colNo
-        let tups = map (toTup dflag style) $ sortBy (cmp `on` fst) srcSpanTypes
-        return tups
+        return $ map (toTup dflag style) $ sortBy (cmp `on` fst) srcSpanTypes
     handler (SomeException _) = return []
 
 getSrcSpanType :: G.ModSummary -> Int -> Int -> Ghc [(SrcSpan, Type)]
@@ -132,15 +126,10 @@ pretty dflag style = showOneLine dflag style . Gap.typeForUser
 
 ----------------------------------------------------------------
 
-inModuleContext :: FilePath -> Ghc a -> Ghc a
+inModuleContext :: FilePath -> (G.ModSummary -> DynFlags -> PprStyle -> Ghc a) -> Ghc a
 inModuleContext file action = withDynFlags setDeferTypeErrors $ do
     setTargetFiles [file]
-    action
-
-----------------------------------------------------------------
-
-getFlagStyle :: Ghc (DynFlags, PprStyle)
-getFlagStyle = do
+    modSum <- Gap.setCtx file
     dflag <- G.getSessionDynFlags
     style <- getStyle
-    return (dflag, style)
+    action modSum dflag style
