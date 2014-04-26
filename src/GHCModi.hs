@@ -31,7 +31,7 @@ import qualified Data.Set as S
 import Data.Typeable (Typeable)
 import Data.Version (showVersion)
 import qualified Exception as GE
-import GHC (Ghc, LoadHowMuch(LoadAllTargets), TargetId(TargetFile))
+import GHC (Ghc, TargetId(TargetFile))
 import qualified GHC as G
 import HscTypes (SourceError)
 import Language.Haskell.GhcMod
@@ -169,9 +169,8 @@ checkStx :: Options
 checkStx opt set file = do
     GE.ghandle handler $ do
         (set',add) <- removeMainTarget file set
-        ret <- withLogger opt $ do
-            when add $ addTargetFiles [file]
-            void $ G.load LoadAllTargets
+        let files = if add then [file] else []
+        ret <- withLogger opt $ addTargetFiles files
         return (ret, True, set')
   where
     handler :: SourceError -> Ghc (String, Bool, Set FilePath)
