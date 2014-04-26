@@ -30,6 +30,7 @@ module Language.Haskell.GhcMod.Gap (
   , GapThing(..)
   , fromTyThing
   , dumpSplicesFlag
+  , setDeferTypeErrors
   ) where
 
 import Control.Applicative hiding (empty)
@@ -363,3 +364,12 @@ dumpSplicesFlag :: DumpFlag
 dumpSplicesFlag :: DynFlag
 #endif
 dumpSplicesFlag = Opt_D_dump_splices
+
+setDeferTypeErrors :: DynFlags -> DynFlags
+#if __GLASGOW_HASKELL__ >= 707
+setDeferTypeErrors dflag = gopt_set dflag Opt_DeferTypeErrors
+#elif __GLASGOW_HASKELL__ >= 706
+setDeferTypeErrors dflag = dopt_set dflag Opt_DeferTypeErrors
+#else
+setDeferTypeErrors = id
+#endif

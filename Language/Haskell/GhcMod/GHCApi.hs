@@ -8,6 +8,7 @@ module Language.Haskell.GhcMod.GHCApi (
   , addTargetFiles
   , getDynamicFlags
   , getSystemLibDir
+  , withDynFlags
   ) where
 
 import Language.Haskell.GhcMod.CabalApi
@@ -191,3 +192,12 @@ getDynamicFlags :: IO DynFlags
 getDynamicFlags = do
     mlibdir <- getSystemLibDir
     G.runGhc mlibdir G.getSessionDynFlags
+
+withDynFlags :: (DynFlags -> DynFlags) -> Ghc a -> Ghc a
+withDynFlags setFlag body = G.gbracket setup teardown (\_ -> body)
+  where
+    setup = do
+        dflag <- G.getSessionDynFlags
+        void $ G.setSessionDynFlags (setFlag dflag)
+        return dflag
+    teardown = void . G.setSessionDynFlags

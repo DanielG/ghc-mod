@@ -23,11 +23,14 @@ import qualified GHC as G
 import GHC.SYB.Utils (Stage(TypeChecker), everythingStaged)
 import Language.Haskell.GhcMod.Doc (showPage, showOneLine, getStyle)
 import Language.Haskell.GhcMod.GHCApi
-import Language.Haskell.GhcMod.Gap (HasType(..))
+import Language.Haskell.GhcMod.Gap (HasType(..), setDeferTypeErrors)
 import qualified Language.Haskell.GhcMod.Gap as Gap
 import Language.Haskell.GhcMod.Types
 import Outputable (PprStyle)
 import TcHsSyn (hsPatType)
+
+noWaringOptions :: [String]
+noWaringOptions = ["-w:"]
 
 ----------------------------------------------------------------
 
@@ -37,8 +40,9 @@ infoExpr :: Options
          -> FilePath     -- ^ A target file.
          -> Expression   -- ^ A Haskell expression.
          -> IO String
-infoExpr opt cradle file expr = withGHC' $
-    inModuleContext opt cradle file (info opt file expr)
+infoExpr opt cradle file expr = withGHC' $ do
+    void $ initializeFlagsWithCradle opt cradle noWaringOptions False
+    info opt file expr
 
 -- | Obtaining information of a target expression. (GHCi's info:)
 info :: Options
@@ -47,12 +51,12 @@ info :: Options
      -> Ghc String
 info opt file expr = convert opt <$> ghandle handler body
   where
-    body = do
+    body = inModuleContext file $ do
         void $ Gap.setCtx file
         sdoc <- Gap.infoThing expr
         (dflag, style) <- getFlagStyle
         return $ showPage dflag style sdoc
-    handler (SomeException e) = return $ "Cannot show info (" ++ show e ++ ")"
+    handler (SomeException _) = return "Cannot show info"
 
 ----------------------------------------------------------------
 
@@ -74,8 +78,9 @@ typeExpr :: Options
          -> Int          -- ^ Line number.
          -> Int          -- ^ Column number.
          -> IO String
-typeExpr opt cradle file lineNo colNo = withGHC' $
-    inModuleContext opt cradle file (types opt file lineNo colNo)
+typeExpr opt cradle file lineNo colNo = withGHC' $ do
+    void $ initializeFlagsWithCradle opt cradle noWaringOptions False
+    types opt file lineNo colNo
 
 -- | Obtaining type of a target expression. (GHCi's type:)
 types :: Options
@@ -85,14 +90,13 @@ types :: Options
       -> Ghc String
 types opt file lineNo colNo = convert opt <$> ghandle handler body
   where
-    body = do
+    body = inModuleContext file $ do
         modSum <- Gap.setCtx file
         (dflag, style) <- getFlagStyle
         srcSpanTypes <- getSrcSpanType modSum lineNo colNo
         let tups = map (toTup dflag style) $ sortBy (cmp `on` fst) srcSpanTypes
-        return $ tups
-    handler (SomeException _) = return errmsg
-    errmsg = [] :: [((Int,Int,Int,Int),String)]
+        return tups
+    handler (SomeException _) = return []
 
 getSrcSpanType :: G.ModSummary -> Int -> Int -> Ghc [(SrcSpan, Type)]
 getSrcSpanType modSum lineNo colNo = do
@@ -131,12 +135,8 @@ pretty dflag style = showOneLine dflag style . Gap.typeForUser
 
 ----------------------------------------------------------------
 
-noWaringOptions :: [String]
-noWaringOptions = ["-w:"]
-
-inModuleContext :: Options -> Cradle -> FilePath -> Ghc String -> Ghc String
-inModuleContext opt cradle file action = do
-    void $ initializeFlagsWithCradle opt cradle noWaringOptions False
+inModuleContext :: FilePath -> Ghc a -> Ghc a
+inModuleContext file action = withDynFlags setDeferTypeErrors $ do
     setTargetFiles [file]
     action
 
