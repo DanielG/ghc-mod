@@ -69,25 +69,30 @@ nil            does not display errors/warnings.
 	    (mapconcat (lambda (x) (concat "\"" x "\"")) los ", ")
 	    "]")))
 
-(defun ghc-check-callback ()
-  (let* ((errs (ghc-read-lisp-this-buffer))
-	 (infos (ghc-to-info errs)))
-    (cond
-     (infos
-      (let ((file ghc-process-original-file)
-	    (buf ghc-process-original-buffer))
-	(ghc-check-highlight-original-buffer file buf infos)))
-     (t
+(defun ghc-check-callback (status)
+  (cond
+   ((eq status 'ok)
+    (let* ((errs (ghc-read-lisp-this-buffer))
+	   (infos (ghc-to-info errs)))
+      (cond
+       (infos
+	(let ((file ghc-process-original-file)
+	      (buf ghc-process-original-buffer))
+	  (ghc-check-highlight-original-buffer file buf infos)))
+       (t
+	(with-current-buffer ghc-process-original-buffer
+	  (remove-overlays (point-min) (point-max) 'ghc-check t))))
       (with-current-buffer ghc-process-original-buffer
-	(remove-overlays (point-min) (point-max) 'ghc-check t))))
+	(let ((len (length infos)))
+	  (if (= len 0)
+	      (setq mode-line-process "")
+	    (let* ((errs (ghc-filter 'ghc-hilit-info-get-err infos))
+		   (elen (length errs))
+		   (wlen (- len elen)))
+	      (setq mode-line-process (format " %d:%d" elen wlen))))))))
+   (t
     (with-current-buffer ghc-process-original-buffer
-      (let ((len (length infos)))
-	(if (= len 0)
-	    (setq mode-line-process "")
-	  (let* ((errs (ghc-filter 'ghc-hilit-info-get-err infos))
-		 (elen (length errs))
-		 (wlen (- len elen)))
-	    (setq mode-line-process (format " %d:%d" elen wlen))))))))
+      (setq mode-line-process " failed")))))
 
 (defun ghc-to-info (errs)
   ;; [^\t] to include \n.

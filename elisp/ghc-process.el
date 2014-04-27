@@ -72,15 +72,23 @@
     (goto-char (point-max))
     (insert string)
     (forward-line -1)
-    (when (looking-at "^OK$\\|^NG ")
+    (cond
+     ((looking-at "^OK$")
       (if ghc-process-hook (funcall ghc-process-hook))
       (goto-char (point-min))
-      (funcall ghc-process-callback)
+      (funcall ghc-process-callback 'ok)
       (when ghc-debug
 	(let ((cbuf (current-buffer)))
 	  (ghc-with-debug-buffer
 	   (insert-buffer-substring cbuf))))
-      (setq ghc-process-running nil))))
+      (setq ghc-process-running nil))
+     ((looking-at "^NG ")
+      (funcall ghc-process-callback 'ng)
+      (when ghc-debug
+	(let ((cbuf (current-buffer)))
+	  (ghc-with-debug-buffer
+	   (insert-buffer-substring cbuf))))
+      (setq ghc-process-running nil)))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -97,14 +105,18 @@
     (sit-for 0.1 t))
   ghc-process-results)
 
-(defun ghc-process-callback ()
-  (let* ((n ghc-process-num-of-results)
-	 (ret (if (= n 1)
-		  (ghc-read-lisp-this-buffer)
-		(ghc-read-lisp-list-this-buffer n))))
-    (setq ghc-process-results ret)
-    (setq ghc-process-num-of-results nil)
-    (setq ghc-process-rendezvous t)))
+(defun ghc-process-callback (status)
+  (cond
+   ((eq status 'ok)
+    (let* ((n ghc-process-num-of-results)
+	   (ret (if (= n 1)
+		    (ghc-read-lisp-this-buffer)
+		  (ghc-read-lisp-list-this-buffer n))))
+      (setq ghc-process-results ret)))
+   (t
+    (setq ghc-process-results nil)))
+  (setq ghc-process-num-of-results nil)
+  (setq ghc-process-rendezvous t))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
