@@ -47,7 +47,7 @@ info :: Options
      -> Ghc String
 info opt file expr = convert opt <$> ghandle handler body
   where
-    body = inModuleContext file $ \_ dflag style -> do
+    body = inModuleContext file $ \dflag style -> do
         sdoc <- Gap.infoThing expr
         return $ showPage dflag style sdoc
     handler (SomeException _) = return "Cannot show info"
@@ -84,7 +84,8 @@ types :: Options
       -> Ghc String
 types opt file lineNo colNo = convert opt <$> ghandle handler body
   where
-    body = inModuleContext file $ \modSum dflag style -> do
+    body = inModuleContext file $ \dflag style -> do
+        modSum <- Gap.fileModSummary file
         srcSpanTypes <- getSrcSpanType modSum lineNo colNo
         return $ map (toTup dflag style) $ sortBy (cmp `on` fst) srcSpanTypes
     handler (SomeException _) = return []
@@ -126,10 +127,10 @@ pretty dflag style = showOneLine dflag style . Gap.typeForUser
 
 ----------------------------------------------------------------
 
-inModuleContext :: FilePath -> (G.ModSummary -> DynFlags -> PprStyle -> Ghc a) -> Ghc a
+inModuleContext :: FilePath -> (DynFlags -> PprStyle -> Ghc a) -> Ghc a
 inModuleContext file action = withDynFlags setDeferTypeErrors $ do
     setTargetFiles [file]
-    modSum <- Gap.setCtx file
-    dflag <- G.getSessionDynFlags
-    style <- getStyle
-    action modSum dflag style
+    Gap.withContext $ do
+        dflag <- G.getSessionDynFlags
+        style <- getStyle
+        action dflag style

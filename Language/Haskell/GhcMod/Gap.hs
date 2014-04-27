@@ -8,7 +8,7 @@ module Language.Haskell.GhcMod.Gap (
   , supportedExtensions
   , getSrcSpan
   , getSrcFile
-  , setCtx
+  , withContext
   , fOptions
   , toStringBuffer
   , showSeverityCaption
@@ -32,6 +32,7 @@ module Language.Haskell.GhcMod.Gap (
   , showDocWith
   , GapThing(..)
   , fromTyThing
+  , fileModSummary
   ) where
 
 import Control.Applicative hiding (empty)
@@ -187,33 +188,37 @@ fOptions = [option | (option,_,_) <- fFlags]
 ----------------------------------------------------------------
 ----------------------------------------------------------------
 
-setCtx :: FilePath -> Ghc ModSummary
-#if __GLASGOW_HASKELL__ >= 704
-setCtx file = do
+fileModSummary :: FilePath -> Ghc ModSummary
+fileModSummary file = do
+    mss <- getModuleGraph
+    let [ms] = filter (\m -> ml_hs_file (ms_location m) == Just file) mss
+    return ms
+
+withContext :: Ghc a -> Ghc a
+withContext action = gbracket setup teardown body
+  where
+    setup = getContext
+    teardown = setContext
+    body _ = do
+        topImports >>= setContext
+        action
+
+topImports :: Ghc [InteractiveImport]
+topImports = do
     mss <- getModuleGraph
 #if __GLASGOW_HASKELL__ >= 706
     let modName = IIModule . moduleName . ms_mod
-#else
+#elif __GLASGOW_HASKELL__ >= 704
     let modName = IIModule . ms_mod
-#endif
-    top <- map modName <$> filterM isTop mss
-    setContext top
-    let [ms] = filter (\m -> ml_hs_file (ms_location m) == Just file) mss
-    return ms
 #else
-setCtx file = do
-    mss <- getModuleGraph
-    top <- map ms_mod <$> filterM isTop mss
-    setContext top []
-    let [ms] = filter (\m -> ml_hs_file (ms_location m) == Just file) mss
-    return ms
+    let modName = ms_mod
 #endif
+    map modName <$> filterM isTop mss
   where
     isTop mos = lookupMod ||> returnFalse
       where
         lookupMod = lookupModule (ms_mod_name mos) Nothing >> return True
         returnFalse = return False
-
 
 showSeverityCaption :: Severity -> String
 #if __GLASGOW_HASKELL__ >= 706
