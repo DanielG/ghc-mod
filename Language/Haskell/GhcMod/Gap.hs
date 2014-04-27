@@ -202,23 +202,21 @@ withContext action = gbracket setup teardown body
     body _ = do
         topImports >>= setContext
         action
-
-topImports :: Ghc [InteractiveImport]
-topImports = do
-    mss <- getModuleGraph
+    topImports = do
+        mss <- getModuleGraph
 #if __GLASGOW_HASKELL__ >= 706
-    let modName = IIModule . moduleName . ms_mod
+        let modName = IIModule . moduleName . ms_mod
 #elif __GLASGOW_HASKELL__ >= 704
-    let modName = IIModule . ms_mod
+        let modName = IIModule . ms_mod
 #else
-    let modName = ms_mod
+        let modName = ms_mod
 #endif
-    map modName <$> filterM isTop mss
-  where
-    isTop mos = lookupMod ||> returnFalse
+        map modName <$> filterM isTop mss
       where
-        lookupMod = lookupModule (ms_mod_name mos) Nothing >> return True
-        returnFalse = return False
+        isTop mos = lookupMod ||> returnFalse
+          where
+            lookupMod = lookupModule (ms_mod_name mos) Nothing >> return True
+            returnFalse = return False
 
 showSeverityCaption :: Severity -> String
 #if __GLASGOW_HASKELL__ >= 706
