@@ -31,10 +31,8 @@ import Data.Set (Set)
 import qualified Data.Set as S
 import Data.Typeable (Typeable)
 import Data.Version (showVersion)
-import qualified Exception as GE
 import GHC (Ghc, TargetId(TargetFile))
 import qualified GHC as G
-import HscTypes (SourceError)
 import Language.Haskell.GhcMod
 import Language.Haskell.GhcMod.Ghc
 import Language.Haskell.GhcMod.Internal
