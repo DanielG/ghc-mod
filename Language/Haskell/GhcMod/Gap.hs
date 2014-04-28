@@ -151,9 +151,7 @@ toStringBuffer = liftIO . stringToStringBuffer . unlines
 ----------------------------------------------------------------
 
 fOptions :: [String]
-#if __GLASGOW_HASKELL__ >= 706
-fOptions = [option | (option,_,_) <- fFlags]
-#elif __GLASGOW_HASKELL__ >= 704
+#if __GLASGOW_HASKELL__ >= 704
 fOptions = [option | (option,_,_) <- fFlags]
         ++ [option | (option,_,_) <- fWarningFlags]
         ++ [option | (option,_,_) <- fLangFlags]
