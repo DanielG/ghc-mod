@@ -5,7 +5,6 @@ module Language.Haskell.GhcMod.GHCApi (
   , withGHC'
   , initializeFlagsWithCradle
   , setTargetFiles
-  , addTargetFiles
   , getDynamicFlags
   , getSystemLibDir
   , withDynFlags
@@ -158,13 +157,6 @@ setTargetFiles :: (GhcMonad m) => [FilePath] -> m ()
 setTargetFiles files = do
     targets <- forM files $ \file -> G.guessTarget file Nothing
     G.setTargets targets
-    void $ G.load LoadAllTargets
-
--- | Adding the files to the targets.
-addTargetFiles :: (GhcMonad m) => [FilePath] -> m ()
-addTargetFiles files = do
-    targets <- forM files $ \file -> G.guessTarget file Nothing
-    mapM_ G.addTarget targets
     void $ G.load LoadAllTargets
 
 ----------------------------------------------------------------

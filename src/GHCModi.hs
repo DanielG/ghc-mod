@@ -31,7 +31,7 @@ import Data.Set (Set)
 import qualified Data.Set as S
 import Data.Typeable (Typeable)
 import Data.Version (showVersion)
-import GHC (Ghc, TargetId(TargetFile))
+import GHC (Ghc)
 import qualified GHC as G
 import Language.Haskell.GhcMod
 import Language.Haskell.GhcMod.Ghc
@@ -166,37 +166,40 @@ checkStx :: Options
          -> FilePath
          -> Ghc (String, Bool, Set FilePath)
 checkStx opt set file = do
-    (set',add) <- removeMainTarget file set
-    let files = if add then [file] else []
-    eret <- withLogger opt setAllWaringFlags $ addTargetFiles files
+    set' <- newFileSet set file
+    let files = S.toList set'
+    eret <- check opt files
     case eret of
         Right ret -> return (ret, True, set')
         Left ret  -> return (ret, True, set) -- fxime: set
 
-removeMainTarget :: FilePath -> Set FilePath -> Ghc (Set FilePath, Bool)
-removeMainTarget file set = do
-    mx <- find isMain <$> G.getModuleGraph
-    mdel <- tryRemove mx
-    let set' = del mdel
-    return (set',add)
+newFileSet :: Set FilePath -> FilePath -> Ghc (Set FilePath)
+newFileSet set file = do
+    let set1
+         | S.member file set = set
+         | otherwise         = S.insert file set
+    mx <- isSameMainFile file <$> getModSummaryForMain
+    return $ case mx of
+        Nothing       -> set1
+        Just mainfile -> S.delete mainfile set1
+
+getModSummaryForMain :: Ghc (Maybe G.ModSummary)
+getModSummaryForMain = find isMain <$> G.getModuleGraph
   where
-    add = not $ S.member file set
-    set1 = if add then S.insert file set else set
-    del Nothing      = set1
-    del (Just delfl) = S.delete delfl set1
     isMain m = G.moduleNameString (G.moduleName (G.ms_mod m)) == "Main"
-    tryRemove Nothing = return Nothing
-    tryRemove (Just x) = do
-        let mmainfile = G.ml_hs_file (G.ms_location x)
-            -- G.ms_hspp_file x is a temporary file with CPP.
-            -- this is a just fake.
-            mainfile = fromMaybe (G.ms_hspp_file x) mmainfile
-        if mainfile == file then
-            return Nothing
-          else do
-            let target = TargetFile mainfile Nothing
-            G.removeTarget target
-            return $ Just mainfile
+
+isSameMainFile :: FilePath -> (Maybe G.ModSummary) -> Maybe FilePath
+isSameMainFile _    Nothing  = Nothing
+isSameMainFile file (Just x)
+    | mainfile == file = Nothing
+    | otherwise        = Just mainfile
+  where
+    mmainfile = G.ml_hs_file (G.ms_location x)
+    -- G.ms_hspp_file x is a temporary file with CPP.
+    -- this is a just fake.
+    mainfile = fromMaybe (G.ms_hspp_file x) mmainfile
+
+----------------------------------------------------------------
 
 findSym :: Options -> Set FilePath -> String -> MVar SymMdlDb
         -> Ghc (String, Bool, Set FilePath)
@@ -238,7 +241,7 @@ showInfo :: Options
          -> Ghc (String, Bool, Set FilePath)
 showInfo opt set fileArg = do
     let [file, expr] = words fileArg
-    (set',_) <- removeMainTarget file set
+    set' <- newFileSet set file
     ret <- info opt file expr
     return (ret, True, set')
 
@@ -248,7 +251,7 @@ showType :: Options
          -> Ghc (String, Bool, Set FilePath)
 showType opt set fileArg  = do
     let [file, line, column] = words fileArg
-    (set',_) <- removeMainTarget file set
+    set' <- newFileSet set file
     ret <- types opt file (read line) (read column)
     return (ret, True, set')
 

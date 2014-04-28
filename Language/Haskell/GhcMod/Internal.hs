@@ -23,7 +23,6 @@ module Language.Haskell.GhcMod.Internal (
   , initializeFlagsWithCradle
   -- * Targets
   , setTargetFiles
-  , addTargetFiles
   -- * Logging
   , withLogger
   , setNoWaringFlags
