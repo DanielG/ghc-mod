@@ -198,7 +198,7 @@ withContext :: Ghc a -> Ghc a
 withContext action = gbracket setup teardown body
   where
     setup = getContext
-    teardown = setContext
+    teardown = setCtx
     body _ = do
         topImports >>= setCtx
         action
