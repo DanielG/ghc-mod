@@ -10,6 +10,7 @@
 --     spaces and also <file> may contain spaces.
 --  boot
 --  browse [<package>:]<module>
+--  quit
 --
 -- Session separators:
 --   OK -- success
