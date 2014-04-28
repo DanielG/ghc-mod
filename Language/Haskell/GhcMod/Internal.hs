@@ -36,7 +36,7 @@ module Language.Haskell.GhcMod.Internal (
   ) where
 
 import Language.Haskell.GhcMod.CabalApi
-import Language.Haskell.GhcMod.ErrMsg
 import Language.Haskell.GhcMod.GHCApi
 import Language.Haskell.GhcMod.GHCChoice
+import Language.Haskell.GhcMod.Logger
 import Language.Haskell.GhcMod.Types

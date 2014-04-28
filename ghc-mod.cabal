@@ -54,13 +54,13 @@ Library
                         Language.Haskell.GhcMod.Cradle
                         Language.Haskell.GhcMod.Debug
                         Language.Haskell.GhcMod.Doc
-                        Language.Haskell.GhcMod.ErrMsg
+                        Language.Haskell.GhcMod.Find
                         Language.Haskell.GhcMod.Flag
                         Language.Haskell.GhcMod.GHCApi
-                        Language.Haskell.GhcMod.Find
                         Language.Haskell.GhcMod.GHCChoice
                         Language.Haskell.GhcMod.Gap
                         Language.Haskell.GhcMod.GhcPkg
+                        Language.Haskell.GhcMod.Logger
                         Language.Haskell.GhcMod.Info
                         Language.Haskell.GhcMod.Lang
                         Language.Haskell.GhcMod.Lint

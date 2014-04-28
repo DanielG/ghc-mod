@@ -7,9 +7,9 @@ module Language.Haskell.GhcMod.Check (
 
 import Control.Applicative ((<$>))
 import GHC (Ghc)
-import Language.Haskell.GhcMod.ErrMsg
 import Language.Haskell.GhcMod.GHCApi
 import qualified Language.Haskell.GhcMod.Gap as Gap
+import Language.Haskell.GhcMod.Logger
 import Language.Haskell.GhcMod.Types
 
 ----------------------------------------------------------------

@@ -1,6 +1,6 @@
 {-# LANGUAGE BangPatterns, CPP #-}
 
-module Language.Haskell.GhcMod.ErrMsg (
+module Language.Haskell.GhcMod.Logger (
     withLogger
   , checkErrorPrefix
   ) where

@@ -2,7 +2,7 @@ module Language.Haskell.GhcMod.Lint where
 
 import Control.Applicative ((<$>))
 import Control.Exception (handle, SomeException(..))
-import Language.Haskell.GhcMod.ErrMsg (checkErrorPrefix)
+import Language.Haskell.GhcMod.Logger (checkErrorPrefix)
 import Language.Haskell.GhcMod.Types
 import Language.Haskell.HLint (hlint)
 
