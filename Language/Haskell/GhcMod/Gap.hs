@@ -5,7 +5,6 @@ module Language.Haskell.GhcMod.Gap (
   , mkTarget
   , withStyle
   , setLogAction
-  , supportedExtensions
   , getSrcSpan
   , getSrcFile
   , withContext
@@ -25,10 +24,6 @@ module Language.Haskell.GhcMod.Gap (
   , errorMsgSpan
   , typeForUser
   , deSugar
-#if __GLASGOW_HASKELL__ >= 702
-#else
-  , module Pretty
-#endif
   , showDocWith
   , GapThing(..)
   , fromTyThing
@@ -59,6 +54,7 @@ import Var (varType)
 import qualified InstEnv
 import qualified Pretty
 import qualified StringBuffer as SB
+
 #if __GLASGOW_HASKELL__ >= 708
 import FamInstEnv
 import ConLike (ConLike(..))
@@ -71,14 +67,6 @@ import TcRnTypes
 import GHC hiding (ClsInst)
 #else
 import GHC hiding (Instance)
-#endif
-
-#if __GLASGOW_HASKELL__ < 702
-import CoreMonad (liftIO)
-import Pretty
-#endif
-
-#if __GLASGOW_HASKELL__ < 706
 import Control.Arrow hiding ((<+>))
 import Data.Convertible
 #endif
@@ -131,16 +119,6 @@ showDocWith _ = Pretty.showDocWith
 ----------------------------------------------------------------
 ----------------------------------------------------------------
 
-supportedExtensions :: [String]
-#if __GLASGOW_HASKELL__ >= 700
-supportedExtensions = supportedLanguagesAndExtensions
-#else
-supportedExtensions = supportedLanguages
-#endif
-
-----------------------------------------------------------------
-----------------------------------------------------------------
-
 getSrcSpan :: SrcSpan -> Maybe (Int,Int,Int,Int)
 #if __GLASGOW_HASKELL__ >= 702
 getSrcSpan (RealSrcSpan spn)
@@ -173,16 +151,16 @@ toStringBuffer = liftIO . stringToStringBuffer . unlines
 ----------------------------------------------------------------
 
 fOptions :: [String]
-#if __GLASGOW_HASKELL__ >= 704
+#if __GLASGOW_HASKELL__ >= 706
+fOptions = [option | (option,_,_) <- fFlags]
+#elif __GLASGOW_HASKELL__ >= 704
 fOptions = [option | (option,_,_) <- fFlags]
         ++ [option | (option,_,_) <- fWarningFlags]
         ++ [option | (option,_,_) <- fLangFlags]
-#elif __GLASGOW_HASKELL__ == 702
+#else
 fOptions = [option | (option,_,_,_) <- fFlags]
         ++ [option | (option,_,_,_) <- fWarningFlags]
         ++ [option | (option,_,_,_) <- fLangFlags]
-#else
-fOptions = [option | (option,_,_) <- fFlags]
 #endif
 
 ----------------------------------------------------------------
