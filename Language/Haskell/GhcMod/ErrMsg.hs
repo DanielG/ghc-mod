@@ -1,9 +1,7 @@
 {-# LANGUAGE BangPatterns, CPP #-}
 
 module Language.Haskell.GhcMod.ErrMsg (
-    LogReader
-  , withLogger
-  , handleErrMsg
+    withLogger
   , checkErrorPrefix
   ) where
 
@@ -23,11 +21,6 @@ import qualified Language.Haskell.GhcMod.Gap as Gap
 import Language.Haskell.GhcMod.Types (Options, convert)
 import Outputable (PprStyle, SDoc)
 import System.FilePath (normalise)
-
-----------------------------------------------------------------
-
--- | A means to read the log.
-type LogReader = IO String
 
 ----------------------------------------------------------------
 
