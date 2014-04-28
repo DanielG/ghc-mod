@@ -76,14 +76,14 @@ data Build = CabalPkg | SingleFile deriving Eq
 initializeFlagsWithCradle :: GhcMonad m
         => Options
         -> Cradle
-        -> [GHCOption]
         -> m ()
-initializeFlagsWithCradle opt cradle ghcopts
+initializeFlagsWithCradle opt cradle
   | cabal     = withCabal |||> withSandbox
   | otherwise = withSandbox
   where
     mCradleFile = cradleCabalFile cradle
     cabal = isJust mCradleFile
+    ghcopts = ghcOpts opt
     withCabal = do
         pkgDesc <- liftIO $ parseCabalFile $ fromJust mCradleFile
         compOpts <- liftIO $ getCompilerOptions ghcopts cradle pkgDesc

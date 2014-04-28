@@ -122,7 +122,7 @@ replace (x:xs)    =  x  : replace xs
 
 run :: Cradle -> Maybe FilePath -> Options -> Ghc a -> IO a
 run cradle mlibdir opt body = G.runGhc mlibdir $ do
-    initializeFlagsWithCradle opt cradle []
+    initializeFlagsWithCradle opt cradle
     dflags <- G.getSessionDynFlags
     G.defaultCleanupHandler dflags body
 

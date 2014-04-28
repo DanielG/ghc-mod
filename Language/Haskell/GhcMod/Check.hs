@@ -22,7 +22,7 @@ checkSyntax :: Options
             -> IO String
 checkSyntax _   _      []    = return ""
 checkSyntax opt cradle files = withGHC sessionName $ do
-    initializeFlagsWithCradle opt cradle (ghcOpts opt)
+    initializeFlagsWithCradle opt cradle
     check opt files
   where
     sessionName = case files of
@@ -48,7 +48,7 @@ expandTemplate :: Options
                -> IO String
 expandTemplate _   _      []    = return ""
 expandTemplate opt cradle files = withGHC sessionName $ do
-    initializeFlagsWithCradle opt cradle (ghcOpts opt)
+    initializeFlagsWithCradle opt cradle
     expand opt files
   where
     sessionName = case files of
