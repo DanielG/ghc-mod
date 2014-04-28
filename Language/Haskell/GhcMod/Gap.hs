@@ -59,7 +59,7 @@ import Var (varType)
 import qualified InstEnv
 import qualified Pretty
 import qualified StringBuffer as SB
-#if __GLASGOW_HASKELL__ >= 707
+#if __GLASGOW_HASKELL__ >= 708
 import FamInstEnv
 import ConLike (ConLike(..))
 import PatSyn (patSynType)
@@ -120,7 +120,7 @@ setLogAction df f =
 #endif
 
 showDocWith :: DynFlags -> Pretty.Mode -> Pretty.Doc -> String
-#if __GLASGOW_HASKELL__ >= 707
+#if __GLASGOW_HASKELL__ >= 708
 -- Pretty.showDocWith disappeard.
 -- https://github.com/ghc/ghc/commit/08a3536e4246e323fbcd8040e0b80001950fe9bc
 showDocWith dflags mode = Pretty.showDoc mode (pprCols dflags)
@@ -236,7 +236,7 @@ showSeverityCaption = const ""
 ----------------------------------------------------------------
 
 setCabalPkg :: DynFlags -> DynFlags
-#if __GLASGOW_HASKELL__ >= 707
+#if __GLASGOW_HASKELL__ >= 708
 setCabalPkg dflag = gopt_set dflag Opt_BuildingCabalPackage
 #else
 setCabalPkg dflag = dopt_set dflag Opt_BuildingCabalPackage
@@ -245,7 +245,7 @@ setCabalPkg dflag = dopt_set dflag Opt_BuildingCabalPackage
 ----------------------------------------------------------------
 
 setHideAllPackages :: DynFlags -> DynFlags
-#if __GLASGOW_HASKELL__ >= 707
+#if __GLASGOW_HASKELL__ >= 708
 setHideAllPackages df = gopt_set df Opt_HideAllPackages
 #else
 setHideAllPackages df = dopt_set df Opt_HideAllPackages
@@ -269,7 +269,7 @@ isDumpSplices dflag = dopt Opt_D_dump_splices dflag
 
 
 setDeferTypeErrors :: DynFlags -> DynFlags
-#if __GLASGOW_HASKELL__ >= 707
+#if __GLASGOW_HASKELL__ >= 708
 setDeferTypeErrors dflag = gopt_set dflag Opt_DeferTypeErrors
 #elif __GLASGOW_HASKELL__ >= 706
 setDeferTypeErrors dflag = dopt_set dflag Opt_DeferTypeErrors
@@ -285,7 +285,7 @@ class HasType a where
 
 
 instance HasType (LHsBind Id) where
-#if __GLASGOW_HASKELL__ >= 707
+#if __GLASGOW_HASKELL__ >= 708
     getType _ (L spn FunBind{fun_matches = MG _ in_tys out_typ}) = return $ Just (spn, typ)
       where typ = mkFunTys in_tys out_typ
 #else
@@ -306,7 +306,7 @@ filterOutChildren get_thing xs
 infoThing :: String -> Ghc SDoc
 infoThing str = do
     names <- parseName str
-#if __GLASGOW_HASKELL__ >= 707
+#if __GLASGOW_HASKELL__ >= 708
     mb_stuffs <- mapM (getInfo False) names
     let filtered = filterOutChildren (\(t,_f,_i,_fam) -> t) (catMaybes mb_stuffs)
 #else
@@ -315,7 +315,7 @@ infoThing str = do
 #endif
     return $ vcat (intersperse (text "") $ map (pprInfo False) filtered)
 
-#if __GLASGOW_HASKELL__ >= 707
+#if __GLASGOW_HASKELL__ >= 708
 pprInfo :: Bool -> (TyThing, GHC.Fixity, [ClsInst], [FamInst]) -> SDoc
 pprInfo _ (thing, fixity, insts, famInsts)
     = pprTyThingInContextLoc thing
@@ -342,14 +342,14 @@ pprInfo pefas (thing, fixity, insts)
 ----------------------------------------------------------------
 
 errorMsgSpan :: ErrMsg -> SrcSpan
-#if __GLASGOW_HASKELL__ >= 707
+#if __GLASGOW_HASKELL__ >= 708
 errorMsgSpan = errMsgSpan
 #else
 errorMsgSpan = head . errMsgSpans
 #endif
 
 typeForUser :: Type -> SDoc
-#if __GLASGOW_HASKELL__ >= 707
+#if __GLASGOW_HASKELL__ >= 708
 typeForUser = pprTypeForUser
 #else
 typeForUser = pprTypeForUser False
@@ -357,7 +357,7 @@ typeForUser = pprTypeForUser False
 
 deSugar :: TypecheckedModule -> LHsExpr Id -> HscEnv
          -> IO (Maybe CoreExpr)
-#if __GLASGOW_HASKELL__ >= 707
+#if __GLASGOW_HASKELL__ >= 708
 deSugar _   e hs_env = snd <$> deSugarExpr hs_env e
 #else
 deSugar tcm e hs_env = snd <$> deSugarExpr hs_env modu rn_env ty_env e
@@ -375,7 +375,7 @@ data GapThing = GtA Type | GtT TyCon | GtN
 
 fromTyThing :: TyThing -> GapThing
 fromTyThing (AnId i)                   = GtA $ varType i
-#if __GLASGOW_HASKELL__ >= 707
+#if __GLASGOW_HASKELL__ >= 708
 fromTyThing (AConLike (RealDataCon d)) = GtA $ dataConRepType d
 fromTyThing (AConLike (PatSynCon p))   = GtA $ patSynType p
 #else
