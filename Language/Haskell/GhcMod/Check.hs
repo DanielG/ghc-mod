@@ -22,13 +22,12 @@ checkSyntax :: Options
             -> IO String
 checkSyntax _   _      []    = return ""
 checkSyntax opt cradle files = withGHC sessionName $ do
-    initializeFlagsWithCradle opt cradle options
+    initializeFlagsWithCradle opt cradle (ghcOpts opt)
     check opt files
   where
     sessionName = case files of
       [file] -> file
       _      -> "MultipleFiles"
-    options = "-Wall" : ghcOpts opt
 
 ----------------------------------------------------------------
 
@@ -38,7 +37,7 @@ check :: Options
       -> [FilePath]  -- ^ The target files.
       -> Ghc String
 check opt fileNames = ghandle (handleErrMsg opt) $
-    withLogger opt $ setTargetFiles fileNames
+    withLogger opt setAllWaringFlags $ setTargetFiles fileNames
 
 ----------------------------------------------------------------
 
@@ -49,13 +48,12 @@ expandTemplate :: Options
                -> IO String
 expandTemplate _   _      []    = return ""
 expandTemplate opt cradle files = withGHC sessionName $ do
-    initializeFlagsWithCradle opt cradle options
+    initializeFlagsWithCradle opt cradle (ghcOpts opt)
     expand opt files
   where
     sessionName = case files of
       [file] -> file
       _      -> "MultipleFiles"
-    options = noWaringOption : ghcOpts opt
 
 ----------------------------------------------------------------
 
@@ -65,4 +63,4 @@ expand :: Options
       -> Ghc String
 expand opt fileNames = ghandle (handleErrMsg opt) $
     withDynFlags Gap.setDumpSplices $
-    withLogger opt $ setTargetFiles fileNames
+    withLogger opt setNoWaringFlags $ setTargetFiles fileNames

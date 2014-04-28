@@ -26,6 +26,8 @@ module Language.Haskell.GhcMod.Internal (
   , addTargetFiles
   , handleErrMsg
   , withLogger
+  , setNoWaringFlags
+  , setAllWaringFlags
   -- * 'Ghc' Choice
   , (||>)
   , goNext

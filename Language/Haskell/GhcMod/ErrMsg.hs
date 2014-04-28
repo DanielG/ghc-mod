@@ -50,12 +50,14 @@ appendLogRef df (LogRef ref) _ sev src style msg = do
 
 ----------------------------------------------------------------
 
-withLogger :: Options -> Ghc () -> Ghc String
-withLogger opt body = do
+withLogger :: Options -> (DynFlags -> DynFlags) -> Ghc () -> Ghc String
+withLogger opt setDF body = do
     logref <- liftIO $ newLogRef
-    withDynFlags (\df -> Gap.setLogAction df $ appendLogRef df logref) $ do
+    withDynFlags (setLogger logref . setDF) $ do
         body
         liftIO $ readAndClearLogRef opt logref
+  where
+    setLogger logref df = Gap.setLogAction df $ appendLogRef df logref
 
 ----------------------------------------------------------------
 

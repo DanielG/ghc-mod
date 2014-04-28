@@ -37,7 +37,7 @@ infoExpr :: Options
          -> Expression   -- ^ A Haskell expression.
          -> IO String
 infoExpr opt cradle file expr = withGHC' $ do
-    initializeFlagsWithCradle opt cradle [noWaringOption]
+    initializeFlagsWithCradle opt cradle []
     info opt file expr
 
 -- | Obtaining information of a target expression. (GHCi's info:)
@@ -73,7 +73,7 @@ typeExpr :: Options
          -> Int          -- ^ Column number.
          -> IO String
 typeExpr opt cradle file lineNo colNo = withGHC' $ do
-    initializeFlagsWithCradle opt cradle [noWaringOption]
+    initializeFlagsWithCradle opt cradle []
     types opt file lineNo colNo
 
 -- | Obtaining type of a target expression. (GHCi's type:)
@@ -128,7 +128,8 @@ pretty dflag style = showOneLine dflag style . Gap.typeForUser
 ----------------------------------------------------------------
 
 inModuleContext :: FilePath -> (DynFlags -> PprStyle -> Ghc a) -> Ghc a
-inModuleContext file action = withDynFlags setDeferTypeErrors $ do
+inModuleContext file action =
+    withDynFlags (setDeferTypeErrors . setNoWaringFlags) $ do
     setTargetFiles [file]
     Gap.withContext $ do
         dflag <- G.getSessionDynFlags

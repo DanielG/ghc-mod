@@ -9,7 +9,8 @@ module Language.Haskell.GhcMod.GHCApi (
   , getDynamicFlags
   , getSystemLibDir
   , withDynFlags
-  , noWaringOption
+  , setNoWaringFlags
+  , setAllWaringFlags
   ) where
 
 import Language.Haskell.GhcMod.CabalApi
@@ -19,6 +20,7 @@ import Language.Haskell.GhcMod.GhcPkg
 import Control.Applicative ((<$>))
 import Control.Monad (forM, void)
 import CoreMonad (liftIO)
+import Data.IntSet (IntSet, empty)
 import Data.Maybe (isJust, fromJust)
 import Exception (ghandle, SomeException(..))
 import GHC (Ghc, GhcMonad, DynFlags(..), GhcLink(..), HscTarget(..), LoadHowMuch(..))
@@ -27,6 +29,7 @@ import qualified Language.Haskell.GhcMod.Gap as Gap
 import Language.Haskell.GhcMod.Types
 import System.Exit (exitSuccess)
 import System.IO (hPutStr, hPrint, stderr)
+import System.IO.Unsafe (unsafePerformIO)
 import System.Process (readProcess)
 
 ----------------------------------------------------------------
@@ -184,6 +187,16 @@ withDynFlags setFlag body = G.gbracket setup teardown (\_ -> body)
 
 ----------------------------------------------------------------
 
--- probably this is not necessary anymore.
-noWaringOption :: String
-noWaringOption = "-w:"
+setNoWaringFlags :: DynFlags -> DynFlags
+setNoWaringFlags df = df { warningFlags = empty}
+
+setAllWaringFlags :: DynFlags -> DynFlags
+setAllWaringFlags df = df { warningFlags = allWarningFlags }
+
+allWarningFlags :: IntSet
+allWarningFlags = unsafePerformIO $ do
+    mlibdir <- getSystemLibDir
+    G.runGhc mlibdir $ do
+        df <- G.getSessionDynFlags
+        df' <- addCmdOpts ["-Wall"] df
+        return $ G.warningFlags df'

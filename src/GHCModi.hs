@@ -122,7 +122,7 @@ replace (x:xs)    =  x  : replace xs
 
 run :: Cradle -> Maybe FilePath -> Options -> Ghc a -> IO a
 run cradle mlibdir opt body = G.runGhc mlibdir $ do
-    initializeFlagsWithCradle opt cradle ["-Wall"]
+    initializeFlagsWithCradle opt cradle []
     dflags <- G.getSessionDynFlags
     G.defaultCleanupHandler dflags body
 
@@ -171,7 +171,7 @@ checkStx opt set file = do
     GE.ghandle handler $ do
         (set',add) <- removeMainTarget file set
         let files = if add then [file] else []
-        ret <- withLogger opt $ addTargetFiles files
+        ret <- withLogger opt setAllWaringFlags $ addTargetFiles files
         return (ret, True, set')
   where
     handler :: SourceError -> Ghc (String, Bool, Set FilePath)
