@@ -2,7 +2,7 @@
 
 module Language.Haskell.GhcMod.Internal (
   -- * Types
-   GHCOption
+    GHCOption
   , Package
   , PackageBaseName
   , PackageVersion
