@@ -48,7 +48,7 @@ appendLogRef df (LogRef ref) _ sev src style msg = do
 --   executes a body. Log messages are returned as 'String'.
 --   Right is success and Left is failure.
 withLogger :: Options -> (DynFlags -> DynFlags) -> Ghc () -> Ghc (Either String String)
-withLogger opt setDF body = ghandle (handleErrMsg opt) $ do
+withLogger opt setDF body = ghandle (sourceError opt) $ do
     logref <- liftIO $ newLogRef
     withDynFlags (setLogger logref . setDF) $ do
         body
@@ -59,8 +59,8 @@ withLogger opt setDF body = ghandle (handleErrMsg opt) $ do
 ----------------------------------------------------------------
 
 -- | Converting 'SourceError' to 'String'.
-handleErrMsg :: Options -> SourceError -> Ghc (Either String String)
-handleErrMsg opt err = do
+sourceError :: Options -> SourceError -> Ghc (Either String String)
+sourceError opt err = do
     dflag <- G.getSessionDynFlags
     style <- getStyle
     let ret = convert opt . errBagToStrList dflag style . srcErrorMessages $ err
