@@ -20,7 +20,6 @@ import Language.Haskell.GhcMod.GhcPkg
 import Control.Applicative ((<$>))
 import Control.Monad (forM, void)
 import CoreMonad (liftIO)
-import Data.IntSet (IntSet, empty)
 import Data.Maybe (isJust, fromJust)
 import Exception (ghandle, SomeException(..))
 import GHC (Ghc, GhcMonad, DynFlags(..), GhcLink(..), HscTarget(..), LoadHowMuch(..))
@@ -188,12 +187,12 @@ withDynFlags setFlag body = G.gbracket setup teardown (\_ -> body)
 ----------------------------------------------------------------
 
 setNoWaringFlags :: DynFlags -> DynFlags
-setNoWaringFlags df = df { warningFlags = empty}
+setNoWaringFlags df = df { warningFlags = Gap.emptyWarnFlags}
 
 setAllWaringFlags :: DynFlags -> DynFlags
 setAllWaringFlags df = df { warningFlags = allWarningFlags }
 
-allWarningFlags :: IntSet
+allWarningFlags :: Gap.WarnFlags
 allWarningFlags = unsafePerformIO $ do
     mlibdir <- getSystemLibDir
     G.runGhc mlibdir $ do

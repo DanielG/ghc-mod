@@ -28,6 +28,8 @@ module Language.Haskell.GhcMod.Gap (
   , GapThing(..)
   , fromTyThing
   , fileModSummary
+  , WarnFlags
+  , emptyWarnFlags
   ) where
 
 import Control.Applicative hiding (empty)
@@ -69,6 +71,10 @@ import GHC hiding (ClsInst)
 import GHC hiding (Instance)
 import Control.Arrow hiding ((<+>))
 import Data.Convertible
+#endif
+
+#if __GLASGOW_HASKELL__ >= 704
+import qualified Data.IntSet as I (IntSet, empty)
 #endif
 
 ----------------------------------------------------------------
@@ -359,3 +365,16 @@ fromTyThing (ADataCon d)               = GtA $ dataConRepType d
 #endif
 fromTyThing (ATyCon t)                 = GtT t
 fromTyThing _                          = GtN
+
+----------------------------------------------------------------
+----------------------------------------------------------------
+
+#if __GLASGOW_HASKELL__ >= 704
+type WarnFlags = I.IntSet
+emptyWarnFlags :: WarnFlags
+emptyWarnFlags = I.empty
+#else
+type WarnFlags = [WarningFlag]
+emptyWarnFlags :: WarnFlags
+emptyWarnFlags = []
+#endif
