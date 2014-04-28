@@ -1,7 +1,8 @@
 dist/
 elisp/*.elc
 *~
-.cabal-sandbox/
+/.cabal-sandbox/
+package.cache
 cabal.sandbox.config
 # Mac OS generates
 # .DS_Store
