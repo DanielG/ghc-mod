@@ -204,7 +204,12 @@ withContext action = gbracket setup teardown body
         action
     topImports = do
         mss <- getModuleGraph
-        map modName <$> filterM isTop mss
+        ms <- map modName <$> filterM isTop mss
+#if __GLASGOW_HASKELL__ >= 704
+        return ms
+#else
+        return (ms,[])
+#endif
     isTop mos = lookupMod mos ||> returnFalse
     lookupMod mos = lookupModule (ms_mod_name mos) Nothing >> return True
     returnFalse = return False
@@ -216,7 +221,7 @@ withContext action = gbracket setup teardown body
     setCtx = setContext
 #else
     modName = ms_mod
-    setCtx = flip setContext []
+    setCtx = uncurry setContext
 #endif
 
 showSeverityCaption :: Severity -> String
