@@ -13,6 +13,7 @@ import CoreMonad (liftIO)
 import Data.IORef (IORef, newIORef, readIORef, writeIORef, modifyIORef)
 import Data.Maybe (fromMaybe)
 import ErrUtils (ErrMsg, errMsgShortDoc, errMsgExtraInfo)
+import Exception (ghandle)
 import GHC (Ghc, DynFlags, SrcSpan, Severity(SevError))
 import qualified GHC as G
 import HscTypes (SourceError, srcErrorMessages)
@@ -50,24 +51,24 @@ appendLogRef df (LogRef ref) _ sev src style msg = do
 
 ----------------------------------------------------------------
 
-withLogger :: Options -> (DynFlags -> DynFlags) -> Ghc () -> Ghc String
-withLogger opt setDF body = do
+withLogger :: Options -> (DynFlags -> DynFlags) -> Ghc () -> Ghc (Either String String)
+withLogger opt setDF body = ghandle (handleErrMsg opt) $ do
     logref <- liftIO $ newLogRef
     withDynFlags (setLogger logref . setDF) $ do
         body
-        liftIO $ readAndClearLogRef opt logref
+        liftIO $ Right <$> readAndClearLogRef opt logref
   where
     setLogger logref df = Gap.setLogAction df $ appendLogRef df logref
 
 ----------------------------------------------------------------
 
 -- | Converting 'SourceError' to 'String'.
-handleErrMsg :: Options -> SourceError -> Ghc String
+handleErrMsg :: Options -> SourceError -> Ghc (Either String String)
 handleErrMsg opt err = do
     dflag <- G.getSessionDynFlags
     style <- getStyle
     let ret = convert opt . errBagToStrList dflag style . srcErrorMessages $ err
-    return ret
+    return (Left ret)
 
 errBagToStrList :: DynFlags -> PprStyle -> Bag ErrMsg -> [String]
 errBagToStrList dflag style = map (ppErrMsg dflag style) . reverse . bagToList

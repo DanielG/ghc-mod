@@ -5,7 +5,7 @@ module Language.Haskell.GhcMod.Check (
   , expand
   ) where
 
-import Exception (ghandle)
+import Control.Applicative ((<$>))
 import GHC (Ghc)
 import Language.Haskell.GhcMod.ErrMsg
 import Language.Haskell.GhcMod.GHCApi
@@ -23,7 +23,7 @@ checkSyntax :: Options
 checkSyntax _   _      []    = return ""
 checkSyntax opt cradle files = withGHC sessionName $ do
     initializeFlagsWithCradle opt cradle
-    check opt files
+    either id id <$> check opt files
   where
     sessionName = case files of
       [file] -> file
@@ -35,9 +35,9 @@ checkSyntax opt cradle files = withGHC sessionName $ do
 --   Warnings and errors are returned.
 check :: Options
       -> [FilePath]  -- ^ The target files.
-      -> Ghc String
-check opt fileNames = ghandle (handleErrMsg opt) $
-    withLogger opt setAllWaringFlags $ setTargetFiles fileNames
+      -> Ghc (Either String String)
+check opt fileNames = withLogger opt setAllWaringFlags $
+    setTargetFiles fileNames
 
 ----------------------------------------------------------------
 
@@ -49,7 +49,7 @@ expandTemplate :: Options
 expandTemplate _   _      []    = return ""
 expandTemplate opt cradle files = withGHC sessionName $ do
     initializeFlagsWithCradle opt cradle
-    expand opt files
+    either id id <$> expand opt files
   where
     sessionName = case files of
       [file] -> file
@@ -60,7 +60,6 @@ expandTemplate opt cradle files = withGHC sessionName $ do
 -- | Expanding Haskell Template.
 expand :: Options
       -> [FilePath]  -- ^ The target files.
-      -> Ghc String
-expand opt fileNames = ghandle (handleErrMsg opt) $
-    withDynFlags Gap.setDumpSplices $
-    withLogger opt setNoWaringFlags $ setTargetFiles fileNames
+      -> Ghc (Either String String)
+expand opt fileNames = withLogger opt (Gap.setDumpSplices . setNoWaringFlags) $
+    setTargetFiles fileNames

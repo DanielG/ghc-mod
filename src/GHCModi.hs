@@ -168,16 +168,12 @@ checkStx :: Options
          -> FilePath
          -> Ghc (String, Bool, Set FilePath)
 checkStx opt set file = do
-    GE.ghandle handler $ do
-        (set',add) <- removeMainTarget file set
-        let files = if add then [file] else []
-        ret <- withLogger opt setAllWaringFlags $ addTargetFiles files
-        return (ret, True, set')
-  where
-    handler :: SourceError -> Ghc (String, Bool, Set FilePath)
-    handler err = do
-        ret <- handleErrMsg opt err
-        return (ret, True, set)
+    (set',add) <- removeMainTarget file set
+    let files = if add then [file] else []
+    eret <- withLogger opt setAllWaringFlags $ addTargetFiles files
+    case eret of
+        Right ret -> return (ret, True, set')
+        Left ret  -> return (ret, True, set) -- fxime: set
 
 removeMainTarget :: FilePath -> Set FilePath -> Ghc (Set FilePath, Bool)
 removeMainTarget file set = do

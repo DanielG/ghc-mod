@@ -21,10 +21,10 @@ module Language.Haskell.GhcMod.Internal (
   , getDynamicFlags
   -- * Initializing 'DynFlags'
   , initializeFlagsWithCradle
-  -- * 'Ghc' Monad
+  -- * Targets
   , setTargetFiles
   , addTargetFiles
-  , handleErrMsg
+  -- * Logging
   , withLogger
   , setNoWaringFlags
   , setAllWaringFlags
