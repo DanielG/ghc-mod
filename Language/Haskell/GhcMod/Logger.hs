@@ -44,6 +44,9 @@ appendLogRef df (LogRef ref) _ sev src style msg = do
 
 ----------------------------------------------------------------
 
+-- | Set the session flag (e.g. "-Wall" or "-w:") then
+--   executes a body. Log messages are returned as 'String'.
+--   Right is success and Left is failure.
 withLogger :: Options -> (DynFlags -> DynFlags) -> Ghc () -> Ghc (Either String String)
 withLogger opt setDF body = ghandle (handleErrMsg opt) $ do
     logref <- liftIO $ newLogRef

@@ -152,7 +152,7 @@ addCmdOpts cmdOpts df =
 
 ----------------------------------------------------------------
 
--- | Set the files and load
+-- | Set the files as targets and load them.
 setTargetFiles :: (GhcMonad m) => [FilePath] -> m ()
 setTargetFiles files = do
     targets <- forM files $ \file -> G.guessTarget file Nothing
@@ -178,9 +178,11 @@ withDynFlags setFlag body = G.gbracket setup teardown (\_ -> body)
 
 ----------------------------------------------------------------
 
+-- | Set 'DynFlags' equivalent to "-w:".
 setNoWaringFlags :: DynFlags -> DynFlags
 setNoWaringFlags df = df { warningFlags = Gap.emptyWarnFlags}
 
+-- | Set 'DynFlags' equivalent to "-Wall".
 setAllWaringFlags :: DynFlags -> DynFlags
 setAllWaringFlags df = df { warningFlags = allWarningFlags }
 
