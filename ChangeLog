@@ -1,4 +1,4 @@
-2014-04-25 v4.1.0
+2014-04-30 v4.1.0
 	* ghc-modi now provides "type", "info", and "boot".
 	* ghc-mod now provides "find".
 	* Packages, which are specified in a cabal file but not installed,
@@ -6,6 +6,8 @@
 	* ghc-mod/ghc-modi treats "-l" properly.
 	* ghc-mod obsoletes "-p". Use "ghc-mod browse package:module".
 	* M-x ghc-debug has been implemented.
+	* "type" and "info" can work even if files contain type errors.
+	* "boot" as a new API.
 
 2014-04-07 v4.0.2
 	* The ghc-display-error option (@notogawa)
