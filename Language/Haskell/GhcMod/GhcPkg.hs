@@ -22,10 +22,7 @@ import Data.Maybe (listToMaybe, maybeToList)
 import Distribution.Package (InstalledPackageId(..))
 import Language.Haskell.GhcMod.Types
 import Language.Haskell.GhcMod.Utils
-import System.Exit (ExitCode(..))
 import System.FilePath ((</>))
-import System.IO (hPutStrLn,stderr)
-import System.Process (readProcessWithExitCode)
 import Text.ParserCombinators.ReadP (ReadP, char, between, sepBy1, many1, string, choice, eof)
 import qualified Text.ParserCombinators.ReadP as P
 
@@ -61,7 +58,6 @@ getPackageDbStack cdir =
     (getSandboxDb cdir >>= \db -> return [GlobalDb, PackageDb db])
       `E.catch` \(_ :: SomeException) -> return [GlobalDb, UserDb]
 
-
 -- | List packages in one or more ghc package store
 ghcPkgList :: [GhcPkgDb] -> IO [PackageBaseName]
 ghcPkgList dbs = map fst3 <$> ghcPkgListEx dbs
@@ -69,14 +65,7 @@ ghcPkgList dbs = map fst3 <$> ghcPkgListEx dbs
 
 ghcPkgListEx :: [GhcPkgDb] -> IO [Package]
 ghcPkgListEx dbs = do
-    (rv,output,err) <- readProcessWithExitCode "ghc-pkg" opts ""
-    case rv of
-      ExitFailure val -> do
-          hPutStrLn stderr err
-          fail $ "ghc-pkg " ++ unwords opts ++ " (exit " ++ show val ++ ")"
-      ExitSuccess -> return ()
-
-    return $ parseGhcPkgOutput $ lines output
+    parseGhcPkgOutput .lines <$> readProcess' "ghc-pkg" opts
   where
     opts = ["list", "-v"] ++ ghcPkgDbStackOpts dbs
 
