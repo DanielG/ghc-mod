@@ -261,7 +261,7 @@ bootIt :: Options
        -> Set FilePath
        -> Ghc (String, Bool, Set FilePath)
 bootIt opt set = do
-    ret <- boot' opt
+    ret <- boot opt
     return (ret, True, set)
 
 browseIt :: Options

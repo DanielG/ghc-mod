@@ -124,7 +124,7 @@ main = flip E.catches handlers $ do
       "lint"    -> nArgs 1 withFile (lintSyntax opt) cmdArg1
       "root"    -> rootInfo opt cradle
       "doc"     -> nArgs 1 $ packageDoc opt cradle cmdArg1
-      "boot"    -> boot opt cradle
+      "boot"    -> bootInfo opt cradle
       "version" -> return progVersion
       "help"    -> return $ O.usageInfo usage argspec
       cmd       -> E.throw (NoSuchCommand cmd)
