@@ -6,6 +6,7 @@ module Language.Haskell.GhcMod.GhcPkg (
   , ghcPkgDbStackOpts
   , ghcDbStackOpts
   , ghcDbOpt
+  , fromInstalledPackageId
   , getSandboxDb
   , getPackageDbStack
   ) where
@@ -16,7 +17,9 @@ import Control.Exception (SomeException(..))
 import qualified Control.Exception as E
 import Data.Char (isSpace,isAlphaNum)
 import Data.List (isPrefixOf, intercalate)
+import Data.List.Split (splitOn)
 import Data.Maybe (listToMaybe, maybeToList)
+import Distribution.Package (InstalledPackageId(..))
 import Language.Haskell.GhcMod.Types
 import Language.Haskell.GhcMod.Utils
 import System.Exit (ExitCode(..))
@@ -90,6 +93,13 @@ packageLine l =
     case listToMaybe $ P.readP_to_S packageLineP l of
       Just ((Normal,p),_) -> Just p
       Just ((Hidden,p),_) -> Just p
+      _ -> Nothing
+
+fromInstalledPackageId :: InstalledPackageId -> Maybe Package
+fromInstalledPackageId pid = let
+    InstalledPackageId pkg = pid
+    in case reverse $ splitOn "-" pkg of
+      i:v:rest -> Just (intercalate "-" (reverse rest), v, i)
       _ -> Nothing
 
 data PackageState = Normal | Hidden | Broken deriving (Eq,Show)

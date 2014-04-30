@@ -88,6 +88,7 @@ Library
                       , syb
                       , time
                       , transformers
+                      , split
   if impl(ghc < 7.7)
     Build-Depends:      convertible
                       , Cabal >= 1.10 && < 1.17
@@ -159,6 +160,7 @@ Test-Suite spec
                       , time
                       , transformers
                       , hspec >= 1.8.2
+                      , split
   if impl(ghc < 7.7)
     Build-Depends:      convertible
                       , Cabal >= 1.10 && < 1.17
