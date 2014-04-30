@@ -17,8 +17,6 @@ import System.Environment (getArgs)
 import System.Exit (exitFailure)
 import System.IO (hPutStr, hPutStrLn, stdout, stderr, hSetEncoding, utf8)
 
-import Boot
-
 ----------------------------------------------------------------
 
 progVersion :: String

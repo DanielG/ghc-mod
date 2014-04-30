@@ -42,8 +42,6 @@ import System.Directory (setCurrentDirectory)
 import System.Environment (getArgs)
 import System.IO (hFlush,stdout)
 
-import Boot
-
 ----------------------------------------------------------------
 
 type Logger = IO String

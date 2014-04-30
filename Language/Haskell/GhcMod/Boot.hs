@@ -1,17 +1,22 @@
-module Boot where
+module Language.Haskell.GhcMod.Boot where
 
 import Control.Applicative ((<$>))
-import CoreMonad (liftIO)
+import CoreMonad (liftIO, liftIO)
 import GHC (Ghc)
-import Language.Haskell.GhcMod
-import Language.Haskell.GhcMod.Ghc
-import Language.Haskell.GhcMod.Internal
+import Language.Haskell.GhcMod.Browse
+import Language.Haskell.GhcMod.Flag
+import Language.Haskell.GhcMod.GHCApi
+import Language.Haskell.GhcMod.Lang
+import Language.Haskell.GhcMod.List
+import Language.Haskell.GhcMod.Types
 
+-- | Print necessary information for front-end booting.
 bootInfo :: Options -> Cradle -> IO String
 bootInfo opt cradle = withGHC' $ do
     initializeFlagsWithCradle opt cradle
     boot opt
 
+-- | Print necessary information for front-end booting.
 boot :: Options -> Ghc String
 boot opt = do
     mods  <- modules opt

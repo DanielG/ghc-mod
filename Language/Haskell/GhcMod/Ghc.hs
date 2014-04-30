@@ -3,6 +3,7 @@ module Language.Haskell.GhcMod.Ghc (
     withGHC
   , withGHC'
   -- * 'Ghc' utilities
+  , boot
   , browse
   , check
   , info
@@ -15,6 +16,7 @@ module Language.Haskell.GhcMod.Ghc (
   , lookupSym
   ) where
 
+import Language.Haskell.GhcMod.Boot
 import Language.Haskell.GhcMod.Browse
 import Language.Haskell.GhcMod.Check
 import Language.Haskell.GhcMod.Find

@@ -13,6 +13,7 @@ module Language.Haskell.GhcMod (
   , ModuleString
   , Expression
   -- * 'IO' utilities
+  , bootInfo
   , browseModule
   , checkSyntax
   , lintSyntax
@@ -28,6 +29,7 @@ module Language.Haskell.GhcMod (
   , findSymbol
   ) where
 
+import Language.Haskell.GhcMod.Boot
 import Language.Haskell.GhcMod.Browse
 import Language.Haskell.GhcMod.Check
 import Language.Haskell.GhcMod.Cradle
