@@ -10,13 +10,13 @@ import Language.Haskell.GhcMod.Lang
 import Language.Haskell.GhcMod.List
 import Language.Haskell.GhcMod.Types
 
--- | Print necessary information for front-end booting.
+-- | Printing necessary information for front-end booting.
 bootInfo :: Options -> Cradle -> IO String
 bootInfo opt cradle = withGHC' $ do
     initializeFlagsWithCradle opt cradle
     boot opt
 
--- | Print necessary information for front-end booting.
+-- | Printing necessary information for front-end booting.
 boot :: Options -> Ghc String
 boot opt = do
     mods  <- modules opt
