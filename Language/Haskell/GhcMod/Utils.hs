@@ -18,3 +18,8 @@ readProcess' cmd opts = do
         fail $ cmd ++ " " ++ unwords opts ++ " (exit " ++ show val ++ ")"
     ExitSuccess ->
         return output
+
+withDirectory_ :: FilePath -> IO a -> IO a
+withDirectory_ dir action =
+    bracket getCurrentDirectory setCurrentDirectory
+                (\_ -> setCurrentDirectory dir >> action)
