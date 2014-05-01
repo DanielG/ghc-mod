@@ -44,9 +44,9 @@ spec = do
                       }
                 if ghcVersion < 706
                   then ghcOptions res' `shouldBe` ["-global-package-conf", "-no-user-package-conf","-package-conf",cwd </> "test/data/.cabal-sandbox/i386-osx-ghc-7.6.3-packages.conf.d","-XHaskell98"]
-                  else ghcOptions res' `shouldBe` ["-global-package-db", "-no-user-package-db","-package-db",cwd </> "test/data/.cabal-sandbox/i386-osx-ghc-7.6.3-packages.conf.d","-XHaskell98"]
+                  else ghcOptions res' `shouldBe` ["-global-package-db", "-no-user-package-db","-package-db",cwd </> "test/data/.cabal-sandbox/i386-osx-ghc-7.6.3-packages.conf.d","-XHaskell98","-optP-include","-optP" ++ cwd </> "test/data/dist/build/autogen/cabal_macros.h"]
                 includeDirs res' `shouldBe` ["test/data","test/data/dist/build","test/data/dist/build/autogen","test/data/subdir1/subdir2","test/data/test"]
-                depPackages res' `shouldSatisfy` (("Cabal", "1.18.1.3", "2b161c6bf77657aa17e1681d83cb051b")`elem`)
+                (pkgName `map` depPackages res') `shouldContain` ["Cabal"]
 
 
     describe "cabalDependPackages" $ do
