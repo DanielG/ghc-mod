@@ -7,6 +7,7 @@ module Language.Haskell.GhcMod.GhcPkg (
   , ghcDbStackOpts
   , ghcDbOpt
   , fromInstalledPackageId
+  , fromInstalledPackageId'
   , getSandboxDb
   , getPackageDbStack
   ) where
@@ -84,12 +85,19 @@ packageLine l =
       Just ((Hidden,p),_) -> Just p
       _ -> Nothing
 
-fromInstalledPackageId :: InstalledPackageId -> Maybe Package
-fromInstalledPackageId pid = let
+fromInstalledPackageId' :: InstalledPackageId -> Maybe Package
+fromInstalledPackageId' pid = let
     InstalledPackageId pkg = pid
     in case reverse $ splitOn "-" pkg of
       i:v:rest -> Just (intercalate "-" (reverse rest), v, i)
       _ -> Nothing
+
+fromInstalledPackageId :: InstalledPackageId -> Package
+fromInstalledPackageId pid =
+    case fromInstalledPackageId' pid of
+      Just p -> p
+      Nothing -> error $
+        "fromInstalledPackageId: `"++show pid++"' is not a valid package-id"
 
 data PackageState = Normal | Hidden | Broken deriving (Eq,Show)
 

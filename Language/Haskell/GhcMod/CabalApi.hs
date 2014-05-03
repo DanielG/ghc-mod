@@ -20,7 +20,7 @@ import Control.Applicative ((<$>))
 import Control.Exception (throwIO,catch,SomeException)
 import Control.Monad (filterM)
 import CoreMonad (liftIO)
-import Data.Maybe (maybeToList, mapMaybe)
+import Data.Maybe (maybeToList)
 import Data.Set (fromList, toList)
 import Data.List (find,tails,isPrefixOf)
 import Distribution.ModuleName (ModuleName,toFilePath)
@@ -53,7 +53,7 @@ getCompilerOptions :: [GHCOption]
                    -> IO CompilerOptions
 getCompilerOptions ghcopts cradle pkgDesc = do
     gopts <- getGHCOptions ghcopts cradle rdir $ head buildInfos
-    Just depPkgs <- cabalConfigDependencies <$> cabalGetConfig cradle
+    depPkgs <- cabalConfigDependencies <$> cabalGetConfig cradle
     return $ CompilerOptions gopts idirs depPkgs
   where
     wdir       = cradleCurrentDir cradle
@@ -225,12 +225,17 @@ cabalGetConfig cradle =
 cabalConfigPath :: FilePath
 cabalConfigPath = localBuildInfoFile defaultDistPref
 
-cabalConfigDependencies :: CabalConfig -> Maybe [Package]
+cabalConfigDependencies :: CabalConfig -> [Package]
 cabalConfigDependencies config =
-    cfgDepends >>= return . mapMaybe (fromInstalledPackageId . snd)
+    (fromInstalledPackageId . snd) <$> cfgDepends
  where
-    cfgDepends :: Maybe [(PackageName, InstalledPackageId)]
-    cfgDepends =  extractCabalSetupConfig "configDependencies" config
+    cfgDepends :: [(PackageName, InstalledPackageId)]
+    cfgDepends =
+      case extractCabalSetupConfig "configDependencies" config of
+        Just x -> x
+        Nothing -> error $
+          "cabalConfigDependencies: Extracting field `configDependencies' from"
+          ++ " setup-config failed"
 
 
 -- | Extract part of cabal's @setup-config@, this is done with a mix of manual
