@@ -12,6 +12,8 @@ module Language.Haskell.GhcMod.CabalApi (
   , cabalConfigDependencies
   ) where
 
+import Prelude hiding (catch)
+
 import Language.Haskell.GhcMod.Types
 import Language.Haskell.GhcMod.GhcPkg
 import Language.Haskell.GhcMod.Utils
