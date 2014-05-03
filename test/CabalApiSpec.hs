@@ -19,12 +19,6 @@ import Config (cProjectVersionInt) -- ghc version
 ghcVersion :: Int
 ghcVersion = read cProjectVersionInt
 
-unconfigure :: IO ()
-unconfigure = do
-  removeFile cabalConfigPath `catch` (\(_ :: SomeException) ->  return ())
-
-around' a f = a >> f >> a
-
 spec :: Spec
 spec = do
     describe "parseCabalFile" $ do
@@ -69,8 +63,7 @@ spec = do
 
     describe "cabalGetConfig" $ do
         it "can reconfigure a cabal package" $ do
-            withDirectory_ "test/data/check-test-subdir"
-              $ around' unconfigure $ do
+            withDirectory_ "test/data/check-test-subdir" $ do
                 cradle <- findCradle
                 cfg <- cabalGetConfig cradle
                 cfg `shouldSatisfy` not . null

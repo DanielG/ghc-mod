@@ -16,4 +16,5 @@ main = do
       genGhcPkgCache dir = system $ "ghc-pkg recache --force -f" ++ dir
   genSandboxCfg `mapM_` sandboxes
   genGhcPkgCache `mapM_` pkgDirs
+  system "find test -name setup-config -exec rm {} \\;"
   hspec spec
