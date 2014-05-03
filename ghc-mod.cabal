@@ -52,6 +52,7 @@ Library
   GHC-Options:          -Wall
   Exposed-Modules:      Language.Haskell.GhcMod
                         Language.Haskell.GhcMod.Ghc
+                        Language.Haskell.GhcMod.Monad
                         Language.Haskell.GhcMod.Internal
   Other-Modules:        Language.Haskell.GhcMod.Boot
                         Language.Haskell.GhcMod.Browse
@@ -74,7 +75,6 @@ Library
                         Language.Haskell.GhcMod.PkgDoc
                         Language.Haskell.GhcMod.Utils
                         Language.Haskell.GhcMod.Types
-                        Language.Haskell.GhcMod.Monad
   Build-Depends:        base >= 4.0 && < 5
                       , containers
                       , deepseq
