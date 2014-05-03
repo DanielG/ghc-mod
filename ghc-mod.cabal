@@ -74,12 +74,14 @@ Library
                         Language.Haskell.GhcMod.PkgDoc
                         Language.Haskell.GhcMod.Utils
                         Language.Haskell.GhcMod.Types
+                        Language.Haskell.GhcMod.Monad
   Build-Depends:        base >= 4.0 && < 5
                       , containers
                       , deepseq
                       , directory
                       , filepath
                       , ghc
+                      , ghc-paths
                       , ghc-syb-utils
                       , hlint >= 1.8.61
                       , io-choice
@@ -88,6 +90,9 @@ Library
                       , syb
                       , time
                       , transformers
+                      , transformers-base
+                      , mtl
+                      , monad-control
                       , split
   if impl(ghc < 7.7)
     Build-Depends:      convertible
@@ -151,6 +156,7 @@ Test-Suite spec
                       , directory
                       , filepath
                       , ghc
+                      , ghc-paths
                       , ghc-syb-utils
                       , hlint >= 1.7.1
                       , io-choice
@@ -159,6 +165,9 @@ Test-Suite spec
                       , syb
                       , time
                       , transformers
+                      , transformers-base
+                      , mtl
+                      , monad-control
                       , hspec >= 1.8.2
                       , split
   if impl(ghc < 7.7)
