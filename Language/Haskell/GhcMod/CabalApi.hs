@@ -37,6 +37,7 @@ import Distribution.Simple.Program (ghcProgram)
 import Distribution.Simple.Program.Types (programName, programFindVersion)
 import Distribution.Simple.BuildPaths (defaultDistPref)
 import Distribution.Simple.Configure (localBuildInfoFile)
+import Distribution.Simple.LocalBuildInfo (ComponentName(..),ComponentLocalBuildInfo(..))
 import Distribution.System (buildPlatform)
 import Distribution.Text (display)
 import Distribution.Verbosity (silent)
@@ -226,16 +227,21 @@ cabalConfigPath :: FilePath
 cabalConfigPath = localBuildInfoFile defaultDistPref
 
 cabalConfigDependencies :: CabalConfig -> [Package]
-cabalConfigDependencies config =
-    (fromInstalledPackageId . snd) <$> cfgDepends
+cabalConfigDependencies config = cfgDepends
  where
-    cfgDepends :: [(PackageName, InstalledPackageId)]
-    cfgDepends =
-      case extractCabalSetupConfig "configDependencies" config of
-        Just x -> x
+    lbi :: (ComponentName, ComponentLocalBuildInfo, [ComponentName])
+        -> ComponentLocalBuildInfo
+    lbi (_,i,_) = i
+    components = case extractCabalSetupConfig "componentsConfigs" config of
+        Just comps -> lbi <$> comps
         Nothing -> error $
-          "cabalConfigDependencies: Extracting field `configDependencies' from"
+          "cabalConfigDependencies: Extracting field `componentsConfigs' from"
           ++ " setup-config failed"
+
+    pids :: [InstalledPackageId]
+    pids = fst <$> componentPackageDeps `concatMap` components
+    cfgDepends = filter (("inplace" /=) . pkgId)
+                   $ fromInstalledPackageId <$> pids
 
 
 -- | Extract part of cabal's @setup-config@, this is done with a mix of manual
@@ -244,7 +250,7 @@ cabalConfigDependencies config =
 -- depending on the exact version of Cabal used to configure the project as it
 -- is rather likley that some part of 'LocalBuildInfo' changed.
 --
--- Right now 'extractCabalSetupConfig' can only deal with Lists and Tupels in
+-- Right now 'extractCabalSetupConfig' can only deal with Lists and Tuples in
 -- the field!
 extractCabalSetupConfig :: (Read r) => String -> CabalConfig -> Maybe r
 extractCabalSetupConfig  field config = do
