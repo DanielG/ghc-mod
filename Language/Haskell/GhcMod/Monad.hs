@@ -27,6 +27,7 @@ import Data.IORef (IORef, readIORef, writeIORef, newIORef)
 
 import Control.Monad (liftM)
 import Control.Monad.Base (MonadBase,liftBase)
+--import Control.Monad.IO.Class (MonadIO)
 import Control.Monad.Trans.RWS.Lazy (RWST,runRWST)
 import Control.Monad.Trans.Control (MonadBaseControl(..), StM, liftBaseWith
                                    , control, liftBaseOp, liftBaseOp_)
