@@ -2,6 +2,7 @@ dist/
 elisp/*.elc
 *~
 /.cabal-sandbox/
+add-source-timestamps
 package.cache
 cabal.sandbox.config
 # Mac OS generates
