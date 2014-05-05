@@ -16,7 +16,7 @@ import Config (cProjectVersionInt,cProjectVersion,cTargetPlatformString)
 import DynFlags (DynFlags(..), systemPackageConfig,getDynFlags)
 import Exception (handleIO)
 import CoreMonad (liftIO)
-import Control.Applicative ((<$>),(<*>),(<*),(*>))
+import Control.Applicative ((<$>),(<*>),(*>))
 import Control.Exception (SomeException(..))
 import Control.Monad (void)
 import qualified Control.Exception as E
@@ -30,7 +30,7 @@ import Language.Haskell.GhcMod.Utils
 import {-# SOURCE #-} Language.Haskell.GhcMod.Monad
 import System.FilePath ((</>))
 import System.Directory (getAppUserDataDirectory,doesDirectoryExist)
-import Text.ParserCombinators.ReadP (ReadP, char, satisfy, between, sepBy1, many1, many, manyTill, skipMany, skipMany1, skipSpaces, string, choice, eof,(+++))
+import Text.ParserCombinators.ReadP (ReadP, char, satisfy, between, sepBy1, many1, manyTill, skipMany, skipSpaces, string, choice)
 import qualified Text.ParserCombinators.ReadP as P
 
 ghcVersion :: Int
@@ -133,9 +133,9 @@ ghcPkgOutputP' = do
 
 pathLineP :: ReadP FilePath
 pathLineP = do
- p <- (:) <$> char '/' <*> manyTill (satisfy $ const True) (char ':')
- char '\n'
- return p
+    p <- (:) <$> char '/' <*> manyTill (satisfy $ const True) (char ':')
+    void $ char '\n'
+    return p
 
 data PackageState = Normal | Hidden | Broken deriving (Eq,Show)
 
@@ -145,7 +145,7 @@ packageLineP = do
     p <- choice [ (Hidden,) <$> between (char '(') (char ')') packageP
                 , (Broken,) <$> between (char '{') (char '}') packageP
                 , (Normal,) <$> packageP ]
-    char '\n'
+    void $ char '\n'
     return p
 
 packageP :: ReadP (PackageBaseName, PackageVersion, PackageId)

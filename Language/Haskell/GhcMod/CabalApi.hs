@@ -12,7 +12,9 @@ module Language.Haskell.GhcMod.CabalApi (
   , cabalConfigDependencies
   ) where
 
+#if MIN_VERSION_base(4,7,0)
 import Prelude hiding (catch)
+#endif
 
 import Language.Haskell.GhcMod.Types
 import Language.Haskell.GhcMod.GhcPkg
