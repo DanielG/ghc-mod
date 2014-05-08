@@ -2,6 +2,9 @@ module GhcPkgSpec where
 
 import Language.Haskell.GhcMod.Types
 import Language.Haskell.GhcMod.GhcPkg
+import Language.Haskell.GhcMod.Monad
+
+import CoreMonad (liftIO)
 
 import Control.Applicative
 import System.Directory
@@ -22,7 +25,8 @@ spec = do
             getSandboxDb "test/data/broken-sandbox" `shouldThrow` anyException
 
     describe "getPackageDbPackages" $ do
-        it "find a config file and extracts packages" $ do
-            sdb <- getSandboxDb "test/data/check-packageid"
+        it "find a config file and extracts packages" $
+           runGhcMod defaultOptions $ do
+            sdb <- liftIO $ getSandboxDb "test/data/check-packageid"
             pkgs <- ghcPkgListEx [PackageDb sdb]
-            pkgs `shouldBe` [("template-haskell","2.8.0.0","32d4f24abdbb6bf41272b183b2e23e9c")]
+            liftIO $ pkgs `shouldBe` [("template-haskell","2.8.0.0","32d4f24abdbb6bf41272b183b2e23e9c")]
