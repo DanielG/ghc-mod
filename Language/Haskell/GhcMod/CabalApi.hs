@@ -12,16 +12,13 @@ module Language.Haskell.GhcMod.CabalApi (
   , cabalConfigDependencies
   ) where
 
-#if MIN_VERSION_base(4,7,0)
-import Prelude hiding (catch)
-#endif
-
 import Language.Haskell.GhcMod.Types
 import Language.Haskell.GhcMod.GhcPkg
 import Language.Haskell.GhcMod.Utils
 
 import Control.Applicative ((<$>))
-import Control.Exception (throwIO,catch,SomeException)
+import Control.Exception (SomeException(..))
+import qualified Control.Exception as E
 import Control.Monad (filterM)
 import CoreMonad (liftIO)
 import Data.Maybe (maybeToList)
@@ -88,9 +85,9 @@ parseCabalFile file = do
     cid <- getGHCId
     epgd <- readPackageDescription silent file
     case toPkgDesc cid epgd of
-        Left deps    -> throwIO $ userError $ show deps ++ " are not installed"
+        Left deps    -> E.throwIO $ userError $ show deps ++ " are not installed"
         Right (pd,_) -> if nullPkg pd
-                        then throwIO $ userError $ file ++ " is broken"
+                        then E.throwIO $ userError $ file ++ " is broken"
                         else return pd
   where
     toPkgDesc cid = finalizePackageDescription [] (const True) buildPlatform cid []
@@ -166,7 +163,7 @@ getGHC :: IO Version
 getGHC = do
     mv <- programFindVersion ghcProgram silent (programName ghcProgram)
     case mv of
-        Nothing -> throwIO $ userError "ghc not found"
+        Nothing -> E.throwIO $ userError "ghc not found"
         Just v  -> return v
 
 ----------------------------------------------------------------
@@ -217,9 +214,8 @@ type CabalConfig = String
 -- configure@ i.e. configure with default options like @cabal build@ would do.
 cabalGetConfig :: Cradle -> IO CabalConfig
 cabalGetConfig cradle =
-    readFile path `catch'` (\_ -> configure >> readFile path)
+    readFile path `E.catch` (\(SomeException _) -> configure >> readFile path)
  where
-   catch' = catch :: IO a -> (SomeException -> IO a) -> IO a
    prjDir = cradleRootDir cradle
    path = prjDir </> cabalConfigPath
    configure =
