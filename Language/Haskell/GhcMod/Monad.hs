@@ -63,7 +63,7 @@ newtype GhcMod a = GhcMod {
 
 #if __GLASGOW_HASKELL__ < 708
 instance (Monoid w, MonadIO m) => MonadIO (RWST r w s m) where
---  liftIO :: MonadIO m => m -> IO m
+--  liftIO :: MonadIO m => IO a -> m a
     liftIO = lift . liftIO
 #endif
 
