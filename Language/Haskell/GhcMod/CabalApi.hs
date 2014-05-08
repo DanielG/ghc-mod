@@ -19,14 +19,11 @@ import Language.Haskell.GhcMod.Utils
 import Control.Applicative ((<$>))
 import Control.Exception (SomeException(..))
 import qualified Control.Exception as E
-import Control.Monad (filterM)
+import Control.Monad (filterM,mplus)
 import CoreMonad (liftIO)
 import Data.Maybe (maybeToList)
 import Data.Set (fromList, toList)
-import Data.List (find,tails,isPrefixOf)
-#if !MIN_VERSION_Cabal(1,18,0)
-import Data.List (nub,stripPrefix)
-#endif
+import Data.List (find,tails,isPrefixOf,nub,stripPrefix)
 import Distribution.ModuleName (ModuleName,toFilePath)
 import Distribution.Package (Dependency(Dependency)
                            , PackageName(PackageName)
@@ -233,42 +230,43 @@ cabalConfigDependencies :: PackageIdentifier -> CabalConfig -> [Package]
 cabalConfigDependencies thisPkg config = cfgDepends
  where
     pids :: [InstalledPackageId]
-    pids = fst <$> components thisPkg
+    pids = let
+      mps = map fst <$> (components18 thisPkg `mplus` components16 thisPkg)
+      in case mps of
+        Just ps -> ps
+        Nothing -> errorExtract
     cfgDepends = filter (("inplace" /=) . pkgId)
                    $ fromInstalledPackageId <$> pids
 
-    errorExtract f = error $
-        "cabalConfigDependencies: Extracting field `"++ f ++"' from"
-     ++ " setup-config failed"
+    errorExtract = error $
+       "cabalConfigDependencies: Error extracting dependencies from setup-config"
 
-    components :: PackageIdentifier -> [(InstalledPackageId,PackageIdentifier)]
-#if MIN_VERSION_Cabal(1,18,0)
-    components _ = case extractCabalSetupConfig config "componentsConfigs" of
-        Just comps -> concatMap (componentPackageDeps . lbi) comps
-        Nothing -> errorExtract "componentsConfigs"
+    -- Cabal 1.18
+    components18 :: PackageIdentifier
+                 -> Maybe [(InstalledPackageId,PackageIdentifier)]
+    components18 _ =
+          concatMap (componentPackageDeps . lbi)
+      <$> extractCabalSetupConfig config "componentsConfigs"
 
     lbi :: (ComponentName, ComponentLocalBuildInfo, [ComponentName])
         -> ComponentLocalBuildInfo
     lbi (_,i,_) = i
-#elif MIN_VERSION_Cabal(1,16,0)
-    components thisPkg' = filter (not . internal . snd) $ nub $
-        maybe [] componentPackageDeps libraryConfig
-        ++ concatMap (componentPackageDeps . snd) executableConfigs
-        ++ concatMap (componentPackageDeps . snd) testSuiteConfigs
-        ++ concatMap (componentPackageDeps . snd) benchmarkConfigs
+
+    -- Cabal 1.16 and below
+    components16 :: PackageIdentifier
+                 -> Maybe [(InstalledPackageId,PackageIdentifier)]
+    components16 thisPkg' = filter (not . internal . snd) . nub <$> do
+        cbi <- concat <$> sequence [ extract "executableConfigs"
+                                   , extract "testSuiteConfigs"
+                                   , extract "benchmarkConfigs" ]
+                                  :: Maybe [(String, ComponentLocalBuildInfo)]
+
+        return $ maybe [] componentPackageDeps libraryConfig
+              ++ concatMap (componentPackageDeps . snd) cbi
      where
        -- True if this dependency is an internal one (depends on the library
        -- defined in the same package).
        internal pkgid = pkgid == thisPkg'
-
-       executableConfigs :: [(String, ComponentLocalBuildInfo)]
-       executableConfigs = extract "executableConfigs"
-
-       testSuiteConfigs :: [(String, ComponentLocalBuildInfo)]
-       testSuiteConfigs = extract "testSuiteConfigs"
-
-       benchmarkConfigs ::[(String, ComponentLocalBuildInfo)]
-       benchmarkConfigs = extract "benchmarkConfigs"
 
        libraryConfig :: Maybe ComponentLocalBuildInfo
        libraryConfig = do
@@ -278,11 +276,8 @@ cabalConfigDependencies thisPkg config = cfgDepends
              then Nothing
              else read <$> stripPrefix "Just " clbi
 
-       extract :: Read r => String -> r
-       extract field = case extractCabalSetupConfig config field of
-           Nothing -> errorExtract field
-           Just f -> f
-#endif
+       extract :: Read r => String -> Maybe r
+       extract field = extractCabalSetupConfig config field
 
 -- | Extract part of cabal's @setup-config@, this is done with a mix of manual
 -- string processing and use of 'read'. This way we can extract a field from
