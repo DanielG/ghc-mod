@@ -20,6 +20,14 @@
 
 ;;; Code:
 
+;; defvar-local was introduced in 24.3
+(let* ((major 24)
+       (minor 3))
+  (if (or (< emacs-major-version major)
+	  (and (= emacs-major-version major)
+	       (< emacs-minor-version minor)))
+      (error "ghc-mod requires at least Emacs %d.%d" major minor)))
+
 (defconst ghc-version "4.1.0")
 
 ;; (eval-when-compile
