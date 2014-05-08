@@ -23,11 +23,12 @@ import Control.Monad (filterM)
 import CoreMonad (liftIO)
 import Data.Maybe (maybeToList)
 import Data.Set (fromList, toList)
-import Data.List (find,tails,isPrefixOf)
+import Data.List (find,tails,isPrefixOf,nub,stripPrefix)
 import Distribution.ModuleName (ModuleName,toFilePath)
 import Distribution.Package (Dependency(Dependency)
                            , PackageName(PackageName)
-                           , InstalledPackageId(..))
+                           , InstalledPackageId(..)
+                           , PackageIdentifier)
 import qualified Distribution.Package as C
 import Distribution.PackageDescription (PackageDescription, BuildInfo, TestSuite, TestSuiteInterface(..), Executable)
 import qualified Distribution.PackageDescription as P
@@ -38,14 +39,13 @@ import Distribution.Simple.Program (ghcProgram)
 import Distribution.Simple.Program.Types (programName, programFindVersion)
 import Distribution.Simple.BuildPaths (defaultDistPref)
 import Distribution.Simple.Configure (localBuildInfoFile)
-import Distribution.Simple.LocalBuildInfo (ComponentName(..),ComponentLocalBuildInfo(..))
+import Distribution.Simple.LocalBuildInfo (ComponentLocalBuildInfo(..))
 import Distribution.System (buildPlatform)
 import Distribution.Text (display)
 import Distribution.Verbosity (silent)
 import Distribution.Version (Version)
 import System.Directory (doesFileExist)
 import System.FilePath ((</>))
-
 ----------------------------------------------------------------
 
 -- | Getting necessary 'CompilerOptions' from three information sources.
@@ -55,7 +55,7 @@ getCompilerOptions :: [GHCOption]
                    -> IO CompilerOptions
 getCompilerOptions ghcopts cradle pkgDesc = do
     gopts <- getGHCOptions ghcopts cradle rdir $ head buildInfos
-    depPkgs <- cabalConfigDependencies <$> cabalGetConfig cradle
+    depPkgs <- cabalConfigDependencies (C.packageId pkgDesc) <$> cabalGetConfig cradle
     return $ CompilerOptions gopts idirs depPkgs
   where
     wdir       = cradleCurrentDir cradle
@@ -226,23 +226,61 @@ cabalGetConfig cradle =
 cabalConfigPath :: FilePath
 cabalConfigPath = localBuildInfoFile defaultDistPref
 
-cabalConfigDependencies :: CabalConfig -> [Package]
-cabalConfigDependencies config = cfgDepends
+cabalConfigDependencies :: PackageIdentifier -> CabalConfig -> [Package]
+cabalConfigDependencies thisPkg config = cfgDepends
  where
-    lbi :: (ComponentName, ComponentLocalBuildInfo, [ComponentName])
-        -> ComponentLocalBuildInfo
-    lbi (_,i,_) = i
-    components = case extractCabalSetupConfig "componentsConfigs" config of
-        Just comps -> lbi <$> comps
-        Nothing -> error $
-          "cabalConfigDependencies: Extracting field `componentsConfigs' from"
-          ++ " setup-config failed"
-
     pids :: [InstalledPackageId]
-    pids = fst <$> componentPackageDeps `concatMap` components
+    pids = fst <$> components
     cfgDepends = filter (("inplace" /=) . pkgId)
                    $ fromInstalledPackageId <$> pids
 
+    errorExtract f = error $
+        "cabalConfigDependencies: Extracting field `"++ f ++"' from"
+     ++ " setup-config failed"
+
+    components :: [(InstalledPackageId,PackageIdentifier)]
+#if MIN_VERSION_Cabal(1,18,0)
+    components = case extractCabalSetupConfig config "componentsConfigs" of
+        Just comps -> componentPackageDeps . lbi <$> comps
+        Nothing -> errorExtract "componentsConfigs"
+
+    lbi :: (ComponentName, ComponentLocalBuildInfo, [ComponentName])
+        -> ComponentLocalBuildInfo
+    lbi (_,i,_) = i
+#elif MIN_VERSION_Cabal(1,16,0)
+    components = filter (not . internal . snd) $ nub $
+        maybe [] componentPackageDeps libraryConfig
+        ++ concatMap (componentPackageDeps . snd) executableConfigs
+        ++ concatMap (componentPackageDeps . snd) testSuiteConfigs
+        ++ concatMap (componentPackageDeps . snd) benchmarkConfigs
+     where
+       executableConfigs :: [(String, ComponentLocalBuildInfo)]
+       executableConfigs = extract "executableConfigs"
+
+       testSuiteConfigs :: [(String, ComponentLocalBuildInfo)]
+       testSuiteConfigs = extract "testSuiteConfigs"
+
+       benchmarkConfigs ::[(String, ComponentLocalBuildInfo)]
+       benchmarkConfigs = extract "benchmarkConfigs"
+
+       libraryConfig :: Maybe ComponentLocalBuildInfo
+       libraryConfig = do
+         field <- find ("libraryConfig" `isPrefixOf`) (tails config)
+         clbi <- stripPrefix " = " field
+         if "Nothing" `isPrefixOf` clbi
+             then Nothing
+             else read <$> stripPrefix "Just " clbi
+
+       extract :: Read r => String -> r
+       extract field = case extractCabalSetupConfig config field of
+           Nothing -> errorExtract field
+           Just f -> f
+
+
+       -- True if this dependency is an internal one (depends on the library
+       -- defined in the same package).
+       internal pkgid = pkgid == thisPkg
+#endif
 
 -- | Extract part of cabal's @setup-config@, this is done with a mix of manual
 -- string processing and use of 'read'. This way we can extract a field from
@@ -252,6 +290,6 @@ cabalConfigDependencies config = cfgDepends
 --
 -- Right now 'extractCabalSetupConfig' can only deal with Lists and Tuples in
 -- the field!
-extractCabalSetupConfig :: (Read r) => String -> CabalConfig -> Maybe r
-extractCabalSetupConfig  field config = do
+extractCabalSetupConfig :: (Read r) => CabalConfig -> String -> Maybe r
+extractCabalSetupConfig config field = do
     read <$> extractParens <$> find (field `isPrefixOf`) (tails config)
