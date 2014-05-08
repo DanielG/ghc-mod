@@ -23,7 +23,10 @@ import Control.Monad (filterM)
 import CoreMonad (liftIO)
 import Data.Maybe (maybeToList)
 import Data.Set (fromList, toList)
-import Data.List (find,tails,isPrefixOf,nub,stripPrefix)
+import Data.List (find,tails,isPrefixOf)
+#if !MIN_VERSION_Cabal(1,18,0)
+import Data.List (nub,stripPrefix)
+#endif
 import Distribution.ModuleName (ModuleName,toFilePath)
 import Distribution.Package (Dependency(Dependency)
                            , PackageName(PackageName)
@@ -39,7 +42,7 @@ import Distribution.Simple.Program (ghcProgram)
 import Distribution.Simple.Program.Types (programName, programFindVersion)
 import Distribution.Simple.BuildPaths (defaultDistPref)
 import Distribution.Simple.Configure (localBuildInfoFile)
-import Distribution.Simple.LocalBuildInfo (ComponentLocalBuildInfo(..))
+import Distribution.Simple.LocalBuildInfo (ComponentLocalBuildInfo(..), ComponentName)
 import Distribution.System (buildPlatform)
 import Distribution.Text (display)
 import Distribution.Verbosity (silent)
@@ -230,7 +233,7 @@ cabalConfigDependencies :: PackageIdentifier -> CabalConfig -> [Package]
 cabalConfigDependencies thisPkg config = cfgDepends
  where
     pids :: [InstalledPackageId]
-    pids = fst <$> components
+    pids = fst <$> components thisPkg
     cfgDepends = filter (("inplace" /=) . pkgId)
                    $ fromInstalledPackageId <$> pids
 
@@ -238,22 +241,26 @@ cabalConfigDependencies thisPkg config = cfgDepends
         "cabalConfigDependencies: Extracting field `"++ f ++"' from"
      ++ " setup-config failed"
 
-    components :: [(InstalledPackageId,PackageIdentifier)]
+    components :: PackageIdentifier -> [(InstalledPackageId,PackageIdentifier)]
 #if MIN_VERSION_Cabal(1,18,0)
-    components = case extractCabalSetupConfig config "componentsConfigs" of
-        Just comps -> componentPackageDeps . lbi <$> comps
+    components _ = case extractCabalSetupConfig config "componentsConfigs" of
+        Just comps -> concatMap (componentPackageDeps . lbi) comps
         Nothing -> errorExtract "componentsConfigs"
 
     lbi :: (ComponentName, ComponentLocalBuildInfo, [ComponentName])
         -> ComponentLocalBuildInfo
     lbi (_,i,_) = i
 #elif MIN_VERSION_Cabal(1,16,0)
-    components = filter (not . internal . snd) $ nub $
+    components thisPkg' = filter (not . internal . snd) $ nub $
         maybe [] componentPackageDeps libraryConfig
         ++ concatMap (componentPackageDeps . snd) executableConfigs
         ++ concatMap (componentPackageDeps . snd) testSuiteConfigs
         ++ concatMap (componentPackageDeps . snd) benchmarkConfigs
      where
+       -- True if this dependency is an internal one (depends on the library
+       -- defined in the same package).
+       internal pkgid = pkgid == thisPkg'
+
        executableConfigs :: [(String, ComponentLocalBuildInfo)]
        executableConfigs = extract "executableConfigs"
 
@@ -275,11 +282,6 @@ cabalConfigDependencies thisPkg config = cfgDepends
        extract field = case extractCabalSetupConfig config field of
            Nothing -> errorExtract field
            Just f -> f
-
-
-       -- True if this dependency is an internal one (depends on the library
-       -- defined in the same package).
-       internal pkgid = pkgid == thisPkg
 #endif
 
 -- | Extract part of cabal's @setup-config@, this is done with a mix of manual
