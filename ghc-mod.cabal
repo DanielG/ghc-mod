@@ -46,6 +46,7 @@ Extra-Source-Files:     ChangeLog
                         test/data/ghc-mod-check/*.hs
                         test/data/ghc-mod-check/Data/*.hs
                         test/data/subdir1/subdir2/dummy
+                        test/data/.cabal-sandbox/packages/00-index.tar
 
 Library
   Default-Language:     Haskell2010
