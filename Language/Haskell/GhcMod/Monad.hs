@@ -1,4 +1,5 @@
-{-# LANGUAGE GeneralizedNewtypeDeriving, MultiParamTypeClasses, RankNTypes, TypeFamilies #-}
+{-# LANGUAGE CPP, GeneralizedNewtypeDeriving, FlexibleInstances, MultiParamTypeClasses, RankNTypes, TypeFamilies #-}
+{-# OPTIONS_GHC -fno-warn-orphans #-}
 module Language.Haskell.GhcMod.Monad (
    GhcMod
  , GhcModEnv(..)
@@ -23,14 +24,16 @@ import Exception
 import MonadUtils
 import DynFlags
 
+import Data.Monoid (Monoid)
 import Data.IORef (IORef, readIORef, writeIORef, newIORef)
 
 import Control.Monad (liftM)
 import Control.Monad.Base (MonadBase,liftBase)
 --import Control.Monad.IO.Class (MonadIO)
-import Control.Monad.Trans.RWS.Lazy (RWST,runRWST)
+import Control.Monad.Trans.RWS.Lazy (RWST(..),runRWST)
 import Control.Monad.Trans.Control (MonadBaseControl(..), StM, liftBaseWith
                                    , control, liftBaseOp, liftBaseOp_)
+import Control.Monad.Trans.Class (lift)
 import Control.Monad.Reader.Class
 import Control.Monad.Writer.Class
 import Control.Monad.State.Class
@@ -57,6 +60,12 @@ newtype GhcMod a = GhcMod {
               MonadReader GhcModEnv,
               MonadWriter GhcModWriter,
               MonadState GhcModState)
+
+#if __GLASGOW_HASKELL__ < 708
+instance (Monoid w, MonadIO m) => MonadIO (RWST r w s m) where
+--  liftIO :: MonadIO m => m -> IO m
+    liftIO = lift . liftIO
+#endif
 
 runGhcMod' :: GhcModEnv
           -> GhcModState
