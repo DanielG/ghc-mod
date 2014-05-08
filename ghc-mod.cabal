@@ -52,6 +52,7 @@ Library
   GHC-Options:          -Wall
   Exposed-Modules:      Language.Haskell.GhcMod
                         Language.Haskell.GhcMod.Ghc
+                        Language.Haskell.GhcMod.Monad
                         Language.Haskell.GhcMod.Internal
   Other-Modules:        Language.Haskell.GhcMod.Boot
                         Language.Haskell.GhcMod.Browse
@@ -80,6 +81,7 @@ Library
                       , directory
                       , filepath
                       , ghc
+                      , ghc-paths
                       , ghc-syb-utils
                       , hlint >= 1.8.61
                       , io-choice
@@ -88,6 +90,9 @@ Library
                       , syb
                       , time
                       , transformers
+                      , transformers-base
+                      , mtl
+                      , monad-control
                       , split
   if impl(ghc < 7.7)
     Build-Depends:      convertible
@@ -151,6 +156,7 @@ Test-Suite spec
                       , directory
                       , filepath
                       , ghc
+                      , ghc-paths
                       , ghc-syb-utils
                       , hlint >= 1.7.1
                       , io-choice
@@ -159,6 +165,9 @@ Test-Suite spec
                       , syb
                       , time
                       , transformers
+                      , transformers-base
+                      , mtl
+                      , monad-control
                       , hspec >= 1.8.2
                       , split
   if impl(ghc < 7.7)
