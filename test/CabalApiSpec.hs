@@ -19,7 +19,6 @@ import Config (cProjectVersionInt) -- ghc version
 ghcVersion :: Int
 ghcVersion = read cProjectVersionInt
 
-
 spec :: Spec
 spec = do
     describe "parseCabalFile" $ do
@@ -39,9 +38,9 @@ spec = do
                       }
                 if ghcVersion < 706
                   then ghcOptions res' `shouldBe` ["-global-package-conf", "-no-user-package-conf","-package-conf",cwd </> "test/data/.cabal-sandbox/i386-osx-ghc-7.6.3-packages.conf.d","-XHaskell98"]
-                  else ghcOptions res' `shouldBe` ["-global-package-db", "-no-user-package-db","-package-db",cwd </> "test/data/.cabal-sandbox/i386-osx-ghc-7.6.3-packages.conf.d","-XHaskell98"]
+                  else ghcOptions res' `shouldBe` ["-global-package-db", "-no-user-package-db","-package-db",cwd </> "test/data/.cabal-sandbox/i386-osx-ghc-7.6.3-packages.conf.d","-XHaskell98","-optP-include","-optP" ++ cwd </> "test/data/dist/build/autogen/cabal_macros.h"]
                 includeDirs res' `shouldBe` ["test/data","test/data/dist/build","test/data/dist/build/autogen","test/data/subdir1/subdir2","test/data/test"]
-                depPackages res' `shouldSatisfy` (("Cabal", "1.18.1.3", "2b161c6bf77657aa17e1681d83cb051b")`elem`)
+                (pkgName `map` depPackages res') `shouldContain` ["Cabal"]
 
 
     describe "cabalDependPackages" $ do
@@ -61,3 +60,10 @@ spec = do
         it "extracts build info" $ do
             info <- cabalAllBuildInfo <$> parseCabalFile "test/data/cabalapi.cabal"
             show info `shouldBe` "[BuildInfo {buildable = True, buildTools = [], cppOptions = [], ccOptions = [], ldOptions = [], pkgconfigDepends = [], frameworks = [], cSources = [], hsSourceDirs = [\".\"], otherModules = [ModuleName [\"Browse\"],ModuleName [\"CabalApi\"],ModuleName [\"Cabal\"],ModuleName [\"CabalDev\"],ModuleName [\"Check\"],ModuleName [\"ErrMsg\"],ModuleName [\"Flag\"],ModuleName [\"GHCApi\"],ModuleName [\"GHCChoice\"],ModuleName [\"Gap\"],ModuleName [\"Info\"],ModuleName [\"Lang\"],ModuleName [\"Lint\"],ModuleName [\"List\"],ModuleName [\"Paths_ghc_mod\"],ModuleName [\"Types\"]], defaultLanguage = Nothing, otherLanguages = [], defaultExtensions = [], otherExtensions = [], oldExtensions = [], extraLibs = [], extraLibDirs = [], includeDirs = [], includes = [], installIncludes = [], options = [(GHC,[\"-Wall\"])], ghcProfOptions = [], ghcSharedOptions = [], customFieldsBI = [], targetBuildDepends = [Dependency (PackageName \"Cabal\") (UnionVersionRanges (ThisVersion (Version {versionBranch = [1,10], versionTags = []})) (LaterVersion (Version {versionBranch = [1,10], versionTags = []}))),Dependency (PackageName \"base\") (IntersectVersionRanges (UnionVersionRanges (ThisVersion (Version {versionBranch = [4,0], versionTags = []})) (LaterVersion (Version {versionBranch = [4,0], versionTags = []}))) (EarlierVersion (Version {versionBranch = [5], versionTags = []}))),Dependency (PackageName \"template-haskell\") AnyVersion]},BuildInfo {buildable = True, buildTools = [], cppOptions = [], ccOptions = [], ldOptions = [], pkgconfigDepends = [], frameworks = [], cSources = [], hsSourceDirs = [\"test\",\".\"], otherModules = [ModuleName [\"Expectation\"],ModuleName [\"BrowseSpec\"],ModuleName [\"CabalApiSpec\"],ModuleName [\"FlagSpec\"],ModuleName [\"LangSpec\"],ModuleName [\"LintSpec\"],ModuleName [\"ListSpec\"]], defaultLanguage = Nothing, otherLanguages = [], defaultExtensions = [], otherExtensions = [], oldExtensions = [], extraLibs = [], extraLibDirs = [], includeDirs = [], includes = [], installIncludes = [], options = [], ghcProfOptions = [], ghcSharedOptions = [], customFieldsBI = [], targetBuildDepends = [Dependency (PackageName \"Cabal\") (UnionVersionRanges (ThisVersion (Version {versionBranch = [1,10], versionTags = []})) (LaterVersion (Version {versionBranch = [1,10], versionTags = []}))),Dependency (PackageName \"base\") (IntersectVersionRanges (UnionVersionRanges (ThisVersion (Version {versionBranch = [4,0], versionTags = []})) (LaterVersion (Version {versionBranch = [4,0], versionTags = []}))) (EarlierVersion (Version {versionBranch = [5], versionTags = []})))]}]"
+
+    describe "cabalGetConfig" $ do
+        it "can reconfigure a cabal package" $ do
+            withDirectory_ "test/data/check-test-subdir" $ do
+                cradle <- findCradle
+                cfg <- cabalGetConfig cradle
+                cfg `shouldSatisfy` not . null

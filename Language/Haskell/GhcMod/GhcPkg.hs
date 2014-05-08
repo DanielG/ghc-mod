@@ -6,6 +6,8 @@ module Language.Haskell.GhcMod.GhcPkg (
   , ghcPkgDbStackOpts
   , ghcDbStackOpts
   , ghcDbOpt
+  , fromInstalledPackageId
+  , fromInstalledPackageId'
   , getSandboxDb
   , getPackageDbStack
   ) where
@@ -16,13 +18,12 @@ import Control.Exception (SomeException(..))
 import qualified Control.Exception as E
 import Data.Char (isSpace,isAlphaNum)
 import Data.List (isPrefixOf, intercalate)
+import Data.List.Split (splitOn)
 import Data.Maybe (listToMaybe, maybeToList)
+import Distribution.Package (InstalledPackageId(..))
 import Language.Haskell.GhcMod.Types
 import Language.Haskell.GhcMod.Utils
-import System.Exit (ExitCode(..))
 import System.FilePath ((</>))
-import System.IO (hPutStrLn,stderr)
-import System.Process (readProcessWithExitCode)
 import Text.ParserCombinators.ReadP (ReadP, char, between, sepBy1, many1, string, choice, eof)
 import qualified Text.ParserCombinators.ReadP as P
 
@@ -58,7 +59,6 @@ getPackageDbStack cdir =
     (getSandboxDb cdir >>= \db -> return [GlobalDb, PackageDb db])
       `E.catch` \(_ :: SomeException) -> return [GlobalDb, UserDb]
 
-
 -- | List packages in one or more ghc package store
 ghcPkgList :: [GhcPkgDb] -> IO [PackageBaseName]
 ghcPkgList dbs = map fst3 <$> ghcPkgListEx dbs
@@ -66,14 +66,7 @@ ghcPkgList dbs = map fst3 <$> ghcPkgListEx dbs
 
 ghcPkgListEx :: [GhcPkgDb] -> IO [Package]
 ghcPkgListEx dbs = do
-    (rv,output,err) <- readProcessWithExitCode "ghc-pkg" opts ""
-    case rv of
-      ExitFailure val -> do
-          hPutStrLn stderr err
-          fail $ "ghc-pkg " ++ unwords opts ++ " (exit " ++ show val ++ ")"
-      ExitSuccess -> return ()
-
-    return $ parseGhcPkgOutput $ lines output
+    parseGhcPkgOutput .lines <$> readProcess' "ghc-pkg" opts
   where
     opts = ["list", "-v"] ++ ghcPkgDbStackOpts dbs
 
@@ -91,6 +84,20 @@ packageLine l =
       Just ((Normal,p),_) -> Just p
       Just ((Hidden,p),_) -> Just p
       _ -> Nothing
+
+fromInstalledPackageId' :: InstalledPackageId -> Maybe Package
+fromInstalledPackageId' pid = let
+    InstalledPackageId pkg = pid
+    in case reverse $ splitOn "-" pkg of
+      i:v:rest -> Just (intercalate "-" (reverse rest), v, i)
+      _ -> Nothing
+
+fromInstalledPackageId :: InstalledPackageId -> Package
+fromInstalledPackageId pid =
+    case fromInstalledPackageId' pid of
+      Just p -> p
+      Nothing -> error $
+        "fromInstalledPackageId: `"++show pid++"' is not a valid package-id"
 
 data PackageState = Normal | Hidden | Broken deriving (Eq,Show)
 

@@ -37,6 +37,11 @@ Extra-Source-Files:     ChangeLog
                         test/data/check-test-subdir/test/Bar/*.hs
                         test/data/check-packageid/cabal.sandbox.config.in
                         test/data/check-packageid/.cabal-sandbox/i386-osx-ghc-7.6.3-packages.conf.d/template-haskell-2.8.0.0-32d4f24abdbb6bf41272b183b2e23e9c.conf
+                        test/data/duplicate-pkgver/cabal.sandbox.config.in
+                        test/data/duplicate-pkgver/duplicate-pkgver.cabal
+                        test/data/duplicate-pkgver/.cabal-sandbox/i386-osx-ghc-7.6.3-packages.conf.d/template-haskell-1.0-7c59d13f32294d1ef6dc6233c24df961.conf
+                        test/data/duplicate-pkgver/.cabal-sandbox/i386-osx-ghc-7.6.3-packages.conf.d/template-haskell-2.8.0.0-14e543bdae2da4d2aeff5386892c9112.conf
+                        test/data/duplicate-pkgver/.cabal-sandbox/i386-osx-ghc-7.6.3-packages.conf.d/template-haskell-2.8.0.0-32d4f24abdbb6bf41272b183b2e23e9c.conf
                         test/data/ghc-mod-check/*.cabal
                         test/data/ghc-mod-check/*.hs
                         test/data/ghc-mod-check/Data/*.hs
@@ -83,6 +88,7 @@ Library
                       , syb
                       , time
                       , transformers
+                      , split
   if impl(ghc < 7.7)
     Build-Depends:      convertible
                       , Cabal >= 1.10 && < 1.17
@@ -154,6 +160,7 @@ Test-Suite spec
                       , time
                       , transformers
                       , hspec >= 1.8.2
+                      , split
   if impl(ghc < 7.7)
     Build-Depends:      convertible
                       , Cabal >= 1.10 && < 1.17

@@ -7,20 +7,26 @@ module Language.Haskell.GhcMod.CabalApi (
   , cabalDependPackages
   , cabalSourceDirs
   , cabalAllTargets
+  , cabalGetConfig
+  , cabalConfigPath
+  , cabalConfigDependencies
   ) where
 
 import Language.Haskell.GhcMod.Types
 import Language.Haskell.GhcMod.GhcPkg
+import Language.Haskell.GhcMod.Utils
 
 import Control.Applicative ((<$>))
-import Control.Exception (throwIO)
+import Control.Exception (throwIO,catch,SomeException)
 import Control.Monad (filterM)
 import CoreMonad (liftIO)
-import Data.Maybe (maybeToList, catMaybes)
+import Data.Maybe (maybeToList)
 import Data.Set (fromList, toList)
+import Data.List (find,tails,isPrefixOf)
 import Distribution.ModuleName (ModuleName,toFilePath)
 import Distribution.Package (Dependency(Dependency)
-                           , PackageName(PackageName))
+                           , PackageName(PackageName)
+                           , InstalledPackageId(..))
 import qualified Distribution.Package as C
 import Distribution.PackageDescription (PackageDescription, BuildInfo, TestSuite, TestSuiteInterface(..), Executable)
 import qualified Distribution.PackageDescription as P
@@ -29,12 +35,15 @@ import Distribution.PackageDescription.Parse (readPackageDescription)
 import Distribution.Simple.Compiler (CompilerId(..), CompilerFlavor(..))
 import Distribution.Simple.Program (ghcProgram)
 import Distribution.Simple.Program.Types (programName, programFindVersion)
+import Distribution.Simple.BuildPaths (defaultDistPref)
+import Distribution.Simple.Configure (localBuildInfoFile)
+import Distribution.Simple.LocalBuildInfo (ComponentName(..),ComponentLocalBuildInfo(..))
 import Distribution.System (buildPlatform)
 import Distribution.Text (display)
 import Distribution.Verbosity (silent)
 import Distribution.Version (Version)
 import System.Directory (doesFileExist)
-import System.FilePath (dropExtension, takeFileName, (</>))
+import System.FilePath ((</>))
 
 ----------------------------------------------------------------
 
@@ -45,38 +54,13 @@ getCompilerOptions :: [GHCOption]
                    -> IO CompilerOptions
 getCompilerOptions ghcopts cradle pkgDesc = do
     gopts <- getGHCOptions ghcopts cradle rdir $ head buildInfos
-    dbPkgs <- ghcPkgListEx (cradlePkgDbStack cradle)
-    return $ CompilerOptions gopts idirs (depPkgs dbPkgs)
+    depPkgs <- cabalConfigDependencies <$> cabalGetConfig cradle
+    return $ CompilerOptions gopts idirs depPkgs
   where
     wdir       = cradleCurrentDir cradle
     rdir       = cradleRootDir    cradle
-    Just cfile = cradleCabalFile  cradle
-    thisPkg    = dropExtension $ takeFileName cfile
     buildInfos = cabalAllBuildInfo pkgDesc
     idirs      = includeDirectories rdir wdir $ cabalSourceDirs buildInfos
-    depPkgs ps = attachPackageIds ps
-                   $ removeThem (problematicPackages ++ [thisPkg])
-                   $ cabalDependPackages buildInfos
-
-----------------------------------------------------------------
--- Dependent packages
-
-removeThem :: [PackageBaseName] -> [PackageBaseName] -> [PackageBaseName]
-removeThem badpkgs = filter (`notElem` badpkgs)
-
-problematicPackages :: [PackageBaseName]
-problematicPackages = [
-    "base-compat" -- providing "Prelude"
-  ]
-
-attachPackageIds :: [Package] -> [PackageBaseName] -> [Package]
-attachPackageIds pkgs = catMaybes . fmap (`lookup3` pkgs)
-
-lookup3 :: Eq a => a -> [(a,b,c)] -> Maybe (a,b,c)
-lookup3 _ [] = Nothing
-lookup3 k (t@(a,_,_):ls)
-    | k == a = Just t
-    | otherwise = lookup3 k ls
 
 ----------------------------------------------------------------
 -- Include directories for modules
@@ -220,3 +204,54 @@ cabalAllTargets pd = do
     getExecutableTarget exe = do
       let maybeExes = [p </> e | p <- P.hsSourceDirs $ P.buildInfo exe, e <- [P.modulePath exe]]
       liftIO $ filterM doesFileExist maybeExes
+
+----------------------------------------------------------------
+
+type CabalConfig = String
+
+-- | Get file containing 'LocalBuildInfo' data. If it doesn't exist run @cabal
+-- configure@ i.e. configure with default options like @cabal build@ would do.
+cabalGetConfig :: Cradle -> IO CabalConfig
+cabalGetConfig cradle =
+    readFile path `catch'` (\_ -> configure >> readFile path)
+ where
+   catch' = catch :: IO a -> (SomeException -> IO a) -> IO a
+   prjDir = cradleRootDir cradle
+   path = prjDir </> cabalConfigPath
+   configure =
+     withDirectory_ prjDir $ readProcess' "cabal" ["configure"]
+
+
+-- | Path to 'LocalBuildInfo' file, usually @dist/setup-config@
+cabalConfigPath :: FilePath
+cabalConfigPath = localBuildInfoFile defaultDistPref
+
+cabalConfigDependencies :: CabalConfig -> [Package]
+cabalConfigDependencies config = cfgDepends
+ where
+    lbi :: (ComponentName, ComponentLocalBuildInfo, [ComponentName])
+        -> ComponentLocalBuildInfo
+    lbi (_,i,_) = i
+    components = case extractCabalSetupConfig "componentsConfigs" config of
+        Just comps -> lbi <$> comps
+        Nothing -> error $
+          "cabalConfigDependencies: Extracting field `componentsConfigs' from"
+          ++ " setup-config failed"
+
+    pids :: [InstalledPackageId]
+    pids = fst <$> componentPackageDeps `concatMap` components
+    cfgDepends = filter (("inplace" /=) . pkgId)
+                   $ fromInstalledPackageId <$> pids
+
+
+-- | Extract part of cabal's @setup-config@, this is done with a mix of manual
+-- string processing and use of 'read'. This way we can extract a field from
+-- 'LocalBuildInfo' without having to parse the whole thing which would mean
+-- depending on the exact version of Cabal used to configure the project as it
+-- is rather likley that some part of 'LocalBuildInfo' changed.
+--
+-- Right now 'extractCabalSetupConfig' can only deal with Lists and Tuples in
+-- the field!
+extractCabalSetupConfig :: (Read r) => String -> CabalConfig -> Maybe r
+extractCabalSetupConfig  field config = do
+    read <$> extractParens <$> find (field `isPrefixOf`) (tails config)
