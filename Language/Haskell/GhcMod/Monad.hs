@@ -109,8 +109,10 @@ instance GhcMonad GhcMod where
     getSession = liftIO . readIORef . gmGhcSession =<< ask
     setSession a = liftIO . flip writeIORef a . gmGhcSession =<< ask
 
+#if __GLASGOW_HASKELL__ >= 706
 instance HasDynFlags GhcMod where
     getDynFlags = getSessionDynFlags
+#endif
 
 instance ExceptionMonad GhcMod where
     gcatch act handler = control $ \run ->
