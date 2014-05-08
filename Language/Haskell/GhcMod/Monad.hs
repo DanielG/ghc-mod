@@ -25,6 +25,9 @@ import MonadUtils
 import DynFlags
 
 import Data.Monoid (Monoid)
+#if !MIN_VERSION_ghc(7,4,0)
+import HscTypes
+#endif
 import Data.IORef (IORef, readIORef, writeIORef, newIORef)
 
 import Control.Monad (liftM)
