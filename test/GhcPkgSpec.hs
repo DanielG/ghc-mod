@@ -1,17 +1,10 @@
 module GhcPkgSpec where
 
-import Language.Haskell.GhcMod.Types
 import Language.Haskell.GhcMod.GhcPkg
-import Language.Haskell.GhcMod.Monad
 
-import CoreMonad (liftIO)
-
-import Control.Applicative
 import System.Directory
 import System.FilePath ((</>))
 import Test.Hspec
-
-import Dir
 
 spec :: Spec
 spec = do
@@ -23,10 +16,3 @@ spec = do
 
         it "throws an error if a config file is broken" $ do
             getSandboxDb "test/data/broken-sandbox" `shouldThrow` anyException
-
-    describe "getPackageDbPackages" $ do
-        it "find a config file and extracts packages" $
-           runGhcMod defaultOptions $ do
-            sdb <- liftIO $ getSandboxDb "test/data/check-packageid"
-            pkgs <- ghcPkgListEx [PackageDb sdb]
-            liftIO $ pkgs `shouldBe` [("template-haskell","2.8.0.0","32d4f24abdbb6bf41272b183b2e23e9c")]
