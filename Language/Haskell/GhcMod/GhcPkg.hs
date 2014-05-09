@@ -13,7 +13,7 @@ module Language.Haskell.GhcMod.GhcPkg (
 import Config (cProjectVersionInt)
 import Control.Applicative ((<$>))
 #if MIN_VERSION_Cabal(1,18,0)
-import Control.Exception (SomeException(..))
+import qualified Control.Exception as E
 #endif
 import Data.Char (isSpace)
 import Data.List (isPrefixOf, intercalate)
@@ -54,7 +54,7 @@ getPackageDbStack :: FilePath -- ^ Project Directory (where the
 #if MIN_VERSION_Cabal(1,18,0)
 getPackageDbStack cdir =
     (getSandboxDb cdir >>= \db -> return [GlobalDb, PackageDb db])
-      `E.catch` \(_ :: SomeException) -> return [GlobalDb, UserDb]
+      `E.catch` \(_ :: E.SomeException) -> return [GlobalDb, UserDb]
 #else
 getPackageDbStack _ =
     return [GlobalDb, UserDb]

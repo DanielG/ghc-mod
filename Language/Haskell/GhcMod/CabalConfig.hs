@@ -57,18 +57,25 @@ configDependencies thisPkg config = map fromInstalledPackageId deps
         Right ps -> ps
         Left msg -> error msg
 
---    errorExtract = error $
---     "cabalConfigDependencies: Error extracting dependencies from setup-config"
+    -- True if this dependency is an internal one (depends on the library
+    -- defined in the same package).
+    internal pkgid = pkgid == thisPkg
 
     -- Cabal >= 1.18
     deps18 :: Either String [InstalledPackageId]
     deps18 =
-          concatMap (map fst . C18.componentPackageDeps . lbi)
+          map fst
+      <$> filterInternal
       <$> (readEither =<< extractField config "componentsConfigs")
 
-    lbi :: (ComponentName, C18.ComponentLocalBuildInfo, [ComponentName])
-        -> C18.ComponentLocalBuildInfo
-    lbi (_,i,_) = i
+    filterInternal
+        :: [(ComponentName, C18.ComponentLocalBuildInfo, [ComponentName])]
+        -> [(InstalledPackageId, PackageIdentifier)]
+
+    filterInternal ccfg = [ (ipkgid, pkgid)
+                          | (_,clbi,_)      <- ccfg
+                          , (ipkgid, pkgid) <- C18.componentPackageDeps clbi
+                          , not (internal pkgid) ]
 
     -- Cabal 1.16 and below
     deps16 :: Either String [InstalledPackageId]
@@ -81,10 +88,6 @@ configDependencies thisPkg config = map fromInstalledPackageId deps
         return $ maybe [] C16.componentPackageDeps libraryConfig
               ++ concatMap (C16.componentPackageDeps . snd) cbi
      where
-       -- True if this dependency is an internal one (depends on the library
-       -- defined in the same package).
-       internal pkgid = pkgid == thisPkg
-
        libraryConfig :: Maybe C16.ComponentLocalBuildInfo
        libraryConfig = do
          field <- find ("libraryConfig" `isPrefixOf`) (tails config)
