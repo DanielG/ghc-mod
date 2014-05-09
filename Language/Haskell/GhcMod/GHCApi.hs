@@ -8,6 +8,7 @@ module Language.Haskell.GhcMod.GHCApi (
   , getDynamicFlags
   , getSystemLibDir
   , withDynFlags
+  , withCmdFlags
   , setNoWaringFlags
   , setAllWaringFlags
   ) where
@@ -173,6 +174,15 @@ withDynFlags setFlag body = G.gbracket setup teardown (\_ -> body)
     setup = do
         dflag <- G.getSessionDynFlags
         void $ G.setSessionDynFlags (setFlag dflag)
+        return dflag
+    teardown = void . G.setSessionDynFlags
+
+withCmdFlags :: [GHCOption] -> Ghc a -> Ghc a
+withCmdFlags flags body = G.gbracket setup teardown (\_ -> body)
+  where
+    setup = do
+        dflag <- G.getSessionDynFlags >>= addCmdOpts flags
+        void $ G.setSessionDynFlags dflag
         return dflag
     teardown = void . G.setSessionDynFlags
 
