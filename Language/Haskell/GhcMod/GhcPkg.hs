@@ -15,7 +15,6 @@ import Control.Applicative ((<$>))
 #if MIN_VERSION_Cabal(1,18,0)
 import Control.Exception (SomeException(..))
 #endif
-import qualified Control.Exception as E
 import Data.Char (isSpace)
 import Data.List (isPrefixOf, intercalate)
 import Data.List.Split (splitOn)
@@ -52,11 +51,12 @@ getPackageDbStack :: FilePath -- ^ Project Directory (where the
                                  -- cabal.sandbox.config file would be if it
                                  -- exists)
                   -> IO [GhcPkgDb]
-getPackageDbStack cdir =
 #if MIN_VERSION_Cabal(1,18,0)
+getPackageDbStack cdir =
     (getSandboxDb cdir >>= \db -> return [GlobalDb, PackageDb db])
       `E.catch` \(_ :: SomeException) -> return [GlobalDb, UserDb]
 #else
+getPackageDbStack _ =
     return [GlobalDb, UserDb]
 #endif
 

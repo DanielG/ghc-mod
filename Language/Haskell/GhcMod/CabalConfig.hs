@@ -13,15 +13,13 @@ import qualified Language.Haskell.GhcMod.Cabal18 as C18
 
 import qualified Control.Exception as E
 import Control.Applicative ((<$>))
-import Control.Monad (filterM,mplus)
+import Control.Monad (mplus)
 import Control.Monad.Error ()
 import Data.Maybe ()
 import Data.Set ()
 import Data.List (find,tails,isPrefixOf,isInfixOf,nub,stripPrefix)
-import Distribution.Package (PackageName(PackageName)
-                           , InstalledPackageId(..)
+import Distribution.Package (InstalledPackageId(..)
                            , PackageIdentifier)
-import qualified Distribution.Package as C
 import Distribution.Simple.BuildPaths (defaultDistPref)
 import Distribution.Simple.Configure (localBuildInfoFile)
 import Distribution.Simple.LocalBuildInfo (ComponentName)

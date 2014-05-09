@@ -13,21 +13,16 @@ module Language.Haskell.GhcMod.CabalApi (
 import Language.Haskell.GhcMod.Types
 import Language.Haskell.GhcMod.GhcPkg
 import Language.Haskell.GhcMod.CabalConfig
-import Language.Haskell.GhcMod.Utils
 
 import Control.Applicative ((<$>))
-import Control.Exception (SomeException(..))
 import qualified Control.Exception as E
-import Control.Monad (filterM,mplus)
+import Control.Monad (filterM)
 import CoreMonad (liftIO)
 import Data.Maybe (maybeToList)
 import Data.Set (fromList, toList)
-import Data.List (find,tails,isPrefixOf,nub,stripPrefix)
 import Distribution.ModuleName (ModuleName,toFilePath)
 import Distribution.Package (Dependency(Dependency)
-                           , PackageName(PackageName)
-                           , InstalledPackageId(..)
-                           , PackageIdentifier)
+                           , PackageName(PackageName))
 import qualified Distribution.Package as C
 import Distribution.PackageDescription (PackageDescription, BuildInfo, TestSuite, TestSuiteInterface(..), Executable)
 import qualified Distribution.PackageDescription as P
@@ -36,16 +31,12 @@ import Distribution.PackageDescription.Parse (readPackageDescription)
 import Distribution.Simple.Compiler (CompilerId(..), CompilerFlavor(..))
 import Distribution.Simple.Program (ghcProgram)
 import Distribution.Simple.Program.Types (programName, programFindVersion)
-import Distribution.Simple.BuildPaths (defaultDistPref)
-import Distribution.Simple.Configure (localBuildInfoFile)
-import Distribution.Simple.LocalBuildInfo (ComponentName)
 import Distribution.System (buildPlatform)
 import Distribution.Text (display)
 import Distribution.Verbosity (silent)
 import Distribution.Version (Version)
 import System.Directory (doesFileExist)
 import System.FilePath ((</>))
-import Text.Read (readMaybe)
 ----------------------------------------------------------------
 
 -- | Getting necessary 'CompilerOptions' from three information sources.

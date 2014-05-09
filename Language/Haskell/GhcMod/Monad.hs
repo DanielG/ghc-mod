@@ -23,11 +23,17 @@ import GhcMonad
 import Exception
 import MonadUtils
 import DynFlags
-
-import Data.Monoid (Monoid)
+-- ghc <= 7.2
 #if !MIN_VERSION_ghc(7,4,0)
 import HscTypes
 #endif
+
+-- base <= 4.6
+#if !MIN_VERSION_base(4,7,0)
+import Data.Monoid (Monoid)
+import Control.Monad.Trans.Class (lift)
+#endif
+
 import Data.IORef (IORef, readIORef, writeIORef, newIORef)
 
 import Control.Monad (liftM)
@@ -36,7 +42,6 @@ import Control.Monad.Base (MonadBase,liftBase)
 import Control.Monad.Trans.RWS.Lazy (RWST(..),runRWST)
 import Control.Monad.Trans.Control (MonadBaseControl(..), StM, liftBaseWith
                                    , control, liftBaseOp, liftBaseOp_)
-import Control.Monad.Trans.Class (lift)
 import Control.Monad.Reader.Class
 import Control.Monad.Writer.Class
 import Control.Monad.State.Class
