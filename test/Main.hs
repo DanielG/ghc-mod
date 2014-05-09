@@ -1,8 +1,12 @@
+{-# LANGUAGE ScopedTypeVariables #-}
 import Spec
 import Dir
 
 import Test.Hspec
 import System.Process
+
+import Language.Haskell.GhcMod (debugInfo, defaultOptions, findCradle)
+import Control.Exception as E
 
 main = do
   let sandboxes = [ "test/data", "test/data/check-packageid"
@@ -17,4 +21,10 @@ main = do
   genSandboxCfg `mapM_` sandboxes
   genGhcPkgCache `mapM_` pkgDirs
   system "find test -name setup-config -exec rm {} \\;"
+  system "cabal --version"
+  system "ghc --version"
+
+  (putStrLn =<< debugInfo defaultOptions =<< findCradle)
+      `E.catch` (\(_ :: E.SomeException) -> return () )
+
   hspec spec
