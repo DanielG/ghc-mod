@@ -9,6 +9,7 @@ import Bag (Bag, bagToList)
 import Control.Applicative ((<$>))
 import CoreMonad (liftIO)
 import Data.IORef (IORef, newIORef, readIORef, writeIORef, modifyIORef)
+import Data.List (isPrefixOf)
 import Data.Maybe (fromMaybe)
 import ErrUtils (ErrMsg, errMsgShortDoc, errMsgExtraInfo)
 import Exception (ghandle)
@@ -16,9 +17,9 @@ import GHC (Ghc, DynFlags, SrcSpan, Severity(SevError))
 import qualified GHC as G
 import HscTypes (SourceError, srcErrorMessages)
 import Language.Haskell.GhcMod.Doc (showPage, getStyle)
-import Language.Haskell.GhcMod.GHCApi (withDynFlags)
+import Language.Haskell.GhcMod.GHCApi (withDynFlags, withCmdFlags)
 import qualified Language.Haskell.GhcMod.Gap as Gap
-import Language.Haskell.GhcMod.Types (Options, convert)
+import Language.Haskell.GhcMod.Types (Options(..), convert)
 import Outputable (PprStyle, SDoc)
 import System.FilePath (normalise)
 
@@ -51,10 +52,12 @@ withLogger :: Options -> (DynFlags -> DynFlags) -> Ghc () -> Ghc (Either String 
 withLogger opt setDF body = ghandle (sourceError opt) $ do
     logref <- liftIO $ newLogRef
     withDynFlags (setLogger logref . setDF) $ do
-        body
-        liftIO $ Right <$> readAndClearLogRef opt logref
+        withCmdFlags wflags $ do
+            body
+            liftIO $ Right <$> readAndClearLogRef opt logref
   where
     setLogger logref df = Gap.setLogAction df $ appendLogRef df logref
+    wflags = filter ("-fno-warn" `isPrefixOf`) $ ghcOpts opt
 
 ----------------------------------------------------------------
 
