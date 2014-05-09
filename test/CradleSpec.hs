@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 module CradleSpec where
 
 import Control.Applicative
@@ -31,7 +32,11 @@ spec = do
                     cradleCurrentDir = "test" </> "data" </> "subdir1" </> "subdir2"
                   , cradleRootDir    = "test" </> "data"
                   , cradleCabalFile  = Just ("test" </> "data" </> "cabalapi.cabal")
+#if MIN_VERSION_Cabal(1,18,0)
                   , cradlePkgDbStack = [GlobalDb, PackageDb (cwd </> "test/data/.cabal-sandbox/i386-osx-ghc-7.6.3-packages.conf.d")]
+#else
+                  , cradlePkgDbStack = [GlobalDb, UserDb]
+#endif
                   }
         it "works even if a sandbox config file is broken" $ do
             withDirectory "test/data/broken-sandbox" $ \dir -> do

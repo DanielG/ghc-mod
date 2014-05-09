@@ -24,22 +24,18 @@ import Data.Maybe (isJust, fromJust)
 import Exception (ghandle, SomeException(..))
 import GHC (Ghc, GhcMonad, DynFlags(..), GhcLink(..), HscTarget(..), LoadHowMuch(..))
 import qualified GHC as G
+import GHC.Paths (libdir)
 import qualified Language.Haskell.GhcMod.Gap as Gap
 import Language.Haskell.GhcMod.Types
 import System.Exit (exitSuccess)
 import System.IO (hPutStr, hPrint, stderr)
 import System.IO.Unsafe (unsafePerformIO)
-import System.Process (readProcess)
 
 ----------------------------------------------------------------
 
 -- | Obtaining the directory for system libraries.
 getSystemLibDir :: IO (Maybe FilePath)
-getSystemLibDir = do
-    res <- readProcess "ghc" ["--print-libdir"] []
-    return $ case res of
-        ""   -> Nothing
-        dirn -> Just (init dirn)
+getSystemLibDir = return $ Just libdir
 
 ----------------------------------------------------------------
 
