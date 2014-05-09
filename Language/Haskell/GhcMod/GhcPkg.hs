@@ -1,4 +1,4 @@
-{-# LANGUAGE BangPatterns, ScopedTypeVariables, TupleSections #-}
+{-# LANGUAGE CPP, BangPatterns, ScopedTypeVariables, TupleSections #-}
 module Language.Haskell.GhcMod.GhcPkg (
     ghcPkgDbOpt
   , ghcPkgDbStackOpts
@@ -12,7 +12,9 @@ module Language.Haskell.GhcMod.GhcPkg (
 
 import Config (cProjectVersionInt)
 import Control.Applicative ((<$>))
+#if MIN_VERSION_Cabal(1,18,0)
 import Control.Exception (SomeException(..))
+#endif
 import qualified Control.Exception as E
 import Data.Char (isSpace)
 import Data.List (isPrefixOf, intercalate)
@@ -51,8 +53,12 @@ getPackageDbStack :: FilePath -- ^ Project Directory (where the
                                  -- exists)
                   -> IO [GhcPkgDb]
 getPackageDbStack cdir =
+#if MIN_VERSION_Cabal(1,18,0)
     (getSandboxDb cdir >>= \db -> return [GlobalDb, PackageDb db])
       `E.catch` \(_ :: SomeException) -> return [GlobalDb, UserDb]
+#else
+    return [GlobalDb, UserDb]
+#endif
 
 fromInstalledPackageId' :: InstalledPackageId -> Maybe Package
 fromInstalledPackageId' pid = let
