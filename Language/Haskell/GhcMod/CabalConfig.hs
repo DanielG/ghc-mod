@@ -6,6 +6,7 @@ module Language.Haskell.GhcMod.CabalConfig (
 
 import Language.Haskell.GhcMod.GhcPkg
 import Language.Haskell.GhcMod.Utils
+import Language.Haskell.GhcMod.Read
 import Language.Haskell.GhcMod.Types
 
 import qualified Language.Haskell.GhcMod.Cabal16 as C16
@@ -24,7 +25,6 @@ import Distribution.Simple.BuildPaths (defaultDistPref)
 import Distribution.Simple.Configure (localBuildInfoFile)
 import Distribution.Simple.LocalBuildInfo (ComponentName)
 import System.FilePath ((</>))
-import Text.Read (readMaybe)
 ----------------------------------------------------------------
 
 type CabalConfig = String
@@ -94,7 +94,7 @@ configDependencies thisPkg config = map fromInstalledPackageId deps
          clbi <- stripPrefix " = " field
          if "Nothing" `isPrefixOf` clbi
              then Nothing
-             else case readMaybe <$> stripPrefix "Just " clbi of
+             else case readMaybe =<< stripPrefix "Just " clbi of
                     Just x -> x
                     Nothing -> error $ "reading libraryConfig failed\n" ++ show (stripPrefix "Just " clbi)
 
@@ -102,15 +102,9 @@ configDependencies thisPkg config = map fromInstalledPackageId deps
        extract field = readConfigs field <$> extractField config field
 
        readConfigs :: String -> String -> [(String, C16.ComponentLocalBuildInfo)]
-       readConfigs f s = case readMaybe s of
-           Just x -> x
-           Nothing -> error $ "reading config " ++ f ++ " failed"
-
-
-readEither :: Read r => String -> Either String r
-readEither s = case readMaybe s of
-    Just x -> Right x
-    Nothing -> Left $ "read: failed on input:\n" ++ s
+       readConfigs f s = case readEither s of
+           Right x -> x
+           Left msg -> error $ "reading config " ++ f ++ " failed ("++msg++")"
 
 extractField :: CabalConfig -> String -> Either String String
 extractField config field =
