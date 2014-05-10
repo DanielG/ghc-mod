@@ -79,6 +79,7 @@ Library
                         Language.Haskell.GhcMod.PkgDoc
                         Language.Haskell.GhcMod.Utils
                         Language.Haskell.GhcMod.Types
+                        Language.Haskell.GhcMod.Read
   Build-Depends:        base >= 4.0 && < 5
                       , containers
                       , deepseq
