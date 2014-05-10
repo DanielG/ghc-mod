@@ -3,9 +3,8 @@ module Language.Haskell.GhcMod.List (listModules, modules) where
 import Control.Applicative ((<$>))
 import Control.Exception (SomeException(..))
 import Data.List (nub, sort)
-import GHC (Ghc)
 import qualified GHC as G
-import Language.Haskell.GhcMod.GHCApi
+import Language.Haskell.GhcMod.Monad
 import Language.Haskell.GhcMod.Types
 import Packages (pkgIdMap, exposedModules, sourcePackageId, display)
 import UniqFM (eltsUFM)
@@ -14,13 +13,13 @@ import UniqFM (eltsUFM)
 
 -- | Listing installed modules.
 listModules :: Options -> Cradle -> IO String
-listModules opt cradle = withGHC' $ do
-    initializeFlagsWithCradle opt cradle
-    modules opt
+listModules opt _ = runGhcMod opt $ modules
 
 -- | Listing installed modules.
-modules :: Options -> Ghc String
-modules opt = convert opt . arrange <$> (getModules `G.gcatch` handler)
+modules :: GhcMod String
+modules = do
+    opt <- options
+    convert opt . (arrange opt) <$> (getModules `G.gcatch` handler)
   where
     getModules = getExposedModules <$> G.getSessionDynFlags
     getExposedModules = concatMap exposedModules'
@@ -29,8 +28,8 @@ modules opt = convert opt . arrange <$> (getModules `G.gcatch` handler)
         map G.moduleNameString (exposedModules p)
     	`zip`
         repeat (display $ sourcePackageId p)
-    arrange = nub . sort . map dropPkgs
-    dropPkgs (name, pkg)
+    arrange opt = nub . sort . map (dropPkgs opt)
+    dropPkgs opt (name, pkg)
       | detailed opt = name ++ " " ++ pkg
       | otherwise = name
     handler (SomeException _) = return []

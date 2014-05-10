@@ -35,6 +35,7 @@ import GHC (Ghc)
 import qualified GHC as G
 import Language.Haskell.GhcMod
 import Language.Haskell.GhcMod.Ghc
+import Language.Haskell.GhcMod.Monad
 import Language.Haskell.GhcMod.Internal
 import Paths_ghc_mod
 import System.Console.GetOpt
@@ -116,9 +117,8 @@ replace (x:xs)    =  x  : replace xs
 
 ----------------------------------------------------------------
 
-run :: Cradle -> Maybe FilePath -> Options -> Ghc a -> IO a
-run cradle mlibdir opt body = G.runGhc mlibdir $ do
-    initializeFlagsWithCradle opt cradle
+run :: Cradle -> Maybe FilePath -> Options -> GhcMod a -> IO a
+run _ _ opt body = runGhcMod opt $ do
     dflags <- G.getSessionDynFlags
     G.defaultCleanupHandler dflags body
 
@@ -126,26 +126,26 @@ run cradle mlibdir opt body = G.runGhc mlibdir $ do
 
 setupDB :: Cradle -> Maybe FilePath -> Options -> MVar SymMdlDb -> IO ()
 setupDB cradle mlibdir opt mvar = E.handle handler $ do
-    db <- run cradle mlibdir opt getSymMdlDb
+    db <- run cradle mlibdir opt (toGhcMod getSymMdlDb)
     putMVar mvar db
   where
     handler (SomeException _) = return () -- fixme: put emptyDb?
 
 ----------------------------------------------------------------
 
-loop :: Options -> Set FilePath -> MVar SymMdlDb -> Ghc ()
+loop :: Options -> Set FilePath -> MVar SymMdlDb -> GhcMod ()
 loop opt set mvar = do
     cmdArg <- liftIO getLine
     let (cmd,arg') = break (== ' ') cmdArg
         arg = dropWhile (== ' ') arg'
     (ret,ok,set') <- case cmd of
-        "check"  -> checkStx opt set arg
-        "find"   -> findSym  opt set arg mvar
-        "lint"   -> lintStx  opt set arg
-        "info"   -> showInfo opt set arg
-        "type"   -> showType opt set arg
-        "boot"   -> bootIt   opt set
-        "browse" -> browseIt opt set arg
+        "check"  -> toGhcMod $ checkStx opt set arg
+        "find"   -> toGhcMod $ findSym  opt set arg mvar
+        "lint"   -> toGhcMod $ lintStx  opt set arg
+        "info"   -> toGhcMod $ showInfo opt set arg
+        "type"   -> toGhcMod $ showType opt set arg
+        "boot"   -> bootIt set
+        "browse" -> toGhcMod $ browseIt opt set arg
         "quit"   -> return ("quit", False, set)
         ""       -> return ("quit", False, set)
         _        -> return ([], True, set)
@@ -255,11 +255,10 @@ showType opt set fileArg  = do
 
 ----------------------------------------------------------------
 
-bootIt :: Options
-       -> Set FilePath
-       -> Ghc (String, Bool, Set FilePath)
-bootIt opt set = do
-    ret <- boot opt
+bootIt :: Set FilePath
+       -> GhcMod (String, Bool, Set FilePath)
+bootIt set = do
+    ret <- boot
     return (ret, True, set)
 
 browseIt :: Options

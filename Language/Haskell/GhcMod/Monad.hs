@@ -8,6 +8,7 @@ module Language.Haskell.GhcMod.Monad (
  , runGhcMod'
  , runGhcMod
  , toGhcMod
+ , options
  , module Control.Monad.Reader.Class
  , module Control.Monad.Writer.Class
  , module Control.Monad.State.Class
@@ -98,6 +99,9 @@ toGhcMod :: Ghc a -> GhcMod a
 toGhcMod a = do
     s <- gmGhcSession <$> ask
     liftIO $ unGhc a $ Session s
+
+options :: GhcMod Options
+options = gmOptions <$> ask
 
 instance MonadBase IO GhcMod where
     liftBase = GhcMod . liftBase
