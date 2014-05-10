@@ -34,3 +34,10 @@ spec = do
                 cradle <- findCradleWithoutSandbox
                 res <- checkSyntax defaultOptions cradle ["Baz.hs"]
                 res `shouldSatisfy` ("Baz.hs:5:1:Warning:" `isPrefixOf`)
+
+        context "without errors" $ do
+            it "doesn't output empty line" $ do
+                withDirectory_ "test/data/ghc-mod-check/Data" $ do
+                    cradle <- findCradleWithoutSandbox
+                    res <- checkSyntax defaultOptions cradle ["Foo.hs"]
+                    res `shouldBe` ""
