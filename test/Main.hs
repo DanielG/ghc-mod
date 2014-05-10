@@ -1,4 +1,4 @@
-{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE CPP, ScopedTypeVariables #-}
 import Spec
 import Dir
 
@@ -22,6 +22,7 @@ main = do
   genGhcPkgCache `mapM_` pkgDirs
   system "find test -name setup-config -exec rm {} \\;"
   system "cabal --version"
+  putStrLn $ "ghc-mod was built with Cabal version " ++ VERSION_Cabal
   system "ghc --version"
 
   (putStrLn =<< debugInfo defaultOptions =<< findCradle)
