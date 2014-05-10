@@ -7,6 +7,7 @@ module Language.Haskell.GhcMod.Monad (
  , GhcModState(..)
  , runGhcMod'
  , runGhcMod
+ , withErrorHandler
  , toGhcMod
  , options
  , module Control.Monad.Reader.Class
@@ -47,6 +48,10 @@ import Control.Monad.Reader.Class
 import Control.Monad.Writer.Class
 import Control.Monad.State.Class
 
+import System.IO (hPutStr, hPrint, stderr)
+import System.Exit (exitSuccess)
+
+
 data GhcModEnv = GhcModEnv {
       gmGhcSession :: !(IORef HscEnv)
     , gmOptions    :: Options
@@ -84,16 +89,29 @@ runGhcMod' r s a = do
   (a', s',w) <- runRWST (unGhcMod $ initGhcMonad (Just libdir) >> a) r s
   return (a',(s',w))
 
+
 runGhcMod :: Options -> GhcMod a -> IO a
-runGhcMod opt a = do
+runGhcMod opt action = do
     session <- newIORef (error "empty session")
     cradle <- findCradle
     let env = GhcModEnv { gmGhcSession = session
                         , gmOptions = opt
                         , gmCradle = cradle }
-    fst <$> runGhcMod' env defaultState (a' cradle)
- where
-    a' cradle = (toGhcMod $ initializeFlagsWithCradle opt cradle) >> a
+    (a,(_,_)) <- runGhcMod' env defaultState $ do
+        dflags <- getSessionDynFlags
+        defaultCleanupHandler dflags $ do
+            toGhcMod $ initializeFlagsWithCradle opt cradle
+            action
+    return a
+
+withErrorHandler :: String -> GhcMod a -> GhcMod a
+withErrorHandler label = ghandle ignore
+  where
+    ignore :: SomeException -> GhcMod a
+    ignore e = liftIO $ do
+        hPutStr stderr $ label ++ ":0:0:Error:"
+        hPrint stderr e
+        exitSuccess
 
 toGhcMod :: Ghc a -> GhcMod a
 toGhcMod a = do

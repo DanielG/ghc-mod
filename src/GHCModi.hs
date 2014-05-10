@@ -139,13 +139,13 @@ loop opt set mvar = do
     let (cmd,arg') = break (== ' ') cmdArg
         arg = dropWhile (== ' ') arg'
     (ret,ok,set') <- case cmd of
-        "check"  -> toGhcMod $ checkStx opt set arg
+        "check"  -> checkStx opt set arg
         "find"   -> toGhcMod $ findSym  opt set arg mvar
         "lint"   -> toGhcMod $ lintStx  opt set arg
         "info"   -> toGhcMod $ showInfo opt set arg
         "type"   -> toGhcMod $ showType opt set arg
         "boot"   -> bootIt set
-        "browse" -> toGhcMod $ browseIt opt set arg
+        "browse" -> browseIt set arg
         "quit"   -> return ("quit", False, set)
         ""       -> return ("quit", False, set)
         _        -> return ([], True, set)
@@ -162,11 +162,11 @@ loop opt set mvar = do
 checkStx :: Options
          -> Set FilePath
          -> FilePath
-         -> Ghc (String, Bool, Set FilePath)
-checkStx opt set file = do
-    set' <- newFileSet set file
+         -> GhcMod (String, Bool, Set FilePath)
+checkStx _ set file = do
+    set' <- toGhcMod $ newFileSet set file
     let files = S.toList set'
-    eret <- check opt files
+    eret <- check files
     case eret of
         Right ret -> return (ret, True, set')
         Left ret  -> return (ret, True, set) -- fxime: set
@@ -261,10 +261,9 @@ bootIt set = do
     ret <- boot
     return (ret, True, set)
 
-browseIt :: Options
-         -> Set FilePath
+browseIt :: Set FilePath
          -> ModuleString
-         -> Ghc (String, Bool, Set FilePath)
-browseIt opt set mdl = do
-    ret <- browse opt mdl
+         -> GhcMod (String, Bool, Set FilePath)
+browseIt set mdl = do
+    ret <- browse mdl
     return (ret, True, set)

@@ -9,6 +9,7 @@ import qualified Control.Exception as E
 import Data.Typeable (Typeable)
 import Data.Version (showVersion)
 import Language.Haskell.GhcMod
+import Language.Haskell.GhcMod.Monad
 import Paths_ghc_mod
 import System.Console.GetOpt (OptDescr(..), ArgDescr(..), ArgOrder(..))
 import qualified System.Console.GetOpt as O
@@ -112,8 +113,8 @@ main = flip E.catches handlers $ do
       "list"    -> listModules opt cradle
       "lang"    -> listLanguages opt
       "flag"    -> listFlags opt
-      "browse"  -> concat <$> mapM (browseModule opt cradle) remainingArgs
-      "check"   -> checkSyntax opt cradle remainingArgs
+      "browse"  -> runGhcMod opt $ concat <$> mapM browse remainingArgs
+      "check"   -> runGhcMod opt $ checkSyntax remainingArgs
       "expand"  -> expandTemplate opt cradle remainingArgs
       "debug"   -> debugInfo opt cradle
       "info"    -> nArgs 3 infoExpr opt cradle cmdArg1 cmdArg3

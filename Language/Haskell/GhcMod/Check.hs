@@ -10,20 +10,18 @@ import GHC (Ghc)
 import Language.Haskell.GhcMod.GHCApi
 import qualified Language.Haskell.GhcMod.Gap as Gap
 import Language.Haskell.GhcMod.Logger
+import Language.Haskell.GhcMod.Monad
 import Language.Haskell.GhcMod.Types
 
 ----------------------------------------------------------------
 
 -- | Checking syntax of a target file using GHC.
 --   Warnings and errors are returned.
-checkSyntax :: Options
-            -> Cradle
-            -> [FilePath]  -- ^ The target files.
-            -> IO String
-checkSyntax _   _      []    = return ""
-checkSyntax opt cradle files = withGHC sessionName $ do
-    initializeFlagsWithCradle opt cradle
-    either id id <$> check opt files
+checkSyntax :: [FilePath]  -- ^ The target files.
+            -> GhcMod String
+checkSyntax [] = return ""
+checkSyntax files = withErrorHandler sessionName $ do
+    either id id <$> check files
   where
     sessionName = case files of
       [file] -> file
@@ -33,10 +31,11 @@ checkSyntax opt cradle files = withGHC sessionName $ do
 
 -- | Checking syntax of a target file using GHC.
 --   Warnings and errors are returned.
-check :: Options
-      -> [FilePath]  -- ^ The target files.
-      -> Ghc (Either String String)
-check opt fileNames = withLogger opt setAllWaringFlags $
+check :: [FilePath]  -- ^ The target files.
+      -> GhcMod (Either String String)
+check fileNames = do
+  opt <- options
+  toGhcMod $ withLogger opt setAllWaringFlags $ do
     setTargetFiles fileNames
 
 ----------------------------------------------------------------

@@ -14,7 +14,7 @@ module Language.Haskell.GhcMod (
   , Expression
   -- * 'IO' utilities
   , bootInfo
-  , browseModule
+  , browse
   , checkSyntax
   , lintSyntax
   , expandTemplate

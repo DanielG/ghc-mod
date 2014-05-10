@@ -20,7 +20,7 @@ boot = do
     mods  <- modules
     langs <- liftIO $ listLanguages opt
     flags <- liftIO $ listFlags opt
-    pre   <- concat <$> mapM (toGhcMod . browse opt) preBrowsedModules
+    pre   <- concat <$> mapM browse preBrowsedModules
     return $ mods ++ langs ++ flags ++ pre
 
 preBrowsedModules :: [String]

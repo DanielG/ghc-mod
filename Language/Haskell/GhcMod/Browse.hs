@@ -1,6 +1,5 @@
 module Language.Haskell.GhcMod.Browse (
-    browseModule
-  , browse
+    browse
   , browseAll)
   where
 
@@ -16,6 +15,7 @@ import qualified GHC as G
 import Language.Haskell.GhcMod.Doc (showPage, showOneLine, styleUnqualified)
 import Language.Haskell.GhcMod.GHCApi
 import Language.Haskell.GhcMod.Gap
+import Language.Haskell.GhcMod.Monad
 import Language.Haskell.GhcMod.Types
 import Name (getOccString)
 import Outputable (ppr, Outputable)
@@ -27,28 +27,17 @@ import Type (dropForAlls, splitFunTy_maybe, mkFunTy, isPredTy)
 -- | Getting functions, classes, etc from a module.
 --   If 'detailed' is 'True', their types are also obtained.
 --   If 'operators' is 'True', operators are also returned.
-browseModule :: Options
-             -> Cradle
-             -> ModuleString -- ^ A module name. (e.g. \"Data.List\")
-             -> IO String
-browseModule opt cradle pkgmdl = withGHC' $ do
-    initializeFlagsWithCradle opt cradle
-    browse opt pkgmdl
-
--- | Getting functions, classes, etc from a module.
---   If 'detailed' is 'True', their types are also obtained.
---   If 'operators' is 'True', operators are also returned.
-browse :: Options
-       -> ModuleString -- ^ A module name. (e.g. \"Data.List\")
-       -> Ghc String
-browse opt pkgmdl = do
+browse :: ModuleString -- ^ A module name. (e.g. \"Data.List\")
+       -> GhcMod String
+browse pkgmdl = do
+    opt <- options
     convert opt . sort <$> (getModule >>= listExports)
   where
     (mpkg,mdl) = splitPkgMdl pkgmdl
     mdlname = G.mkModuleName mdl
     mpkgid = mkFastString <$> mpkg
     listExports Nothing       = return []
-    listExports (Just mdinfo) = processExports opt mdinfo
+    listExports (Just mdinfo) = processExports mdinfo
     -- findModule works only for package modules, moreover,
     -- you cannot load a package module. On the other hand,
     -- to browse a local module you need to load it first.
@@ -73,12 +62,14 @@ splitPkgMdl pkgmdl = case break (==':') pkgmdl of
     (mdl,"")    -> (Nothing,mdl)
     (pkg,_:mdl) -> (Just pkg,mdl)
 
-processExports :: Options -> ModuleInfo -> Ghc [String]
-processExports opt minfo = mapM (showExport opt minfo) $ removeOps $ G.modInfoExports minfo
-  where
+processExports :: ModuleInfo -> GhcMod [String]
+processExports minfo = do
+  opt <- options
+  let
     removeOps
       | operators opt = id
       | otherwise = filter (isAlpha . head . getOccString)
+  mapM (toGhcMod . showExport opt minfo) $ removeOps $ G.modInfoExports minfo
 
 showExport :: Options -> ModuleInfo -> Name -> Ghc String
 showExport opt minfo e = do
