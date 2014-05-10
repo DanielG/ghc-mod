@@ -57,7 +57,11 @@ inter c bs = foldr1 (\x y -> x . (c:) . y) bs
 
 convert :: ToString a => Options -> a -> String
 convert opt@Options { outputStyle = LispStyle  } x = toLisp  opt x "\n"
-convert opt@Options { outputStyle = PlainStyle } x = toPlain opt x "\n"
+convert opt@Options { outputStyle = PlainStyle } x
+  | str == "\n" = ""
+  | otherwise   = str
+  where
+    str = toPlain opt x "\n"
 
 class ToString a where
     toLisp  :: Options -> a -> Builder
