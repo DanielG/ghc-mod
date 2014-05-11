@@ -7,6 +7,7 @@ import Data.List (intercalate)
 import Data.Maybe (fromMaybe, isJust, fromJust)
 import Language.Haskell.GhcMod.CabalApi
 import Language.Haskell.GhcMod.GHCApi
+import Language.Haskell.GhcMod.Convert
 import Language.Haskell.GhcMod.Types
 
 ----------------------------------------------------------------

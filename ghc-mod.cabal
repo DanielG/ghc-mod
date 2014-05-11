@@ -61,6 +61,7 @@ Library
                         Language.Haskell.GhcMod.CabalConfig
                         Language.Haskell.GhcMod.Cabal16
                         Language.Haskell.GhcMod.Cabal18
+                        Language.Haskell.GhcMod.Convert
                         Language.Haskell.GhcMod.Check
                         Language.Haskell.GhcMod.Cradle
                         Language.Haskell.GhcMod.Debug

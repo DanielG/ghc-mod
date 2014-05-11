@@ -16,6 +16,7 @@ import Language.Haskell.GhcMod.Doc (showPage, showOneLine, styleUnqualified)
 import Language.Haskell.GhcMod.GHCApi
 import Language.Haskell.GhcMod.Gap
 import Language.Haskell.GhcMod.Monad
+import Language.Haskell.GhcMod.Convert
 import Language.Haskell.GhcMod.Types
 import Name (getOccString)
 import Outputable (ppr, Outputable)

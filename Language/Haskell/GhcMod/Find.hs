@@ -9,6 +9,7 @@ import GHC (Ghc)
 import qualified GHC as G
 import Language.Haskell.GhcMod.Browse (browseAll)
 import Language.Haskell.GhcMod.GHCApi
+import Language.Haskell.GhcMod.Convert
 import Language.Haskell.GhcMod.Types
 
 #ifndef MIN_VERSION_containers
