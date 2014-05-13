@@ -205,4 +205,12 @@
 	expr
       (concat "(" expr ")"))))
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defmacro ghc-with-current-buffer (buf &rest body)
+  ;; (declare (indent 1))
+  `(if (get-buffer ,buf)
+       (with-current-buffer ,buf
+	 ,@body)))
+
 (provide 'ghc-func)

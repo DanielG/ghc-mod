@@ -80,9 +80,9 @@ nil            does not display errors/warnings.
 	      (buf ghc-process-original-buffer))
 	  (ghc-check-highlight-original-buffer file buf infos)))
        (t
-	(with-current-buffer ghc-process-original-buffer
+	(ghc-with-current-buffer ghc-process-original-buffer
 	  (remove-overlays (point-min) (point-max) 'ghc-check t))))
-      (with-current-buffer ghc-process-original-buffer
+      (ghc-with-current-buffer ghc-process-original-buffer
 	(let ((len (length infos)))
 	  (if (= len 0)
 	      (setq mode-line-process "")
@@ -91,7 +91,7 @@ nil            does not display errors/warnings.
 		   (wlen (- len elen)))
 	      (setq mode-line-process (format " %d:%d" elen wlen))))))))
    (t
-    (with-current-buffer ghc-process-original-buffer
+    (ghc-with-current-buffer ghc-process-original-buffer
       (setq mode-line-process " failed")))))
 
 (defun ghc-to-info (errs)
@@ -114,7 +114,7 @@ nil            does not display errors/warnings.
 	    (ghc-add infos info)))))))
 
 (defun ghc-check-highlight-original-buffer (ofile buf infos)
-  (with-current-buffer buf
+  (ghc-with-current-buffer buf
     (remove-overlays (point-min) (point-max) 'ghc-check t)
     (save-excursion
       (goto-char (point-min))
