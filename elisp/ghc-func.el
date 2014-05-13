@@ -209,7 +209,7 @@
 
 (defmacro ghc-with-current-buffer (buf &rest body)
   ;; (declare (indent 1))
-  `(if (get-buffer ,buf)
+  `(if (buffer-live-p ,buf)
        (with-current-buffer ,buf
 	 ,@body)))
 
