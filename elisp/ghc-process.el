@@ -12,7 +12,8 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defvar-local ghc-process-running nil)
+(defvar ghc-process-running nil)
+
 (defvar-local ghc-process-process-name nil)
 (defvar-local ghc-process-original-buffer nil)
 (defvar-local ghc-process-original-file nil)
@@ -29,7 +30,8 @@
 (defun ghc-with-process (cmd callback &optional hook1 hook2)
   (unless ghc-process-process-name
     (setq ghc-process-process-name (ghc-get-project-root)))
-  (when ghc-process-process-name
+  (when (and ghc-process-process-name (not ghc-process-running))
+    (setq ghc-process-running t)
     (if hook1 (funcall hook1))
     (let* ((cbuf (current-buffer))
 	   (name ghc-process-process-name)
@@ -37,19 +39,17 @@
 	   (file (buffer-file-name))
 	   (cpro (get-process name)))
       (ghc-with-current-buffer buf
-	(unless ghc-process-running
-	  (setq ghc-process-running t)
-	  (setq ghc-process-original-buffer cbuf)
-	  (setq ghc-process-original-file file)
-	  (setq ghc-process-callback callback)
-	  (setq ghc-process-hook hook2)
-	  (erase-buffer)
-	  (let ((pro (ghc-get-process cpro name buf)))
-	    (process-send-string pro cmd)
-	    (when ghc-debug
-	      (ghc-with-debug-buffer
-	       (insert (format "%% %s" cmd))))
-	    pro))))))
+        (setq ghc-process-original-buffer cbuf)
+	(setq ghc-process-original-file file)
+	(setq ghc-process-callback callback)
+	(setq ghc-process-hook hook2)
+	(erase-buffer)
+	(let ((pro (ghc-get-process cpro name buf)))
+	  (process-send-string pro cmd)
+	  (when ghc-debug
+	    (ghc-with-debug-buffer
+	     (insert (format "%% %s" cmd))))
+	  pro)))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -69,27 +69,30 @@
     pro))
 
 (defun ghc-process-filter (process string)
-  (ghc-with-current-buffer (process-buffer process)
-    (goto-char (point-max))
-    (insert string)
-    (forward-line -1)
-    (cond
-     ((looking-at "^OK$")
-      (if ghc-process-hook (funcall ghc-process-hook))
-      (goto-char (point-min))
-      (funcall ghc-process-callback 'ok)
-      (when ghc-debug
-	(let ((cbuf (current-buffer)))
-	  (ghc-with-debug-buffer
-	   (insert-buffer-substring cbuf))))
-      (setq ghc-process-running nil))
-     ((looking-at "^NG ")
-      (funcall ghc-process-callback 'ng)
-      (when ghc-debug
-	(let ((cbuf (current-buffer)))
-	  (ghc-with-debug-buffer
-	   (insert-buffer-substring cbuf))))
-      (setq ghc-process-running nil)))))
+  (let ((pbuf (process-buffer process)))
+    (if (not (get-buffer pbuf))
+	(setq ghc-process-running nil) ;; just in case
+      (ghc-with-current-buffer (process-buffer process)
+        (goto-char (point-max))
+	(insert string)
+	(forward-line -1)
+	(cond
+	 ((looking-at "^OK$")
+	  (if ghc-process-hook (funcall ghc-process-hook))
+	  (goto-char (point-min))
+	  (funcall ghc-process-callback 'ok)
+	  (when ghc-debug
+	    (let ((cbuf (current-buffer)))
+	      (ghc-with-debug-buffer
+	       (insert-buffer-substring cbuf))))
+	  (setq ghc-process-running nil))
+	 ((looking-at "^NG ")
+	  (funcall ghc-process-callback 'ng)
+	  (when ghc-debug
+	    (let ((cbuf (current-buffer)))
+	      (ghc-with-debug-buffer
+	       (insert-buffer-substring cbuf))))
+	  (setq ghc-process-running nil)))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -98,21 +101,21 @@
 (defvar ghc-process-results nil)
 
 (defun ghc-sync-process (cmd &optional n hook)
-  (setq ghc-process-rendezvous nil)
-  (setq ghc-process-results nil)
-  (setq ghc-process-num-of-results (or n 1))
-  (let ((pro (ghc-with-process cmd 'ghc-process-callback nil hook)))
-    (condition-case nil
-	(while (null ghc-process-rendezvous)
-	  ;; 0.01 is too fast for Emacs 24.4.
-	  ;; (sit-for 0.1 t) may get stuck when tooltip is displayed.
-	  (sit-for 0.1)
-	  ;; (discard-input) avoids getting stuck.
-	  (discard-input))
-      (quit
-       (ghc-with-current-buffer (process-buffer pro)
-	 (setq ghc-process-running nil)))))
-  ghc-process-results)
+  (unless ghc-process-running
+    (setq ghc-process-rendezvous nil)
+    (setq ghc-process-results nil)
+    (setq ghc-process-num-of-results (or n 1))
+    (let ((pro (ghc-with-process cmd 'ghc-process-callback nil hook)))
+      (condition-case nil
+	  (while (null ghc-process-rendezvous)
+	    ;; 0.01 is too fast for Emacs 24.4.
+	    ;; (sit-for 0.1 t) may get stuck when tooltip is displayed.
+	    (sit-for 0.1)
+	    ;; (discard-input) avoids getting stuck.
+	    (discard-input))
+	(quit
+	 (setq ghc-process-running nil))))
+    ghc-process-results))
 
 (defun ghc-process-callback (status)
   (cond
