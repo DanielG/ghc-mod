@@ -104,7 +104,7 @@
   (let ((pro (ghc-with-process cmd 'ghc-process-callback nil hook)))
     (condition-case nil
 	(while (null ghc-process-rendezvous)
-	  ;; 0.1 is too fast for Emacs 24.4.
+	  ;; 0.01 is too fast for Emacs 24.4.
 	  ;; (sit-for 0.1 t) may get stuck when tooltip is displayed.
 	  (sit-for 0.1)
 	  ;; (discard-input) avoids getting stuck.
