@@ -36,7 +36,7 @@
 	   (buf (get-buffer-create (concat " ghc-modi:" name)))
 	   (file (buffer-file-name))
 	   (cpro (get-process name)))
-      (with-current-buffer buf
+      (ghc-with-current-buffer buf
 	(unless ghc-process-running
 	  (setq ghc-process-running t)
 	  (setq ghc-process-original-buffer cbuf)
@@ -69,7 +69,7 @@
     pro))
 
 (defun ghc-process-filter (process string)
-  (with-current-buffer (process-buffer process)
+  (ghc-with-current-buffer (process-buffer process)
     (goto-char (point-max))
     (insert string)
     (forward-line -1)
@@ -110,7 +110,7 @@
 	  ;; (discard-input) avoids getting stuck.
 	  (discard-input))
       (quit
-       (with-current-buffer (process-buffer pro)
+       (ghc-with-current-buffer (process-buffer pro)
 	 (setq ghc-process-running nil)))))
   ghc-process-results)
 
