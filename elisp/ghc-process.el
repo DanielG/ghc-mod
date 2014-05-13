@@ -65,6 +65,7 @@
 (defun ghc-start-process (name buf)
   (let ((pro (start-file-process name buf ghc-interactive-command "-b" "\n" "-l")))
     (set-process-filter pro 'ghc-process-filter)
+    (set-process-sentinel pro 'ghc-process-sentinel)
     (set-process-query-on-exit-flag pro nil)
     pro))
 
@@ -93,6 +94,9 @@
 	      (ghc-with-debug-buffer
 	       (insert-buffer-substring cbuf))))
 	  (setq ghc-process-running nil)))))))
+
+(defun ghc-process-sentinel (process event)
+  (setq ghc-process-running nil))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
