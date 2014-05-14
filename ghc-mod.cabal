@@ -156,6 +156,7 @@ Test-Suite spec
                         LintSpec
                         ListSpec
                         GhcPkgSpec
+                        TestUtils
   Build-Depends:        base >= 4.0 && < 5
                       , containers
                       , deepseq
