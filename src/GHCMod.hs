@@ -115,11 +115,11 @@ main = flip E.catches handlers $ do
       "flag"    -> listFlags opt
       "browse"  -> runGhcMod opt $ concat <$> mapM browse remainingArgs
       "check"   -> runGhcMod opt $ checkSyntax remainingArgs
-      "expand"  -> expandTemplate opt cradle remainingArgs
+      "expand"  -> runGhcMod opt $ expandTemplate remainingArgs
       "debug"   -> debugInfo opt cradle
       "info"    -> nArgs 3 infoExpr opt cradle cmdArg1 cmdArg3
       "type"    -> nArgs 4 $ typeExpr opt cradle cmdArg1 (read cmdArg3) (read cmdArg4)
-      "find"    -> nArgs 1 $ findSymbol opt cradle cmdArg1
+      "find"    -> runGhcMod opt $ nArgs 1 $ findSymbol cmdArg1
       "lint"    -> nArgs 1 withFile (lintSyntax opt) cmdArg1
       "root"    -> rootInfo opt cradle
       "doc"     -> nArgs 1 $ packageDoc opt cradle cmdArg1

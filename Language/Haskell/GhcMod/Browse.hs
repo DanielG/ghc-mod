@@ -10,7 +10,7 @@ import Data.List (sort)
 import Data.Maybe (catMaybes)
 import Exception (ghandle)
 import FastString (mkFastString)
-import GHC (Ghc, GhcException(CmdLineError), ModuleInfo, Name, TyThing, DynFlags, Type, TyCon, Module)
+import GHC (GhcException(CmdLineError), ModuleInfo, Name, TyThing, DynFlags, Type, TyCon, Module)
 import qualified GHC as G
 import Language.Haskell.GhcMod.Doc (showPage, showOneLine, styleUnqualified)
 import Language.Haskell.GhcMod.GHCApi
@@ -30,9 +30,7 @@ import Type (dropForAlls, splitFunTy_maybe, mkFunTy, isPredTy)
 --   If 'operators' is 'True', operators are also returned.
 browse :: ModuleString -- ^ A module name. (e.g. \"Data.List\")
        -> GhcMod String
-browse pkgmdl = do
-    opt <- options
-    convert opt . sort <$> (getModule >>= listExports)
+browse pkgmdl = convert' . sort =<< (listExports =<< getModule)
   where
     (mpkg,mdl) = splitPkgMdl pkgmdl
     mdlname = G.mkModuleName mdl
@@ -70,14 +68,15 @@ processExports minfo = do
     removeOps
       | operators opt = id
       | otherwise = filter (isAlpha . head . getOccString)
-  mapM (toGhcMod . showExport opt minfo) $ removeOps $ G.modInfoExports minfo
+  mapM (showExport opt minfo) $ removeOps $ G.modInfoExports minfo
 
-showExport :: Options -> ModuleInfo -> Name -> Ghc String
+showExport :: Options -> ModuleInfo -> Name -> GhcMod String
 showExport opt minfo e = do
   mtype' <- mtype
   return $ concat $ catMaybes [mqualified, Just $ formatOp $ getOccString e, mtype']
   where
     mqualified = (G.moduleNameString (G.moduleName $ G.nameModule e) ++ ".") `justIf` qualified opt
+    mtype :: GhcMod (Maybe String)
     mtype
       | detailed opt = do
         tyInfo <- G.modInfoLookupName minfo e
@@ -92,7 +91,7 @@ showExport opt minfo e = do
       | isAlpha n = nm
       | otherwise = "(" ++ nm ++ ")"
     formatOp "" = error "formatOp"
-    inOtherModule :: Name -> Ghc (Maybe TyThing)
+    inOtherModule :: Name -> GhcMod (Maybe TyThing)
     inOtherModule nm = G.getModuleInfo (G.nameModule nm) >> G.lookupGlobalName nm
     justIf :: a -> Bool -> Maybe a
     justIf x True = Just x
@@ -139,7 +138,7 @@ showOutputable dflag = unwords . lines . showPage dflag styleUnqualified . ppr
 ----------------------------------------------------------------
 
 -- | Browsing all functions in all system/user modules.
-browseAll :: DynFlags -> Ghc [(String,String)]
+browseAll :: DynFlags -> GhcMod [(String,String)]
 browseAll dflag = do
     ms <- G.packageDbModules True
     is <- mapM G.getModuleInfo ms

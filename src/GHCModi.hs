@@ -35,6 +35,7 @@ import GHC (Ghc)
 import qualified GHC as G
 import Language.Haskell.GhcMod
 import Language.Haskell.GhcMod.Ghc
+import Language.Haskell.GhcMod.Convert (convert')
 import Language.Haskell.GhcMod.Monad
 import Language.Haskell.GhcMod.Internal
 import Paths_ghc_mod
@@ -126,7 +127,7 @@ run _ _ opt body = runGhcMod opt $ do
 
 setupDB :: Cradle -> Maybe FilePath -> Options -> MVar SymMdlDb -> IO ()
 setupDB cradle mlibdir opt mvar = E.handle handler $ do
-    db <- run cradle mlibdir opt (toGhcMod getSymMdlDb)
+    db <- run cradle mlibdir opt getSymMdlDb
     putMVar mvar db
   where
     handler (SomeException _) = return () -- fixme: put emptyDb?
@@ -140,7 +141,7 @@ loop opt set mvar = do
         arg = dropWhile (== ' ') arg'
     (ret,ok,set') <- case cmd of
         "check"  -> checkStx opt set arg
-        "find"   -> toGhcMod $ findSym  opt set arg mvar
+        "find"   -> findSym set arg mvar
         "lint"   -> toGhcMod $ lintStx  opt set arg
         "info"   -> toGhcMod $ showInfo opt set arg
         "type"   -> toGhcMod $ showType opt set arg
@@ -199,11 +200,11 @@ isSameMainFile file (Just x)
 
 ----------------------------------------------------------------
 
-findSym :: Options -> Set FilePath -> String -> MVar SymMdlDb
-        -> Ghc (String, Bool, Set FilePath)
-findSym opt set sym mvar = do
+findSym :: Set FilePath -> String -> MVar SymMdlDb
+        -> GhcMod (String, Bool, Set FilePath)
+findSym set sym mvar = do
     db <- liftIO $ readMVar mvar
-    let ret = lookupSym opt sym db
+    ret <- convert' $ lookupSym sym db
     return (ret, True, set)
 
 lintStx :: Options -> Set FilePath -> FilePath

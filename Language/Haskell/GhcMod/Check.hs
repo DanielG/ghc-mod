@@ -6,12 +6,10 @@ module Language.Haskell.GhcMod.Check (
   ) where
 
 import Control.Applicative ((<$>))
-import GHC (Ghc)
 import Language.Haskell.GhcMod.GHCApi
 import qualified Language.Haskell.GhcMod.Gap as Gap
 import Language.Haskell.GhcMod.Logger
 import Language.Haskell.GhcMod.Monad
-import Language.Haskell.GhcMod.Types
 
 ----------------------------------------------------------------
 
@@ -34,21 +32,17 @@ checkSyntax files = withErrorHandler sessionName $ do
 check :: [FilePath]  -- ^ The target files.
       -> GhcMod (Either String String)
 check fileNames = do
-  opt <- options
-  toGhcMod $ withLogger opt setAllWaringFlags $ do
+  withLogger setAllWaringFlags $ do
     setTargetFiles fileNames
 
 ----------------------------------------------------------------
 
 -- | Expanding Haskell Template.
-expandTemplate :: Options
-               -> Cradle
-               -> [FilePath]  -- ^ The target files.
-               -> IO String
-expandTemplate _   _      []    = return ""
-expandTemplate opt cradle files = withGHC sessionName $ do
-    initializeFlagsWithCradle opt cradle
-    either id id <$> expand opt files
+expandTemplate :: [FilePath]  -- ^ The target files.
+               -> GhcMod String
+expandTemplate [] = return ""
+expandTemplate files = withErrorHandler sessionName $ do
+    either id id <$> expand files
   where
     sessionName = case files of
       [file] -> file
@@ -57,8 +51,7 @@ expandTemplate opt cradle files = withGHC sessionName $ do
 ----------------------------------------------------------------
 
 -- | Expanding Haskell Template.
-expand :: Options
-      -> [FilePath]  -- ^ The target files.
-      -> Ghc (Either String String)
-expand opt fileNames = withLogger opt (Gap.setDumpSplices . setNoWaringFlags) $
+expand :: [FilePath]  -- ^ The target files.
+      -> GhcMod (Either String String)
+expand fileNames = withLogger (Gap.setDumpSplices . setNoWaringFlags) $
     setTargetFiles fileNames

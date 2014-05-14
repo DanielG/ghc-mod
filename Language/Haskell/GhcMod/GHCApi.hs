@@ -164,22 +164,25 @@ getDynamicFlags = do
     mlibdir <- getSystemLibDir
     G.runGhc mlibdir G.getSessionDynFlags
 
-withDynFlags :: (DynFlags -> DynFlags) -> Ghc a -> Ghc a
-withDynFlags setFlag body = G.gbracket setup teardown (\_ -> body)
+withDynFlags :: GhcMonad m
+             => (DynFlags -> DynFlags)
+             -> m a
+             -> m a
+withDynFlags setFlags body = G.gbracket setup teardown (\_ -> body)
   where
     setup = do
-        dflag <- G.getSessionDynFlags
-        void $ G.setSessionDynFlags (setFlag dflag)
-        return dflag
+        dflags <- G.getSessionDynFlags
+        void $ G.setSessionDynFlags (setFlags dflags)
+        return dflags
     teardown = void . G.setSessionDynFlags
 
-withCmdFlags :: [GHCOption] -> Ghc a -> Ghc a
+withCmdFlags :: GhcMonad m => [GHCOption] -> m a -> m a
 withCmdFlags flags body = G.gbracket setup teardown (\_ -> body)
   where
     setup = do
-        dflag <- G.getSessionDynFlags >>= addCmdOpts flags
-        void $ G.setSessionDynFlags dflag
-        return dflag
+        dflags <- G.getSessionDynFlags >>= addCmdOpts flags
+        void $ G.setSessionDynFlags dflags
+        return dflags
     teardown = void . G.setSessionDynFlags
 
 ----------------------------------------------------------------

@@ -35,6 +35,5 @@ spec = do
         context "without errors" $ do
             it "doesn't output empty line" $ do
                 withDirectory_ "test/data/ghc-mod-check/Data" $ do
-                    cradle <- findCradleWithoutSandbox
-                    res <- checkSyntax defaultOptions cradle ["Foo.hs"]
+                    res <- runID $ checkSyntax ["Foo.hs"]
                     res `shouldBe` ""
