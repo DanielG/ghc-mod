@@ -14,6 +14,7 @@ module Language.Haskell.GhcMod.Ghc (
   , SymMdlDb
   , getSymMdlDb
   , lookupSym
+  , lookupSym'
   ) where
 
 import Language.Haskell.GhcMod.Boot

@@ -35,7 +35,6 @@ import GHC (Ghc)
 import qualified GHC as G
 import Language.Haskell.GhcMod
 import Language.Haskell.GhcMod.Ghc
-import Language.Haskell.GhcMod.Convert (convert')
 import Language.Haskell.GhcMod.Monad
 import Language.Haskell.GhcMod.Internal
 import Paths_ghc_mod
@@ -204,7 +203,8 @@ findSym :: Set FilePath -> String -> MVar SymMdlDb
         -> GhcMod (String, Bool, Set FilePath)
 findSym set sym mvar = do
     db <- liftIO $ readMVar mvar
-    ret <- convert' $ lookupSym sym db
+    opt <- options
+    let ret = lookupSym' opt sym db
     return (ret, True, set)
 
 lintStx :: Options -> Set FilePath -> FilePath

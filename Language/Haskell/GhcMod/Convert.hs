@@ -1,6 +1,6 @@
 {-# LANGUAGE FlexibleInstances #-}
 
-module Language.Haskell.GhcMod.Convert where
+module Language.Haskell.GhcMod.Convert (convert, convert') where
 
 import Language.Haskell.GhcMod.Monad
 import Language.Haskell.GhcMod.Types

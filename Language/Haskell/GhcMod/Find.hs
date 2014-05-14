@@ -5,10 +5,8 @@ module Language.Haskell.GhcMod.Find where
 import Data.Function (on)
 import Data.List (groupBy, sort)
 import Data.Maybe (fromMaybe)
-import GHC (Ghc)
 import qualified GHC as G
 import Language.Haskell.GhcMod.Browse (browseAll)
-import Language.Haskell.GhcMod.GHCApi
 import Language.Haskell.GhcMod.Monad
 import Language.Haskell.GhcMod.Convert
 import Language.Haskell.GhcMod.Types
@@ -54,3 +52,6 @@ getSymMdlDb = do
 -- | Looking up 'SymMdlDb' with 'Symbol' to find modules.
 lookupSym :: Symbol -> SymMdlDb -> [ModuleString]
 lookupSym sym (SymMdlDb db) = fromMaybe [] (M.lookup sym db)
+
+lookupSym' :: Options -> Symbol -> SymMdlDb -> String
+lookupSym' opt sym db = convert opt $ lookupSym sym db
