@@ -9,6 +9,7 @@ import qualified Control.Exception as E
 import Data.Typeable (Typeable)
 import Data.Version (showVersion)
 import Language.Haskell.GhcMod
+import Language.Haskell.GhcMod.Monad
 import Paths_ghc_mod
 import System.Console.GetOpt (OptDescr(..), ArgDescr(..), ArgOrder(..))
 import qualified System.Console.GetOpt as O
@@ -112,17 +113,17 @@ main = flip E.catches handlers $ do
       "list"    -> listModules opt cradle
       "lang"    -> listLanguages opt
       "flag"    -> listFlags opt
-      "browse"  -> concat <$> mapM (browseModule opt cradle) remainingArgs
-      "check"   -> checkSyntax opt cradle remainingArgs
-      "expand"  -> expandTemplate opt cradle remainingArgs
+      "browse"  -> runGhcMod opt $ concat <$> mapM browse remainingArgs
+      "check"   -> runGhcMod opt $ checkSyntax remainingArgs
+      "expand"  -> runGhcMod opt $ expandTemplate remainingArgs
       "debug"   -> debugInfo opt cradle
       "info"    -> nArgs 3 infoExpr opt cradle cmdArg1 cmdArg3
       "type"    -> nArgs 4 $ typeExpr opt cradle cmdArg1 (read cmdArg3) (read cmdArg4)
-      "find"    -> nArgs 1 $ findSymbol opt cradle cmdArg1
+      "find"    -> runGhcMod opt $ nArgs 1 $ findSymbol cmdArg1
       "lint"    -> nArgs 1 withFile (lintSyntax opt) cmdArg1
       "root"    -> rootInfo opt cradle
       "doc"     -> nArgs 1 $ packageDoc opt cradle cmdArg1
-      "boot"    -> bootInfo opt cradle
+      "boot"    -> bootInfo opt
       "version" -> return progVersion
       "help"    -> return $ O.usageInfo usage argspec
       cmd       -> E.throw (NoSuchCommand cmd)

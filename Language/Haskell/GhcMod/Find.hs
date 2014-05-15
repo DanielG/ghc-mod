@@ -5,10 +5,10 @@ module Language.Haskell.GhcMod.Find where
 import Data.Function (on)
 import Data.List (groupBy, sort)
 import Data.Maybe (fromMaybe)
-import GHC (Ghc)
 import qualified GHC as G
 import Language.Haskell.GhcMod.Browse (browseAll)
-import Language.Haskell.GhcMod.GHCApi
+import Language.Haskell.GhcMod.Monad
+import Language.Haskell.GhcMod.Convert
 import Language.Haskell.GhcMod.Types
 
 #ifndef MIN_VERSION_containers
@@ -31,13 +31,11 @@ type Symbol = String
 newtype SymMdlDb = SymMdlDb (Map Symbol [ModuleString])
 
 -- | Finding modules to which the symbol belong.
-findSymbol :: Options -> Cradle -> Symbol -> IO String
-findSymbol opt cradle sym = withGHC' $ do
-    initializeFlagsWithCradle opt cradle
-    lookupSym opt sym <$> getSymMdlDb
+findSymbol :: Symbol -> GhcMod String
+findSymbol sym = convert' =<< lookupSym sym <$> getSymMdlDb
 
 -- | Creating 'SymMdlDb'.
-getSymMdlDb :: Ghc SymMdlDb
+getSymMdlDb :: GhcMod SymMdlDb
 getSymMdlDb = do
     sm <- G.getSessionDynFlags >>= browseAll
 #if MIN_VERSION_containers(0,5,0)
@@ -52,5 +50,8 @@ getSymMdlDb = do
     tieup x = (head (map fst x), map snd x)
 
 -- | Looking up 'SymMdlDb' with 'Symbol' to find modules.
-lookupSym :: Options -> Symbol -> SymMdlDb -> String
-lookupSym opt sym (SymMdlDb db) = convert opt $ fromMaybe [] (M.lookup sym db)
+lookupSym :: Symbol -> SymMdlDb -> [ModuleString]
+lookupSym sym (SymMdlDb db) = fromMaybe [] (M.lookup sym db)
+
+lookupSym' :: Options -> Symbol -> SymMdlDb -> String
+lookupSym' opt sym db = convert opt $ lookupSym sym db

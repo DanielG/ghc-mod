@@ -63,6 +63,7 @@ Library
                         Language.Haskell.GhcMod.Cabal18
                         Language.Haskell.GhcMod.Check
                         Language.Haskell.GhcMod.Cradle
+                        Language.Haskell.GhcMod.Convert
                         Language.Haskell.GhcMod.Debug
                         Language.Haskell.GhcMod.Doc
                         Language.Haskell.GhcMod.Find
@@ -155,6 +156,7 @@ Test-Suite spec
                         LintSpec
                         ListSpec
                         GhcPkgSpec
+                        TestUtils
   Build-Depends:        base >= 4.0 && < 5
                       , containers
                       , deepseq

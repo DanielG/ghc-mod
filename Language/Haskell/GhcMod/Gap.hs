@@ -45,7 +45,7 @@ import ErrUtils
 import FastString
 import HscTypes
 import Language.Haskell.GhcMod.GHCChoice
-import Language.Haskell.GhcMod.Types hiding (convert)
+import Language.Haskell.GhcMod.Types
 import NameSet
 import Outputable
 import PprTyThing

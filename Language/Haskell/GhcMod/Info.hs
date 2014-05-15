@@ -25,6 +25,7 @@ import Language.Haskell.GhcMod.GHCApi
 import Language.Haskell.GhcMod.Gap (HasType(..), setDeferTypeErrors)
 import qualified Language.Haskell.GhcMod.Gap as Gap
 import Language.Haskell.GhcMod.Types
+import Language.Haskell.GhcMod.Convert
 import Outputable (PprStyle)
 import TcHsSyn (hsPatType)
 
