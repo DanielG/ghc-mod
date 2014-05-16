@@ -10,6 +10,10 @@ module Language.Haskell.GhcMod.GhcPkg (
   , getPackageDbStack
   ) where
 
+#ifndef MIN_VERSION_Cabal
+#define MIN_VERSION_Cabal(x,y,z) 1
+#endif
+
 import Config (cProjectVersionInt)
 import Control.Applicative ((<$>))
 #if MIN_VERSION_Cabal(1,18,0)

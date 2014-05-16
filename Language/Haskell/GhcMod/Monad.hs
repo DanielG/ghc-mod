@@ -15,6 +15,14 @@ module Language.Haskell.GhcMod.Monad (
  , module Control.Monad.State.Class
  ) where
 
+#ifndef MIN_VERSION_ghc
+#define MIN_VERSION_ghc(x,y,z) 1
+#endif
+
+#ifndef MIN_VERSION_base
+#define MIN_VERSION_base(x,y,z) 1
+#endif
+
 import Language.Haskell.GhcMod.Types
 import Language.Haskell.GhcMod.Cradle
 import Language.Haskell.GhcMod.GHCApi
