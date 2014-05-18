@@ -1,4 +1,4 @@
-{-# LANGUAGE CPP, BangPatterns, ScopedTypeVariables, TupleSections #-}
+{-# LANGUAGE BangPatterns, ScopedTypeVariables, TupleSections #-}
 module Language.Haskell.GhcMod.GhcPkg (
     ghcPkgDbOpt
   , ghcPkgDbStackOpts
@@ -10,15 +10,10 @@ module Language.Haskell.GhcMod.GhcPkg (
   , getPackageDbStack
   ) where
 
-#ifndef MIN_VERSION_Cabal
-#define MIN_VERSION_Cabal(x,y,z) 1
-#endif
-
 import Config (cProjectVersionInt)
 import Control.Applicative ((<$>))
-#if MIN_VERSION_Cabal(1,18,0)
+import Control.Exception (SomeException(..))
 import qualified Control.Exception as E
-#endif
 import Data.Char (isSpace)
 import Data.List (isPrefixOf, intercalate)
 import Data.List.Split (splitOn)
@@ -55,14 +50,9 @@ getPackageDbStack :: FilePath -- ^ Project Directory (where the
                                  -- cabal.sandbox.config file would be if it
                                  -- exists)
                   -> IO [GhcPkgDb]
-#if MIN_VERSION_Cabal(1,18,0)
 getPackageDbStack cdir =
     (getSandboxDb cdir >>= \db -> return [GlobalDb, PackageDb db])
-      `E.catch` \(_ :: E.SomeException) -> return [GlobalDb, UserDb]
-#else
-getPackageDbStack _ =
-    return [GlobalDb, UserDb]
-#endif
+      `E.catch` \(_ :: SomeException) -> return [GlobalDb, UserDb]
 
 fromInstalledPackageId' :: InstalledPackageId -> Maybe Package
 fromInstalledPackageId' pid = let

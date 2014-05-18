@@ -1,8 +1,6 @@
-{-# LANGUAGE CPP #-}
 module GhcPkgSpec where
 
 import Language.Haskell.GhcMod.GhcPkg
-import Language.Haskell.GhcMod.Types
 
 import System.Directory
 import System.FilePath ((</>))
@@ -10,12 +8,7 @@ import Test.Hspec
 
 spec :: Spec
 spec = do
-    describe "getPackageDbStack" $ do
-#if !MIN_VERSION_Cabal(1,18,0)
-        it "does not include a sandbox with Cabal < 1.18" $ do
-            cwd <- getCurrentDirectory
-            getPackageDbStack cwd `shouldReturn` [GlobalDb, UserDb]
-#endif
+    describe "getSandboxDb" $ do
         it "parses a config file and extracts sandbox package db" $ do
             cwd <- getCurrentDirectory
             pkgDb <- getSandboxDb "test/data/"

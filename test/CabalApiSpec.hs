@@ -1,4 +1,4 @@
-{-# LANGUAGE CPP, ScopedTypeVariables #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 
 module CabalApiSpec where
 
@@ -36,15 +36,9 @@ spec = do
                         ghcOptions  = ghcOptions res
                       , includeDirs = map (toRelativeDir dir) (includeDirs res)
                       }
-#if MIN_VERSION_Cabal(1,18,0)
                 if ghcVersion < 706
                   then ghcOptions res' `shouldContain` ["-global-package-conf", "-no-user-package-conf","-package-conf",cwd </> "test/data/.cabal-sandbox/i386-osx-ghc-7.6.3-packages.conf.d","-XHaskell98"]
                   else ghcOptions res' `shouldContain` ["-global-package-db", "-no-user-package-db","-package-db",cwd </> "test/data/.cabal-sandbox/i386-osx-ghc-7.6.3-packages.conf.d","-XHaskell98"]
-#else
-                if ghcVersion < 706
-                  then ghcOptions res' `shouldContain` ["-global-package-conf", "-user-package-conf","-XHaskell98"]
-                  else ghcOptions res' `shouldContain` ["-global-package-db", "-user-package-db","-XHaskell98"]
-#endif
                 includeDirs res' `shouldBe` ["test/data","test/data/dist/build","test/data/dist/build/autogen","test/data/subdir1/subdir2","test/data/test"]
                 (pkgName `map` depPackages res') `shouldContain` ["Cabal"]
 
