@@ -7,6 +7,7 @@ module Language.Haskell.GhcMod.Monad (
  , GhcModState(..)
  , runGhcMod'
  , runGhcMod
+ , newGhcModEnv
  , withErrorHandler
  , toGhcMod
  , options
@@ -58,6 +59,7 @@ import Control.Monad.State.Class
 
 import System.IO (hPutStr, hPrint, stderr)
 import System.Exit (exitSuccess)
+import System.Directory (getCurrentDirectory)
 
 
 data GhcModEnv = GhcModEnv {
@@ -97,20 +99,26 @@ runGhcMod' r s a = do
   (a', s',w) <- runRWST (unGhcMod $ initGhcMonad (Just libdir) >> a) r s
   return (a',(s',w))
 
+newGhcModEnv :: Options -> FilePath -> IO GhcModEnv
+newGhcModEnv opt dir = do
+      session <- newIORef (error "empty session")
+      cradle <- findCradle' dir
+      return GhcModEnv {
+          gmGhcSession = session
+        , gmOptions = opt
+        , gmCradle = cradle
+        }
 
 runGhcMod :: Options -> GhcMod a -> IO a
 runGhcMod opt action = do
-    session <- newIORef (error "empty session")
-    cradle <- findCradle
-    let env = GhcModEnv { gmGhcSession = session
-                        , gmOptions = opt
-                        , gmCradle = cradle }
+    env <- liftIO $ newGhcModEnv opt =<< getCurrentDirectory
     (a,(_,_)) <- runGhcMod' env defaultState $ do
         dflags <- getSessionDynFlags
         defaultCleanupHandler dflags $ do
-            toGhcMod $ initializeFlagsWithCradle opt cradle
+            toGhcMod $ initializeFlagsWithCradle opt (gmCradle env)
             action
     return a
+
 
 withErrorHandler :: String -> GhcMod a -> GhcMod a
 withErrorHandler label = ghandle ignore
