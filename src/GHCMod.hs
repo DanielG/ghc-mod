@@ -84,7 +84,7 @@ parseArgs spec argv
 ----------------------------------------------------------------
 
 data GHCModError = SafeList
-                 | TooManyArguments String
+                 | ArgumentsMismatch String
                  | NoSuchCommand String
                  | CmdArg [String]
                  | FileNotExist String deriving (Show, Typeable)
@@ -108,7 +108,7 @@ main = flip E.catches handlers $ do
         remainingArgs = tail cmdArg
         nArgs n f = if length remainingArgs == n
                         then f
-                        else E.throw (TooManyArguments cmdArg0)
+                        else E.throw (ArgumentsMismatch cmdArg0)
     res <- case cmdArg0 of
       "list"    -> listModules opt cradle
       "lang"    -> listLanguages opt
@@ -135,8 +135,8 @@ main = flip E.catches handlers $ do
     handler1 = print -- for debug
     handler2 :: GHCModError -> IO ()
     handler2 SafeList = printUsage
-    handler2 (TooManyArguments cmd) = do
-        hPutStrLn stderr $ "\"" ++ cmd ++ "\": Too many arguments"
+    handler2 (ArgumentsMismatch cmd) = do
+        hPutStrLn stderr $ "\"" ++ cmd ++ "\": Arguments did not match"
         printUsage
     handler2 (NoSuchCommand cmd) = do
         hPutStrLn stderr $ "\"" ++ cmd ++ "\" not supported"
