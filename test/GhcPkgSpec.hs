@@ -10,12 +10,14 @@ import Test.Hspec
 
 spec :: Spec
 spec = do
-    describe "getPackageDbStack" $ do
-#if !MIN_VERSION_Cabal(1,18,0)
-        it "does not include a sandbox with Cabal < 1.18" $ do
+    describe "getSandboxDb" $ do
+-- ghc < 7.8
+#if !MIN_VERSION_ghc(7,8,0)
+        it "does include a sandbox with ghc < 7.8" $ do
             cwd <- getCurrentDirectory
-            getPackageDbStack cwd `shouldReturn` [GlobalDb, UserDb]
+            getPackageDbStack "test/data/" `shouldReturn` [GlobalDb, PackageDb $ cwd </> "test/data/.cabal-sandbox/i386-osx-ghc-7.6.3-packages.conf.d"]
 #endif
+
         it "parses a config file and extracts sandbox package db" $ do
             cwd <- getCurrentDirectory
             pkgDb <- getSandboxDb "test/data/"
