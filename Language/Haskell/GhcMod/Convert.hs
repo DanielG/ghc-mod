@@ -1,4 +1,4 @@
-{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE FlexibleInstances, FlexibleContexts, OverlappingInstances #-}
 
 module Language.Haskell.GhcMod.Convert (convert, convert') where
 
@@ -75,6 +75,18 @@ instance ToString [((Int,Int,Int,Int),String)] where
       where
         toS x = ('(' :) . tupToString opt x . (')' :)
     toPlain opt = inter '\n' . map (tupToString opt)
+
+instance ToString ((Int,Int,Int,Int),String) where
+    toLisp  opt x = ('(' :) . tupToString opt x . (')' :)
+    toPlain opt x = tupToString opt x
+
+instance (ToString a, ToString b) => ToString (a,b) where
+    toLisp  opt (x,y) = toSexp2 $ [toLisp opt x, toLisp opt y]
+    toPlain opt (x,y) = inter '\n' [toPlain opt x, toPlain opt y]
+
+instance (ToString a, ToString b, ToString c) => ToString (a,b,c) where
+    toLisp  opt (x,y,z) = toSexp2 $ [toLisp opt x, toLisp opt y, toLisp opt z]
+    toPlain opt (x,y,z) = inter '\n' [toPlain opt x, toPlain opt y, toPlain opt z]
 
 toSexp1 :: Options -> [String] -> Builder
 toSexp1 opt ss = ('(' :) . inter ' ' (map (quote opt) ss) . (')' :)

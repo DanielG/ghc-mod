@@ -27,6 +27,7 @@ module Language.Haskell.GhcMod (
   , rootInfo
   , packageDoc
   , findSymbol
+  , splitVar
   ) where
 
 import Language.Haskell.GhcMod.Boot

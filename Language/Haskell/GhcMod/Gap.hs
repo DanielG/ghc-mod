@@ -23,6 +23,7 @@ module Language.Haskell.GhcMod.Gap (
   , HasType(..)
   , errorMsgSpan
   , typeForUser
+  , nameForUser
   , deSugar
   , showDocWith
   , GapThing(..)
@@ -47,6 +48,7 @@ import HscTypes
 import Language.Haskell.GhcMod.GHCChoice
 import Language.Haskell.GhcMod.Types
 import NameSet
+import OccName
 import Outputable
 import PprTyThing
 import StringBuffer
@@ -335,6 +337,13 @@ typeForUser :: Type -> SDoc
 typeForUser = pprTypeForUser
 #else
 typeForUser = pprTypeForUser False
+#endif
+
+nameForUser :: Name -> SDoc
+#if __GLASGOW_HASKELL__ >= 708
+nameForUser = pprOccName . getOccName
+#else
+nameForUser = pprOccName False . getOccName
 #endif
 
 deSugar :: TypecheckedModule -> LHsExpr Id -> HscEnv

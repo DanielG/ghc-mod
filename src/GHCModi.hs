@@ -144,6 +144,7 @@ loop opt set mvar = do
         "lint"   -> toGhcMod $ lintStx  opt set arg
         "info"   -> toGhcMod $ showInfo opt set arg
         "type"   -> toGhcMod $ showType opt set arg
+        "split"  -> toGhcMod $ doSplit  opt set arg
         "boot"   -> bootIt set
         "browse" -> browseIt set arg
         "quit"   -> return ("quit", False, set)
@@ -252,6 +253,16 @@ showType opt set fileArg  = do
     let [file, line, column] = words fileArg
     set' <- newFileSet set file
     ret <- types opt file (read line) (read column)
+    return (ret, True, set')
+
+doSplit :: Options
+        -> Set FilePath
+        -> FilePath
+        -> Ghc (String, Bool, Set FilePath)
+doSplit opt set fileArg  = do
+    let [file, line, column] = words fileArg
+    set' <- newFileSet set file
+    ret <- splits opt file (read line) (read column)
     return (ret, True, set')
 
 ----------------------------------------------------------------

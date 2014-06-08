@@ -8,6 +8,7 @@ module Language.Haskell.GhcMod.Ghc (
   , check
   , info
   , types
+  , splits
   , modules
   -- * 'SymMdlDb'
   , Symbol
