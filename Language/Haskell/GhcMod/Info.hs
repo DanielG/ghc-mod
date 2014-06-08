@@ -144,7 +144,7 @@ inModuleContext file action =
 
 ----------------------------------------------------------------
 
-data SplitInfo = SplitInfo (SrcSpan, Type) (SrcSpan, Type)
+data SplitInfo = SplitInfo G.Name (SrcSpan, Type) (SrcSpan, Type)
 
 -- | Splitting a variable in a equation.
 splitVar :: Options
@@ -170,8 +170,10 @@ splits opt file lineNo colNo = ghandle handler body
         splitInfo <- getSrcSpanTypeForSplit modSum lineNo colNo
         case splitInfo of
           Nothing -> return ""
-          Just (SplitInfo var@(_,varT) eq) -> do
-            return $ convert opt $ (toTup dflag style var, toTup dflag style eq, getTyCons dflag style varT)
+          Just (SplitInfo varName var@(_,varT) eq) -> do
+            return $ convert opt $ ( toTup dflag style var
+                                   , toTup dflag style eq
+                                   , getTyCons dflag style varName varT)
     handler (SomeException _) = return []
 
 getSrcSpanTypeForSplit :: G.ModSummary -> Int -> Int -> Ghc (Maybe SplitInfo)
@@ -185,48 +187,61 @@ getSrcSpanTypeForSplit modSum lineNo colNo = do
       Just ps' -> do bts <- getType tcm bs
                      pts <- getType tcm ps'
                      case (bts, pts) of
-                       (Just bI, Just pI) -> return $ Just (SplitInfo pI bI)
+                       (Just bI, Just pI) -> return $ Just (SplitInfo (getPatternVarName ps') pI bI)
                        _                  -> return Nothing
 
 isPatternVar :: LPat Id -> Bool
 isPatternVar (L _ (G.VarPat _)) = True
 isPatternVar _                  = False
 
-getTyCons :: DynFlags -> PprStyle -> G.Type ->  [String]
-getTyCons dflag style ty | Just (tyCon, _) <- Ty.splitTyConApp_maybe ty =
-  map (getTyCon dflag style) (Ty.tyConDataCons tyCon)
-getTyCons _ _ _ = ["v"]
+getPatternVarName :: LPat Id -> G.Name
+getPatternVarName (L _ (G.VarPat vName)) = G.getName vName
+getPatternVarName _                      = error "This should never happend"
 
-getTyCon :: DynFlags -> PprStyle -> Ty.DataCon -> String
-getTyCon dflag style dcon =
-  let name = showName dflag style $ Ty.dataConName dcon
+getTyCons :: DynFlags -> PprStyle -> G.Name -> G.Type ->  [String]
+getTyCons dflag style name ty | Just (tyCon, _) <- Ty.splitTyConApp_maybe ty =
+  map (getTyCon dflag style name) (Ty.tyConDataCons tyCon)
+getTyCons dflag style name _ = [showName dflag style name]
+
+getTyCon :: DynFlags -> PprStyle -> G.Name -> Ty.DataCon -> String
+getTyCon dflag style vName dcon =
+  let dName  = showName dflag style $ Ty.dataConName dcon
+      vName' = showName dflag style vName
   in if Ty.dataConIsInfix dcon
      then -- We have an infix constructor
           case Ty.dataConSourceArity dcon of
-            0 -> name
-            1 -> "v " ++ name
-            n -> "v " ++ name ++ " " ++ newVars (n-1)
+            0 -> dName
+            1 -> vName' ++ dName
+            n -> newVar vName' 1 ++ " " ++ dName ++ " " ++ newVars vName' 2 (n-1)
      else case Ty.dataConFieldLabels dcon of
             []   -> -- We have a non-record constructor
-                    name ++ " " ++ newVars (Ty.dataConSourceArity dcon)
+                    dName ++ " " ++ newVarsSpecialSingleton vName' 1 (Ty.dataConSourceArity dcon)
             flds -> -- We have a record constructor
-                    name ++ " { " ++ showFieldNames dflag style flds ++ " }"
+                    dName ++ " { " ++ showFieldNames dflag style vName' flds ++ " }"
             
+-- Create a new variable by adjoining a number
+newVar :: String -> Int -> String
+newVar v n = v ++ show n
 
-newVar :: String
-newVar = "v"
+-- Create a list of variables which start with the same prefix
+newVars :: String -> Int -> Int -> String
+newVars _ _ 0 = ""
+newVars v s 1 = newVar v s
+newVars v s m = newVar v s ++ " " ++ newVars v (s+1) (m-1)
 
-newVars :: Int -> String
-newVars 0 = ""
-newVars 1 = newVar
-newVars n = newVar ++ " " ++ newVars (n-1) ++ " " ++ newVar
+-- Create a list of variables which start with the same prefix
+-- Special case for a single variable, in which case no number is adjoint
+newVarsSpecialSingleton :: String -> Int -> Int -> String
+newVarsSpecialSingleton v _     1 = v
+newVarsSpecialSingleton v start n = newVars v start n
 
 showName :: DynFlags -> PprStyle -> G.Name -> String
 showName dflag style name = showOneLine dflag style $ Gap.nameForUser name
 
-showFieldNames :: DynFlags -> PprStyle -> [G.Name] -> String
-showFieldNames _     _     []      = "" -- This should never happen
-showFieldNames dflag style [first] = let f = showName dflag style first
-                                      in f ++ " = " ++ f
-showFieldNames dflag style (x:xs)  = let f = showName dflag style x
-                                      in f ++ " = " ++ f ++ ", " ++ showFieldNames dflag style xs
+showFieldNames :: DynFlags -> PprStyle -> String -> [G.Name] -> String
+showFieldNames _     _     _ []      = "" -- This should never happen
+showFieldNames dflag style v (x:xs) = let fName = showName dflag style x
+                                          fAcc  = fName ++ " = " ++ v ++ "_" ++ fName
+                                       in case xs of
+                                            [] -> fAcc
+                                            _  -> fAcc ++ ", " ++ showFieldNames dflag style v xs
