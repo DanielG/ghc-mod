@@ -15,7 +15,7 @@ import CoreMonad (liftIO)
 import CoreUtils (exprType)
 import Data.Function (on)
 import Data.Generics
-import Data.List (find, sortBy)
+import Data.List (find, intercalate, sortBy)
 import Data.Maybe (catMaybes, fromMaybe)
 import Data.Ord as O
 import Exception (ghandle, SomeException(..))
@@ -200,25 +200,55 @@ getPatternVarName _                      = error "This should never happend"
 
 getTyCons :: DynFlags -> PprStyle -> G.Name -> G.Type ->  [String]
 getTyCons dflag style name ty | Just (tyCon, _) <- Ty.splitTyConApp_maybe ty =
-  map (getTyCon dflag style name) (Ty.tyConDataCons tyCon)
+  let name' = showName dflag style name  -- Convert name to string
+  in getTyCon dflag style name' tyCon
 getTyCons dflag style name _ = [showName dflag style name]
 
-getTyCon :: DynFlags -> PprStyle -> G.Name -> Ty.DataCon -> String
-getTyCon dflag style vName dcon =
+-- Write cases for one type
+getTyCon :: DynFlags -> PprStyle -> String -> Ty.TyCon -> [String]
+-- 1. Non-matcheable type constructors
+getTyCon _ _ name tyCon | isNotMatcheableTyCon tyCon = [name]
+-- 2. Special cases
+-- 2.1. Tuples
+getTyCon _ _ name tyCon | Ty.isTupleTyCon tyCon =
+  let [uniqueDataCon] = Ty.tyConDataCons tyCon
+      tupleArity = Ty.dataConSourceArity uniqueDataCon
+      -- Deal with both boxed and unboxed tuples
+      isUnboxed = Ty.isUnboxedTupleTyCon tyCon
+      startSign = if isUnboxed then "(#" else "("
+      endSign   = if isUnboxed then "#)" else ")"
+  in [ startSign ++ intercalate "," (map (\n -> name ++ show n) [1 .. tupleArity]) ++ endSign ]
+-- 3. General case
+getTyCon dflag style name tyCon = map (getDataCon dflag style name) (Ty.tyConDataCons tyCon)
+
+-- These type constructors should not be matched against
+isNotMatcheableTyCon :: Ty.TyCon -> Bool
+isNotMatcheableTyCon ty = Ty.isPrimTyCon ty  -- Primitive types, such as Int#
+                       || Ty.isFunTyCon ty   -- Function types
+
+-- Write case for one constructor
+getDataCon :: DynFlags -> PprStyle -> String -> Ty.DataCon -> String
+-- 1. Infix constructors
+getDataCon dflag style vName dcon | Ty.dataConIsInfix dcon =
   let dName  = showName dflag style $ Ty.dataConName dcon
-      vName' = showName dflag style vName
-  in if Ty.dataConIsInfix dcon
-     then -- We have an infix constructor
-          case Ty.dataConSourceArity dcon of
-            0 -> dName
-            1 -> vName' ++ dName
-            n -> newVar vName' 1 ++ " " ++ dName ++ " " ++ newVars vName' 2 (n-1)
-     else case Ty.dataConFieldLabels dcon of
-            []   -> -- We have a non-record constructor
-                    dName ++ " " ++ newVarsSpecialSingleton vName' 1 (Ty.dataConSourceArity dcon)
-            flds -> -- We have a record constructor
-                    dName ++ " { " ++ showFieldNames dflag style vName' flds ++ " }"
-            
+  in case Ty.dataConSourceArity dcon of
+       0 -> dName
+       1 -> vName ++ dName
+       n -> if dName == ":" -- Special case for lists
+            then vName ++ ":" ++ vName ++ "s"
+            else newVar vName 1 ++ " " ++ dName ++ " " ++ newVars vName 2 (n-1)
+-- 2. Non-record, non-infix syntax
+getDataCon dflag style vName dcon | [] <- Ty.dataConFieldLabels dcon =
+  let dName  = showName dflag style $ Ty.dataConName dcon
+  in if last dName == '#'  -- Special case for I#, C# and so on
+     then vName
+     else dName ++ " " ++ newVarsSpecialSingleton vName 1 (Ty.dataConSourceArity dcon)
+-- 3. Records
+getDataCon dflag style vName dcon =
+  let dName = showName dflag style $ Ty.dataConName dcon
+      flds  = Ty.dataConFieldLabels dcon
+  in dName ++ " { " ++ showFieldNames dflag style vName flds ++ " }"
+
 -- Create a new variable by adjoining a number
 newVar :: String -> Int -> String
 newVar v n = v ++ show n
