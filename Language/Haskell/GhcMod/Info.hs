@@ -22,7 +22,7 @@ import qualified GHC as G
 import GHC.SYB.Utils (Stage(TypeChecker), everythingStaged)
 import Language.Haskell.GhcMod.Doc (showPage, showOneLine, getStyle)
 import Language.Haskell.GhcMod.GHCApi
-import Language.Haskell.GhcMod.Gap (HasType(..), setDeferTypeErrors)
+import Language.Haskell.GhcMod.Gap (HasType(..), setWarnTypedHoles, setDeferTypeErrors)
 import qualified Language.Haskell.GhcMod.Gap as Gap
 import Language.Haskell.GhcMod.Types
 import Language.Haskell.GhcMod.Convert
@@ -130,7 +130,7 @@ pretty dflag style = showOneLine dflag style . Gap.typeForUser
 
 inModuleContext :: FilePath -> (DynFlags -> PprStyle -> Ghc a) -> Ghc a
 inModuleContext file action =
-    withDynFlags (setDeferTypeErrors . setNoWaringFlags) $ do
+    withDynFlags (setWarnTypedHoles . setDeferTypeErrors . setNoWaringFlags) $ do
     setTargetFiles [file]
     Gap.withContext $ do
         dflag <- G.getSessionDynFlags
