@@ -9,6 +9,7 @@ module Language.Haskell.GhcMod.Ghc (
   , info
   , types
   , splits
+  , sig
   , modules
   -- * 'SymMdlDb'
   , Symbol

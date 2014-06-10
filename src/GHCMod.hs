@@ -39,6 +39,7 @@ usage =    progVersion
         ++ "\t ghc-mod info" ++ ghcOptHelp ++ "<HaskellFile> <module> <expression>\n"
         ++ "\t ghc-mod type" ++ ghcOptHelp ++ "<HaskellFile> <module> <line-no> <column-no>\n"
         ++ "\t ghc-mod split" ++ ghcOptHelp ++ "<HaskellFile> <module> <line-no> <column-no>\n"
+        ++ "\t ghc-mod sig" ++ ghcOptHelp ++ "<HaskellFile> <module> <line-no> <column-no>\n"
         ++ "\t ghc-mod find <symbol>\n"
         ++ "\t ghc-mod lint [-h opt] <HaskellFile>\n"
         ++ "\t ghc-mod root\n"
@@ -121,6 +122,7 @@ main = flip E.catches handlers $ do
       "info"    -> nArgs 3 infoExpr opt cradle cmdArg1 cmdArg3
       "type"    -> nArgs 4 $ typeExpr opt cradle cmdArg1 (read cmdArg3) (read cmdArg4)
       "split"   -> nArgs 4 $ splitVar opt cradle cmdArg1 (read cmdArg3) (read cmdArg4)
+      "sig"     -> nArgs 4 $ fillSig opt cradle cmdArg1 (read cmdArg3) (read cmdArg4)
       "find"    -> runGhcMod opt $ nArgs 1 $ findSymbol cmdArg1
       "lint"    -> nArgs 1 withFile (lintSyntax opt) cmdArg1
       "root"    -> rootInfo opt cradle

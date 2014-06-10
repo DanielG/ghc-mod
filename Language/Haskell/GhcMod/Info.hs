@@ -8,6 +8,8 @@ module Language.Haskell.GhcMod.Info (
   , types
   , splitVar
   , splits
+  , fillSig
+  , sig
   ) where
 
 import Control.Applicative ((<$>))
@@ -19,9 +21,9 @@ import Data.List (find, intercalate, sortBy)
 import Data.Maybe (catMaybes, fromMaybe)
 import Data.Ord as O
 import Exception (ghandle, SomeException(..))
-import GHC (Ghc, LHsBind, LHsExpr, LPat, Id, TypecheckedModule(..), DynFlags, SrcSpan, Type, Located, TypecheckedSource, GenLocated(L))
+import GHC (Ghc, LHsBind, LHsExpr, LPat, Id, ParsedModule(..), TypecheckedModule(..), DynFlags, SrcSpan, Type, Located, ParsedSource, TypecheckedSource, GenLocated(L))
 import qualified GHC as G
-import GHC.SYB.Utils (Stage(TypeChecker), everythingStaged)
+import GHC.SYB.Utils (Stage(Parser,TypeChecker), everythingStaged)
 import Language.Haskell.GhcMod.Doc (showPage, showOneLine, getStyle)
 import Language.Haskell.GhcMod.GHCApi
 import Language.Haskell.GhcMod.Gap (HasType(..), setWarnTypedHoles, setDeferTypeErrors)
@@ -33,6 +35,8 @@ import TcHsSyn (hsPatType)
 import qualified Type as Ty
 import qualified TyCon as Ty
 import qualified DataCon as Ty
+import qualified HsBinds as Ty
+import OccName (OccName, occName)
 
 ----------------------------------------------------------------
 
@@ -110,6 +114,11 @@ getSrcSpanType modSum lineNo colNo = do
 
 listifySpans :: Typeable a => TypecheckedSource -> (Int, Int) -> [Located a]
 listifySpans tcs lc = listifyStaged TypeChecker p tcs
+  where
+    p (L spn _) = G.isGoodSrcSpan spn && spn `G.spans` lc
+
+listifyParsedSpans :: Typeable a => ParsedSource -> (Int, Int) -> [Located a]
+listifyParsedSpans pcs lc = listifyStaged Parser p pcs
   where
     p (L spn _) = G.isGoodSrcSpan spn && spn `G.spans` lc
 
@@ -268,6 +277,9 @@ newVarsSpecialSingleton v start n = newVars v start n
 showName :: DynFlags -> PprStyle -> G.Name -> String
 showName dflag style name = showOneLine dflag style $ Gap.nameForUser name
 
+showOccName :: DynFlags -> PprStyle -> OccName -> String
+showOccName dflag style name = showOneLine dflag style $ Gap.occNameForUser name
+
 showFieldNames :: DynFlags -> PprStyle -> String -> [G.Name] -> String
 showFieldNames _     _     _ []      = "" -- This should never happen
 showFieldNames dflag style v (x:xs) = let fName = showName dflag style x
@@ -275,3 +287,70 @@ showFieldNames dflag style v (x:xs) = let fName = showName dflag style x
                                        in case xs of
                                             [] -> fAcc
                                             _  -> fAcc ++ ", " ++ showFieldNames dflag style v xs
+
+----------------------------------------------------------------
+
+-- | Create a initial body from a signature.
+fillSig :: Options
+        -> Cradle
+        -> FilePath     -- ^ A target file.
+        -> Int          -- ^ Line number.
+        -> Int          -- ^ Column number.
+        -> IO String
+fillSig opt cradle file lineNo colNo = withGHC' $ do
+    initializeFlagsWithCradle opt cradle
+    sig opt file lineNo colNo
+
+-- | Splitting a variable in a equation.
+sig :: Options
+       -> FilePath     -- ^ A target file.
+       -> Int          -- ^ Line number.
+       -> Int          -- ^ Column number.
+       -> Ghc String
+sig opt file lineNo colNo = ghandle handler body
+  where
+    body = inModuleContext file $ \dflag style -> do
+        modSum <- Gap.fileModSummary file
+        sigTy <- getSignature modSum lineNo colNo
+        case sigTy of
+          Nothing -> return ""
+          Just (loc, names, ty) -> do
+            return $ convert opt $ ( fourInts loc
+                                   , intercalate "\n" (map (initialBody dflag style ty) names)
+                                   )
+    handler (SomeException _) = return ""
+
+getSignature :: G.ModSummary -> Int -> Int -> Ghc (Maybe (SrcSpan, [G.RdrName], G.HsType G.RdrName))
+getSignature modSum lineNo colNo = do
+    ParsedModule{pm_parsed_source = ps} <- G.parseModule modSum
+    -- TypecheckedModule{tm_typechecked_source = tcs} <- G.typecheckModule p
+    case listifyParsedSpans ps (lineNo, colNo) :: [G.LHsDecl G.RdrName] of
+      [L loc (G.SigD (Ty.TypeSig names (L _ ty)))] -> return $ Just (loc, map G.unLoc names, ty)
+      _                                            -> return Nothing
+
+initialBody :: DynFlags -> PprStyle -> G.HsType G.RdrName -> G.RdrName -> String
+initialBody dflag style ty name = 
+  let fName = showOccName dflag style $ occName name  -- get function name
+      args  = initialArgs infiniteVars infiniteFns ty
+  in fName ++ " " ++ args ++ " = _" ++ fName ++ "_body"
+
+initialArgs :: [String] -> [String] -> G.HsType G.RdrName -> String
+-- Contexts and foralls: continue inside
+initialArgs vars fns (G.HsForAllTy _ _ _ (L _ ty)) =
+  initialArgs vars fns ty
+-- Function whose first argument is another function
+initialArgs vars (f:fs) (G.HsFunTy (L _ (G.HsFunTy _ _)) (L _ rTy)) =
+  f ++ " " ++ initialArgs vars fs rTy
+-- Function whose first argument is not another function
+initialArgs (v:vs) fns (G.HsFunTy _ (L _ rTy)) =
+  v ++ " " ++ initialArgs vs fns rTy
+-- Rest of the cases: just write a variable
+initialArgs (v:_) _ _ = v
+-- Lists are infinite, so this should never happen
+initialArgs _ _ _ = error "this should never happen"
+
+infiniteVars, infiniteFns :: [String]
+infiniteVars = infiniteSupply ["x","y","z","t","u","v","w"]
+infiniteFns  = infiniteSupply ["f","g","h"]
+infiniteSupply :: [String] -> [String]
+infiniteSupply initialSupply = initialSupply ++ concatMap (\n -> map (\v -> v ++ show n) initialSupply) ([1 .. ] :: [Integer])
