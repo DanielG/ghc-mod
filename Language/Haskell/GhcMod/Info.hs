@@ -21,9 +21,9 @@ import Data.List (find, intercalate, sortBy)
 import Data.Maybe (catMaybes, fromMaybe)
 import Data.Ord as O
 import Exception (ghandle, SomeException(..))
-import GHC (Ghc, LHsBind, LHsExpr, LPat, Id, ParsedModule(..), TypecheckedModule(..), DynFlags, SrcSpan, Type, Located, ParsedSource, TypecheckedSource, GenLocated(L))
+import GHC (Ghc, LHsBind, LHsExpr, LPat, Id, ParsedModule(..), TypecheckedModule(..), DynFlags, SrcSpan, Type, Located, ParsedSource, RenamedSource, TypecheckedSource, GenLocated(L))
 import qualified GHC as G
-import GHC.SYB.Utils (Stage(Parser,TypeChecker), everythingStaged)
+import GHC.SYB.Utils (Stage(..), everythingStaged, showData)
 import Language.Haskell.GhcMod.Doc (showPage, showOneLine, getStyle)
 import Language.Haskell.GhcMod.GHCApi
 import Language.Haskell.GhcMod.Gap (HasType(..), setWarnTypedHoles, setDeferTypeErrors)
@@ -36,6 +36,7 @@ import qualified Type as Ty
 import qualified TyCon as Ty
 import qualified DataCon as Ty
 import qualified HsBinds as Ty
+import qualified Class as Ty
 import OccName (OccName, occName)
 
 ----------------------------------------------------------------
@@ -119,6 +120,11 @@ listifySpans tcs lc = listifyStaged TypeChecker p tcs
 
 listifyParsedSpans :: Typeable a => ParsedSource -> (Int, Int) -> [Located a]
 listifyParsedSpans pcs lc = listifyStaged Parser p pcs
+  where
+    p (L spn _) = G.isGoodSrcSpan spn && spn `G.spans` lc
+
+listifyRenamedSpans :: Typeable a => RenamedSource -> (Int, Int) -> [Located a]
+listifyRenamedSpans pcs lc = listifyStaged Renamer p pcs
   where
     p (L spn _) = G.isGoodSrcSpan spn && spn `G.spans` lc
 
@@ -290,6 +296,9 @@ showFieldNames dflag style v (x:xs) = let fName = showName dflag style x
 
 ----------------------------------------------------------------
 
+data SigInfo = Signature SrcSpan [G.RdrName] (G.HsType G.RdrName)
+             | InstanceDecl SrcSpan G.Class
+
 -- | Create a initial body from a signature.
 fillSig :: Options
         -> Cradle
@@ -314,19 +323,43 @@ sig opt file lineNo colNo = ghandle handler body
         sigTy <- getSignature modSum lineNo colNo
         case sigTy of
           Nothing -> return ""
-          Just (loc, names, ty) -> do
+          Just (Signature loc names ty) -> do
             return $ convert opt $ ( fourInts loc
-                                   , intercalate "\n" (map (initialBody dflag style ty) names)
+                                   , intercalate "\n"
+                                       (map (initialBody dflag style ty) names)
                                    )
+          Just (InstanceDecl loc cls) -> do
+            return $ convert opt $ ( fourInts loc
+                                   , intercalate "\n"
+                                       (map (initialInstanceBody dflag style) (Ty.classMethods cls))
+                                   )
+            
     handler (SomeException _) = return ""
 
-getSignature :: G.ModSummary -> Int -> Int -> Ghc (Maybe (SrcSpan, [G.RdrName], G.HsType G.RdrName))
+getSignature :: G.ModSummary -> Int -> Int -> Ghc (Maybe SigInfo)
 getSignature modSum lineNo colNo = do
-    ParsedModule{pm_parsed_source = ps} <- G.parseModule modSum
-    -- TypecheckedModule{tm_typechecked_source = tcs} <- G.typecheckModule p
+    p@ParsedModule{pm_parsed_source = ps} <- G.parseModule modSum
+    -- Look into the parse tree to find the signature
     case listifyParsedSpans ps (lineNo, colNo) :: [G.LHsDecl G.RdrName] of
-      [L loc (G.SigD (Ty.TypeSig names (L _ ty)))] -> return $ Just (loc, map G.unLoc names, ty)
-      _                                            -> return Nothing
+      [L loc (G.SigD (Ty.TypeSig names (L _ ty)))] ->
+        -- We found a type signature
+        return $ Just $ Signature loc (map G.unLoc names) ty
+      [L _ (G.InstD _)] -> do
+        -- We found an instance declaration
+        TypecheckedModule{tm_renamed_source = Just tcs
+                         , tm_checked_module_info = minfo} <- G.typecheckModule p
+        case listifyRenamedSpans tcs (lineNo, colNo) :: [G.LInstDecl G.Name] of
+          [L loc (G.ClsInstD (G.ClsInstDecl {G.cid_poly_ty =
+            (L _ (G.HsForAllTy _ _ _ (L _ (G.HsAppTy (L _ (G.HsTyVar clsName)) _))))}))] -> do
+               tyThing <- G.modInfoLookupName minfo clsName
+               case tyThing of
+                 Just (Ty.ATyCon clsCon) -> 
+                   case G.tyConClass_maybe clsCon of
+                     Just cls -> return $ Just $ InstanceDecl loc cls
+                     Nothing  -> return Nothing
+                 _ -> return Nothing
+          _ -> return Nothing
+      _ ->return Nothing
 
 initialBody :: DynFlags -> PprStyle -> G.HsType G.RdrName -> G.RdrName -> String
 initialBody dflag style ty name = 
@@ -334,7 +367,7 @@ initialBody dflag style ty name =
       args  = initialArgs infiniteVars infiniteFns ty
   in fName ++ " " ++ args ++ " = _" ++ fName ++ "_body"
 
-initialArgs :: [String] -> [String] -> G.HsType G.RdrName -> String
+initialArgs :: [String] -> [String] -> G.HsType a -> String
 -- Contexts and foralls: continue inside
 initialArgs vars fns (G.HsForAllTy _ _ _ (L _ ty)) =
   initialArgs vars fns ty
@@ -348,6 +381,26 @@ initialArgs (v:vs) fns (G.HsFunTy _ (L _ rTy)) =
 initialArgs (v:_) _ _ = v
 -- Lists are infinite, so this should never happen
 initialArgs _ _ _ = error "this should never happen"
+
+initialInstanceBody :: DynFlags -> PprStyle -> Id -> String
+initialInstanceBody dflag style method =
+  let fName = showOccName dflag style $ G.getOccName method  -- get function name
+      args  = initialInstanceArgs infiniteVars infiniteFns (G.idType method)
+  in fName ++ " " ++ args ++ " = _" ++ fName ++ "_body"
+
+initialInstanceArgs :: [String] -> [String] -> G.Type -> String
+-- Contexts and foralls: continue inside
+initialInstanceArgs vars fns ty | Just (_,iTy) <- Ty.splitForAllTy_maybe ty =
+  initialInstanceArgs vars fns iTy
+-- Function whose first argument is another function
+initialInstanceArgs (v:vs) (f:fs) ty | Just (argTy,rTy) <- Ty.splitFunTy_maybe ty =
+  case Ty.splitFunTy_maybe argTy of
+    Just _  -> f ++ " " ++ initialInstanceArgs (v:vs) fs rTy
+    Nothing -> v ++ " " ++ initialInstanceArgs vs (f:fs) rTy
+-- Rest of the cases: just write a variable
+initialInstanceArgs (v:_) _ _ = v
+-- Lists are infinite, so this should never happen
+initialInstanceArgs _ _ _ = error "this should never happen"
 
 infiniteVars, infiniteFns :: [String]
 infiniteVars = infiniteSupply ["x","y","z","t","u","v","w"]
