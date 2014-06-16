@@ -31,7 +31,7 @@
 
 (defun ghc-resolve-document-path (mod)
   (with-temp-buffer
-    (ghc-call-process "ghc-mod" nil t nil "doc" mod)
+    (ghc-call-process ghc-module-command nil t nil "doc" mod)
     (goto-char (point-min))
     (when (looking-at "^\\([^ ]+\\)-\\([0-9]*\\(\\.[0-9]+\\)*\\) \\(.*\\)$")
       (ghc-make-pkg-ver-path
