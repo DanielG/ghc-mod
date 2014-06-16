@@ -1,4 +1,4 @@
-{-# LANGUAGE TupleSections, FlexibleInstances, Rank2Types #-}
+{-# LANGUAGE TupleSections, FlexibleInstances, Rank2Types, LambdaCase #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
 module Language.Haskell.GhcMod.Info (
@@ -15,6 +15,7 @@ module Language.Haskell.GhcMod.Info (
 import Control.Applicative ((<$>))
 import CoreMonad (liftIO)
 import CoreUtils (exprType)
+import Data.Char (isSymbol)
 import Data.Function (on)
 import Data.Generics
 import Data.List (find, intercalate, sortBy)
@@ -326,12 +327,12 @@ sig opt file lineNo colNo = ghandle handler body
           Just (Signature loc names ty) -> do
             return $ convert opt $ ( fourInts loc
                                    , intercalate "\n"
-                                       (map (initialBody dflag style ty) names)
+                                       (map (initialFnBody dflag style ty) names)
                                    )
           Just (InstanceDecl loc cls) -> do
             return $ convert opt $ ( fourInts loc
                                    , intercalate "\n"
-                                       (map (initialInstanceBody dflag style) (Ty.classMethods cls))
+                                       (map (initialInstBody dflag style) (Ty.classMethods cls))
                                    )
             
     handler (SomeException _) = return ""
@@ -347,10 +348,19 @@ getSignature modSum lineNo colNo = do
       [L _ (G.InstD _)] -> do
         -- We found an instance declaration
         TypecheckedModule{tm_renamed_source = Just tcs
-                         , tm_checked_module_info = minfo} <- G.typecheckModule p
+                         ,tm_checked_module_info = minfo} <- G.typecheckModule p
         case listifyRenamedSpans tcs (lineNo, colNo) :: [G.LInstDecl G.Name] of
+          -- Instance declarations of sort 'instance F (G a)'
           [L loc (G.ClsInstD (G.ClsInstDecl {G.cid_poly_ty =
-            (L _ (G.HsForAllTy _ _ _ (L _ (G.HsAppTy (L _ (G.HsTyVar clsName)) _))))}))] -> do
+            (L _ (G.HsForAllTy _ _ _ (L _ (G.HsAppTy (L _ (G.HsTyVar clsName)) _))))}))] ->
+               obtainClassInfo minfo clsName loc
+          -- Instance declarations of sort 'instance F G' (no variables)
+          [L loc (G.ClsInstD (G.ClsInstDecl {G.cid_poly_ty =
+            (L _ (G.HsAppTy (L _ (G.HsTyVar clsName)) _))}))] ->
+               obtainClassInfo minfo clsName loc
+          _ -> return Nothing
+      _ -> return Nothing
+    where obtainClassInfo minfo clsName loc = do
                tyThing <- G.modInfoLookupName minfo clsName
                case tyThing of
                  Just (Ty.ATyCon clsCon) -> 
@@ -358,52 +368,57 @@ getSignature modSum lineNo colNo = do
                      Just cls -> return $ Just $ InstanceDecl loc cls
                      Nothing  -> return Nothing
                  _ -> return Nothing
-          _ -> return Nothing
-      _ ->return Nothing
 
-initialBody :: DynFlags -> PprStyle -> G.HsType G.RdrName -> G.RdrName -> String
-initialBody dflag style ty name = 
-  let fName = showOccName dflag style $ occName name  -- get function name
-      args  = initialArgs infiniteVars infiniteFns ty
-  in fName ++ " " ++ args ++ " = _" ++ fName ++ "_body"
+-- A list of function arguments, and whether they are functions or normal arguments
+-- is built from either a function signature or an instance signature
+data FnArg = FnArgFunction | FnArgNormal
 
-initialArgs :: [String] -> [String] -> G.HsType a -> String
--- Contexts and foralls: continue inside
-initialArgs vars fns (G.HsForAllTy _ _ _ (L _ ty)) =
-  initialArgs vars fns ty
--- Function whose first argument is another function
-initialArgs vars (f:fs) (G.HsFunTy (L _ (G.HsFunTy _ _)) (L _ rTy)) =
-  f ++ " " ++ initialArgs vars fs rTy
--- Function whose first argument is not another function
-initialArgs (v:vs) fns (G.HsFunTy _ (L _ rTy)) =
-  v ++ " " ++ initialArgs vs fns rTy
--- Rest of the cases: just write a variable
-initialArgs (v:_) _ _ = v
--- Lists are infinite, so this should never happen
-initialArgs _ _ _ = error "this should never happen"
+initialBody :: String -> [FnArg] -> String
+initialBody fname args =
+  case initialBodyArgs args infiniteVars infiniteFns of
+    []      -> fname
+    arglist -> if isSymbolName fname
+               then (head arglist) ++ " " ++ fname ++ " " ++ (intercalate " " (tail arglist))
+               else fname ++ " " ++ (intercalate " " arglist)
+  ++ " = _" ++ fname ++ "_body"
 
-initialInstanceBody :: DynFlags -> PprStyle -> Id -> String
-initialInstanceBody dflag style method =
-  let fName = showOccName dflag style $ G.getOccName method  -- get function name
-      args  = initialInstanceArgs infiniteVars infiniteFns (G.idType method)
-  in fName ++ " " ++ args ++ " = _" ++ fName ++ "_body"
+initialBodyArgs :: [FnArg] -> [String] -> [String] -> [String]
+initialBodyArgs [] _ _ = []
+initialBodyArgs (FnArgFunction:xs) vs (f:fs) = f : initialBodyArgs xs vs fs
+initialBodyArgs (FnArgNormal:xs)   (v:vs) fs = v : initialBodyArgs xs vs fs
+initialBodyArgs _                  _      _  = error "This should never happen" -- Lists are infinite
 
-initialInstanceArgs :: [String] -> [String] -> G.Type -> String
--- Contexts and foralls: continue inside
-initialInstanceArgs vars fns ty | Just (_,iTy) <- Ty.splitForAllTy_maybe ty =
-  initialInstanceArgs vars fns iTy
--- Function whose first argument is another function
-initialInstanceArgs (v:vs) (f:fs) ty | Just (argTy,rTy) <- Ty.splitFunTy_maybe ty =
-  case Ty.splitFunTy_maybe argTy of
-    Just _  -> f ++ " " ++ initialInstanceArgs (v:vs) fs rTy
-    Nothing -> v ++ " " ++ initialInstanceArgs vs (f:fs) rTy
--- Rest of the cases: just write a variable
-initialInstanceArgs (v:_) _ _ = v
--- Lists are infinite, so this should never happen
-initialInstanceArgs _ _ _ = error "this should never happen"
+initialFnBody :: DynFlags -> PprStyle -> G.HsType G.RdrName -> G.RdrName -> String
+initialFnBody dflag style ty name = 
+  let fname = showOccName dflag style $ occName name  -- get function name
+      args  = \case (G.HsForAllTy _ _ _ (L _ iTy))  -> args iTy
+                    (G.HsParTy (L _ iTy))           -> args iTy
+                    (G.HsFunTy (L _ lTy) (L _ rTy)) -> (if fnarg lTy then FnArgFunction else FnArgNormal):args rTy
+                    _ -> []
+      fnarg = \case (G.HsForAllTy _ _ _ (L _ iTy)) -> fnarg iTy
+                    (G.HsParTy (L _ iTy))          -> fnarg iTy
+                    (G.HsFunTy _ _)                -> True
+                    _                              -> False
+   in initialBody fname (args ty)
+
+initialInstBody :: DynFlags -> PprStyle -> Id -> String
+initialInstBody dflag style method =
+  let fname = showOccName dflag style $ G.getOccName method  -- get function name
+      args  = \case ty | Just (lTy,rTy) <- Ty.splitFunTy_maybe ty ->
+                      case Ty.splitFunTy_maybe lTy of
+                        Just _  -> FnArgFunction:args rTy
+                        Nothing -> -- Drop the class predicates
+                                   if Ty.isPredTy lTy then args rTy else FnArgNormal:args rTy
+                    ty | Just (_,iTy) <- Ty.splitForAllTy_maybe ty -> args iTy
+                    _ -> []
+   in initialBody fname (args (Ty.dropForAlls $ G.idType method))
 
 infiniteVars, infiniteFns :: [String]
 infiniteVars = infiniteSupply ["x","y","z","t","u","v","w"]
 infiniteFns  = infiniteSupply ["f","g","h"]
 infiniteSupply :: [String] -> [String]
 infiniteSupply initialSupply = initialSupply ++ concatMap (\n -> map (\v -> v ++ show n) initialSupply) ([1 .. ] :: [Integer])
+
+isSymbolName :: String -> Bool
+isSymbolName (c:_) = c `elem` "!#$%&*+./<=>?@\\^|-~" || isSymbol c
+isSymbolName []    = error "This should never happen"
