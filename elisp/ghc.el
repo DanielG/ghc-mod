@@ -40,6 +40,7 @@
 (require 'ghc-command)
 (require 'ghc-ins-mod)
 (require 'ghc-indent)
+(require 'ghc-rewrite)
 (require 'dabbrev)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -72,6 +73,7 @@
 (defvar ghc-hoogle-key      (format "\C-c%c" (ghc-find-C-h)))
 (defvar ghc-shallower-key   "\C-c<")
 (defvar ghc-deeper-key      "\C-c>")
+(defvar ghc-case-split-key  "\C-c\C-p")
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -104,6 +106,7 @@
     (define-key haskell-mode-map ghc-hoogle-key      'haskell-hoogle)
     (define-key haskell-mode-map ghc-shallower-key   'ghc-make-indent-shallower)
     (define-key haskell-mode-map ghc-deeper-key      'ghc-make-indent-deeper)
+    (define-key haskell-mode-map ghc-case-split-key  'ghc-case-split)
     (ghc-comp-init)
     (setq ghc-initialized t))
   (ghc-import-module)

@@ -388,6 +388,11 @@ initialBodyArgs (FnArgFunction:xs) vs (f:fs) = f : initialBodyArgs xs vs fs
 initialBodyArgs (FnArgNormal:xs)   (v:vs) fs = v : initialBodyArgs xs vs fs
 initialBodyArgs _                  _      _  = error "This should never happen" -- Lists are infinite
 
+-- Getting the initial body of function and instances differ
+-- This is because for functions we only use the parsed file
+-- (so the full file doesn't have to be type correct)
+-- but for instances we need to get information about the class
+
 initialFnBody :: DynFlags -> PprStyle -> G.HsType G.RdrName -> G.RdrName -> String
 initialFnBody dflag style ty name = 
   let fname = showOccName dflag style $ occName name  -- get function name
