@@ -160,7 +160,7 @@ inModuleContext file action =
 
 ----------------------------------------------------------------
 
-data SplitInfo = SplitInfo G.Name (SrcSpan, Type) (SrcSpan, Type)
+data SplitInfo = SplitInfo G.Name (SrcSpan,Type) (SrcSpan, Type) [SrcSpan]
 
 -- | Splitting a variable in a equation.
 splitVar :: Options
@@ -186,25 +186,30 @@ splits opt file lineNo colNo = ghandle handler body
         splitInfo <- getSrcSpanTypeForSplit modSum lineNo colNo
         case splitInfo of
           Nothing -> return ""
-          Just (SplitInfo varName var@(_,varT) eq) -> do
-            return $ convert opt $ ( toTup dflag style var
-                                   , toTup dflag style eq
+          Just (SplitInfo varName binding var@(_,varT) matches) -> do
+            return $ convert opt $ ( toTup dflag style binding
+                                   , toTup dflag style var
+                                   , (map fourInts matches)
                                    , getTyCons dflag style varName varT)
     handler (SomeException _) = return []
 
 getSrcSpanTypeForSplit :: G.ModSummary -> Int -> Int -> Ghc (Maybe SplitInfo)
 getSrcSpanTypeForSplit modSum lineNo colNo = do
-    p <- G.parseModule modSum
+    p@ParsedModule{pm_parsed_source = pms} <- G.parseModule modSum
     tcm@TypecheckedModule{tm_typechecked_source = tcs} <- G.typecheckModule p
     let bs:_ = listifySpans tcs (lineNo, colNo) :: [LHsBind Id]
-        ps = find isPatternVar $ listifySpans tcs (lineNo, colNo) :: Maybe (LPat Id)
-    case ps of
+        varPat  = find isPatternVar $ listifySpans tcs (lineNo, colNo) :: Maybe (LPat Id)
+        match:_ = listifyParsedSpans pms (lineNo, colNo) :: [G.LMatch G.RdrName (LHsExpr G.RdrName)]
+    case varPat of
       Nothing  -> return Nothing
-      Just ps' -> do bts <- getType tcm bs
-                     pts <- getType tcm ps'
-                     case (bts, pts) of
-                       (Just bI, Just pI) -> return $ Just (SplitInfo (getPatternVarName ps') pI bI)
-                       _                  -> return Nothing
+      Just varPat' -> do
+        varT <- getType tcm varPat'  -- Finally we get the type of the var
+        bsT  <- getType tcm bs
+        case (varT, bsT) of
+          (Just varT', Just (_,bsT')) ->
+            let (L matchL (G.Match _ _ (G.GRHSs rhsLs _))) = match
+            in return $ Just (SplitInfo (getPatternVarName varPat') (matchL,bsT') varT' (map G.getLoc rhsLs) )
+          _ -> return Nothing
 
 isPatternVar :: LPat Id -> Bool
 isPatternVar (L _ (G.VarPat _)) = True
@@ -326,13 +331,11 @@ sig opt file lineNo colNo = ghandle handler body
           Nothing -> return ""
           Just (Signature loc names ty) -> do
             return $ convert opt $ ( fourInts loc
-                                   , intercalate "\n"
-                                       (map (initialFnBody dflag style ty) names)
+                                   , map (initialFnBody dflag style ty) names
                                    )
           Just (InstanceDecl loc cls) -> do
             return $ convert opt $ ( fourInts loc
-                                   , intercalate "\n"
-                                       (map (initialInstBody dflag style) (Ty.classMethods cls))
+                                   , map (initialInstBody dflag style) (Ty.classMethods cls)
                                    )
             
     handler (SomeException _) = return ""
