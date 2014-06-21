@@ -81,6 +81,8 @@ Library
                         Language.Haskell.GhcMod.Utils
                         Language.Haskell.GhcMod.Types
                         Language.Haskell.GhcMod.Read
+                        Language.Haskell.GhcMod.Rewrite
+                        Language.Haskell.GhcMod.SrcUtils
   Build-Depends:        base >= 4.0 && < 5
                       , containers
                       , deepseq
