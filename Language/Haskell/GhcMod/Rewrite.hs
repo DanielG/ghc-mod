@@ -19,6 +19,7 @@ import qualified Language.Haskell.GhcMod.Gap as Gap
 import Language.Haskell.GhcMod.SrcUtils
 import Language.Haskell.GhcMod.Types
 import Language.Haskell.GhcMod.Convert
+import MonadUtils (liftIO)
 import Outputable (PprStyle)
 import qualified Type as Ty
 import qualified TyCon as Ty
@@ -26,6 +27,9 @@ import qualified DataCon as Ty
 import qualified HsBinds as Ty
 import qualified Class as Ty
 import OccName (OccName, occName)
+import qualified Language.Haskell.Exts.Annotated as HE
+
+import Debug.Trace
 
 ----------------------------------------------------------------
 
@@ -54,13 +58,13 @@ splits opt file lineNo colNo = ghandle handler body
         modSum <- Gap.fileModSummary file
         splitInfo <- getSrcSpanTypeForSplit modSum lineNo colNo
         case splitInfo of
-          Nothing -> return ""
+          Nothing -> return $ convert opt ([] :: [String])
           Just (SplitInfo varName binding var@(_,varT) matches) -> do
             return $ convert opt $ ( toTup dflag style binding
                                    , toTup dflag style var
                                    , (map fourInts matches)
                                    , getTyCons dflag style varName varT)
-    handler (SomeException _) = return []
+    handler (SomeException _) = return $ convert opt ([] :: [String])
 
 getSrcSpanTypeForSplit :: G.ModSummary -> Int -> Int -> Ghc (Maybe SplitInfo)
 getSrcSpanTypeForSplit modSum lineNo colNo = do
@@ -174,6 +178,8 @@ showFieldNames dflag style v (x:xs) = let fName = showName dflag style x
 data SigInfo = Signature SrcSpan [G.RdrName] (G.HsType G.RdrName)
              | InstanceDecl SrcSpan G.Class
 
+data HESigInfo = HESignature HE.SrcSpan [HE.Name HE.SrcSpanInfo] (HE.Type HE.SrcSpanInfo) 
+
 -- | Create a initial body from a signature.
 fillSig :: Options
         -> Cradle
@@ -187,10 +193,10 @@ fillSig opt cradle file lineNo colNo = withGHC' $ do
 
 -- | Splitting a variable in a equation.
 sig :: Options
-       -> FilePath     -- ^ A target file.
-       -> Int          -- ^ Line number.
-       -> Int          -- ^ Column number.
-       -> Ghc String
+    -> FilePath     -- ^ A target file.
+    -> Int          -- ^ Line number.
+    -> Int          -- ^ Column number.
+    -> Ghc String
 sig opt file lineNo colNo = ghandle handler body
   where
     body = inModuleContext file $ \dflag style -> do
@@ -199,15 +205,30 @@ sig opt file lineNo colNo = ghandle handler body
         case sigTy of
           Nothing -> return ""
           Just (Signature loc names ty) -> do
-            return $ convert opt $ ( fourInts loc
+            return $ convert opt $ ( "function"
+                                   , fourInts loc
                                    , map (initialFnBody dflag style ty) names
                                    )
+         
           Just (InstanceDecl loc cls) -> do
-            return $ convert opt $ ( fourInts loc
+            return $ convert opt $ ( "instance"
+                                   , fourInts loc
                                    , map (initialInstBody dflag style) (Ty.classMethods cls)
                                    )
             
-    handler (SomeException _) = return ""
+    handler (SomeException _) = do
+      -- Fallback: try to get information via haskell-src-exts
+      sigTy <- getSignatureFromHE file lineNo colNo
+      case sigTy of
+        Just (HESignature loc names ty) -> do
+          return $ convert opt $ ( "function"
+                                 , (HE.srcSpanStartLine loc
+                                   ,HE.srcSpanStartColumn loc
+                                   ,HE.srcSpanEndLine loc
+                                   ,HE.srcSpanEndColumn loc)
+                                 , map (initialHEFnBody  ty) names
+                                 )
+        _ -> return $ convert opt ([] :: [String])
 
 getSignature :: G.ModSummary -> Int -> Int -> Ghc (Maybe SigInfo)
 getSignature modSum lineNo colNo = do
@@ -232,14 +253,33 @@ getSignature modSum lineNo colNo = do
                obtainClassInfo minfo clsName loc
           _ -> return Nothing
       _ -> return Nothing
-    where obtainClassInfo minfo clsName loc = do
-               tyThing <- G.modInfoLookupName minfo clsName
-               case tyThing of
-                 Just (Ty.ATyCon clsCon) -> 
-                   case G.tyConClass_maybe clsCon of
-                     Just cls -> return $ Just $ InstanceDecl loc cls
-                     Nothing  -> return Nothing
-                 _ -> return Nothing
+
+obtainClassInfo :: G.ModuleInfo -> G.Name -> SrcSpan -> Ghc (Maybe SigInfo)
+obtainClassInfo minfo clsName loc = do
+  tyThing <- G.modInfoLookupName minfo clsName
+  case tyThing of
+    Just (Ty.ATyCon clsCon) -> 
+      case G.tyConClass_maybe clsCon of
+        Just cls -> return $ Just $ InstanceDecl loc cls
+        Nothing  -> return Nothing
+    _ -> return Nothing
+
+getSignatureFromHE :: FilePath -> Int -> Int -> Ghc (Maybe HESigInfo)
+getSignatureFromHE file lineNo colNo = do
+  presult <- liftIO $ HE.parseFile file
+  case presult of
+    HE.ParseOk (HE.Module _ _ _ _ mdecls) -> do
+      let tsig = find (typeSigInRange lineNo colNo) mdecls
+      case tsig of
+        Just (HE.TypeSig (HE.SrcSpanInfo s _) names ty) ->
+          return $ Just (HESignature s names ty)
+        _ -> return Nothing
+    _ -> return Nothing
+
+typeSigInRange :: Int -> Int -> HE.Decl HE.SrcSpanInfo -> Bool
+typeSigInRange lineNo colNo (HE.TypeSig (HE.SrcSpanInfo s _)  _ _) =
+  HE.srcSpanStart s <= (lineNo, colNo) && HE.srcSpanEnd s >= (lineNo, colNo)
+typeSigInRange _  _ _= False
 
 -- A list of function arguments, and whether they are functions or normal arguments
 -- is built from either a function signature or an instance signature
@@ -276,6 +316,21 @@ initialFnBody dflag style ty name =
                     (G.HsParTy (L _ iTy))          -> fnarg iTy
                     (G.HsFunTy _ _)                -> True
                     _                              -> False
+   in initialBody fname (args ty)
+
+initialHEFnBody :: HE.Type HE.SrcSpanInfo -> HE.Name HE.SrcSpanInfo -> String
+initialHEFnBody ty name = 
+  let fname = case name of
+                HE.Ident  _ s -> s
+                HE.Symbol _ s -> s
+      args  = \case (HE.TyForall _ _ _ iTy) -> args iTy
+                    (HE.TyParen _ iTy)      -> args iTy
+                    (HE.TyFun _ lTy rTy)    -> (if fnarg lTy then FnArgFunction else FnArgNormal):args rTy
+                    _ -> []
+      fnarg = \case (HE.TyForall _ _ _ iTy) -> fnarg iTy
+                    (HE.TyParen _ iTy)      -> fnarg iTy
+                    (HE.TyFun _ _ _)        -> True
+                    _                       -> False
    in initialBody fname (args ty)
 
 initialInstBody :: DynFlags -> PprStyle -> Id -> String

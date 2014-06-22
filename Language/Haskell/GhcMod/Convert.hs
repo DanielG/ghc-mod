@@ -80,9 +80,9 @@ instance ToString ((Int,Int,Int,Int),String) where
     toLisp  opt x = ('(' :) . tupToString opt x . (')' :)
     toPlain opt x = tupToString opt x
 
-instance ToString ((Int,Int,Int,Int),[String]) where
-    toLisp  opt (x,y) = toSexp2 $ [('(' :) . fourIntsToString opt x . (')' :), toLisp opt y]
-    toPlain opt (x,y) = inter '\n' [fourIntsToString opt x, toPlain opt y]
+instance ToString (String, (Int,Int,Int,Int),[String]) where
+    toLisp  opt (s,x,y) = toSexp2 $ [toLisp opt s, ('(' :) . fourIntsToString opt x . (')' :), toLisp opt y]
+    toPlain opt (s,x,y) = inter '\n' [toPlain opt s, fourIntsToString opt x, toPlain opt y]
 
 instance ToString [(Int,Int,Int,Int)] where
     toLisp  opt = toSexp2 . map toS
