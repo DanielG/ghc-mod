@@ -252,7 +252,7 @@ initialBody fname args =
     arglist -> if isSymbolName fname
                then (head arglist) ++ " " ++ fname ++ " " ++ (intercalate " " (tail arglist))
                else fname ++ " " ++ (intercalate " " arglist)
-  ++ " = _" ++ fname ++ "_body"
+  ++ " = " ++ (if isSymbolName fname then "" else '_':fname) ++ "_body"
 
 initialBodyArgs :: [FnArg] -> [String] -> [String] -> [String]
 initialBodyArgs [] _ _ = []

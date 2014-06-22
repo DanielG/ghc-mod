@@ -39,4 +39,31 @@
 	 (cmd (format "split %s %s %s\n" file ln cn)))
     (ghc-sync-process cmd)))
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;
+;;; Initial code from signature
+;;;
+
+(defun ghc-initial-code-from-signature ()
+  (interactive)
+  (let ((info (ghc-obtain-initial-code-from-signature)))
+    (if (null info)
+	(message "Cannot obtain initial code")
+	(let* ((ln-current (line-number-at-pos))
+	       (pos (car info))
+	       (ln-end (ghc-sinfo-get-end-line pos))
+	       (ln-diff (+ 1 (- ln-end ln-current)))
+	       (fns-to-insert (cadr info)))
+	  (goto-char (line-end-position ln-diff))
+	  (dolist (fn-to-insert fns-to-insert)
+	    (newline-and-indent)
+	    (insert fn-to-insert))))))
+
+(defun ghc-obtain-initial-code-from-signature ()
+  (let* ((ln (int-to-string (line-number-at-pos)))
+	 (cn (int-to-string (1+ (current-column))))
+	 (file (buffer-file-name))
+	 (cmd (format "sig %s %s %s\n" file ln cn)))
+    (ghc-sync-process cmd)))
+
 (provide 'ghc-rewrite)

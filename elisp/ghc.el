@@ -74,6 +74,7 @@
 (defvar ghc-shallower-key   "\C-c<")
 (defvar ghc-deeper-key      "\C-c>")
 (defvar ghc-case-split-key  "\C-c\C-p")
+(defvar ghc-initial-sig-key "\C-c\C-s")
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -107,6 +108,7 @@
     (define-key haskell-mode-map ghc-shallower-key   'ghc-make-indent-shallower)
     (define-key haskell-mode-map ghc-deeper-key      'ghc-make-indent-deeper)
     (define-key haskell-mode-map ghc-case-split-key  'ghc-case-split)
+    (define-key haskell-mode-map ghc-initial-sig-key 'ghc-initial-code-from-signature)
     (ghc-comp-init)
     (setq ghc-initialized t))
   (ghc-import-module)
