@@ -84,24 +84,6 @@ instance ToString (String, (Int,Int,Int,Int),[String]) where
     toLisp  opt (s,x,y) = toSexp2 $ [toLisp opt s, ('(' :) . fourIntsToString opt x . (')' :), toLisp opt y]
     toPlain opt (s,x,y) = inter '\n' [toPlain opt s, fourIntsToString opt x, toPlain opt y]
 
-instance ToString [(Int,Int,Int,Int)] where
-    toLisp  opt = toSexp2 . map toS
-      where
-        toS x = ('(' :) . fourIntsToString opt x . (')' :)
-    toPlain opt = inter '\n' . map (fourIntsToString opt)
-
-instance (ToString a, ToString b) => ToString (a,b) where
-    toLisp  opt (x,y) = toSexp2 $ [toLisp opt x, toLisp opt y]
-    toPlain opt (x,y) = inter '\n' [toPlain opt x, toPlain opt y]
-
-instance (ToString a, ToString b, ToString c) => ToString (a,b,c) where
-    toLisp  opt (x,y,z) = toSexp2 $ [toLisp opt x, toLisp opt y, toLisp opt z]
-    toPlain opt (x,y,z) = inter '\n' [toPlain opt x, toPlain opt y, toPlain opt z]
-
-instance (ToString a, ToString b, ToString c, ToString d) => ToString (a,b,c,d) where
-    toLisp  opt (x,y,z,t) = toSexp2 $ [toLisp opt x, toLisp opt y, toLisp opt z, toLisp opt t]
-    toPlain opt (x,y,z,t) = inter '\n' [toPlain opt x, toPlain opt y, toPlain opt z, toPlain opt t]
-
 toSexp1 :: Options -> [String] -> Builder
 toSexp1 opt ss = ('(' :) . inter ' ' (map (quote opt) ss) . (')' :)
 

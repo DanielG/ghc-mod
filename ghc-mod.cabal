@@ -103,6 +103,7 @@ Library
                       , monad-control
                       , split
                       , haskell-src-exts
+                      , text
   if impl(ghc < 7.7)
     Build-Depends:      convertible
                       , Cabal >= 1.10 && < 1.17

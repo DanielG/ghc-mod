@@ -1,4 +1,4 @@
-{-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE LambdaCase, RecordWildCards #-}
 
 module Language.Haskell.GhcMod.Rewrite (
     splitVar
@@ -9,6 +9,8 @@ module Language.Haskell.GhcMod.Rewrite (
 
 import Data.Char (isSymbol)
 import Data.List (find, intercalate)
+import qualified Data.Text as T
+import qualified Data.Text.IO as T (readFile)
 import Exception (ghandle, SomeException(..))
 import GHC (Ghc, LHsBind, LHsExpr, LPat, Id, ParsedModule(..), TypecheckedModule(..), DynFlags, SrcSpan, Type, GenLocated(L))
 import qualified GHC as G
@@ -29,11 +31,15 @@ import qualified Class as Ty
 import OccName (OccName, occName)
 import qualified Language.Haskell.Exts.Annotated as HE
 
-import Debug.Trace
-
 ----------------------------------------------------------------
 
 data SplitInfo = SplitInfo G.Name (SrcSpan,Type) (SrcSpan, Type) [SrcSpan]
+data SplitToTextInfo = SplitToTextInfo { sVarName     :: String
+                                       , sBindingSpan :: SrcSpan
+                                       , sVarSpan     :: SrcSpan
+                                       , sMatchesSpan :: [SrcSpan]
+                                       , sTycons      :: [String]
+                                       }
 
 -- | Splitting a variable in a equation.
 splitVar :: Options
@@ -59,11 +65,12 @@ splits opt file lineNo colNo = ghandle handler body
         splitInfo <- getSrcSpanTypeForSplit modSum lineNo colNo
         case splitInfo of
           Nothing -> return $ convert opt ([] :: [String])
-          Just (SplitInfo varName binding var@(_,varT) matches) -> do
-            return $ convert opt $ ( toTup dflag style binding
-                                   , toTup dflag style var
-                                   , (map fourInts matches)
-                                   , getTyCons dflag style varName varT)
+          Just (SplitInfo varName (bndLoc,_) (varLoc,varT) matches) -> do
+            let varName' = showName dflag style varName  -- Convert name to string
+            text <- genCaseSplitTextFile file (SplitToTextInfo varName' bndLoc varLoc matches $
+                                               getTyCons dflag style varName varT)
+            return $ convert opt $ ( fourInts bndLoc
+                                   , text)
     handler (SomeException _) = return $ convert opt ([] :: [String])
 
 getSrcSpanTypeForSplit :: G.ModSummary -> Int -> Int -> Ghc (Maybe SplitInfo)
@@ -91,6 +98,8 @@ isPatternVar _                  = False
 getPatternVarName :: LPat Id -> G.Name
 getPatternVarName (L _ (G.VarPat vName)) = G.getName vName
 getPatternVarName _                      = error "This should never happend"
+
+----------------------------------------------------------------
 
 getTyCons :: DynFlags -> PprStyle -> G.Name -> G.Type ->  [String]
 getTyCons dflag style name ty | Just (tyCon, _) <- Ty.splitTyConApp_maybe ty =
@@ -136,7 +145,9 @@ getDataCon dflag style vName dcon | [] <- Ty.dataConFieldLabels dcon =
   let dName  = showName dflag style $ Ty.dataConName dcon
   in if last dName == '#'  -- Special case for I#, C# and so on
      then vName
-     else dName ++ " " ++ newVarsSpecialSingleton vName 1 (Ty.dataConSourceArity dcon)
+     else case Ty.dataConSourceArity dcon of
+            0 -> dName
+            _ -> dName ++ " " ++ newVarsSpecialSingleton vName 1 (Ty.dataConSourceArity dcon)
 -- 3. Records
 getDataCon dflag style vName dcon =
   let dName = showName dflag style $ Ty.dataConName dcon
@@ -173,6 +184,49 @@ showFieldNames dflag style v (x:xs) = let fName = showName dflag style x
                                             [] -> fAcc
                                             _  -> fAcc ++ ", " ++ showFieldNames dflag style v xs
 
+----------------------------------------------------------------
+
+genCaseSplitTextFile :: FilePath -> SplitToTextInfo -> Ghc String
+genCaseSplitTextFile file info = liftIO $ do
+  text <- T.readFile file
+  return $ getCaseSplitText (T.lines text) info
+
+getCaseSplitText :: [T.Text] -> SplitToTextInfo -> String
+getCaseSplitText text (SplitToTextInfo { .. })  =
+  let bindingText = getBindingText text sBindingSpan
+      difference  = srcSpanDifference sBindingSpan sVarSpan
+      replaced    = concatMap (replaceVarWithTyCon bindingText difference sVarName) sTycons
+   in T.unpack $ T.intercalate (T.pack "\n") replaced
+
+getBindingText :: [T.Text] -> SrcSpan -> [T.Text]
+getBindingText text srcSpan =
+  let Just (sl,sc,el,ec) = Gap.getSrcSpan srcSpan
+      lines_ = drop (sl - 1) $ take el text
+   in if sl == el
+      then -- only one line
+           [T.drop (sc - 1) $ T.take ec $ head lines_]
+      else -- several lines
+            let (first,rest,last_) = (head lines_, tail $ init lines_, last lines_)
+             in (T.drop (sc - 1) first) : rest ++ [T.take ec last_]
+
+srcSpanDifference :: SrcSpan -> SrcSpan -> (Int,Int,Int,Int)
+srcSpanDifference b v =
+  let Just (bsl,bsc,_   ,_)  = Gap.getSrcSpan b
+      Just (vsl,vsc,vel,vec) = Gap.getSrcSpan v
+   in (vsl - bsl, vsc - bsc, vel - bsl, vec - bsc) -- assume variable in one line
+
+replaceVarWithTyCon :: [T.Text] -> (Int,Int,Int,Int) -> String -> String -> [T.Text]
+replaceVarWithTyCon text (vsl,vsc,_,vec) varname tycon = 
+  let tycon'      = if ' ' `elem` tycon || ':' `elem` tycon then "(" ++ tycon ++ ")" else tycon
+      lengthDiff  = length tycon' - length varname
+      tycon''     = T.pack $ if lengthDiff < 0 then tycon' ++ replicate (-lengthDiff) ' ' else tycon'
+      spacesToAdd = if lengthDiff < 0 then 0 else lengthDiff
+   in zipWith (\n line -> if n < vsl
+                          then line  -- before variable starts
+                          else if n == vsl
+                               then T.take vsc line `T.append` tycon'' `T.append` T.drop vec line
+                               else T.replicate spacesToAdd (T.pack " ") `T.append` line)
+              [0 ..] text
 ----------------------------------------------------------------
 
 data SigInfo = Signature SrcSpan [G.RdrName] (G.HsType G.RdrName)
