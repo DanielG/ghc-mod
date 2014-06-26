@@ -257,7 +257,7 @@ sig opt file lineNo colNo = ghandle handler body
         modSum <- Gap.fileModSummary file
         sigTy <- getSignature modSum lineNo colNo
         case sigTy of
-          Nothing -> return ""
+          Nothing -> return $ convert opt ([] :: [String])
           Just (Signature loc names ty) -> do
             return $ convert opt $ ( "function"
                                    , fourInts loc
