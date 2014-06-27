@@ -1,6 +1,3 @@
-{-# LANGUAGE LambdaCase, RecordWildCards
-  , MultiParamTypeClasses, FunctionalDependencies, FlexibleInstances #-}
-
 module Language.Haskell.GhcMod.CaseSplit (
     splitVar
   , splits
@@ -32,7 +29,6 @@ data SplitInfo = SplitInfo G.Name (SrcSpan,Type) (SrcSpan, Type) [SrcSpan]
 data SplitToTextInfo = SplitToTextInfo { sVarName     :: String
                                        , sBindingSpan :: SrcSpan
                                        , sVarSpan     :: SrcSpan
-                                       , sMatchesSpan :: [SrcSpan]
                                        , sTycons      :: [String]
                                        }
 
@@ -58,9 +54,9 @@ splits opt file lineNo colNo = ghandle handler body
     body = inModuleContext file $ \dflag style -> do
         modSum <- Gap.fileModSummary file
         whenFound' opt (getSrcSpanTypeForSplit modSum lineNo colNo) $
-          \(SplitInfo varName (bndLoc,_) (varLoc,varT) matches) -> do
+          \(SplitInfo varName (bndLoc,_) (varLoc,varT) _matches) -> do
              let varName' = showName dflag style varName  -- Convert name to string
-             text <- genCaseSplitTextFile file (SplitToTextInfo varName' bndLoc varLoc matches $
+             text <- genCaseSplitTextFile file (SplitToTextInfo varName' bndLoc varLoc $
                                                 getTyCons dflag style varName varT)
              return (fourInts bndLoc, text)
     handler (SomeException _) = emptyResult opt
@@ -183,10 +179,11 @@ genCaseSplitTextFile file info = liftIO $ do
   return $ getCaseSplitText (T.lines text) info
 
 getCaseSplitText :: [T.Text] -> SplitToTextInfo -> String
-getCaseSplitText text (SplitToTextInfo { .. })  =
-  let bindingText = getBindingText text sBindingSpan
-      difference  = srcSpanDifference sBindingSpan sVarSpan
-      replaced    = concatMap (replaceVarWithTyCon bindingText difference sVarName) sTycons
+getCaseSplitText text (SplitToTextInfo { sVarName = sVN, sBindingSpan = sBS
+                                       , sVarSpan = sVS, sTycons = sT })  =
+  let bindingText = getBindingText text sBS
+      difference  = srcSpanDifference sBS sVS
+      replaced    = concatMap (replaceVarWithTyCon bindingText difference sVN) sT
    in T.unpack $ T.intercalate (T.pack "\n") replaced
 
 getBindingText :: [T.Text] -> SrcSpan -> [T.Text]

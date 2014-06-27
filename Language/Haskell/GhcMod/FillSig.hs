@@ -1,5 +1,4 @@
-{-# LANGUAGE LambdaCase, RecordWildCards
-  , MultiParamTypeClasses, FunctionalDependencies, FlexibleInstances #-}
+{-# LANGUAGE MultiParamTypeClasses, FunctionalDependencies, FlexibleInstances #-}
 
 module Language.Haskell.GhcMod.FillSig (
     fillSig
@@ -56,12 +55,12 @@ sig opt file lineNo colNo = ghandle handler body
   where
     body = inModuleContext file $ \dflag style -> do
         modSum <- Gap.fileModSummary file
-        whenFound opt (getSignature modSum lineNo colNo) $
-          \case Signature loc names ty ->
-                  ("function", fourInts loc, map (initialBody dflag style ty) names)
-                InstanceDecl loc cls -> do
-                  ("instance", fourInts loc, map (\x -> initialBody dflag style (G.idType x) x)
-                                                 (Ty.classMethods cls))
+        whenFound opt (getSignature modSum lineNo colNo) $ \s -> case s of
+          Signature loc names ty ->
+            ("function", fourInts loc, map (initialBody dflag style ty) names)
+          InstanceDecl loc cls -> do
+             ("instance", fourInts loc, map (\x -> initialBody dflag style (G.idType x) x)
+                                            (Ty.classMethods cls))
             
     handler (SomeException _) = do
       -- Code cannot be parsed by ghc module
@@ -153,10 +152,11 @@ instance FnArgsInfo (G.HsType G.RdrName) (G.RdrName) where
   getFnArgs (G.HsForAllTy _ _ _ (L _ iTy))  = getFnArgs iTy
   getFnArgs (G.HsParTy (L _ iTy))           = getFnArgs iTy
   getFnArgs (G.HsFunTy (L _ lTy) (L _ rTy)) = (if fnarg lTy then FnArgFunction else FnArgNormal):getFnArgs rTy
-    where fnarg = \case (G.HsForAllTy _ _ _ (L _ iTy)) -> fnarg iTy
-                        (G.HsParTy (L _ iTy))          -> fnarg iTy
-                        (G.HsFunTy _ _)                -> True
-                        _                              -> False
+    where fnarg = \ty -> case ty of
+                           (G.HsForAllTy _ _ _ (L _ iTy)) -> fnarg iTy
+                           (G.HsParTy (L _ iTy))          -> fnarg iTy
+                           (G.HsFunTy _ _)                -> True
+                           _                              -> False
   getFnArgs _ = []
 
 instance FnArgsInfo (HE.Type HE.SrcSpanInfo) (HE.Name HE.SrcSpanInfo) where
@@ -165,10 +165,11 @@ instance FnArgsInfo (HE.Type HE.SrcSpanInfo) (HE.Name HE.SrcSpanInfo) where
   getFnArgs (HE.TyForall _ _ _ iTy) = getFnArgs iTy
   getFnArgs (HE.TyParen _ iTy)      = getFnArgs iTy
   getFnArgs (HE.TyFun _ lTy rTy)    = (if fnarg lTy then FnArgFunction else FnArgNormal):getFnArgs rTy
-    where fnarg = \case (HE.TyForall _ _ _ iTy) -> fnarg iTy
-                        (HE.TyParen _ iTy)      -> fnarg iTy
-                        (HE.TyFun _ _ _)        -> True
-                        _                       -> False
+    where fnarg = \ty -> case ty of
+                           (HE.TyForall _ _ _ iTy) -> fnarg iTy
+                           (HE.TyParen _ iTy)      -> fnarg iTy
+                           (HE.TyFun _ _ _)        -> True
+                           _                       -> False
   getFnArgs _ = []
 
 instance FnArgsInfo Type Id where
