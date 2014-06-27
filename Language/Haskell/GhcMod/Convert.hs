@@ -1,6 +1,6 @@
 {-# LANGUAGE FlexibleInstances, FlexibleContexts, OverlappingInstances #-}
 
-module Language.Haskell.GhcMod.Convert (convert, convert') where
+module Language.Haskell.GhcMod.Convert (convert, convert', emptyResult, whenFound) where
 
 import Language.Haskell.GhcMod.Monad
 import Language.Haskell.GhcMod.Types
@@ -115,3 +115,11 @@ quote opt str = ("\"" ++) .  (quote' str ++) . ("\"" ++)
       | otherwise = x       : quote' xs
 
 ----------------------------------------------------------------
+
+-- Empty result to be returned when no info can be gathered
+emptyResult :: Monad m => Options -> m String
+emptyResult opt = return $ convert opt ([] :: [String])
+
+-- Return an emptyResult when Nothing
+whenFound :: (Monad m, ToString b) => Options -> m (Maybe a) -> (a -> b) -> m String
+whenFound opt from f = maybe (emptyResult opt) (return . convert opt . f) =<< from

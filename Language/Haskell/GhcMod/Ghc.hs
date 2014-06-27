@@ -26,4 +26,5 @@ import Language.Haskell.GhcMod.Find
 import Language.Haskell.GhcMod.GHCApi
 import Language.Haskell.GhcMod.Info
 import Language.Haskell.GhcMod.List
-import Language.Haskell.GhcMod.Rewrite
+import Language.Haskell.GhcMod.FillSig
+import Language.Haskell.GhcMod.CaseSplit

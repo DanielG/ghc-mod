@@ -1,10 +1,9 @@
-{-# LANGUAGE LambdaCase, RecordWildCards #-}
+{-# LANGUAGE LambdaCase, RecordWildCards
+  , MultiParamTypeClasses, FunctionalDependencies, FlexibleInstances #-}
 
-module Language.Haskell.GhcMod.Rewrite (
+module Language.Haskell.GhcMod.CaseSplit (
     splitVar
   , splits
-  , fillSig
-  , sig
   ) where
 
 import Data.Char (isSymbol)
@@ -31,6 +30,8 @@ import qualified Class as Ty
 import OccName (OccName, occName)
 import qualified Language.Haskell.Exts.Annotated as HE
 
+----------------------------------------------------------------
+-- CASE SPLITTING
 ----------------------------------------------------------------
 
 data SplitInfo = SplitInfo G.Name (SrcSpan,Type) (SrcSpan, Type) [SrcSpan]
@@ -170,12 +171,6 @@ newVarsSpecialSingleton :: String -> Int -> Int -> String
 newVarsSpecialSingleton v _     1 = v
 newVarsSpecialSingleton v start n = newVars v start n
 
-showName :: DynFlags -> PprStyle -> G.Name -> String
-showName dflag style name = showOneLine dflag style $ Gap.nameForUser name
-
-showOccName :: DynFlags -> PprStyle -> OccName -> String
-showOccName dflag style name = showOneLine dflag style $ Gap.occNameForUser name
-
 showFieldNames :: DynFlags -> PprStyle -> String -> [G.Name] -> String
 showFieldNames _     _     _ []      = "" -- This should never happen
 showFieldNames dflag style v (x:xs) = let fName = showName dflag style x
@@ -227,184 +222,3 @@ replaceVarWithTyCon text (vsl,vsc,_,vec) varname tycon =
                                then T.take vsc line `T.append` tycon'' `T.append` T.drop vec line
                                else T.replicate spacesToAdd (T.pack " ") `T.append` line)
               [0 ..] text
-----------------------------------------------------------------
-
-data SigInfo = Signature SrcSpan [G.RdrName] (G.HsType G.RdrName)
-             | InstanceDecl SrcSpan G.Class
-
-data HESigInfo = HESignature HE.SrcSpan [HE.Name HE.SrcSpanInfo] (HE.Type HE.SrcSpanInfo) 
-
--- | Create a initial body from a signature.
-fillSig :: Options
-        -> Cradle
-        -> FilePath     -- ^ A target file.
-        -> Int          -- ^ Line number.
-        -> Int          -- ^ Column number.
-        -> IO String
-fillSig opt cradle file lineNo colNo = withGHC' $ do
-    initializeFlagsWithCradle opt cradle
-    sig opt file lineNo colNo
-
--- | Splitting a variable in a equation.
-sig :: Options
-    -> FilePath     -- ^ A target file.
-    -> Int          -- ^ Line number.
-    -> Int          -- ^ Column number.
-    -> Ghc String
-sig opt file lineNo colNo = ghandle handler body
-  where
-    body = inModuleContext file $ \dflag style -> do
-        modSum <- Gap.fileModSummary file
-        sigTy <- getSignature modSum lineNo colNo
-        case sigTy of
-          Nothing -> return $ convert opt ([] :: [String])
-          Just (Signature loc names ty) -> do
-            return $ convert opt $ ( "function"
-                                   , fourInts loc
-                                   , map (initialFnBody dflag style ty) names
-                                   )
-         
-          Just (InstanceDecl loc cls) -> do
-            return $ convert opt $ ( "instance"
-                                   , fourInts loc
-                                   , map (initialInstBody dflag style) (Ty.classMethods cls)
-                                   )
-            
-    handler (SomeException _) = do
-      -- Fallback: try to get information via haskell-src-exts
-      sigTy <- getSignatureFromHE file lineNo colNo
-      case sigTy of
-        Just (HESignature loc names ty) -> do
-          return $ convert opt $ ( "function"
-                                 , (HE.srcSpanStartLine loc
-                                   ,HE.srcSpanStartColumn loc
-                                   ,HE.srcSpanEndLine loc
-                                   ,HE.srcSpanEndColumn loc)
-                                 , map (initialHEFnBody  ty) names
-                                 )
-        _ -> return $ convert opt ([] :: [String])
-
-getSignature :: G.ModSummary -> Int -> Int -> Ghc (Maybe SigInfo)
-getSignature modSum lineNo colNo = do
-    p@ParsedModule{pm_parsed_source = ps} <- G.parseModule modSum
-    -- Look into the parse tree to find the signature
-    case listifyParsedSpans ps (lineNo, colNo) :: [G.LHsDecl G.RdrName] of
-      [L loc (G.SigD (Ty.TypeSig names (L _ ty)))] ->
-        -- We found a type signature
-        return $ Just $ Signature loc (map G.unLoc names) ty
-      [L _ (G.InstD _)] -> do
-        -- We found an instance declaration
-        TypecheckedModule{tm_renamed_source = Just tcs
-                         ,tm_checked_module_info = minfo} <- G.typecheckModule p
-        case listifyRenamedSpans tcs (lineNo, colNo) :: [G.LInstDecl G.Name] of
-          -- Instance declarations of sort 'instance F (G a)'
-          [L loc (G.ClsInstD (G.ClsInstDecl {G.cid_poly_ty =
-            (L _ (G.HsForAllTy _ _ _ (L _ (G.HsAppTy (L _ (G.HsTyVar clsName)) _))))}))] ->
-               obtainClassInfo minfo clsName loc
-          -- Instance declarations of sort 'instance F G' (no variables)
-          [L loc (G.ClsInstD (G.ClsInstDecl {G.cid_poly_ty =
-            (L _ (G.HsAppTy (L _ (G.HsTyVar clsName)) _))}))] ->
-               obtainClassInfo minfo clsName loc
-          _ -> return Nothing
-      _ -> return Nothing
-
-obtainClassInfo :: G.ModuleInfo -> G.Name -> SrcSpan -> Ghc (Maybe SigInfo)
-obtainClassInfo minfo clsName loc = do
-  tyThing <- G.modInfoLookupName minfo clsName
-  case tyThing of
-    Just (Ty.ATyCon clsCon) -> 
-      case G.tyConClass_maybe clsCon of
-        Just cls -> return $ Just $ InstanceDecl loc cls
-        Nothing  -> return Nothing
-    _ -> return Nothing
-
-getSignatureFromHE :: FilePath -> Int -> Int -> Ghc (Maybe HESigInfo)
-getSignatureFromHE file lineNo colNo = do
-  presult <- liftIO $ HE.parseFile file
-  case presult of
-    HE.ParseOk (HE.Module _ _ _ _ mdecls) -> do
-      let tsig = find (typeSigInRange lineNo colNo) mdecls
-      case tsig of
-        Just (HE.TypeSig (HE.SrcSpanInfo s _) names ty) ->
-          return $ Just (HESignature s names ty)
-        _ -> return Nothing
-    _ -> return Nothing
-
-typeSigInRange :: Int -> Int -> HE.Decl HE.SrcSpanInfo -> Bool
-typeSigInRange lineNo colNo (HE.TypeSig (HE.SrcSpanInfo s _)  _ _) =
-  HE.srcSpanStart s <= (lineNo, colNo) && HE.srcSpanEnd s >= (lineNo, colNo)
-typeSigInRange _  _ _= False
-
--- A list of function arguments, and whether they are functions or normal arguments
--- is built from either a function signature or an instance signature
-data FnArg = FnArgFunction | FnArgNormal
-
-initialBody :: String -> [FnArg] -> String
-initialBody fname args =
-  case initialBodyArgs args infiniteVars infiniteFns of
-    []      -> fname
-    arglist -> if isSymbolName fname
-               then (head arglist) ++ " " ++ fname ++ " " ++ (intercalate " " (tail arglist))
-               else fname ++ " " ++ (intercalate " " arglist)
-  ++ " = " ++ (if isSymbolName fname then "" else '_':fname) ++ "_body"
-
-initialBodyArgs :: [FnArg] -> [String] -> [String] -> [String]
-initialBodyArgs [] _ _ = []
-initialBodyArgs (FnArgFunction:xs) vs (f:fs) = f : initialBodyArgs xs vs fs
-initialBodyArgs (FnArgNormal:xs)   (v:vs) fs = v : initialBodyArgs xs vs fs
-initialBodyArgs _                  _      _  = error "This should never happen" -- Lists are infinite
-
--- Getting the initial body of function and instances differ
--- This is because for functions we only use the parsed file
--- (so the full file doesn't have to be type correct)
--- but for instances we need to get information about the class
-
-initialFnBody :: DynFlags -> PprStyle -> G.HsType G.RdrName -> G.RdrName -> String
-initialFnBody dflag style ty name = 
-  let fname = showOccName dflag style $ occName name  -- get function name
-      args  = \case (G.HsForAllTy _ _ _ (L _ iTy))  -> args iTy
-                    (G.HsParTy (L _ iTy))           -> args iTy
-                    (G.HsFunTy (L _ lTy) (L _ rTy)) -> (if fnarg lTy then FnArgFunction else FnArgNormal):args rTy
-                    _ -> []
-      fnarg = \case (G.HsForAllTy _ _ _ (L _ iTy)) -> fnarg iTy
-                    (G.HsParTy (L _ iTy))          -> fnarg iTy
-                    (G.HsFunTy _ _)                -> True
-                    _                              -> False
-   in initialBody fname (args ty)
-
-initialHEFnBody :: HE.Type HE.SrcSpanInfo -> HE.Name HE.SrcSpanInfo -> String
-initialHEFnBody ty name = 
-  let fname = case name of
-                HE.Ident  _ s -> s
-                HE.Symbol _ s -> s
-      args  = \case (HE.TyForall _ _ _ iTy) -> args iTy
-                    (HE.TyParen _ iTy)      -> args iTy
-                    (HE.TyFun _ lTy rTy)    -> (if fnarg lTy then FnArgFunction else FnArgNormal):args rTy
-                    _ -> []
-      fnarg = \case (HE.TyForall _ _ _ iTy) -> fnarg iTy
-                    (HE.TyParen _ iTy)      -> fnarg iTy
-                    (HE.TyFun _ _ _)        -> True
-                    _                       -> False
-   in initialBody fname (args ty)
-
-initialInstBody :: DynFlags -> PprStyle -> Id -> String
-initialInstBody dflag style method =
-  let fname = showOccName dflag style $ G.getOccName method  -- get function name
-      args  = \case ty | Just (lTy,rTy) <- Ty.splitFunTy_maybe ty ->
-                      case Ty.splitFunTy_maybe lTy of
-                        Just _  -> FnArgFunction:args rTy
-                        Nothing -> -- Drop the class predicates
-                                   if Ty.isPredTy lTy then args rTy else FnArgNormal:args rTy
-                    ty | Just (_,iTy) <- Ty.splitForAllTy_maybe ty -> args iTy
-                    _ -> []
-   in initialBody fname (args (Ty.dropForAlls $ G.idType method))
-
-infiniteVars, infiniteFns :: [String]
-infiniteVars = infiniteSupply ["x","y","z","t","u","v","w"]
-infiniteFns  = infiniteSupply ["f","g","h"]
-infiniteSupply :: [String] -> [String]
-infiniteSupply initialSupply = initialSupply ++ concatMap (\n -> map (\v -> v ++ show n) initialSupply) ([1 .. ] :: [Integer])
-
-isSymbolName :: String -> Bool
-isSymbolName (c:_) = c `elem` "!#$%&*+./<=>?@\\^|-~" || isSymbol c
-isSymbolName []    = error "This should never happen"

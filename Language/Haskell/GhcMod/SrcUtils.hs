@@ -18,6 +18,8 @@ import Language.Haskell.GhcMod.Gap (HasType(..), setWarnTypedHoles, setDeferType
 import qualified Language.Haskell.GhcMod.Gap as Gap
 import Outputable (PprStyle)
 import TcHsSyn (hsPatType)
+import OccName (OccName)
+import qualified Language.Haskell.Exts.Annotated as HE
 
 ----------------------------------------------------------------
 
@@ -62,6 +64,16 @@ toTup dflag style (spn, typ) = (fourInts spn, pretty dflag style typ)
 fourInts :: SrcSpan -> (Int,Int,Int,Int)
 fourInts = fromMaybe (0,0,0,0) . Gap.getSrcSpan
 
+fourIntsHE :: HE.SrcSpan -> (Int,Int,Int,Int)
+fourIntsHE loc = ( HE.srcSpanStartLine loc, HE.srcSpanStartColumn loc
+                 , HE.srcSpanEndLine loc, HE.srcSpanEndColumn loc)
+
+-- Check whether (line,col) is inside a given SrcSpanInfo
+typeSigInRangeHE :: Int -> Int -> HE.Decl HE.SrcSpanInfo -> Bool
+typeSigInRangeHE lineNo colNo (HE.TypeSig (HE.SrcSpanInfo s _)  _ _) =
+  HE.srcSpanStart s <= (lineNo, colNo) && HE.srcSpanEnd s >= (lineNo, colNo)
+typeSigInRangeHE _  _ _= False
+
 pretty :: DynFlags -> PprStyle -> Type -> String
 pretty dflag style = showOneLine dflag style . Gap.typeForUser
 
@@ -75,3 +87,11 @@ inModuleContext file action =
         dflag <- G.getSessionDynFlags
         style <- getStyle
         action dflag style
+
+----------------------------------------------------------------
+
+showName :: DynFlags -> PprStyle -> G.Name -> String
+showName dflag style name = showOneLine dflag style $ Gap.nameForUser name
+
+showOccName :: DynFlags -> PprStyle -> OccName -> String
+showOccName dflag style name = showOneLine dflag style $ Gap.occNameForUser name
