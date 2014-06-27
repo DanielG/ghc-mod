@@ -1,6 +1,6 @@
 {-# LANGUAGE FlexibleInstances, FlexibleContexts, OverlappingInstances #-}
 
-module Language.Haskell.GhcMod.Convert (convert, convert', emptyResult, whenFound) where
+module Language.Haskell.GhcMod.Convert (convert, convert', emptyResult, whenFound, whenFound') where
 
 import Language.Haskell.GhcMod.Monad
 import Language.Haskell.GhcMod.Types
@@ -123,3 +123,7 @@ emptyResult opt = return $ convert opt ([] :: [String])
 -- Return an emptyResult when Nothing
 whenFound :: (Monad m, ToString b) => Options -> m (Maybe a) -> (a -> b) -> m String
 whenFound opt from f = maybe (emptyResult opt) (return . convert opt . f) =<< from
+
+-- Return an emptyResult when Nothing, inside a monad
+whenFound' :: (Monad m, ToString b) => Options -> m (Maybe a) -> (a -> m b) -> m String
+whenFound' opt from f = maybe (emptyResult opt) (\x -> do y <- f x ; return (convert opt y)) =<< from

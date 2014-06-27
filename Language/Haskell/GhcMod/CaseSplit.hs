@@ -6,14 +6,12 @@ module Language.Haskell.GhcMod.CaseSplit (
   , splits
   ) where
 
-import Data.Char (isSymbol)
 import Data.List (find, intercalate)
 import qualified Data.Text as T
 import qualified Data.Text.IO as T (readFile)
 import Exception (ghandle, SomeException(..))
 import GHC (Ghc, LHsBind, LHsExpr, LPat, Id, ParsedModule(..), TypecheckedModule(..), DynFlags, SrcSpan, Type, GenLocated(L))
 import qualified GHC as G
-import Language.Haskell.GhcMod.Doc (showOneLine)
 import Language.Haskell.GhcMod.GHCApi
 import Language.Haskell.GhcMod.Gap (HasType(..))
 import qualified Language.Haskell.GhcMod.Gap as Gap
@@ -25,10 +23,6 @@ import Outputable (PprStyle)
 import qualified Type as Ty
 import qualified TyCon as Ty
 import qualified DataCon as Ty
-import qualified HsBinds as Ty
-import qualified Class as Ty
-import OccName (OccName, occName)
-import qualified Language.Haskell.Exts.Annotated as HE
 
 ----------------------------------------------------------------
 -- CASE SPLITTING
@@ -63,16 +57,16 @@ splits opt file lineNo colNo = ghandle handler body
   where
     body = inModuleContext file $ \dflag style -> do
         modSum <- Gap.fileModSummary file
-        splitInfo <- getSrcSpanTypeForSplit modSum lineNo colNo
-        case splitInfo of
-          Nothing -> return $ convert opt ([] :: [String])
-          Just (SplitInfo varName (bndLoc,_) (varLoc,varT) matches) -> do
-            let varName' = showName dflag style varName  -- Convert name to string
-            text <- genCaseSplitTextFile file (SplitToTextInfo varName' bndLoc varLoc matches $
-                                               getTyCons dflag style varName varT)
-            return $ convert opt $ ( fourInts bndLoc
-                                   , text)
-    handler (SomeException _) = return $ convert opt ([] :: [String])
+        whenFound' opt (getSrcSpanTypeForSplit modSum lineNo colNo) $
+          \(SplitInfo varName (bndLoc,_) (varLoc,varT) matches) -> do
+             let varName' = showName dflag style varName  -- Convert name to string
+             text <- genCaseSplitTextFile file (SplitToTextInfo varName' bndLoc varLoc matches $
+                                                getTyCons dflag style varName varT)
+             return (fourInts bndLoc, text)
+    handler (SomeException _) = emptyResult opt
+
+----------------------------------------------------------------
+-- a. Code for getting the information of the variable
 
 getSrcSpanTypeForSplit :: G.ModSummary -> Int -> Int -> Ghc (Maybe SplitInfo)
 getSrcSpanTypeForSplit modSum lineNo colNo = do
@@ -80,7 +74,7 @@ getSrcSpanTypeForSplit modSum lineNo colNo = do
     tcm@TypecheckedModule{tm_typechecked_source = tcs} <- G.typecheckModule p
     let bs:_ = listifySpans tcs (lineNo, colNo) :: [LHsBind Id]
         varPat  = find isPatternVar $ listifySpans tcs (lineNo, colNo) :: Maybe (LPat Id)
-        match:_ = listifyParsedSpans pms (lineNo, colNo) :: [G.LMatch G.RdrName (LHsExpr G.RdrName)]
+        match:_ = listifyParsedSpans pms (lineNo, colNo) :: [G.LMatch G.RdrName (LHsExpr G.RdrName)]       
     case varPat of
       Nothing  -> return Nothing
       Just varPat' -> do
@@ -101,6 +95,7 @@ getPatternVarName (L _ (G.VarPat vName)) = G.getName vName
 getPatternVarName _                      = error "This should never happend"
 
 ----------------------------------------------------------------
+-- b. Code for getting the possible constructors
 
 getTyCons :: DynFlags -> PprStyle -> G.Name -> G.Type ->  [String]
 getTyCons dflag style name ty | Just (tyCon, _) <- Ty.splitTyConApp_maybe ty =
@@ -180,6 +175,7 @@ showFieldNames dflag style v (x:xs) = let fName = showName dflag style x
                                             _  -> fAcc ++ ", " ++ showFieldNames dflag style v xs
 
 ----------------------------------------------------------------
+-- c. Code for performing the case splitting
 
 genCaseSplitTextFile :: FilePath -> SplitToTextInfo -> Ghc String
 genCaseSplitTextFile file info = liftIO $ do
