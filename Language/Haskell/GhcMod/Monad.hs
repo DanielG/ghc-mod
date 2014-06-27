@@ -124,6 +124,7 @@ withErrorHandler label = ghandle ignore
         hPrint stderr e
         exitSuccess
 
+-- | This is only a transitional mechanism don't use it for new code.
 toGhcMod :: Ghc a -> GhcMod a
 toGhcMod a = do
     s <- gmGhcSession <$> ask
