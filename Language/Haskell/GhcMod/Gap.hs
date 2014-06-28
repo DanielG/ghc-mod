@@ -350,18 +350,10 @@ typeForUser = pprTypeForUser False
 #endif
 
 nameForUser :: Name -> SDoc
-#if __GLASGOW_HASKELL__ >= 708
 nameForUser = pprOccName . getOccName
-#else
-nameForUser = pprOccName False . getOccName
-#endif
 
 occNameForUser :: OccName -> SDoc
-#if __GLASGOW_HASKELL__ >= 708
 occNameForUser = pprOccName
-#else
-occNameForUser = pprOccName False
-#endif
 
 deSugar :: TypecheckedModule -> LHsExpr Id -> HscEnv
          -> IO (Maybe CoreExpr)

@@ -4,12 +4,11 @@
 module Language.Haskell.GhcMod.SrcUtils where
 
 import Control.Applicative ((<$>))
-import CoreMonad (liftIO)
 import CoreUtils (exprType)
 import Data.Generics
 import Data.Maybe (fromMaybe)
 import Data.Ord as O
-import GHC (Ghc, LHsExpr, LPat, Id, DynFlags, SrcSpan, Type, Located, ParsedSource, RenamedSource, TypecheckedSource, GenLocated(L))
+import GHC (LHsExpr, LPat, Id, DynFlags, SrcSpan, Type, Located, ParsedSource, RenamedSource, TypecheckedSource, GenLocated(L))
 import GhcMonad
 import qualified GHC as G
 import GHC.SYB.Utils (Stage(..), everythingStaged)
