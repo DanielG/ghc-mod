@@ -7,11 +7,12 @@ import Data.List (find, intercalate)
 import qualified Data.Text as T
 import qualified Data.Text.IO as T (readFile)
 import Exception (ghandle, SomeException(..))
-import GHC (Ghc, LHsBind, LHsExpr, LPat, Id, ParsedModule(..), TypecheckedModule(..), DynFlags, SrcSpan, Type, GenLocated(L))
+import GHC (GhcMonad, LHsBind, LHsExpr, LPat, Id, ParsedModule(..), TypecheckedModule(..), DynFlags, SrcSpan, Type, GenLocated(L))
 import qualified GHC as G
 import Language.Haskell.GhcMod.GHCApi
 import Language.Haskell.GhcMod.Gap (HasType(..))
 import qualified Language.Haskell.GhcMod.Gap as Gap
+import Language.Haskell.GhcMod.Monad
 import Language.Haskell.GhcMod.SrcUtils
 import Language.Haskell.GhcMod.Types
 import Language.Haskell.GhcMod.Convert
@@ -39,19 +40,19 @@ splitVar :: Options
          -> Int          -- ^ Line number.
          -> Int          -- ^ Column number.
          -> IO String
-splitVar opt cradle file lineNo colNo = withGHC' $ do
+splitVar opt cradle file lineNo colNo = runGhcMod opt $ do
     initializeFlagsWithCradle opt cradle
-    splits opt file lineNo colNo
+    splits file lineNo colNo
 
 -- | Splitting a variable in a equation.
-splits :: Options
-       -> FilePath     -- ^ A target file.
+splits :: FilePath     -- ^ A target file.
        -> Int          -- ^ Line number.
        -> Int          -- ^ Column number.
-       -> Ghc String
-splits opt file lineNo colNo = ghandle handler body
+       -> GhcMod String
+splits file lineNo colNo = ghandle handler body
   where
     body = inModuleContext file $ \dflag style -> do
+        opt <- options
         modSum <- Gap.fileModSummary file
         whenFound' opt (getSrcSpanTypeForSplit modSum lineNo colNo) $
           \(SplitInfo varName (bndLoc,_) (varLoc,varT) _matches) -> do
@@ -59,12 +60,12 @@ splits opt file lineNo colNo = ghandle handler body
              text <- genCaseSplitTextFile file (SplitToTextInfo varName' bndLoc varLoc $
                                                 getTyCons dflag style varName varT)
              return (fourInts bndLoc, text)
-    handler (SomeException _) = emptyResult opt
+    handler (SomeException _) = emptyResult =<< options
 
 ----------------------------------------------------------------
 -- a. Code for getting the information of the variable
 
-getSrcSpanTypeForSplit :: G.ModSummary -> Int -> Int -> Ghc (Maybe SplitInfo)
+getSrcSpanTypeForSplit :: GhcMonad m => G.ModSummary -> Int -> Int -> m (Maybe SplitInfo)
 getSrcSpanTypeForSplit modSum lineNo colNo = do
     p@ParsedModule{pm_parsed_source = pms} <- G.parseModule modSum
     tcm@TypecheckedModule{tm_typechecked_source = tcs} <- G.typecheckModule p
@@ -173,7 +174,7 @@ showFieldNames dflag style v (x:xs) = let fName = showName dflag style x
 ----------------------------------------------------------------
 -- c. Code for performing the case splitting
 
-genCaseSplitTextFile :: FilePath -> SplitToTextInfo -> Ghc String
+genCaseSplitTextFile :: GhcMonad m => FilePath -> SplitToTextInfo -> m String
 genCaseSplitTextFile file info = liftIO $ do
   text <- T.readFile file
   return $ getCaseSplitText (T.lines text) info

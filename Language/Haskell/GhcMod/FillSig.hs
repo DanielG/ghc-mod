@@ -8,13 +8,14 @@ module Language.Haskell.GhcMod.FillSig (
 import Data.Char (isSymbol)
 import Data.List (find, intercalate)
 import Exception (ghandle, SomeException(..))
-import GHC (Ghc, Id, ParsedModule(..), TypecheckedModule(..), DynFlags, SrcSpan, Type, GenLocated(L))
+import GHC (GhcMonad, Id, ParsedModule(..), TypecheckedModule(..), DynFlags, SrcSpan, Type, GenLocated(L))
 import qualified GHC as G
 import Language.Haskell.GhcMod.GHCApi
 import qualified Language.Haskell.GhcMod.Gap as Gap
+import Language.Haskell.GhcMod.Convert
+import Language.Haskell.GhcMod.Monad
 import Language.Haskell.GhcMod.SrcUtils
 import Language.Haskell.GhcMod.Types
-import Language.Haskell.GhcMod.Convert
 import MonadUtils (liftIO)
 import Outputable (PprStyle)
 import qualified Type as Ty
@@ -41,19 +42,19 @@ fillSig :: Options
         -> Int          -- ^ Line number.
         -> Int          -- ^ Column number.
         -> IO String
-fillSig opt cradle file lineNo colNo = withGHC' $ do
+fillSig opt cradle file lineNo colNo = runGhcMod opt $ do
     initializeFlagsWithCradle opt cradle
-    sig opt file lineNo colNo
+    sig file lineNo colNo
 
 -- | Create a initial body from a signature.
-sig :: Options
-    -> FilePath     -- ^ A target file.
+sig :: FilePath     -- ^ A target file.
     -> Int          -- ^ Line number.
     -> Int          -- ^ Column number.
-    -> Ghc String
-sig opt file lineNo colNo = ghandle handler body
+    -> GhcMod String
+sig file lineNo colNo = ghandle handler body
   where
     body = inModuleContext file $ \dflag style -> do
+        opt <- options
         modSum <- Gap.fileModSummary file
         whenFound opt (getSignature modSum lineNo colNo) $ \s -> case s of
           Signature loc names ty ->
@@ -63,6 +64,7 @@ sig opt file lineNo colNo = ghandle handler body
                                             (Ty.classMethods cls))
             
     handler (SomeException _) = do
+      opt <- options
       -- Code cannot be parsed by ghc module
       -- Fallback: try to get information via haskell-src-exts
       whenFound opt (getSignatureFromHE file lineNo colNo) $
@@ -73,7 +75,7 @@ sig opt file lineNo colNo = ghandle handler body
 -- a. Code for getting the information
 
 -- Get signature from ghc parsing and typechecking
-getSignature :: G.ModSummary -> Int -> Int -> Ghc (Maybe SigInfo)
+getSignature :: GhcMonad m => G.ModSummary -> Int -> Int -> m (Maybe SigInfo)
 getSignature modSum lineNo colNo = do
     p@ParsedModule{pm_parsed_source = ps} <- G.parseModule modSum
     -- Inspect the parse tree to find the signature
@@ -96,7 +98,7 @@ getSignature modSum lineNo colNo = do
                obtainClassInfo minfo clsName loc
           _ -> return Nothing
       _ -> return Nothing
-  where obtainClassInfo :: G.ModuleInfo -> G.Name -> SrcSpan -> Ghc (Maybe SigInfo)
+  where obtainClassInfo :: GhcMonad m => G.ModuleInfo -> G.Name -> SrcSpan -> m (Maybe SigInfo)
         obtainClassInfo minfo clsName loc = do
           tyThing <- G.modInfoLookupName minfo clsName
           return $ do Ty.ATyCon clsCon <- tyThing  -- In Maybe
@@ -104,7 +106,7 @@ getSignature modSum lineNo colNo = do
                       return $ InstanceDecl loc cls
 
 -- Get signature from haskell-src-exts
-getSignatureFromHE :: FilePath -> Int -> Int -> Ghc (Maybe HESigInfo)
+getSignatureFromHE :: GhcMonad m => FilePath -> Int -> Int -> m (Maybe HESigInfo)
 getSignatureFromHE file lineNo colNo = do
   presult <- liftIO $ HE.parseFile file
   return $ case presult of

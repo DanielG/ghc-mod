@@ -10,6 +10,7 @@ import Data.Generics
 import Data.Maybe (fromMaybe)
 import Data.Ord as O
 import GHC (Ghc, LHsExpr, LPat, Id, DynFlags, SrcSpan, Type, Located, ParsedSource, RenamedSource, TypecheckedSource, GenLocated(L))
+import GhcMonad
 import qualified GHC as G
 import GHC.SYB.Utils (Stage(..), everythingStaged)
 import Language.Haskell.GhcMod.Doc (showOneLine, getStyle)
@@ -79,7 +80,7 @@ pretty dflag style = showOneLine dflag style . Gap.typeForUser
 
 ----------------------------------------------------------------
 
-inModuleContext :: FilePath -> (DynFlags -> PprStyle -> Ghc a) -> Ghc a
+inModuleContext ::GhcMonad m => FilePath -> (DynFlags -> PprStyle -> m a) -> m a
 inModuleContext file action =
     withDynFlags (setWarnTypedHoles . setDeferTypeErrors . setNoWaringFlags) $ do
     setTargetFiles [file]

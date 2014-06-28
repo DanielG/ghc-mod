@@ -1,4 +1,4 @@
-{-# LANGUAGE TypeSynonymInstances, FlexibleInstances, CPP #-}
+{-# LANGUAGE TypeSynonymInstances, FlexibleInstances, CPP, ScopedTypeVariables, RankNTypes #-}
 
 module Language.Haskell.GhcMod.Gap (
     Language.Haskell.GhcMod.Gap.ClsInst
@@ -46,6 +46,7 @@ import Desugar (deSugarExpr)
 import DynFlags
 import ErrUtils
 import FastString
+import GhcMonad
 import HscTypes
 import Language.Haskell.GhcMod.GHCChoice
 import Language.Haskell.GhcMod.Types
@@ -151,7 +152,7 @@ getSrcFile _ = Nothing
 
 ----------------------------------------------------------------
 
-toStringBuffer :: [String] -> Ghc StringBuffer
+toStringBuffer :: GhcMonad m => [String] -> m StringBuffer
 #if __GLASGOW_HASKELL__ >= 702
 toStringBuffer = return . stringToStringBuffer . unlines
 #else
@@ -174,13 +175,13 @@ fOptions = [option | (option,_,_,_) <- fFlags]
 ----------------------------------------------------------------
 ----------------------------------------------------------------
 
-fileModSummary :: FilePath -> Ghc ModSummary
+fileModSummary :: GhcMonad m => FilePath -> m ModSummary
 fileModSummary file = do
     mss <- getModuleGraph
     let [ms] = filter (\m -> ml_hs_file (ms_location m) == Just file) mss
     return ms
 
-withContext :: Ghc a -> Ghc a
+withContext :: GhcMonad m => m a -> m a
 withContext action = gbracket setup teardown body
   where
     setup = getContext
@@ -296,7 +297,7 @@ filterOutChildren get_thing xs
   where
     implicits = mkNameSet [getName t | x <- xs, t <- implicitTyThings (get_thing x)]
 
-infoThing :: String -> Ghc SDoc
+infoThing :: GhcMonad m => String -> m SDoc
 infoThing str = do
     names <- parseName str
 #if __GLASGOW_HASKELL__ >= 708

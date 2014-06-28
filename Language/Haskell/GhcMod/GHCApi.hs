@@ -19,11 +19,11 @@ import Language.Haskell.GhcMod.GhcPkg
 
 import Control.Applicative ((<$>))
 import Control.Monad (forM, void)
-import CoreMonad (liftIO)
 import Data.Maybe (isJust, fromJust)
 import Exception (ghandle, SomeException(..))
-import GHC (Ghc, GhcMonad, DynFlags(..), GhcLink(..), HscTarget(..), LoadHowMuch(..))
+import GHC (DynFlags(..), GhcLink(..), HscTarget(..), LoadHowMuch(..))
 import qualified GHC as G
+import GhcMonad
 import GHC.Paths (libdir)
 import qualified Language.Haskell.GhcMod.Gap as Gap
 import Language.Haskell.GhcMod.Types
