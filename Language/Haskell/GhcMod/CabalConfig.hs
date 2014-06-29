@@ -1,3 +1,5 @@
+{-# LANGUAGE CPP #-}
+
 -- | Reading cabal @dist/setup-config@
 module Language.Haskell.GhcMod.CabalConfig (
     CabalConfig
@@ -15,7 +17,11 @@ import qualified Language.Haskell.GhcMod.Cabal18 as C18
 import qualified Control.Exception as E
 import Control.Applicative ((<$>))
 import Control.Monad (mplus)
+#if MIN_VERSION_mtl(2,2,1)
+import Control.Monad.Except ()
+#else
 import Control.Monad.Error ()
+#endif
 import Data.Maybe ()
 import Data.Set ()
 import Data.List (find,tails,isPrefixOf,isInfixOf,nub,stripPrefix)

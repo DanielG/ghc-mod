@@ -1,4 +1,4 @@
-{-# LANGUAGE MultiParamTypeClasses, FunctionalDependencies, FlexibleInstances #-}
+{-# LANGUAGE MultiParamTypeClasses, FunctionalDependencies, FlexibleInstances, CPP #-}
 
 module Language.Haskell.GhcMod.FillSig (
     fillSig
@@ -21,7 +21,11 @@ import Outputable (PprStyle)
 import qualified Type as Ty
 import qualified HsBinds as Ty
 import qualified Class as Ty
+#if __GLASGOW_HASKELL__ >= 706
 import OccName (occName)
+#else
+import OccName (rdrNameOcc)
+#endif
 import qualified Language.Haskell.Exts.Annotated as HE
 
 ----------------------------------------------------------------
@@ -89,12 +93,28 @@ getSignature modSum lineNo colNo = do
                          ,tm_checked_module_info = minfo} <- G.typecheckModule p
         case listifyRenamedSpans tcs (lineNo, colNo) :: [G.LInstDecl G.Name] of
           -- Instance declarations of sort 'instance F (G a)'
+#if __GLASGOW_HASKELL__ >= 708
           [L loc (G.ClsInstD (G.ClsInstDecl {G.cid_poly_ty =
             (L _ (G.HsForAllTy _ _ _ (L _ (G.HsAppTy (L _ (G.HsTyVar clsName)) _))))}))] ->
+#elif __GLASGOW_HASKELL__ >= 706
+          [L loc (G.ClsInstD
+            (L _ (G.HsForAllTy _ _ _ (L _ (G.HsAppTy (L _ (G.HsTyVar clsName)) _)))) _ _ _)] ->
+#else
+          [L loc (G.InstDecl
+            (L _ (G.HsForAllTy _ _ _ (L _ (G.HsAppTy (L _ (G.HsTyVar clsName)) _)))) _ _ _)] ->
+#endif
                obtainClassInfo minfo clsName loc
           -- Instance declarations of sort 'instance F G' (no variables)
+#if __GLASGOW_HASKELL__ >= 708
           [L loc (G.ClsInstD (G.ClsInstDecl {G.cid_poly_ty =
             (L _ (G.HsAppTy (L _ (G.HsTyVar clsName)) _))}))] ->
+#elif __GLASGOW_HASKELL__ >= 706
+          [L loc (G.ClsInstD
+            (L _ (G.HsAppTy (L _ (G.HsTyVar clsName)) _)) _ _ _)] ->
+#else
+          [L loc (G.InstDecl
+            (L _ (G.HsAppTy (L _ (G.HsTyVar clsName)) _)) _ _ _)] ->
+#endif
                obtainClassInfo minfo clsName loc
           _ -> return Nothing
       _ -> return Nothing
@@ -160,6 +180,11 @@ instance FnArgsInfo (G.HsType G.RdrName) (G.RdrName) where
                            (G.HsFunTy _ _)                -> True
                            _                              -> False
   getFnArgs _ = []
+
+#if __GLASGOW_HASKELL__ < 706
+occName :: G.RdrName -> OccName
+occName = rdrNameOcc
+#endif
 
 instance FnArgsInfo (HE.Type HE.SrcSpanInfo) (HE.Name HE.SrcSpanInfo) where
   getFnName _ _ (HE.Ident  _ s) = s
