@@ -168,7 +168,7 @@ unloaded modules are loaded")
 	    (ghc-reset-window-configuration)
 	  (ghc-save-window-configuration)
 	  (with-output-to-temp-buffer ghc-completion-buffer-name
-	    (display-completion-list list pattern))))))))
+	    (display-completion-list list))))))))
 
 (defun ghc-save-window-configuration ()
   (unless (get-buffer-window ghc-completion-buffer-name)
