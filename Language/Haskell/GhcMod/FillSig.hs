@@ -24,7 +24,7 @@ import qualified Class as Ty
 #if __GLASGOW_HASKELL__ >= 706
 import OccName (occName)
 #else
-import OccName (rdrNameOcc)
+import RdrName (rdrNameOcc)
 #endif
 import qualified Language.Haskell.Exts.Annotated as HE
 

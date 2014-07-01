@@ -1,3 +1,5 @@
+{-# LANGUAGE CPP #-}
+
 module Language.Haskell.GhcMod.CaseSplit (
     splitVar
   , splits
@@ -71,7 +73,12 @@ getSrcSpanTypeForSplit modSum lineNo colNo = do
     tcm@TypecheckedModule{tm_typechecked_source = tcs} <- G.typecheckModule p
     let bs:_ = listifySpans tcs (lineNo, colNo) :: [LHsBind Id]
         varPat  = find isPatternVar $ listifySpans tcs (lineNo, colNo) :: Maybe (LPat Id)
-        match:_ = listifyParsedSpans pms (lineNo, colNo) :: [G.LMatch G.RdrName (LHsExpr G.RdrName)]       
+        match:_ = listifyParsedSpans pms (lineNo, colNo)
+#if __GLASGOW_HASKELL__ < 708
+                    :: [G.LMatch G.RdrName]
+#else
+                    :: [G.LMatch G.RdrName (LHsExpr G.RdrName)]
+#endif
     case varPat of
       Nothing  -> return Nothing
       Just varPat' -> do
