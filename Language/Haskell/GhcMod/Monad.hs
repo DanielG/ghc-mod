@@ -78,9 +78,7 @@ newtype GhcMod a = GhcMod {
     deriving (Functor,
               Applicative,
               Monad,
-#if __GLASGOW_HASKELL__ >= 708
               MonadIO,
-#endif
               MonadReader GhcModEnv,
               MonadWriter GhcModWriter,
               MonadState GhcModState)
