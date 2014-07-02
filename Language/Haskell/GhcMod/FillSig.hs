@@ -21,8 +21,10 @@ import Outputable (PprStyle)
 import qualified Type as Ty
 import qualified HsBinds as Ty
 import qualified Class as Ty
+#if __GLASGOW_HASKELL__ >= 706
 import OccName (occName)
-#if __GLASGOW_HASKELL__ < 706
+#else
+import OccName (OccName)
 import RdrName (rdrNameOcc)
 #endif
 import qualified Language.Haskell.Exts.Annotated as HE
