@@ -47,17 +47,19 @@
 ;;; Initial code from signature
 ;;;
 
+(ghc-defstruct icsinfo sort pos fns)
+
 (defun ghc-initial-code-from-signature ()
   (interactive)
   (let ((info (ghc-obtain-initial-code-from-signature)))
     (if (null info)
 	(message "Cannot obtain initial code")
 	(let* ((ln-current (line-number-at-pos))
-	       (sort (car info))
-	       (pos (cadr info))
+	       (sort (ghc-icsinfo-get-sort info))
+	       (pos (ghc-icsinfo-get-pos info))
 	       (ln-end (ghc-sinfo-get-end-line pos))
 	       (ln-diff (+ 1 (- ln-end ln-current)))
-	       (fns-to-insert (caddr info)))
+	       (fns-to-insert (ghc-icsinfo-get-fns info)))
 	  (goto-char (line-end-position ln-diff))
 	  (dolist (fn-to-insert fns-to-insert)
 	    (if (equal sort "function")
