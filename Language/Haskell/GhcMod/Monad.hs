@@ -1,5 +1,7 @@
-{-# LANGUAGE CPP, GeneralizedNewtypeDeriving, FlexibleInstances, MultiParamTypeClasses, RankNTypes, TypeFamilies #-}
+{-# LANGUAGE CPP, GeneralizedNewtypeDeriving, FlexibleInstances #-}
+{-# LANGUAGE MultiParamTypeClasses, RankNTypes, TypeFamilies #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
+
 module Language.Haskell.GhcMod.Monad (
    GhcMod
  , GhcModEnv(..)
@@ -15,40 +17,38 @@ module Language.Haskell.GhcMod.Monad (
  , module Control.Monad.State.Class
  ) where
 
-import Language.Haskell.GhcMod.Types
 import Language.Haskell.GhcMod.Cradle
 import Language.Haskell.GhcMod.GHCApi
+import Language.Haskell.GhcMod.Types
 
+import DynFlags
+import Exception
 import GHC
 import GHC.Paths (libdir)
 import GhcMonad
-import Exception
 import MonadUtils
-import DynFlags
 #if __GLASGOW_HASKELL__ <= 702
 import HscTypes
 #endif
 
 #if __GLASGOW_HASKELL__ < 708
-import Data.Monoid (Monoid)
 import Control.Monad.Trans.Class (lift)
+import Data.Monoid (Monoid)
 #endif
-
-import Data.IORef (IORef, readIORef, writeIORef, newIORef)
 
 import Control.Monad (liftM)
 import Control.Monad.Base (MonadBase,liftBase)
-import Control.Monad.IO.Class () -- MonadIO
-import Control.Monad.Trans.RWS.Lazy (RWST(..),runRWST)
-import Control.Monad.Trans.Control (MonadBaseControl(..), StM, liftBaseWith
-                                   , control, liftBaseOp, liftBaseOp_)
 import Control.Monad.Reader.Class
-import Control.Monad.Writer.Class
 import Control.Monad.State.Class
+import Control.Monad.Trans.Control (MonadBaseControl(..), StM, liftBaseWith, control, liftBaseOp, liftBaseOp_)
+import Control.Monad.Trans.RWS.Lazy (RWST(..),runRWST)
+import Control.Monad.Writer.Class
 
-import System.IO (hPutStr, hPrint, stderr)
+import Data.IORef (IORef, readIORef, writeIORef, newIORef)
 import System.Exit (exitSuccess)
+import System.IO (hPutStr, hPrint, stderr)
 
+----------------------------------------------------------------
 
 data GhcModEnv = GhcModEnv {
       gmGhcSession :: !(IORef HscEnv)
@@ -63,21 +63,26 @@ defaultState = GhcModState
 
 type GhcModWriter = ()
 
+----------------------------------------------------------------
+
 newtype GhcMod a = GhcMod {
-      unGhcMod :: RWST GhcModEnv GhcModWriter GhcModState IO a }
-    deriving (Functor,
-              Applicative,
-              Monad,
-              MonadIO,
-              MonadReader GhcModEnv,
-              MonadWriter GhcModWriter,
-              MonadState GhcModState)
+      unGhcMod :: RWST GhcModEnv GhcModWriter GhcModState IO a
+    } deriving (Functor
+               ,Applicative
+               ,Monad
+               ,MonadIO
+               ,MonadReader GhcModEnv
+               ,MonadWriter GhcModWriter
+               ,MonadState GhcModState
+               )
 
 #if __GLASGOW_HASKELL__ < 708
 instance (Monoid w, MonadIO m) => MonadIO (RWST r w s m) where
 --  liftIO :: MonadIO m => IO a -> m a
     liftIO = lift . liftIO
 #endif
+
+----------------------------------------------------------------
 
 runGhcMod' :: GhcModEnv
           -> GhcModState
@@ -102,6 +107,8 @@ runGhcMod opt action = do
             action
     return a
 
+----------------------------------------------------------------
+
 withErrorHandler :: String -> GhcMod a -> GhcMod a
 withErrorHandler label = ghandle ignore
   where
@@ -115,6 +122,8 @@ toGhcMod :: Ghc a -> GhcMod a
 toGhcMod a = do
     s <- gmGhcSession <$> ask
     liftIO $ unGhc a $ Session s
+
+----------------------------------------------------------------
 
 options :: GhcMod Options
 options = gmOptions <$> ask
