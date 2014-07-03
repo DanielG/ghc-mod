@@ -26,12 +26,18 @@ import Exception
 import GHC
 import GHC.Paths (libdir)
 import GhcMonad
-import MonadUtils
 #if __GLASGOW_HASKELL__ <= 702
 import HscTypes
 #endif
 
+-- MonadUtils of GHC 7.6 or earlier defines its own MonadIO.
+-- RWST does not automatically become an instance of MonadIO.
+-- MonadUtils of GHC 7.8 or later imports MonadIO in Monad.Control.IO.Class.
+-- So, RWST automatically becomes an instance of MonadIO.
+import MonadUtils
+
 #if __GLASGOW_HASKELL__ < 708
+-- To make RWST an instance of MonadIO.
 import Control.Monad.Trans.Class (lift)
 import Data.Monoid (Monoid)
 #endif
