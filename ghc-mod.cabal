@@ -98,7 +98,7 @@ Library
                       , process
                       , syb
                       , time
-                      , transformers
+                      , transformers < 0.4
                       , transformers-base
                       , mtl
                       , monad-control
