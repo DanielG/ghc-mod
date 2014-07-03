@@ -25,7 +25,6 @@ install:
 script:
   - cabal configure --enable-tests
   - cabal build
-  - ghc-pkg unregister transformers
   - cabal test
   - cabal check
   - cabal sdist
