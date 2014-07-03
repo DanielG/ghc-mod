@@ -61,11 +61,13 @@ Library
                         Language.Haskell.GhcMod.CabalConfig
                         Language.Haskell.GhcMod.Cabal16
                         Language.Haskell.GhcMod.Cabal18
+                        Language.Haskell.GhcMod.CaseSplit
                         Language.Haskell.GhcMod.Check
                         Language.Haskell.GhcMod.Cradle
                         Language.Haskell.GhcMod.Convert
                         Language.Haskell.GhcMod.Debug
                         Language.Haskell.GhcMod.Doc
+                        Language.Haskell.GhcMod.FillSig
                         Language.Haskell.GhcMod.Find
                         Language.Haskell.GhcMod.Flag
                         Language.Haskell.GhcMod.GHCApi
@@ -81,6 +83,7 @@ Library
                         Language.Haskell.GhcMod.Utils
                         Language.Haskell.GhcMod.Types
                         Language.Haskell.GhcMod.Read
+                        Language.Haskell.GhcMod.SrcUtils
   Build-Depends:        base >= 4.0 && < 5
                       , containers
                       , deepseq
@@ -100,6 +103,8 @@ Library
                       , mtl
                       , monad-control
                       , split
+                      , haskell-src-exts
+                      , text
   if impl(ghc < 7.7)
     Build-Depends:      convertible
                       , Cabal >= 1.10 && < 1.17
@@ -177,6 +182,8 @@ Test-Suite spec
                       , monad-control
                       , hspec >= 1.8.2
                       , split
+                      , haskell-src-exts
+                      , text
   if impl(ghc < 7.7)
     Build-Depends:      convertible
                       , Cabal >= 1.10 && < 1.17

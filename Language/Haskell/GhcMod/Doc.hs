@@ -1,6 +1,6 @@
 module Language.Haskell.GhcMod.Doc where
 
-import GHC (Ghc, DynFlags)
+import GHC (DynFlags, GhcMonad)
 import qualified GHC as G
 import Language.Haskell.GhcMod.Gap (withStyle, showDocWith)
 import Outputable (SDoc, PprStyle, mkUserStyle, Depth(AllTheWay), neverQualify)
@@ -12,7 +12,7 @@ showPage dflag style = showDocWith dflag PageMode . withStyle dflag style
 showOneLine :: DynFlags -> PprStyle -> SDoc -> String
 showOneLine dflag style = showDocWith dflag OneLineMode . withStyle dflag style
 
-getStyle :: Ghc PprStyle
+getStyle :: GhcMonad m => m PprStyle
 getStyle = do
     unqual <- G.getPrintUnqual
     return $ mkUserStyle unqual AllTheWay

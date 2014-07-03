@@ -31,7 +31,7 @@ import Data.Set (Set)
 import qualified Data.Set as S
 import Data.Typeable (Typeable)
 import Data.Version (showVersion)
-import GHC (Ghc)
+import GHC (GhcMonad)
 import qualified GHC as G
 import Language.Haskell.GhcMod
 import Language.Haskell.GhcMod.Ghc
@@ -142,8 +142,10 @@ loop opt set mvar = do
         "check"  -> checkStx opt set arg
         "find"   -> findSym set arg mvar
         "lint"   -> toGhcMod $ lintStx  opt set arg
-        "info"   -> toGhcMod $ showInfo opt set arg
-        "type"   -> toGhcMod $ showType opt set arg
+        "info"   -> showInfo set arg
+        "type"   -> showType set arg
+        "split"  -> doSplit set arg
+        "sig"    -> doSig set arg
         "boot"   -> bootIt set
         "browse" -> browseIt set arg
         "quit"   -> return ("quit", False, set)
@@ -171,7 +173,7 @@ checkStx _ set file = do
         Right ret -> return (ret, True, set')
         Left ret  -> return (ret, True, set) -- fxime: set
 
-newFileSet :: Set FilePath -> FilePath -> Ghc (Set FilePath)
+newFileSet :: GhcMonad m => Set FilePath -> FilePath -> m (Set FilePath)
 newFileSet set file = do
     let set1
          | S.member file set = set
@@ -181,7 +183,7 @@ newFileSet set file = do
         Nothing       -> set1
         Just mainfile -> S.delete mainfile set1
 
-getModSummaryForMain :: Ghc (Maybe G.ModSummary)
+getModSummaryForMain :: GhcMonad m => m (Maybe G.ModSummary)
 getModSummaryForMain = find isMain <$> G.getModuleGraph
   where
     isMain m = G.moduleNameString (G.moduleName (G.ms_mod m)) == "Main"
@@ -207,8 +209,9 @@ findSym set sym mvar = do
     let ret = lookupSym' opt sym db
     return (ret, True, set)
 
-lintStx :: Options -> Set FilePath -> FilePath
-        -> Ghc (String, Bool, Set FilePath)
+lintStx :: GhcMonad m
+        => Options -> Set FilePath -> FilePath
+        -> m (String, Bool, Set FilePath)
 lintStx opt set optFile = liftIO $ do
     ret <-lintSyntax opt' file
     return (ret, True, set)
@@ -234,24 +237,40 @@ parseLintOptions optFile = case brk (== ']') (dropWhile (/= '[') optFile) of
 
 ----------------------------------------------------------------
 
-showInfo :: Options
-         -> Set FilePath
+showInfo :: Set FilePath
          -> FilePath
-         -> Ghc (String, Bool, Set FilePath)
-showInfo opt set fileArg = do
+         -> GhcMod (String, Bool, Set FilePath)
+showInfo set fileArg = do
     let [file, expr] = words fileArg
     set' <- newFileSet set file
-    ret <- info opt file expr
+    ret <- info file expr
     return (ret, True, set')
 
-showType :: Options
-         -> Set FilePath
+showType :: Set FilePath
          -> FilePath
-         -> Ghc (String, Bool, Set FilePath)
-showType opt set fileArg  = do
+         -> GhcMod (String, Bool, Set FilePath)
+showType set fileArg  = do
     let [file, line, column] = words fileArg
     set' <- newFileSet set file
-    ret <- types opt file (read line) (read column)
+    ret <- types file (read line) (read column)
+    return (ret, True, set')
+
+doSplit :: Set FilePath
+        -> FilePath
+        -> GhcMod (String, Bool, Set FilePath)
+doSplit set fileArg  = do
+    let [file, line, column] = words fileArg
+    set' <- newFileSet set file
+    ret <- splits file (read line) (read column)
+    return (ret, True, set')
+
+doSig :: Set FilePath
+      -> FilePath
+      -> GhcMod (String, Bool, Set FilePath)
+doSig set fileArg  = do
+    let [file, line, column] = words fileArg
+    set' <- newFileSet set file
+    ret <- sig file (read line) (read column)
     return (ret, True, set')
 
 ----------------------------------------------------------------

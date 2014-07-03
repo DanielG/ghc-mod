@@ -20,6 +20,7 @@ module Language.Haskell.GhcMod (
   , expandTemplate
   , infoExpr
   , typeExpr
+  , fillSig
   , listModules
   , listLanguages
   , listFlags
@@ -27,6 +28,7 @@ module Language.Haskell.GhcMod (
   , rootInfo
   , packageDoc
   , findSymbol
+  , splitVar
   ) where
 
 import Language.Haskell.GhcMod.Boot
@@ -41,4 +43,6 @@ import Language.Haskell.GhcMod.Lang
 import Language.Haskell.GhcMod.Lint
 import Language.Haskell.GhcMod.List
 import Language.Haskell.GhcMod.PkgDoc
+import Language.Haskell.GhcMod.FillSig
+import Language.Haskell.GhcMod.CaseSplit
 import Language.Haskell.GhcMod.Types

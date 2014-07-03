@@ -1,5 +1,5 @@
 SRCS = ghc.el ghc-func.el ghc-doc.el ghc-comp.el ghc-check.el ghc-process.el \
-       ghc-command.el ghc-info.el ghc-ins-mod.el ghc-indent.el
+       ghc-command.el ghc-info.el ghc-ins-mod.el ghc-indent.el ghc-rewrite.el
 EMACS = emacs
 DETECT = xemacs
 

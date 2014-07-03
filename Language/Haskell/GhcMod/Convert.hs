@@ -1,6 +1,6 @@
-{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE FlexibleInstances, FlexibleContexts, OverlappingInstances #-}
 
-module Language.Haskell.GhcMod.Convert (convert, convert') where
+module Language.Haskell.GhcMod.Convert (convert, convert', emptyResult, whenFound, whenFound') where
 
 import Language.Haskell.GhcMod.Monad
 import Language.Haskell.GhcMod.Types
@@ -76,11 +76,25 @@ instance ToString [((Int,Int,Int,Int),String)] where
         toS x = ('(' :) . tupToString opt x . (')' :)
     toPlain opt = inter '\n' . map (tupToString opt)
 
+instance ToString ((Int,Int,Int,Int),String) where
+    toLisp  opt x = ('(' :) . tupToString opt x . (')' :)
+    toPlain opt x = tupToString opt x
+
+instance ToString (String, (Int,Int,Int,Int),[String]) where
+    toLisp  opt (s,x,y) = toSexp2 $ [toLisp opt s, ('(' :) . fourIntsToString opt x . (')' :), toLisp opt y]
+    toPlain opt (s,x,y) = inter '\n' [toPlain opt s, fourIntsToString opt x, toPlain opt y]
+
 toSexp1 :: Options -> [String] -> Builder
 toSexp1 opt ss = ('(' :) . inter ' ' (map (quote opt) ss) . (')' :)
 
 toSexp2 :: [Builder] -> Builder
 toSexp2 ss = ('(' :) . (inter ' ' ss) . (')' :)
+
+fourIntsToString :: Options -> (Int,Int,Int,Int) -> Builder
+fourIntsToString _ (a,b,c,d) = (show a ++) . (' ' :)
+                             . (show b ++) . (' ' :)
+                             . (show c ++) . (' ' :)
+                             . (show d ++)
 
 tupToString :: Options -> ((Int,Int,Int,Int),String) -> Builder
 tupToString opt ((a,b,c,d),s) = (show a ++) . (' ' :)
@@ -101,3 +115,15 @@ quote opt str = ("\"" ++) .  (quote' str ++) . ("\"" ++)
       | otherwise = x       : quote' xs
 
 ----------------------------------------------------------------
+
+-- Empty result to be returned when no info can be gathered
+emptyResult :: Monad m => Options -> m String
+emptyResult opt = return $ convert opt ([] :: [String])
+
+-- Return an emptyResult when Nothing
+whenFound :: (Monad m, ToString b) => Options -> m (Maybe a) -> (a -> b) -> m String
+whenFound opt from f = maybe (emptyResult opt) (return . convert opt . f) =<< from
+
+-- Return an emptyResult when Nothing, inside a monad
+whenFound' :: (Monad m, ToString b) => Options -> m (Maybe a) -> (a -> m b) -> m String
+whenFound' opt from f = maybe (emptyResult opt) (\x -> do y <- f x ; return (convert opt y)) =<< from
