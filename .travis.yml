@@ -8,6 +8,12 @@ before_install:
   - sudo apt-get update
   - sudo apt-get install cabal-install-1.18 ghc-$GHCVER
   - export PATH=/opt/ghc/$GHCVER/bin:/opt/cabal/1.18/bin:$PATH
+  - which ghc
+  - ghc --version
+  - which ghci
+  - ghci --version
+  - which cabal
+  - cabal --version
 
 install:
   - cabal update
