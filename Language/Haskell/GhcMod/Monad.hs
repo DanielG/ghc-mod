@@ -15,14 +15,6 @@ module Language.Haskell.GhcMod.Monad (
  , module Control.Monad.State.Class
  ) where
 
-#ifndef MIN_VERSION_ghc
-#define MIN_VERSION_ghc(x,y,z) 1
-#endif
-
-#ifndef MIN_VERSION_base
-#define MIN_VERSION_base(x,y,z) 1
-#endif
-
 import Language.Haskell.GhcMod.Types
 import Language.Haskell.GhcMod.Cradle
 import Language.Haskell.GhcMod.GHCApi
@@ -33,13 +25,11 @@ import GhcMonad
 import Exception
 import MonadUtils
 import DynFlags
--- ghc <= 7.2
-#if !MIN_VERSION_ghc(7,4,0)
+#if __GLASGOW_HASKELL__ <= 702
 import HscTypes
 #endif
 
--- base <= 4.6
-#if !MIN_VERSION_base(4,7,0)
+#if __GLASGOW_HASKELL__ < 708
 import Data.Monoid (Monoid)
 import Control.Monad.Trans.Class (lift)
 #endif
