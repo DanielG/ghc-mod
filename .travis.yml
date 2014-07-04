@@ -6,7 +6,7 @@ ghc:
 
 install:
   - cabal update
-  - cabal install happy
+  - cabal install happy --constraint 'transformers <= 0.3.0.0'
   - happy --version
   - cabal install -j --only-dependencies --enable-tests
 
