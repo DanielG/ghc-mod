@@ -17,8 +17,9 @@ before_install:
 
 install:
   - cabal update
-  - cabal install happy
-  - export PATH=$HOME/.cabal/bin:$PATH
+  - mkdir sandbox
+  - (cd sandbox; cabal sandbox init; cabal install happy)
+  - export PATH=$PWD/.cabal-sandbox/bin:$PATH
   - happy --version
   - cabal install --only-dependencies --enable-tests
 
