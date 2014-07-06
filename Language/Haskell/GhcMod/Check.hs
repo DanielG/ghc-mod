@@ -32,7 +32,7 @@ checkSyntax files = withErrorHandler sessionName $ do
 check :: [FilePath]  -- ^ The target files.
       -> GhcMod (Either String String)
 check fileNames = do
-  withLogger setAllWaringFlags $ do
+  withLogger (setAllWaringFlags . setNoMaxRelevantBindings) $ do
     setTargetFiles fileNames
 
 ----------------------------------------------------------------

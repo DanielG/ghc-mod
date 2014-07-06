@@ -1,4 +1,4 @@
-{-# LANGUAGE ScopedTypeVariables, RecordWildCards #-}
+{-# LANGUAGE ScopedTypeVariables, RecordWildCards, CPP #-}
 
 module Language.Haskell.GhcMod.GHCApi (
     withGHC
@@ -11,6 +11,7 @@ module Language.Haskell.GhcMod.GHCApi (
   , withCmdFlags
   , setNoWaringFlags
   , setAllWaringFlags
+  , setNoMaxRelevantBindings
   ) where
 
 import Language.Haskell.GhcMod.CabalApi
@@ -194,6 +195,15 @@ setNoWaringFlags df = df { warningFlags = Gap.emptyWarnFlags}
 -- | Set 'DynFlags' equivalent to "-Wall".
 setAllWaringFlags :: DynFlags -> DynFlags
 setAllWaringFlags df = df { warningFlags = allWarningFlags }
+
+-- | Set 'DynFlags' equivalent to "-fno-max-relevant-bindings".
+setNoMaxRelevantBindings :: DynFlags -> DynFlags
+#if __GLASGOW_HASKELL__ >= 708
+setNoMaxRelevantBindings df = df { maxRelevantBinds = Nothing }
+#else
+setNoMaxRelevantBindings = id
+#endif
+
 
 allWarningFlags :: Gap.WarnFlags
 allWarningFlags = unsafePerformIO $ do
