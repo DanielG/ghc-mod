@@ -16,8 +16,9 @@ module Language.Haskell.GhcMod.Internal (
   , cabalDependPackages
   , cabalSourceDirs
   , cabalAllTargets
+  -- * GHC.Paths
+  , systemLibDir
   -- * IO
-  , getSystemLibDir
   , getDynamicFlags
   -- * Initializing 'DynFlags'
   , initializeFlagsWithCradle

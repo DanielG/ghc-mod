@@ -6,7 +6,7 @@ module Language.Haskell.GhcMod.GHCApi (
   , initializeFlagsWithCradle
   , setTargetFiles
   , getDynamicFlags
-  , getSystemLibDir
+  , systemLibDir
   , withDynFlags
   , withCmdFlags
   , setNoWaringFlags
@@ -16,6 +16,8 @@ module Language.Haskell.GhcMod.GHCApi (
 import Language.Haskell.GhcMod.CabalApi
 import Language.Haskell.GhcMod.GHCChoice
 import Language.Haskell.GhcMod.GhcPkg
+import qualified Language.Haskell.GhcMod.Gap as Gap
+import Language.Haskell.GhcMod.Types
 
 import Control.Applicative ((<$>))
 import Control.Monad (forM, void)
@@ -25,8 +27,6 @@ import GHC (DynFlags(..), GhcLink(..), HscTarget(..), LoadHowMuch(..))
 import qualified GHC as G
 import GhcMonad
 import GHC.Paths (libdir)
-import qualified Language.Haskell.GhcMod.Gap as Gap
-import Language.Haskell.GhcMod.Types
 import System.Exit (exitSuccess)
 import System.IO (hPutStr, hPrint, stderr)
 import System.IO.Unsafe (unsafePerformIO)
@@ -34,8 +34,8 @@ import System.IO.Unsafe (unsafePerformIO)
 ----------------------------------------------------------------
 
 -- | Obtaining the directory for system libraries.
-getSystemLibDir :: IO (Maybe FilePath)
-getSystemLibDir = return $ Just libdir
+systemLibDir :: FilePath
+systemLibDir = libdir
 
 ----------------------------------------------------------------
 
@@ -53,8 +53,7 @@ withGHC file body = ghandle ignore $ withGHC' body
 
 withGHC' :: Ghc a -> IO a
 withGHC' body = do
-    mlibdir <- getSystemLibDir
-    G.runGhc mlibdir $ do
+    G.runGhc (Just systemLibDir) $ do
         dflags <- G.getSessionDynFlags
         G.defaultCleanupHandler dflags body
 
@@ -161,8 +160,7 @@ setTargetFiles files = do
 -- | Return the 'DynFlags' currently in use in the GHC session.
 getDynamicFlags :: IO DynFlags
 getDynamicFlags = do
-    mlibdir <- getSystemLibDir
-    G.runGhc mlibdir G.getSessionDynFlags
+    G.runGhc (Just systemLibDir) G.getSessionDynFlags
 
 withDynFlags :: GhcMonad m
              => (DynFlags -> DynFlags)
@@ -197,8 +195,7 @@ setAllWaringFlags df = df { warningFlags = allWarningFlags }
 
 allWarningFlags :: Gap.WarnFlags
 allWarningFlags = unsafePerformIO $ do
-    mlibdir <- getSystemLibDir
-    G.runGhc mlibdir $ do
+    G.runGhc (Just systemLibDir) $ do
         df <- G.getSessionDynFlags
         df' <- addCmdOpts ["-Wall"] df
         return $ G.warningFlags df'

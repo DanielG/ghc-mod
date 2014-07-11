@@ -1,8 +1,7 @@
 {-# LANGUAGE CPP #-}
 
 module Language.Haskell.GhcMod.CaseSplit (
-    splitVar
-  , splits
+  splits
   ) where
 
 import Data.List (find, intercalate)
@@ -11,12 +10,10 @@ import qualified Data.Text.IO as T (readFile)
 import Exception (ghandle, SomeException(..))
 import GHC (GhcMonad, LHsBind, LHsExpr, LPat, Id, ParsedModule(..), TypecheckedModule(..), DynFlags, SrcSpan, Type, GenLocated(L))
 import qualified GHC as G
-import Language.Haskell.GhcMod.GHCApi
 import Language.Haskell.GhcMod.Gap (HasType(..))
 import qualified Language.Haskell.GhcMod.Gap as Gap
 import Language.Haskell.GhcMod.Monad
 import Language.Haskell.GhcMod.SrcUtils
-import Language.Haskell.GhcMod.Types
 import Language.Haskell.GhcMod.Convert
 import MonadUtils (liftIO)
 import Outputable (PprStyle)
@@ -34,17 +31,6 @@ data SplitToTextInfo = SplitToTextInfo { sVarName     :: String
                                        , sVarSpan     :: SrcSpan
                                        , sTycons      :: [String]
                                        }
-
--- | Splitting a variable in a equation.
-splitVar :: Options
-         -> Cradle
-         -> FilePath     -- ^ A target file.
-         -> Int          -- ^ Line number.
-         -> Int          -- ^ Column number.
-         -> IO String
-splitVar opt cradle file lineNo colNo = runGhcMod opt $ do
-    initializeFlagsWithCradle opt cradle
-    splits file lineNo colNo
 
 -- | Splitting a variable in a equation.
 splits :: FilePath     -- ^ A target file.
@@ -212,7 +198,7 @@ srcSpanDifference b v =
    in (vsl - bsl, vsc - bsc, vel - bsl, vec - bsc) -- assume variable in one line
 
 replaceVarWithTyCon :: [T.Text] -> (Int,Int,Int,Int) -> String -> String -> [T.Text]
-replaceVarWithTyCon text (vsl,vsc,_,vec) varname tycon = 
+replaceVarWithTyCon text (vsl,vsc,_,vec) varname tycon =
   let tycon'      = if ' ' `elem` tycon || ':' `elem` tycon then "(" ++ tycon ++ ")" else tycon
       lengthDiff  = length tycon' - length varname
       tycon''     = T.pack $ if lengthDiff < 0 then tycon' ++ replicate (-lengthDiff) ' ' else tycon'
