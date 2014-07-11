@@ -100,7 +100,7 @@ Library
                       , time
                       , transformers
                       , transformers-base
-                      , mtl
+                      , mtl >= 2.0
                       , monad-control
                       , split
                       , haskell-src-exts
@@ -178,7 +178,7 @@ Test-Suite spec
                       , time
                       , transformers
                       , transformers-base
-                      , mtl
+                      , mtl >= 2.0
                       , monad-control
                       , hspec >= 1.8.2
                       , split
