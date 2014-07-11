@@ -1,14 +1,18 @@
 {-# LANGUAGE CPP, GeneralizedNewtypeDeriving, FlexibleInstances #-}
-{-# LANGUAGE MultiParamTypeClasses, RankNTypes, TypeFamilies #-}
+{-# LANGUAGE FlexibleContexts, MultiParamTypeClasses, RankNTypes #-}
+{-# LANGUAGE TypeFamilies, UndecidableInstances #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
 module Language.Haskell.GhcMod.Monad (
    GhcMod
+ , GhcModT
  , GhcModEnv(..)
  , GhcModWriter
  , GhcModState(..)
  , runGhcMod'
  , runGhcMod
+ , runGhcModT'
+ , runGhcModT
  , newGhcModEnv
  , withErrorHandler
  , toGhcMod
@@ -44,10 +48,13 @@ import Control.Monad.Trans.Class (lift)
 import Data.Monoid (Monoid)
 #endif
 
-import Control.Monad (liftM)
+import Control.Applicative (Alternative)
+import Control.Monad (MonadPlus, liftM)
 import Control.Monad.Base (MonadBase,liftBase)
+
 import Control.Monad.Reader.Class
 import Control.Monad.State.Class
+import Control.Monad.Trans.Class
 import Control.Monad.Trans.Control (MonadBaseControl(..), StM, liftBaseWith, control, liftBaseOp, liftBaseOp_)
 import Control.Monad.Trans.RWS.Lazy (RWST(..),runRWST)
 import Control.Monad.Writer.Class
@@ -73,16 +80,20 @@ defaultState = GhcModState
 type GhcModWriter = ()
 
 ----------------------------------------------------------------
+type GhcMod a = GhcModT IO a
 
-newtype GhcMod a = GhcMod {
-      unGhcMod :: RWST GhcModEnv GhcModWriter GhcModState IO a
+newtype GhcModT m a = GhcModT {
+      unGhcModT :: RWST GhcModEnv GhcModWriter GhcModState m a
     } deriving (Functor
                ,Applicative
+               ,Alternative
                ,Monad
+               ,MonadPlus
                ,MonadIO
                ,MonadReader GhcModEnv
                ,MonadWriter GhcModWriter
                ,MonadState GhcModState
+               ,MonadTrans
                )
 
 #if __GLASGOW_HASKELL__ < 708
@@ -92,13 +103,13 @@ instance (Monoid w, MonadIO m) => MonadIO (RWST r w s m) where
 #endif
 
 ----------------------------------------------------------------
-
-runGhcMod' :: GhcModEnv
-          -> GhcModState
-          -> GhcMod a
-          -> IO (a,(GhcModState, GhcModWriter))
-runGhcMod' r s a = do
-  (a', s',w) <- runRWST (unGhcMod $ initGhcMonad (Just libdir) >> a) r s
+runGhcModT' :: (MonadIO m, MonadBaseControl IO m)
+           => GhcModEnv
+           -> GhcModState
+           -> GhcModT m a
+           -> m (a,(GhcModState, GhcModWriter))
+runGhcModT' r s a = do
+  (a',s',w) <- runRWST (unGhcModT $ initGhcMonad (Just libdir) >> a) r s
   return (a',(s',w))
 
 newGhcModEnv :: Options -> FilePath -> IO GhcModEnv
@@ -111,16 +122,24 @@ newGhcModEnv opt dir = do
         , gmCradle = c
         }
 
-runGhcMod :: Options -> GhcMod a -> IO a
-runGhcMod opt action = do
-    env <- liftIO $ newGhcModEnv opt =<< getCurrentDirectory
-    (a,(_,_)) <- runGhcMod' env defaultState $ do
+runGhcModT :: (MonadIO m, MonadBaseControl IO m) => Options -> GhcModT m a -> m a
+runGhcModT opt action = do
+    env <- liftBase $ newGhcModEnv opt =<< getCurrentDirectory
+    (a,(_,_)) <- runGhcModT' env defaultState $ do
         dflags <- getSessionDynFlags
         defaultCleanupHandler dflags $ do
-            toGhcMod $ initializeFlagsWithCradle opt (gmCradle env)
+            initializeFlagsWithCradle opt (gmCradle env)
             action
     return a
 
+runGhcMod' :: GhcModEnv
+           -> GhcModState
+           -> GhcModT IO a
+           -> IO (a,(GhcModState, GhcModWriter))
+runGhcMod' = runGhcModT'
+
+runGhcMod :: Options -> GhcMod a -> IO a
+runGhcMod = runGhcModT
 ----------------------------------------------------------------
 
 withErrorHandler :: String -> GhcMod a -> GhcMod a
@@ -133,7 +152,7 @@ withErrorHandler label = ghandle ignore
         exitSuccess
 
 -- | This is only a transitional mechanism don't use it for new code.
-toGhcMod :: Ghc a -> GhcMod a
+toGhcMod :: (Functor m, MonadIO m) => Ghc a -> GhcModT m a
 toGhcMod a = do
     s <- gmGhcSession <$> ask
     liftIO $ unGhc a $ Session s
@@ -146,30 +165,90 @@ options = gmOptions <$> ask
 cradle :: GhcMod Cradle
 cradle = gmCradle <$> ask
 
-instance MonadBase IO GhcMod where
-    liftBase = GhcMod . liftBase
 
-instance MonadBaseControl IO GhcMod where
-    newtype StM GhcMod a = StGhcMod {
-          unStGhcMod :: StM (RWST GhcModEnv () GhcModState IO) a }
+instance (MonadBaseControl IO m) => MonadBase IO (GhcModT m) where
+    liftBase = GhcModT . liftBase
 
-    liftBaseWith f = GhcMod . liftBaseWith $ \runInBase ->
-        f $ liftM StGhcMod . runInBase . unGhcMod
+instance (MonadBaseControl IO m) => MonadBaseControl IO (GhcModT m) where
+    newtype StM (GhcModT m) a = StGhcMod {
+          unStGhcMod :: StM (RWST GhcModEnv () GhcModState m) a }
 
-    restoreM = GhcMod . restoreM . unStGhcMod
+    liftBaseWith f = GhcModT . liftBaseWith $ \runInBase ->
+        f $ liftM StGhcMod . runInBase . unGhcModT
+
+    restoreM = GhcModT . restoreM . unStGhcMod
     {-# INLINE liftBaseWith #-}
     {-# INLINE restoreM #-}
 
-instance GhcMonad GhcMod where
-    getSession = liftIO . readIORef . gmGhcSession =<< ask
-    setSession a = liftIO . flip writeIORef a . gmGhcSession =<< ask
+-- GHC cannot prove the following instances to be decidable automatically using
+-- the FlexibleContexts extension as they violate the second Paterson Condition,
+-- namely that: The assertion has fewer constructors and variables (taken
+-- together and counting repetitions) than the head. Specifically the
+-- @MonadBaseControl IO m@ constraint is causing this violation.
+--
+-- Proof of termination:
+--
+-- Assuming all constraints containing the variable `m' exist and are decidable
+-- we show termination by manually replacing the current set of constraints with
+-- their own set of constraints and show that this, after a finite number of
+-- steps, results in the empty set, i.e. not having to check any more
+-- constraints.
+--
+-- We start by setting the constraints to be those immediate constraints of the
+-- instance declaration which cannot be proven decidable automatically for the
+-- type under consideration.
+--
+-- @
+-- { MonadBaseControl IO m }
+-- @
+--
+-- Classes used:
+--
+-- * @class MonadBase b m => MonadBaseControl b m@
+--
+-- @
+-- { MonadBase IO m }
+-- @
+--
+-- Classes used:
+--
+-- * @class (Applicative b, Applicative m, Monad b, Monad m) => MonadBase b m@
+--
+-- @
+-- { Applicative IO, Applicative m, Monad IO, Monad m }
+-- @
+--
+-- Classes used:
+--
+-- * @class Monad m@
+-- * @class Applicative f => Functor f@
+--
+-- @
+-- { Functor m }
+-- @
+--
+-- Classes used:
+--
+-- * @class Functor f@
+--
+-- @
+-- { }
+-- @
+-- ∎
+
+instance (Functor m, MonadIO m, MonadBaseControl IO m)
+      => GhcMonad (GhcModT m) where
+    getSession = (liftIO . readIORef) . gmGhcSession =<< ask
+    setSession a = (liftIO . flip writeIORef a) . gmGhcSession =<< ask
 
 #if __GLASGOW_HASKELL__ >= 706
-instance HasDynFlags GhcMod where
+instance (Functor m, MonadIO m, MonadBaseControl IO m)
+      => HasDynFlags (GhcModT m) where
     getDynFlags = getSessionDynFlags
 #endif
 
-instance ExceptionMonad GhcMod where
+instance (MonadIO m, MonadBaseControl IO m)
+      => ExceptionMonad (GhcModT m) where
     gcatch act handler = control $ \run ->
         run act `gcatch` (run . handler)
 
