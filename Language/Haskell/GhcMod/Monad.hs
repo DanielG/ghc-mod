@@ -50,13 +50,13 @@ import Data.Monoid (Monoid)
 
 import Control.Applicative (Alternative)
 import Control.Monad (MonadPlus, liftM)
-import Control.Monad.Base (MonadBase,liftBase)
+import Control.Monad.Base (MonadBase, liftBase)
 
 import Control.Monad.Reader.Class
 import Control.Monad.State.Class
 import Control.Monad.Trans.Class
 import Control.Monad.Trans.Control (MonadBaseControl(..), StM, liftBaseWith, control, liftBaseOp, liftBaseOp_)
-import Control.Monad.Trans.RWS.Lazy (RWST(..),runRWST)
+import Control.Monad.Trans.RWS.Lazy (RWST(..), runRWST)
 import Control.Monad.Writer.Class
 
 import Data.IORef (IORef, readIORef, writeIORef, newIORef)
@@ -85,15 +85,15 @@ type GhcMod a = GhcModT IO a
 newtype GhcModT m a = GhcModT {
       unGhcModT :: RWST GhcModEnv GhcModWriter GhcModState m a
     } deriving (Functor
-               ,Applicative
-               ,Alternative
-               ,Monad
-               ,MonadPlus
-               ,MonadIO
-               ,MonadReader GhcModEnv
-               ,MonadWriter GhcModWriter
-               ,MonadState GhcModState
-               ,MonadTrans
+               , Applicative
+               , Alternative
+               , Monad
+               , MonadPlus
+               , MonadIO
+               , MonadReader GhcModEnv
+               , MonadWriter GhcModWriter
+               , MonadState GhcModState
+               , MonadTrans
                )
 
 #if __GLASGOW_HASKELL__ < 708
