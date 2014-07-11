@@ -120,6 +120,7 @@ Executable ghc-mod
   Build-Depends:        base >= 4.0 && < 5
                       , directory
                       , filepath
+                      , mtl >= 2.0
                       , ghc
                       , ghc-mod
 

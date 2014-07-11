@@ -5,6 +5,7 @@ module Main where
 import Config (cProjectVersion)
 import Control.Applicative ((<$>))
 import Control.Exception (Exception, Handler(..), ErrorCall(..))
+import Control.Monad.Trans (liftIO)
 import qualified Control.Exception as E
 import Data.Typeable (Typeable)
 import Data.Version (showVersion)
@@ -102,7 +103,6 @@ main = flip E.catches handlers $ do
 -- #endif
     args <- getArgs
     let (opt,cmdArg) = parseArgs argspec args
-    cradle <- findCradle
     let cmdArg0 = cmdArg !. 0
         cmdArg1 = cmdArg !. 1
         cmdArg3 = cmdArg !. 3
@@ -111,23 +111,23 @@ main = flip E.catches handlers $ do
         nArgs n f = if length remainingArgs == n
                         then f
                         else E.throw (ArgumentsMismatch cmdArg0)
-    res <- case cmdArg0 of
-      "list"    -> listModules opt cradle
-      "lang"    -> listLanguages opt
-      "flag"    -> listFlags opt
-      "browse"  -> runGhcMod opt $ concat <$> mapM browse remainingArgs
-      "check"   -> runGhcMod opt $ checkSyntax remainingArgs
-      "expand"  -> runGhcMod opt $ expandTemplate remainingArgs
-      "debug"   -> debugInfo opt cradle
-      "info"    -> nArgs 3 infoExpr opt cradle cmdArg1 cmdArg3
-      "type"    -> nArgs 4 $ typeExpr opt cradle cmdArg1 (read cmdArg3) (read cmdArg4)
-      "split"   -> nArgs 4 $ splitVar opt cradle cmdArg1 (read cmdArg3) (read cmdArg4)
-      "sig"     -> nArgs 4 $ fillSig opt cradle cmdArg1 (read cmdArg3) (read cmdArg4)
-      "find"    -> runGhcMod opt $ nArgs 1 $ findSymbol cmdArg1
-      "lint"    -> nArgs 1 withFile (lintSyntax opt) cmdArg1
-      "root"    -> rootInfo opt cradle
-      "doc"     -> nArgs 1 $ packageDoc opt cradle cmdArg1
-      "boot"    -> bootInfo opt
+    res <- runGhcMod opt $ case cmdArg0 of
+      "list"    -> modules
+      "lang"    -> languages
+      "flag"    -> flags
+      "browse"  -> concat <$> mapM browse remainingArgs
+      "check"   -> checkSyntax remainingArgs
+      "expand"  -> expandTemplate remainingArgs
+      "debug"   -> debugInfo
+      "info"    -> nArgs 3 info cmdArg1 cmdArg3
+      "type"    -> nArgs 4 $ types cmdArg1 (read cmdArg3) (read cmdArg4)
+      "split"   -> nArgs 4 $ splits cmdArg1 (read cmdArg3) (read cmdArg4)
+      "sig"     -> nArgs 4 $ sig cmdArg1 (read cmdArg3) (read cmdArg4)
+      "find"    -> nArgs 1 $ findSymbol cmdArg1
+      "lint"    -> nArgs 1 $ withFile lint cmdArg1
+      "root"    -> rootInfo
+      "doc"     -> nArgs 1 $ pkgDoc cmdArg1
+      "boot"    -> boot
       "version" -> return progVersion
       "help"    -> return $ O.usageInfo usage argspec
       cmd       -> E.throw (NoSuchCommand cmd)
@@ -152,8 +152,9 @@ main = flip E.catches handlers $ do
         hPutStrLn stderr $ "\"" ++ file ++ "\" not found"
         printUsage
     printUsage = hPutStrLn stderr $ '\n' : O.usageInfo usage argspec
+    withFile :: (FilePath -> GhcMod a) -> FilePath -> GhcMod a
     withFile cmd file = do
-        exist <- doesFileExist file
+        exist <- liftIO $ doesFileExist file
         if exist
             then cmd file
             else E.throw (FileNotExist file)

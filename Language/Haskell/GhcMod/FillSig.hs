@@ -1,8 +1,7 @@
 {-# LANGUAGE MultiParamTypeClasses, FunctionalDependencies, FlexibleInstances, CPP #-}
 
 module Language.Haskell.GhcMod.FillSig (
-    fillSig
-  , sig
+    sig
   ) where
 
 import Data.Char (isSymbol)
@@ -10,12 +9,10 @@ import Data.List (find, intercalate)
 import Exception (ghandle, SomeException(..))
 import GHC (GhcMonad, Id, ParsedModule(..), TypecheckedModule(..), DynFlags, SrcSpan, Type, GenLocated(L))
 import qualified GHC as G
-import Language.Haskell.GhcMod.GHCApi
 import qualified Language.Haskell.GhcMod.Gap as Gap
 import Language.Haskell.GhcMod.Convert
 import Language.Haskell.GhcMod.Monad
 import Language.Haskell.GhcMod.SrcUtils
-import Language.Haskell.GhcMod.Types
 import MonadUtils (liftIO)
 import Outputable (PprStyle)
 import qualified Type as Ty
@@ -38,18 +35,7 @@ data SigInfo = Signature SrcSpan [G.RdrName] (G.HsType G.RdrName)
              | InstanceDecl SrcSpan G.Class
 
 -- Signature for fallback operation via haskell-src-exts
-data HESigInfo = HESignature HE.SrcSpan [HE.Name HE.SrcSpanInfo] (HE.Type HE.SrcSpanInfo) 
-
--- | Create a initial body from a signature.
-fillSig :: Options
-        -> Cradle
-        -> FilePath     -- ^ A target file.
-        -> Int          -- ^ Line number.
-        -> Int          -- ^ Column number.
-        -> IO String
-fillSig opt cradle file lineNo colNo = runGhcMod opt $ do
-    initializeFlagsWithCradle opt cradle
-    sig file lineNo colNo
+data HESigInfo = HESignature HE.SrcSpan [HE.Name HE.SrcSpanInfo] (HE.Type HE.SrcSpanInfo)
 
 -- | Create a initial body from a signature.
 sig :: FilePath     -- ^ A target file.
@@ -67,13 +53,13 @@ sig file lineNo colNo = ghandle handler body
           InstanceDecl loc cls -> do
              ("instance", fourInts loc, map (\x -> initialBody dflag style (G.idType x) x)
                                             (Ty.classMethods cls))
-            
+
     handler (SomeException _) = do
       opt <- options
       -- Code cannot be parsed by ghc module
       -- Fallback: try to get information via haskell-src-exts
       whenFound opt (getSignatureFromHE file lineNo colNo) $
-        \(HESignature loc names ty) -> 
+        \(HESignature loc names ty) ->
            ("function", fourIntsHE loc, map (initialBody undefined undefined ty) names)
 
 ----------------------------------------------------------------

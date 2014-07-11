@@ -7,6 +7,7 @@ import System.Process
 
 import Language.Haskell.GhcMod (debugInfo, defaultOptions, findCradle)
 import Control.Exception as E
+import TestUtils
 
 main = do
   let sandboxes = [ "test/data", "test/data/check-packageid"
@@ -25,7 +26,7 @@ main = do
   putStrLn $ "ghc-mod was built with Cabal version " ++ VERSION_Cabal
   system "ghc --version"
 
-  (putStrLn =<< debugInfo defaultOptions =<< findCradle)
+  (putStrLn =<< runD debugInfo)
       `E.catch` (\(_ :: E.SomeException) -> return () )
 
   hspec spec

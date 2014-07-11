@@ -13,6 +13,7 @@ module Language.Haskell.GhcMod.Monad (
  , withErrorHandler
  , toGhcMod
  , options
+ , cradle
  , module Control.Monad.Reader.Class
  , module Control.Monad.Writer.Class
  , module Control.Monad.State.Class
@@ -103,11 +104,11 @@ runGhcMod' r s a = do
 newGhcModEnv :: Options -> FilePath -> IO GhcModEnv
 newGhcModEnv opt dir = do
       session <- newIORef (error "empty session")
-      cradle <- findCradle' dir
+      c <- findCradle' dir
       return GhcModEnv {
           gmGhcSession = session
         , gmOptions = opt
-        , gmCradle = cradle
+        , gmCradle = c
         }
 
 runGhcMod :: Options -> GhcMod a -> IO a
@@ -141,6 +142,9 @@ toGhcMod a = do
 
 options :: GhcMod Options
 options = gmOptions <$> ask
+
+cradle :: GhcMod Cradle
+cradle = gmCradle <$> ask
 
 instance MonadBase IO GhcMod where
     liftBase = GhcMod . liftBase

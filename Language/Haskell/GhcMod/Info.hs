@@ -1,7 +1,5 @@
 module Language.Haskell.GhcMod.Info (
-    infoExpr
-  , info
-  , typeExpr
+    info
   , types
   ) where
 
@@ -13,7 +11,6 @@ import Exception (ghandle, SomeException(..))
 import GHC (GhcMonad, LHsBind, LHsExpr, LPat, Id, TypecheckedModule(..), SrcSpan, Type)
 import qualified GHC as G
 import Language.Haskell.GhcMod.Doc (showPage)
-import Language.Haskell.GhcMod.GHCApi
 import Language.Haskell.GhcMod.Gap (HasType(..))
 import qualified Language.Haskell.GhcMod.Gap as Gap
 import Language.Haskell.GhcMod.Monad
@@ -22,16 +19,6 @@ import Language.Haskell.GhcMod.Types
 import Language.Haskell.GhcMod.Convert
 
 ----------------------------------------------------------------
-
--- | Obtaining information of a target expression. (GHCi's info:)
-infoExpr :: Options
-         -> Cradle
-         -> FilePath     -- ^ A target file.
-         -> Expression   -- ^ A Haskell expression.
-         -> IO String
-infoExpr opt cradle file expr = runGhcMod opt $ do
-    initializeFlagsWithCradle opt cradle
-    info file expr
 
 -- | Obtaining information of a target expression. (GHCi's info:)
 info :: FilePath     -- ^ A target file.
@@ -47,17 +34,6 @@ info file expr = do
     handler (SomeException _) = return "Cannot show info"
 
 ----------------------------------------------------------------
-
--- | Obtaining type of a target expression. (GHCi's type:)
-typeExpr :: Options
-         -> Cradle
-         -> FilePath     -- ^ A target file.
-         -> Int          -- ^ Line number.
-         -> Int          -- ^ Column number.
-         -> IO String
-typeExpr opt cradle file lineNo colNo = runGhcMod opt $ do
-    initializeFlagsWithCradle opt cradle
-    types file lineNo colNo
 
 -- | Obtaining type of a target expression. (GHCi's type:)
 types :: FilePath     -- ^ A target file.
@@ -85,4 +61,3 @@ getSrcSpanType modSum lineNo colNo = do
     ets <- mapM (getType tcm) es
     pts <- mapM (getType tcm) ps
     return $ catMaybes $ concat [ets, bts, pts]
-
