@@ -1,9 +1,7 @@
 {-# LANGUAGE ScopedTypeVariables, RecordWildCards #-}
 
 module Language.Haskell.GhcMod.GHCApi (
-    withGHC
-  , withGHC'
-  , initializeFlagsWithCradle
+    initializeFlagsWithCradle
   , setTargetFiles
   , getDynamicFlags
   , systemLibDir
@@ -36,26 +34,6 @@ import System.IO.Unsafe (unsafePerformIO)
 -- | Obtaining the directory for system libraries.
 systemLibDir :: FilePath
 systemLibDir = libdir
-
-----------------------------------------------------------------
-
--- | Converting the 'Ghc' monad to the 'IO' monad.
-withGHC :: FilePath  -- ^ A target file displayed in an error message.
-        -> Ghc a -- ^ 'Ghc' actions created by the Ghc utilities.
-        -> IO a
-withGHC file body = ghandle ignore $ withGHC' body
-  where
-    ignore :: SomeException -> IO a
-    ignore e = do
-        hPutStr stderr $ file ++ ":0:0:Error:"
-        hPrint stderr e
-        exitSuccess
-
-withGHC' :: Ghc a -> IO a
-withGHC' body = do
-    G.runGhc (Just systemLibDir) $ do
-        dflags <- G.getSessionDynFlags
-        G.defaultCleanupHandler dflags body
 
 ----------------------------------------------------------------
 
@@ -106,6 +84,7 @@ initSession build Options {..} CompilerOptions {..} = do
       $ setBuildEnv build
       $ setEmptyLogger
       $ Gap.addPackageFlags depPackages df)
+
 
 setEmptyLogger :: DynFlags -> DynFlags
 setEmptyLogger df = Gap.setLogAction df $ \_ _ _ _ _ -> return ()
