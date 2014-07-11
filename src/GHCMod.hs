@@ -5,7 +5,7 @@ module Main where
 import Config (cProjectVersion)
 import Control.Applicative ((<$>))
 import Control.Exception (Exception, Handler(..), ErrorCall(..))
-import Control.Monad.Trans (liftIO)
+import CoreMonad (liftIO)
 import qualified Control.Exception as E
 import Data.Typeable (Typeable)
 import Data.Version (showVersion)

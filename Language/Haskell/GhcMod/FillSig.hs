@@ -13,7 +13,7 @@ import qualified Language.Haskell.GhcMod.Gap as Gap
 import Language.Haskell.GhcMod.Convert
 import Language.Haskell.GhcMod.Monad
 import Language.Haskell.GhcMod.SrcUtils
-import MonadUtils (liftIO)
+import CoreMonad (liftIO)
 import Outputable (PprStyle)
 import qualified Type as Ty
 import qualified HsBinds as Ty
