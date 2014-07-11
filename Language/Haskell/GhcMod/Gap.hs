@@ -276,8 +276,10 @@ class HasType a where
 
 instance HasType (LHsBind Id) where
 #if __GLASGOW_HASKELL__ >= 708
-    getType _ (L spn FunBind{fun_matches = MG _ in_tys out_typ}) = return $ Just (spn, typ)
-      where typ = mkFunTys in_tys out_typ
+    getType _ (L spn FunBind{fun_matches = m}) = return $ Just (spn, typ)
+      where in_tys = mg_arg_tys m
+            out_typ = mg_res_ty m
+            typ = mkFunTys in_tys out_typ
 #else
     getType _ (L spn FunBind{fun_matches = MatchGroup _ typ}) = return $ Just (spn, typ)
 #endif
