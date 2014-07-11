@@ -93,6 +93,9 @@ type Expression = String
 -- | Module name.
 type ModuleString = String
 
+-- | A Module
+type Module = [String]
+
 -- | Option information for GHC
 data CompilerOptions = CompilerOptions {
     ghcOptions  :: [GHCOption]  -- ^ Command line options
