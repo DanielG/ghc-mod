@@ -1,6 +1,9 @@
 module Language.Haskell.GhcMod.Types where
 
 import Data.List (intercalate)
+import qualified Data.Map as M
+
+import PackageConfig (PackageConfig)
 
 -- | Output style.
 data OutputStyle = LispStyle  -- ^ S expression style.
@@ -86,6 +89,9 @@ showPkg (n,v,_) = intercalate "-" [n,v]
 
 showPkgId :: Package -> String
 showPkgId (n,v,i) = intercalate "-" [n,v,i]
+
+-- | Collection of packages
+type PkgDb = (M.Map Package PackageConfig)
 
 -- | Haskell expression.
 type Expression = String
