@@ -8,7 +8,7 @@ import Language.Haskell.GhcMod.List
 import Language.Haskell.GhcMod.Monad
 
 -- | Printing necessary information for front-end booting.
-boot :: GhcMod String
+boot :: IOish m => GhcModT m String
 boot =  concat <$> sequence [modules, languages, flags,
                              concat <$> mapM browse preBrowsedModules]
 

@@ -51,6 +51,7 @@ Extra-Source-Files:     ChangeLog
 Library
   Default-Language:     Haskell2010
   GHC-Options:          -Wall
+  Extensions:           ConstraintKinds, FlexibleContexts
   Exposed-Modules:      Language.Haskell.GhcMod
                         Language.Haskell.GhcMod.Ghc
                         Language.Haskell.GhcMod.Monad
@@ -117,6 +118,7 @@ Executable ghc-mod
   Main-Is:              GHCMod.hs
   Other-Modules:        Paths_ghc_mod
   GHC-Options:          -Wall
+  Extensions:           ConstraintKinds, FlexibleContexts
   HS-Source-Dirs:       src
   Build-Depends:        base >= 4.0 && < 5
                       , directory
@@ -130,6 +132,7 @@ Executable ghc-modi
   Main-Is:              GHCModi.hs
   Other-Modules:        Paths_ghc_mod
   GHC-Options:          -Wall
+  Extensions:           ConstraintKinds, FlexibleContexts
   HS-Source-Dirs:       src
   Build-Depends:        base >= 4.0 && < 5
                       , containers
@@ -143,12 +146,14 @@ Test-Suite doctest
   Default-Language:     Haskell2010
   HS-Source-Dirs:       test
   Ghc-Options:          -threaded -Wall
+  Extensions:           ConstraintKinds, FlexibleContexts
   Main-Is:              doctests.hs
   Build-Depends:        base
                       , doctest >= 0.9.3
 
 Test-Suite spec
   Default-Language:     Haskell2010
+  Extensions:           ConstraintKinds, FlexibleContexts
   Main-Is:              Main.hs
   Hs-Source-Dirs:       test, .
   Type:                 exitcode-stdio-1.0

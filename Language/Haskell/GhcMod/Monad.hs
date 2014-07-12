@@ -4,13 +4,11 @@
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
 module Language.Haskell.GhcMod.Monad (
-   GhcMod
- , GhcModT
+   GhcModT
+ , IOish
  , GhcModEnv(..)
  , GhcModWriter
  , GhcModState(..)
- , runGhcMod'
- , runGhcMod
  , runGhcModT'
  , runGhcModT
  , newGhcModEnv
@@ -60,7 +58,8 @@ import Control.Monad.Base (MonadBase, liftBase)
 import Control.Monad.Reader.Class
 import Control.Monad.State.Class
 import Control.Monad.Trans.Class
-import Control.Monad.Trans.Control (MonadBaseControl(..), StM, liftBaseWith, control, liftBaseOp, liftBaseOp_)
+import Control.Monad.Trans.Control (MonadBaseControl(..), StM, liftBaseWith,
+  control, liftBaseOp, liftBaseOp_)
 import Control.Monad.Trans.RWS.Lazy (RWST(..), runRWST)
 import Control.Monad.Writer.Class
 
@@ -87,7 +86,7 @@ type GhcModWriter = ()
 
 ----------------------------------------------------------------
 
-type GhcMod a = GhcModT IO a
+type IOish m = (Functor m, MonadIO m, MonadBaseControl IO m)
 
 newtype GhcModT m a = GhcModT {
       unGhcModT :: RWST GhcModEnv GhcModWriter GhcModState m a
@@ -155,7 +154,7 @@ initSession build Options {..} CompilerOptions {..} = do
 
 ----------------------------------------------------------------
 
-runGhcModT' :: (MonadIO m, MonadBaseControl IO m)
+runGhcModT' :: IOish m
            => GhcModEnv
            -> GhcModState
            -> GhcModT m a
@@ -174,7 +173,7 @@ newGhcModEnv opt dir = do
         , gmCradle = c
         }
 
-runGhcModT :: (MonadIO m, MonadBaseControl IO m) => Options -> GhcModT m a -> m a
+runGhcModT :: IOish m => Options -> GhcModT m a -> m a
 runGhcModT opt action = do
     env <- liftBase $ newGhcModEnv opt =<< getCurrentDirectory
     (a,(_,_)) <- runGhcModT' env defaultState $ do
@@ -183,40 +182,30 @@ runGhcModT opt action = do
             initializeFlagsWithCradle opt (gmCradle env)
             action
     return a
-
-runGhcMod' :: GhcModEnv
-           -> GhcModState
-           -> GhcModT IO a
-           -> IO (a,(GhcModState, GhcModWriter))
-runGhcMod' = runGhcModT'
-
-runGhcMod :: Options -> GhcMod a -> IO a
-runGhcMod = runGhcModT
 ----------------------------------------------------------------
 
-withErrorHandler :: String -> GhcMod a -> GhcMod a
+withErrorHandler :: IOish m => String -> GhcModT m a -> GhcModT m a
 withErrorHandler label = ghandle ignore
   where
-    ignore :: SomeException -> GhcMod a
+    ignore :: IOish m => SomeException -> GhcModT m a
     ignore e = liftIO $ do
         hPutStr stderr $ label ++ ":0:0:Error:"
         hPrint stderr e
         exitSuccess
 
 -- | This is only a transitional mechanism don't use it for new code.
-toGhcMod :: (Functor m, MonadIO m) => Ghc a -> GhcModT m a
+toGhcMod :: IOish m => Ghc a -> GhcModT m a
 toGhcMod a = do
     s <- gmGhcSession <$> ask
     liftIO $ unGhc a $ Session s
 
 ----------------------------------------------------------------
 
-options :: GhcMod Options
+options :: IOish m => GhcModT m Options
 options = gmOptions <$> ask
 
-cradle :: GhcMod Cradle
+cradle :: IOish m => GhcModT m Cradle
 cradle = gmCradle <$> ask
-
 
 instance (MonadBaseControl IO m) => MonadBase IO (GhcModT m) where
     liftBase = GhcModT . liftBase

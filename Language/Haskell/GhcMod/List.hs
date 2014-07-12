@@ -13,7 +13,7 @@ import UniqFM (eltsUFM)
 ----------------------------------------------------------------
 
 -- | Listing installed modules.
-modules :: GhcMod String
+modules :: IOish m => GhcModT m String
 modules = do
     opt <- options
     convert opt . (arrange opt) <$> (getModules `G.gcatch` handler)

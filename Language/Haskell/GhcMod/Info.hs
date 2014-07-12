@@ -21,9 +21,10 @@ import Language.Haskell.GhcMod.Convert
 ----------------------------------------------------------------
 
 -- | Obtaining information of a target expression. (GHCi's info:)
-info :: FilePath     -- ^ A target file.
+info :: IOish m
+     => FilePath     -- ^ A target file.
      -> Expression   -- ^ A Haskell expression.
-     -> GhcMod String
+     -> GhcModT m String
 info file expr = do
     opt <- options
     convert opt <$> ghandle handler body
@@ -36,10 +37,11 @@ info file expr = do
 ----------------------------------------------------------------
 
 -- | Obtaining type of a target expression. (GHCi's type:)
-types :: FilePath     -- ^ A target file.
+types :: IOish m
+      => FilePath     -- ^ A target file.
       -> Int          -- ^ Line number.
       -> Int          -- ^ Column number.
-      -> GhcMod String
+      -> GhcModT m String
 types file lineNo colNo = do
     opt <- options
     convert opt <$> ghandle handler body

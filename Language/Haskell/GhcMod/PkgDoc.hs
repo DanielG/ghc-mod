@@ -9,7 +9,7 @@ import Control.Applicative ((<$>))
 import System.Process (readProcess)
 
 -- | Obtaining the package name and the doc path of a module.
-pkgDoc :: String -> GhcMod String
+pkgDoc :: IOish m => String -> GhcModT m String
 pkgDoc mdl = cradle >>= \c -> liftIO $ do
     pkg <- trim <$> readProcess "ghc-pkg" (toModuleOpts c) []
     if pkg == "" then

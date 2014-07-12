@@ -34,7 +34,7 @@ newtype LogRef = LogRef (IORef Builder)
 newLogRef :: IO LogRef
 newLogRef = LogRef <$> newIORef id
 
-readAndClearLogRef :: LogRef -> GhcMod String
+readAndClearLogRef :: IOish m => LogRef -> GhcModT m String
 readAndClearLogRef (LogRef ref) = do
     b <- liftIO $ readIORef ref
     liftIO $ writeIORef ref id
@@ -50,9 +50,10 @@ appendLogRef df (LogRef ref) _ sev src style msg = do
 -- | Set the session flag (e.g. "-Wall" or "-w:") then
 --   executes a body. Logged messages are returned as 'String'.
 --   Right is success and Left is failure.
-withLogger :: (DynFlags -> DynFlags)
-           -> GhcMod ()
-           -> GhcMod (Either String String)
+withLogger :: IOish m
+           => (DynFlags -> DynFlags)
+           -> GhcModT m ()
+           -> GhcModT m (Either String String)
 withLogger setDF body = ghandle sourceError $ do
     logref <- liftIO $ newLogRef
     wflags <- filter ("-fno-warn" `isPrefixOf`) . ghcOpts <$> options
@@ -65,7 +66,7 @@ withLogger setDF body = ghandle sourceError $ do
 ----------------------------------------------------------------
 
 -- | Converting 'SourceError' to 'String'.
-sourceError :: SourceError -> GhcMod (Either String String)
+sourceError :: IOish m => SourceError -> GhcModT m (Either String String)
 sourceError err = do
     dflags <- G.getSessionDynFlags
     style <- toGhcMod getStyle

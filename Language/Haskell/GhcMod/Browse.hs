@@ -28,8 +28,9 @@ import Type (dropForAlls, splitFunTy_maybe, mkFunTy, isPredTy)
 -- | Getting functions, classes, etc from a module.
 --   If 'detailed' is 'True', their types are also obtained.
 --   If 'operators' is 'True', operators are also returned.
-browse :: ModuleString -- ^ A module name. (e.g. \"Data.List\")
-       -> GhcMod String
+browse :: IOish m
+       => ModuleString -- ^ A module name. (e.g. \"Data.List\")
+       -> GhcModT m String
 browse pkgmdl = convert' . sort =<< (listExports =<< getModule)
   where
     (mpkg,mdl) = splitPkgMdl pkgmdl
@@ -61,7 +62,7 @@ splitPkgMdl pkgmdl = case break (==':') pkgmdl of
     (mdl,"")    -> (Nothing,mdl)
     (pkg,_:mdl) -> (Just pkg,mdl)
 
-processExports :: ModuleInfo -> GhcMod [String]
+processExports :: IOish m => ModuleInfo -> GhcModT m [String]
 processExports minfo = do
   opt <- options
   let
@@ -70,13 +71,13 @@ processExports minfo = do
       | otherwise = filter (isAlpha . head . getOccString)
   mapM (showExport opt minfo) $ removeOps $ G.modInfoExports minfo
 
-showExport :: Options -> ModuleInfo -> Name -> GhcMod String
+showExport :: IOish m => Options -> ModuleInfo -> Name -> GhcModT m String
 showExport opt minfo e = do
   mtype' <- mtype
   return $ concat $ catMaybes [mqualified, Just $ formatOp $ getOccString e, mtype']
   where
     mqualified = (G.moduleNameString (G.moduleName $ G.nameModule e) ++ ".") `justIf` qualified opt
-    mtype :: GhcMod (Maybe String)
+    mtype :: IOish m => GhcModT m (Maybe String)
     mtype
       | detailed opt = do
         tyInfo <- G.modInfoLookupName minfo e
@@ -91,7 +92,7 @@ showExport opt minfo e = do
       | isAlpha n = nm
       | otherwise = "(" ++ nm ++ ")"
     formatOp "" = error "formatOp"
-    inOtherModule :: Name -> GhcMod (Maybe TyThing)
+    inOtherModule :: IOish m => Name -> GhcModT m (Maybe TyThing)
     inOtherModule nm = G.getModuleInfo (G.nameModule nm) >> G.lookupGlobalName nm
     justIf :: a -> Bool -> Maybe a
     justIf x True = Just x
@@ -138,7 +139,7 @@ showOutputable dflag = unwords . lines . showPage dflag styleUnqualified . ppr
 ----------------------------------------------------------------
 
 -- | Browsing all functions in all system/user modules.
-browseAll :: DynFlags -> GhcMod [(String,String)]
+browseAll :: IOish m => DynFlags -> GhcModT m [(String,String)]
 browseAll dflag = do
     ms <- G.packageDbModules True
     is <- mapM G.getModuleInfo ms

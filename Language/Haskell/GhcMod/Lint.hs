@@ -11,8 +11,9 @@ import Language.Haskell.HLint (hlint)
 
 -- | Checking syntax of a target file using hlint.
 --   Warnings and errors are returned.
-lint :: FilePath  -- ^ A target file.
-     -> GhcMod String
+lint :: IOish m
+     => FilePath  -- ^ A target file.
+     -> GhcModT m String
 lint file = do
   opt <- options
   ghandle handler . pack =<< (liftIO $ hlint $ file : "--quiet" : hlintOpts opt)
