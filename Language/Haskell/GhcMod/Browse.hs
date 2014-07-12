@@ -10,10 +10,10 @@ import Data.List (sort)
 import Data.Maybe (catMaybes)
 import Exception (ghandle)
 import FastString (mkFastString)
-import GHC (GhcException(CmdLineError), ModuleInfo, Name, TyThing, DynFlags, Type, TyCon, Module)
+import GHC (GhcException(CmdLineError), ModuleInfo, Name, TyThing, DynFlags, Type, TyCon)
 import qualified GHC as G
 import Language.Haskell.GhcMod.Doc (showPage, showOneLine, styleUnqualified)
-import Language.Haskell.GhcMod.GHCApi
+import Language.Haskell.GhcMod.DynFlags
 import Language.Haskell.GhcMod.Gap
 import Language.Haskell.GhcMod.Monad
 import Language.Haskell.GhcMod.Convert
@@ -144,7 +144,7 @@ browseAll dflag = do
     is <- mapM G.getModuleInfo ms
     return $ concatMap (toNameModule dflag) (zip ms is)
 
-toNameModule :: DynFlags -> (Module, Maybe ModuleInfo) -> [(String,String)]
+toNameModule :: DynFlags -> (G.Module, Maybe ModuleInfo) -> [(String,String)]
 toNameModule _     (_,Nothing)  = []
 toNameModule dflag (m,Just inf) = map (\name -> (toStr name, mdl)) names
   where

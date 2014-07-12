@@ -4,12 +4,10 @@ import Control.Applicative ((<$>))
 import CoreMonad (liftIO)
 import Data.List (intercalate)
 import Data.Maybe (isJust, fromJust)
-import Language.Haskell.GhcMod.CabalApi
-import Language.Haskell.GhcMod.GHCApi
-import Language.Haskell.GhcMod.GHCChoice ((||>))
 import Language.Haskell.GhcMod.Convert
 import Language.Haskell.GhcMod.Monad
 import Language.Haskell.GhcMod.Types
+import Language.Haskell.GhcMod.Internal
 
 ----------------------------------------------------------------
 
@@ -28,7 +26,7 @@ debugInfo = cradle >>= \c -> convert' =<< do
       , "GHC options:         " ++ unwords gopts
       , "Include directories: " ++ unwords incDir
       , "Dependent packages:  " ++ intercalate ", " (map showPkg pkgs)
-      , "System libraries:    " ++ systemLibDir
+      , "System libraries:    " ++ ghcLibDir
       ]
   where
     simpleCompilerOption = options >>= \op ->

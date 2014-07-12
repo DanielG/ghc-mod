@@ -17,7 +17,7 @@ import GHC (DynFlags, SrcSpan, Severity(SevError))
 import qualified GHC as G
 import HscTypes (SourceError, srcErrorMessages)
 import Language.Haskell.GhcMod.Doc (showPage, getStyle)
-import Language.Haskell.GhcMod.GHCApi (withDynFlags, withCmdFlags)
+import Language.Haskell.GhcMod.DynFlags (withDynFlags, withCmdFlags)
 import qualified Language.Haskell.GhcMod.Gap as Gap
 import Language.Haskell.GhcMod.Convert (convert')
 import Language.Haskell.GhcMod.Monad

@@ -6,7 +6,7 @@ module Language.Haskell.GhcMod.Check (
   ) where
 
 import Control.Applicative ((<$>))
-import Language.Haskell.GhcMod.GHCApi
+import Language.Haskell.GhcMod.DynFlags
 import qualified Language.Haskell.GhcMod.Gap as Gap
 import Language.Haskell.GhcMod.Logger
 import Language.Haskell.GhcMod.Monad

@@ -17,11 +17,9 @@ module Language.Haskell.GhcMod.Internal (
   , cabalSourceDirs
   , cabalAllTargets
   -- * GHC.Paths
-  , systemLibDir
+  , ghcLibDir
   -- * IO
   , getDynamicFlags
-  -- * Initializing 'DynFlags'
-  , initializeFlagsWithCradle
   -- * Targets
   , setTargetFiles
   -- * Logging
@@ -36,8 +34,14 @@ module Language.Haskell.GhcMod.Internal (
   , (|||>)
   ) where
 
+import GHC.Paths (libdir)
+
 import Language.Haskell.GhcMod.CabalApi
-import Language.Haskell.GhcMod.GHCApi
+import Language.Haskell.GhcMod.DynFlags
 import Language.Haskell.GhcMod.GHCChoice
 import Language.Haskell.GhcMod.Logger
 import Language.Haskell.GhcMod.Types
+
+-- | Obtaining the directory for ghc system libraries.
+ghcLibDir :: FilePath
+ghcLibDir = libdir

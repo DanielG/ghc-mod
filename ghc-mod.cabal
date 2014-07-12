@@ -67,6 +67,7 @@ Library
                         Language.Haskell.GhcMod.Convert
                         Language.Haskell.GhcMod.Debug
                         Language.Haskell.GhcMod.Doc
+                        Language.Haskell.GhcMod.DynFlags
                         Language.Haskell.GhcMod.FillSig
                         Language.Haskell.GhcMod.Find
                         Language.Haskell.GhcMod.Flag

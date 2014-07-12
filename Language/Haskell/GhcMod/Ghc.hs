@@ -1,9 +1,6 @@
 module Language.Haskell.GhcMod.Ghc (
-  -- * Converting the 'Ghc' monad to the 'IO' monad
-    withGHC
-  , withGHC'
   -- * 'SymMdlDb'
-  , Symbol
+    Symbol
   , SymMdlDb
   , getSymMdlDb
   , lookupSym
@@ -11,4 +8,3 @@ module Language.Haskell.GhcMod.Ghc (
   ) where
 
 import Language.Haskell.GhcMod.Find
-import Language.Haskell.GhcMod.GHCApi
