@@ -8,4 +8,3 @@ module Language.Haskell.GhcMod.Ghc (
   ) where
 
 import Language.Haskell.GhcMod.Find
-import Language.Haskell.GhcMod.GHCApi

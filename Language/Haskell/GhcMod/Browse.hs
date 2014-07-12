@@ -13,7 +13,7 @@ import FastString (mkFastString)
 import GHC (GhcException(CmdLineError), ModuleInfo, Name, TyThing, DynFlags, Type, TyCon)
 import qualified GHC as G
 import Language.Haskell.GhcMod.Doc (showPage, showOneLine, styleUnqualified)
-import Language.Haskell.GhcMod.GHCApi
+import Language.Haskell.GhcMod.DynFlags
 import Language.Haskell.GhcMod.Gap
 import Language.Haskell.GhcMod.Monad
 import Language.Haskell.GhcMod.Convert

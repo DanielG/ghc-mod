@@ -13,7 +13,7 @@ import GhcMonad
 import qualified GHC as G
 import GHC.SYB.Utils (Stage(..), everythingStaged)
 import Language.Haskell.GhcMod.Doc (showOneLine, getStyle)
-import Language.Haskell.GhcMod.GHCApi
+import Language.Haskell.GhcMod.DynFlags
 import Language.Haskell.GhcMod.Gap (HasType(..), setWarnTypedHoles, setDeferTypeErrors)
 import qualified Language.Haskell.GhcMod.Gap as Gap
 import Outputable (PprStyle)

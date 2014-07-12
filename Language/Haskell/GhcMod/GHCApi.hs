@@ -1,15 +1,7 @@
 {-# LANGUAGE ScopedTypeVariables, RecordWildCards #-}
 
 module Language.Haskell.GhcMod.GHCApi (
-    initializeFlagsWithCradle
-  , setTargetFiles
-  , getDynamicFlags
-  , systemLibDir
-  , withDynFlags
-  , withCmdFlags
-  , setNoWaringFlags
-  , setAllWaringFlags
-  , ghcPkgDb
+    ghcPkgDb
   , package
   , modules
   , findModule
@@ -18,79 +10,19 @@ module Language.Haskell.GhcMod.GHCApi (
   , bindings
   ) where
 
-import Language.Haskell.GhcMod.CabalApi
-import Language.Haskell.GhcMod.GHCChoice
 import Language.Haskell.GhcMod.GhcPkg
 import Language.Haskell.GhcMod.DynFlags
-import qualified Language.Haskell.GhcMod.Gap as Gap
 import Language.Haskell.GhcMod.Types
 
 import Control.Applicative ((<$>))
-import Control.Monad (void)
 import Distribution.Package (InstalledPackageId(..))
-import Data.Maybe (isJust, fromJust)
 import qualified Data.Map as M
 import GHC (DynFlags(..))
 import qualified GHC as G
 import GhcMonad
-import GHC.Paths (libdir)
 import qualified Packages as G
 import qualified Module as G
 import qualified OccName as G
-
-----------------------------------------------------------------
-
--- | Obtaining the directory for system libraries.
-systemLibDir :: FilePath
-systemLibDir = libdir
-
-----------------------------------------------------------------
-
-importDirs :: [IncludeDir]
-importDirs = [".","..","../..","../../..","../../../..","../../../../.."]
-
--- | Initialize the 'DynFlags' relating to the compilation of a single
--- file or GHC session according to the 'Cradle' and 'Options'
--- provided.
-initializeFlagsWithCradle :: GhcMonad m
-        => Options
-        -> Cradle
-        -> m ()
-initializeFlagsWithCradle opt cradle
-  | cabal     = withCabal |||> withSandbox
-  | otherwise = withSandbox
-  where
-    mCradleFile = cradleCabalFile cradle
-    cabal = isJust mCradleFile
-    ghcopts = ghcOpts opt
-    withCabal = do
-        pkgDesc <- liftIO $ parseCabalFile $ fromJust mCradleFile
-        compOpts <- liftIO $ getCompilerOptions ghcopts cradle pkgDesc
-        initSession CabalPkg opt compOpts
-    withSandbox = initSession SingleFile opt compOpts
-      where
-        pkgOpts = ghcDbStackOpts $ cradlePkgDbStack cradle
-        compOpts
-          | null pkgOpts = CompilerOptions ghcopts importDirs []
-          | otherwise    = CompilerOptions (ghcopts ++ pkgOpts) [wdir,rdir] []
-        wdir = cradleCurrentDir cradle
-        rdir = cradleRootDir    cradle
-
-----------------------------------------------------------------
-
-initSession :: GhcMonad m
-            => Build
-            -> Options
-            -> CompilerOptions
-            -> m ()
-initSession build Options {..} CompilerOptions {..} = do
-    df <- G.getSessionDynFlags
-    void $ G.setSessionDynFlags =<< (addCmdOpts ghcOptions
-      $ setLinkerOptions
-      $ setIncludeDirs includeDirs
-      $ setBuildEnv build
-      $ setEmptyLogger
-      $ Gap.addPackageFlags depPackages df)
 
 ----------------------------------------------------------------
 -- get Packages,Modules,Bindings
@@ -153,14 +85,3 @@ localModuleInfo mdl = moduleInfo Nothing mdl
 bindings :: G.ModuleInfo -> [Binding]
 bindings minfo = do
   map (G.occNameString . G.getOccName) $ G.modInfoExports minfo
-
-
-----------------------------------------------------------------
--- for PkgDoc
-
--- import Distribution.InstalledPackageInfo (showInstalledPackageInfoField)
--- haddockHtml :: GhcMonad m => Package -> m String
--- haddockHtml pkg = do
---     extractField info . fromJust . lookup pkg <$> ghcPkgDb
---  where
---     extractField = fromJust $ showInstalledPackageInfoField "haddock-html"

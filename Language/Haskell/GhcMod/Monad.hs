@@ -1,6 +1,6 @@
 {-# LANGUAGE CPP, GeneralizedNewtypeDeriving, FlexibleInstances #-}
 {-# LANGUAGE FlexibleContexts, MultiParamTypeClasses, RankNTypes #-}
-{-# LANGUAGE TypeFamilies, UndecidableInstances #-}
+{-# LANGUAGE TypeFamilies, UndecidableInstances, RecordWildCards #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
 module Language.Haskell.GhcMod.Monad (
@@ -23,13 +23,18 @@ module Language.Haskell.GhcMod.Monad (
  , module Control.Monad.State.Class
  ) where
 
-import Language.Haskell.GhcMod.Cradle
-import Language.Haskell.GhcMod.GHCApi
 import Language.Haskell.GhcMod.Types
+import Language.Haskell.GhcMod.Cradle
+import Language.Haskell.GhcMod.DynFlags
+import Language.Haskell.GhcMod.GhcPkg
+import Language.Haskell.GhcMod.GHCChoice
+import Language.Haskell.GhcMod.CabalApi
+import qualified Language.Haskell.GhcMod.Gap as Gap
 
 import DynFlags
 import Exception
 import GHC
+import qualified GHC as G
 import GHC.Paths (libdir)
 import GhcMonad
 #if __GLASGOW_HASKELL__ <= 702
@@ -49,7 +54,7 @@ import Data.Monoid (Monoid)
 #endif
 
 import Control.Applicative (Alternative)
-import Control.Monad (MonadPlus, liftM)
+import Control.Monad (MonadPlus, liftM, void)
 import Control.Monad.Base (MonadBase, liftBase)
 
 import Control.Monad.Reader.Class
@@ -59,6 +64,7 @@ import Control.Monad.Trans.Control (MonadBaseControl(..), StM, liftBaseWith, con
 import Control.Monad.Trans.RWS.Lazy (RWST(..), runRWST)
 import Control.Monad.Writer.Class
 
+import Data.Maybe (fromJust, isJust)
 import Data.IORef (IORef, readIORef, writeIORef, newIORef)
 import System.Exit (exitSuccess)
 import System.IO (hPutStr, hPrint, stderr)
@@ -80,6 +86,7 @@ defaultState = GhcModState
 type GhcModWriter = ()
 
 ----------------------------------------------------------------
+
 type GhcMod a = GhcModT IO a
 
 newtype GhcModT m a = GhcModT {
@@ -103,6 +110,51 @@ instance (Monoid w, MonadIO m) => MonadIO (RWST r w s m) where
 #endif
 
 ----------------------------------------------------------------
+
+-- | Initialize the 'DynFlags' relating to the compilation of a single
+-- file or GHC session according to the 'Cradle' and 'Options'
+-- provided.
+initializeFlagsWithCradle :: GhcMonad m
+        => Options
+        -> Cradle
+        -> m ()
+initializeFlagsWithCradle opt c
+  | cabal     = withCabal |||> withSandbox
+  | otherwise = withSandbox
+  where
+    mCradleFile = cradleCabalFile c
+    cabal = isJust mCradleFile
+    ghcopts = ghcOpts opt
+    withCabal = do
+        pkgDesc <- liftIO $ parseCabalFile $ fromJust mCradleFile
+        compOpts <- liftIO $ getCompilerOptions ghcopts c pkgDesc
+        initSession CabalPkg opt compOpts
+    withSandbox = initSession SingleFile opt compOpts
+      where
+        importDirs = [".","..","../..","../../..","../../../..","../../../../.."]
+        pkgOpts = ghcDbStackOpts $ cradlePkgDbStack c
+        compOpts
+          | null pkgOpts = CompilerOptions ghcopts importDirs []
+          | otherwise    = CompilerOptions (ghcopts ++ pkgOpts) [wdir,rdir] []
+        wdir = cradleCurrentDir c
+        rdir = cradleRootDir    c
+
+initSession :: GhcMonad m
+            => Build
+            -> Options
+            -> CompilerOptions
+            -> m ()
+initSession build Options {..} CompilerOptions {..} = do
+    df <- G.getSessionDynFlags
+    void $ G.setSessionDynFlags =<< (addCmdOpts ghcOptions
+      $ setLinkerOptions
+      $ setIncludeDirs includeDirs
+      $ setBuildEnv build
+      $ setEmptyLogger
+      $ Gap.addPackageFlags depPackages df)
+
+----------------------------------------------------------------
+
 runGhcModT' :: (MonadIO m, MonadBaseControl IO m)
            => GhcModEnv
            -> GhcModState
