@@ -1,16 +1,18 @@
 {-# LANGUAGE CPP, GeneralizedNewtypeDeriving, FlexibleInstances #-}
 {-# LANGUAGE FlexibleContexts, MultiParamTypeClasses, RankNTypes #-}
 {-# LANGUAGE TypeFamilies, UndecidableInstances, RecordWildCards #-}
+{-# LANGUAGE StandaloneDeriving #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
 module Language.Haskell.GhcMod.Monad (
    GhcMod
+ , runGhcMod
+ , liftGhcMod
  , GhcModT
+ , IOish
  , GhcModEnv(..)
  , GhcModWriter
  , GhcModState(..)
- , runGhcMod'
- , runGhcMod
  , runGhcModT'
  , runGhcModT
  , newGhcModEnv
@@ -18,10 +20,22 @@ module Language.Haskell.GhcMod.Monad (
  , toGhcMod
  , options
  , cradle
+ , Options(..)
+ , defaultOptions
  , module Control.Monad.Reader.Class
  , module Control.Monad.Writer.Class
  , module Control.Monad.State.Class
  ) where
+
+#if __GLASGOW_HASKELL__ < 708
+-- 'CoreMonad.MonadIO' and 'Control.Monad.IO.Class.MonadIO' are different
+-- classes before ghc 7.8
+#define DIFFERENT_MONADIO 1
+
+-- RWST doen't have a MonadIO instance before ghc 7.8
+#define MONADIO_INSTANCES 1
+#endif
+
 
 import Language.Haskell.GhcMod.Types
 import Language.Haskell.GhcMod.Cradle
@@ -47,22 +61,26 @@ import HscTypes
 -- So, RWST automatically becomes an instance of MonadIO.
 import MonadUtils
 
-#if __GLASGOW_HASKELL__ < 708
--- To make RWST an instance of MonadIO.
+#if DIFFERENT_MONADIO
 import Control.Monad.Trans.Class (lift)
+import qualified Control.Monad.IO.Class
 import Data.Monoid (Monoid)
 #endif
 
 import Control.Applicative (Alternative)
 import Control.Monad (MonadPlus, liftM, void)
 import Control.Monad.Base (MonadBase, liftBase)
+import Control.Monad.Trans.RWS.Lazy (liftCatch)
 
 import Control.Monad.Reader.Class
 import Control.Monad.State.Class
 import Control.Monad.Trans.Class
-import Control.Monad.Trans.Control (MonadBaseControl(..), StM, liftBaseWith, control, liftBaseOp, liftBaseOp_)
+import Control.Monad.Trans.Maybe
+import Control.Monad.Trans.Control (MonadBaseControl(..), StM, liftBaseWith,
+  control, liftBaseOp, liftBaseOp_)
 import Control.Monad.Trans.RWS.Lazy (RWST(..), runRWST)
 import Control.Monad.Writer.Class
+import Control.Monad.Error (Error(..), ErrorT(..), MonadError)
 
 import Data.Maybe (fromJust, isJust)
 import Data.IORef (IORef, readIORef, writeIORef, newIORef)
@@ -78,16 +96,28 @@ data GhcModEnv = GhcModEnv {
     , gmCradle     :: Cradle
     }
 
-data GhcModState = GhcModState
+data GhcModState = GhcModState deriving (Eq,Show,Read)
 
 defaultState :: GhcModState
 defaultState = GhcModState
 
 type GhcModWriter = ()
 
+data GhcModError = GMENoMsg
+                 | GMEString String
+                 | GMECabal
+                 | GMEGhc
+                   deriving (Eq,Show,Read)
+
+instance Error GhcModError where
+    noMsg = GMENoMsg
+    strMsg = GMEString
+
 ----------------------------------------------------------------
 
-type GhcMod a = GhcModT IO a
+type IOish m = (Functor m, MonadIO m, MonadBaseControl IO m)
+
+type GhcMod a = GhcModT (ErrorT GhcModError IO) a
 
 newtype GhcModT m a = GhcModT {
       unGhcModT :: RWST GhcModEnv GhcModWriter GhcModState m a
@@ -97,16 +127,27 @@ newtype GhcModT m a = GhcModT {
                , Monad
                , MonadPlus
                , MonadIO
+#if DIFFERENT_MONADIO
+               , Control.Monad.IO.Class.MonadIO
+#endif
                , MonadReader GhcModEnv
                , MonadWriter GhcModWriter
                , MonadState GhcModState
                , MonadTrans
                )
 
-#if __GLASGOW_HASKELL__ < 708
+deriving instance MonadError GhcModError m => MonadError GhcModError (GhcModT m)
+
+#if MONADIO_INSTANCES
 instance (Monoid w, MonadIO m) => MonadIO (RWST r w s m) where
---  liftIO :: MonadIO m => IO a -> m a
     liftIO = lift . liftIO
+
+instance (Error e, MonadIO m) => MonadIO (ErrorT e m) where
+    liftIO = lift . liftIO
+
+instance (MonadIO m) => MonadIO (MaybeT m) where
+    liftIO = lift . liftIO
+
 #endif
 
 ----------------------------------------------------------------
@@ -155,15 +196,6 @@ initSession build Options {..} CompilerOptions {..} = do
 
 ----------------------------------------------------------------
 
-runGhcModT' :: (MonadIO m, MonadBaseControl IO m)
-           => GhcModEnv
-           -> GhcModState
-           -> GhcModT m a
-           -> m (a,(GhcModState, GhcModWriter))
-runGhcModT' r s a = do
-  (a',s',w) <- runRWST (unGhcModT $ initGhcMonad (Just libdir) >> a) r s
-  return (a',(s',w))
-
 newGhcModEnv :: Options -> FilePath -> IO GhcModEnv
 newGhcModEnv opt dir = do
       session <- newIORef (error "empty session")
@@ -174,7 +206,10 @@ newGhcModEnv opt dir = do
         , gmCradle = c
         }
 
-runGhcModT :: (MonadIO m, MonadBaseControl IO m) => Options -> GhcModT m a -> m a
+-- | Run a @GhcModT m@ computation, i.e. one with a custom underlying monad.
+--
+-- You probably don't want this, look at 'runGhcMod' instead.
+runGhcModT :: IOish m => Options -> GhcModT m a -> m a
 runGhcModT opt action = do
     env <- liftBase $ newGhcModEnv opt =<< getCurrentDirectory
     (a,(_,_)) <- runGhcModT' env defaultState $ do
@@ -184,46 +219,68 @@ runGhcModT opt action = do
             action
     return a
 
-runGhcMod' :: GhcModEnv
+-- | Run a computation inside @GhcModT@ providing the RWST environment and
+-- initial state. This is a low level function, use it only if you know what to
+-- do with 'GhcModEnv' and 'GhcModState'.
+--
+-- You should probably look at 'runGhcModT' instead.
+runGhcModT' :: IOish m
+           => GhcModEnv
            -> GhcModState
-           -> GhcModT IO a
-           -> IO (a,(GhcModState, GhcModWriter))
-runGhcMod' = runGhcModT'
+           -> GhcModT m a
+           -> m (a,(GhcModState, GhcModWriter))
+runGhcModT' r s a = do
+  (a',s',w) <- runRWST (unGhcModT $ initGhcMonad (Just libdir) >> a) r s
+  return (a',(s',w))
 
-runGhcMod :: Options -> GhcMod a -> IO a
-runGhcMod = runGhcModT
+-- | Run a 'GhcMod' computation. If you want an underlying monad other than
+-- 'ErrorT e IO' you should look at 'runGhcModT'
+runGhcMod :: Options
+          -> GhcMod a
+          -> IO (Either GhcModError a)
+runGhcMod o a =
+  runErrorT $ runGhcModT o a
+
+liftErrorT :: IOish m => GhcModT m a -> GhcModT (ErrorT GhcModError m) a
+liftErrorT action =
+    GhcModT $ RWST $ \e s -> ErrorT $ Right <$> (runRWST $ unGhcModT action) e s
+
+-- | Lift @(GhcModT IO)@ into @GhcMod@, which is an alias for @GhcModT (ErrorT
+-- GhcModError IO)@.
+liftGhcMod :: GhcModT IO a -> GhcMod a
+liftGhcMod = liftErrorT
+
 ----------------------------------------------------------------
 
-withErrorHandler :: String -> GhcMod a -> GhcMod a
+withErrorHandler :: IOish m => String -> GhcModT m a -> GhcModT m a
 withErrorHandler label = ghandle ignore
   where
-    ignore :: SomeException -> GhcMod a
+    ignore :: IOish m => SomeException -> GhcModT m a
     ignore e = liftIO $ do
         hPutStr stderr $ label ++ ":0:0:Error:"
         hPrint stderr e
         exitSuccess
 
 -- | This is only a transitional mechanism don't use it for new code.
-toGhcMod :: (Functor m, MonadIO m) => Ghc a -> GhcModT m a
+toGhcMod :: IOish m => Ghc a -> GhcModT m a
 toGhcMod a = do
     s <- gmGhcSession <$> ask
     liftIO $ unGhc a $ Session s
 
 ----------------------------------------------------------------
 
-options :: GhcMod Options
+options :: IOish m => GhcModT m Options
 options = gmOptions <$> ask
 
-cradle :: GhcMod Cradle
+cradle :: IOish m => GhcModT m Cradle
 cradle = gmCradle <$> ask
-
 
 instance (MonadBaseControl IO m) => MonadBase IO (GhcModT m) where
     liftBase = GhcModT . liftBase
 
 instance (MonadBaseControl IO m) => MonadBaseControl IO (GhcModT m) where
     newtype StM (GhcModT m) a = StGhcMod {
-          unStGhcMod :: StM (RWST GhcModEnv () GhcModState m) a }
+          unStGhcMod :: StM (RWST GhcModEnv GhcModWriter GhcModState m) a }
 
     liftBaseWith f = GhcModT . liftBaseWith $ \runInBase ->
         f $ liftM StGhcMod . runInBase . unGhcModT

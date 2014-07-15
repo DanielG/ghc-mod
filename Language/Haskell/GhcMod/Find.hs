@@ -31,11 +31,11 @@ type Symbol = String
 newtype SymMdlDb = SymMdlDb (Map Symbol [ModuleString])
 
 -- | Finding modules to which the symbol belong.
-findSymbol :: Symbol -> GhcMod String
+findSymbol :: IOish m => Symbol -> GhcModT m String
 findSymbol sym = convert' =<< lookupSym sym <$> getSymMdlDb
 
 -- | Creating 'SymMdlDb'.
-getSymMdlDb :: GhcMod SymMdlDb
+getSymMdlDb :: IOish m => GhcModT m SymMdlDb
 getSymMdlDb = do
     sm <- G.getSessionDynFlags >>= browseAll
 #if MIN_VERSION_containers(0,5,0)

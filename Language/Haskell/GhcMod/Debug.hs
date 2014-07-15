@@ -12,7 +12,7 @@ import Language.Haskell.GhcMod.Internal
 ----------------------------------------------------------------
 
 -- | Obtaining debug information.
-debugInfo :: GhcMod String
+debugInfo :: IOish m => GhcModT m String
 debugInfo = cradle >>= \c -> convert' =<< do
     CompilerOptions gopts incDir pkgs <-
         if isJust $ cradleCabalFile c then
@@ -38,5 +38,5 @@ debugInfo = cradle >>= \c -> convert' =<< do
 ----------------------------------------------------------------
 
 -- | Obtaining root information.
-rootInfo :: GhcMod String
+rootInfo :: IOish m => GhcModT m String
 rootInfo = convert' =<< cradleRootDir <$> cradle

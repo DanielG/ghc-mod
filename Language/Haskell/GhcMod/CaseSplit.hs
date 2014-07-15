@@ -33,10 +33,11 @@ data SplitToTextInfo = SplitToTextInfo { sVarName     :: String
                                        }
 
 -- | Splitting a variable in a equation.
-splits :: FilePath     -- ^ A target file.
+splits :: IOish m
+       => FilePath     -- ^ A target file.
        -> Int          -- ^ Line number.
        -> Int          -- ^ Column number.
-       -> GhcMod String
+       -> GhcModT m String
 splits file lineNo colNo = ghandle handler body
   where
     body = inModuleContext file $ \dflag style -> do

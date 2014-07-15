@@ -15,8 +15,9 @@ import Language.Haskell.GhcMod.Monad
 
 -- | Checking syntax of a target file using GHC.
 --   Warnings and errors are returned.
-checkSyntax :: [FilePath]  -- ^ The target files.
-            -> GhcMod String
+checkSyntax :: IOish m
+            => [FilePath]  -- ^ The target files.
+            -> GhcModT m String
 checkSyntax [] = return ""
 checkSyntax files = withErrorHandler sessionName $ do
     either id id <$> check files
@@ -29,8 +30,9 @@ checkSyntax files = withErrorHandler sessionName $ do
 
 -- | Checking syntax of a target file using GHC.
 --   Warnings and errors are returned.
-check :: [FilePath]  -- ^ The target files.
-      -> GhcMod (Either String String)
+check :: IOish m
+      => [FilePath]  -- ^ The target files.
+      -> GhcModT m (Either String String)
 check fileNames = do
   withLogger setAllWaringFlags $ do
     setTargetFiles fileNames
@@ -38,8 +40,9 @@ check fileNames = do
 ----------------------------------------------------------------
 
 -- | Expanding Haskell Template.
-expandTemplate :: [FilePath]  -- ^ The target files.
-               -> GhcMod String
+expandTemplate :: IOish m
+               => [FilePath]  -- ^ The target files.
+               -> GhcModT m String
 expandTemplate [] = return ""
 expandTemplate files = withErrorHandler sessionName $ do
     either id id <$> expand files
@@ -51,7 +54,8 @@ expandTemplate files = withErrorHandler sessionName $ do
 ----------------------------------------------------------------
 
 -- | Expanding Haskell Template.
-expand :: [FilePath]  -- ^ The target files.
-      -> GhcMod (Either String String)
+expand :: IOish m
+       => [FilePath]  -- ^ The target files.
+       -> GhcModT m (Either String String)
 expand fileNames = withLogger (Gap.setDumpSplices . setNoWaringFlags) $
     setTargetFiles fileNames

@@ -6,5 +6,5 @@ import Language.Haskell.GhcMod.Monad
 
 -- | Listing language extensions.
 
-languages :: GhcMod String
+languages :: IOish m => GhcModT m String
 languages = convert' supportedLanguagesAndExtensions

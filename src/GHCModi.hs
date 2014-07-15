@@ -101,8 +101,8 @@ main = E.handle cmdHandler $
 --            c = cradle0 { cradleCurrentDir = rootdir } TODO: ?????
         setCurrentDirectory rootdir
         mvar <- liftIO newEmptyMVar
-        void $ forkIO $ runGhcMod opt $ setupDB mvar
-        runGhcMod opt $ loop S.empty mvar
+        void $ forkIO $ runGhcModT opt $ setupDB mvar
+        runGhcModT opt $ loop S.empty mvar
       where
         -- this is just in case.
         -- If an error is caught here, it is a bug of GhcMod library.
@@ -116,7 +116,7 @@ replace (x:xs)    =  x  : replace xs
 
 ----------------------------------------------------------------
 
-setupDB :: MVar SymMdlDb -> GhcMod ()
+setupDB :: IOish m => MVar SymMdlDb -> GhcModT m ()
 setupDB mvar = ghandle handler $ do
     liftIO . putMVar mvar =<< getSymMdlDb
   where
@@ -124,7 +124,7 @@ setupDB mvar = ghandle handler $ do
 
 ----------------------------------------------------------------
 
-loop :: Set FilePath -> MVar SymMdlDb -> GhcMod ()
+loop :: IOish m => Set FilePath -> MVar SymMdlDb -> GhcModT m ()
 loop set mvar = do
     cmdArg <- liftIO getLine
     let (cmd,arg') = break (== ' ') cmdArg
@@ -152,9 +152,10 @@ loop set mvar = do
 
 ----------------------------------------------------------------
 
-checkStx :: Set FilePath
+checkStx :: IOish m
+         => Set FilePath
          -> FilePath
-         -> GhcMod (String, Bool, Set FilePath)
+         -> GhcModT m (String, Bool, Set FilePath)
 checkStx set file = do
     set' <- toGhcMod $ newFileSet set file
     let files = S.toList set'
@@ -191,17 +192,17 @@ isSameMainFile file (Just x)
 
 ----------------------------------------------------------------
 
-findSym :: Set FilePath -> String -> MVar SymMdlDb
-        -> GhcMod (String, Bool, Set FilePath)
+findSym :: IOish m => Set FilePath -> String -> MVar SymMdlDb
+        -> GhcModT m (String, Bool, Set FilePath)
 findSym set sym mvar = do
     db <- liftIO $ readMVar mvar
     opt <- options
     let ret = lookupSym' opt sym db
     return (ret, True, set)
 
-lintStx :: Set FilePath
+lintStx :: IOish m => Set FilePath
         -> FilePath
-        -> GhcMod (String, Bool, Set FilePath)
+        -> GhcModT m (String, Bool, Set FilePath)
 lintStx set optFile = do
     ret <- local env' $ lint file
     return (ret, True, set)
@@ -228,36 +229,40 @@ parseLintOptions optFile = case brk (== ']') (dropWhile (/= '[') optFile) of
 
 ----------------------------------------------------------------
 
-showInfo :: Set FilePath
+showInfo :: IOish m
+         => Set FilePath
          -> FilePath
-         -> GhcMod (String, Bool, Set FilePath)
+         -> GhcModT m (String, Bool, Set FilePath)
 showInfo set fileArg = do
     let [file, expr] = words fileArg
     set' <- newFileSet set file
     ret <- info file expr
     return (ret, True, set')
 
-showType :: Set FilePath
+showType :: IOish m
+         => Set FilePath
          -> FilePath
-         -> GhcMod (String, Bool, Set FilePath)
+         -> GhcModT m (String, Bool, Set FilePath)
 showType set fileArg  = do
     let [file, line, column] = words fileArg
     set' <- newFileSet set file
     ret <- types file (read line) (read column)
     return (ret, True, set')
 
-doSplit :: Set FilePath
+doSplit :: IOish m
+        => Set FilePath
         -> FilePath
-        -> GhcMod (String, Bool, Set FilePath)
+        -> GhcModT m (String, Bool, Set FilePath)
 doSplit set fileArg  = do
     let [file, line, column] = words fileArg
     set' <- newFileSet set file
     ret <- splits file (read line) (read column)
     return (ret, True, set')
 
-doSig :: Set FilePath
+doSig :: IOish m
+      => Set FilePath
       -> FilePath
-      -> GhcMod (String, Bool, Set FilePath)
+      -> GhcModT m (String, Bool, Set FilePath)
 doSig set fileArg  = do
     let [file, line, column] = words fileArg
     set' <- newFileSet set file
@@ -266,15 +271,17 @@ doSig set fileArg  = do
 
 ----------------------------------------------------------------
 
-bootIt :: Set FilePath
-       -> GhcMod (String, Bool, Set FilePath)
+bootIt :: IOish m
+       => Set FilePath
+       -> GhcModT m (String, Bool, Set FilePath)
 bootIt set = do
     ret <- boot
     return (ret, True, set)
 
-browseIt :: Set FilePath
+browseIt :: IOish m
+         => Set FilePath
          -> ModuleString
-         -> GhcMod (String, Bool, Set FilePath)
+         -> GhcModT m (String, Bool, Set FilePath)
 browseIt set mdl = do
     ret <- browse mdl
     return (ret, True, set)

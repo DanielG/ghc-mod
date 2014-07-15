@@ -38,10 +38,11 @@ data SigInfo = Signature SrcSpan [G.RdrName] (G.HsType G.RdrName)
 data HESigInfo = HESignature HE.SrcSpan [HE.Name HE.SrcSpanInfo] (HE.Type HE.SrcSpanInfo)
 
 -- | Create a initial body from a signature.
-sig :: FilePath     -- ^ A target file.
+sig :: IOish m
+    => FilePath     -- ^ A target file.
     -> Int          -- ^ Line number.
     -> Int          -- ^ Column number.
-    -> GhcMod String
+    -> GhcModT m String
 sig file lineNo colNo = ghandle handler body
   where
     body = inModuleContext file $ \dflag style -> do

@@ -6,7 +6,7 @@ import Language.Haskell.GhcMod.Monad
 
 -- | Listing GHC flags. (e.g -fno-warn-orphans)
 
-flags :: GhcMod String
+flags :: IOish m => GhcModT m String
 flags = convert' [ "-f" ++ prefix ++ option
                  | option <- Gap.fOptions
                  , prefix <- ["","no-"]

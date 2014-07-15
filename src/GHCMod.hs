@@ -111,7 +111,7 @@ main = flip E.catches handlers $ do
         nArgs n f = if length remainingArgs == n
                         then f
                         else E.throw (ArgumentsMismatch cmdArg0)
-    res <- runGhcMod opt $ case cmdArg0 of
+    res <- runGhcModT opt $ case cmdArg0 of
       "list"    -> modules
       "lang"    -> languages
       "flag"    -> flags
@@ -152,7 +152,7 @@ main = flip E.catches handlers $ do
         hPutStrLn stderr $ "\"" ++ file ++ "\" not found"
         printUsage
     printUsage = hPutStrLn stderr $ '\n' : O.usageInfo usage argspec
-    withFile :: (FilePath -> GhcMod a) -> FilePath -> GhcMod a
+    withFile :: IOish m => (FilePath -> GhcModT m a) -> FilePath -> GhcModT m a
     withFile cmd file = do
         exist <- liftIO $ doesFileExist file
         if exist
