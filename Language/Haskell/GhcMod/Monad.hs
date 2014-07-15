@@ -27,6 +27,16 @@ module Language.Haskell.GhcMod.Monad (
  , module Control.Monad.State.Class
  ) where
 
+#if __GLASGOW_HASKELL__ < 708
+-- 'CoreMonad.MonadIO' and 'Control.Monad.IO.Class.MonadIO' are different
+-- classes before ghc 7.8
+#define DIFFERENT_MONADIO 1
+
+-- RWST doen't have a MonadIO instance before ghc 7.8
+#define MONADIO_INSTANCES 1
+#endif
+
+
 import Language.Haskell.GhcMod.Types
 import Language.Haskell.GhcMod.Cradle
 import Language.Haskell.GhcMod.DynFlags
@@ -51,9 +61,9 @@ import HscTypes
 -- So, RWST automatically becomes an instance of MonadIO.
 import MonadUtils
 
-#if __GLASGOW_HASKELL__ < 708
--- To make RWST an instance of MonadIO.
+#if DIFFERENT_MONADIO
 import Control.Monad.Trans.Class (lift)
+import qualified Control.Monad.IO.Class
 import Data.Monoid (Monoid)
 #endif
 
@@ -65,11 +75,12 @@ import Control.Monad.Trans.RWS.Lazy (liftCatch)
 import Control.Monad.Reader.Class
 import Control.Monad.State.Class
 import Control.Monad.Trans.Class
+import Control.Monad.Trans.Maybe
 import Control.Monad.Trans.Control (MonadBaseControl(..), StM, liftBaseWith,
   control, liftBaseOp, liftBaseOp_)
 import Control.Monad.Trans.RWS.Lazy (RWST(..), runRWST)
 import Control.Monad.Writer.Class
-import Control.Monad.Error
+import Control.Monad.Error (Error(..), ErrorT(..), MonadError)
 
 import Data.Maybe (fromJust, isJust)
 import Data.IORef (IORef, readIORef, writeIORef, newIORef)
@@ -116,6 +127,9 @@ newtype GhcModT m a = GhcModT {
                , Monad
                , MonadPlus
                , MonadIO
+#if DIFFERENT_MONADIO
+               , Control.Monad.IO.Class.MonadIO
+#endif
                , MonadReader GhcModEnv
                , MonadWriter GhcModWriter
                , MonadState GhcModState
@@ -124,10 +138,16 @@ newtype GhcModT m a = GhcModT {
 
 deriving instance MonadError GhcModError m => MonadError GhcModError (GhcModT m)
 
-#if __GLASGOW_HASKELL__ < 708
+#if MONADIO_INSTANCES
 instance (Monoid w, MonadIO m) => MonadIO (RWST r w s m) where
---  liftIO :: MonadIO m => IO a -> m a
     liftIO = lift . liftIO
+
+instance (Error e, MonadIO m) => MonadIO (ErrorT e m) where
+    liftIO = lift . liftIO
+
+instance (MonadIO m) => MonadIO (MaybeT m) where
+    liftIO = lift . liftIO
+
 #endif
 
 ----------------------------------------------------------------
