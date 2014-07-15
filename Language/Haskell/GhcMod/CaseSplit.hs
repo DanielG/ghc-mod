@@ -8,9 +8,8 @@ import Data.List (find, intercalate)
 import qualified Data.Text as T
 import qualified Data.Text.IO as T (readFile)
 import Exception (ghandle, SomeException(..))
-import GHC (GhcMonad, LHsBind, LHsExpr, LPat, Id, ParsedModule(..), TypecheckedModule(..), DynFlags, SrcSpan, Type, GenLocated(L))
+import GHC (GhcMonad, LHsBind, LPat, Id, ParsedModule(..), TypecheckedModule(..), DynFlags, SrcSpan, Type, GenLocated(L))
 import qualified GHC as G
-import Language.Haskell.GhcMod.Gap (HasType(..))
 import qualified Language.Haskell.GhcMod.Gap as Gap
 import Language.Haskell.GhcMod.Monad
 import Language.Haskell.GhcMod.SrcUtils
@@ -60,17 +59,12 @@ getSrcSpanTypeForSplit modSum lineNo colNo = do
     tcm@TypecheckedModule{tm_typechecked_source = tcs} <- G.typecheckModule p
     let bs:_ = listifySpans tcs (lineNo, colNo) :: [LHsBind Id]
         varPat  = find isPatternVar $ listifySpans tcs (lineNo, colNo) :: Maybe (LPat Id)
-        match:_ = listifyParsedSpans pms (lineNo, colNo)
-#if __GLASGOW_HASKELL__ < 708
-                    :: [G.LMatch G.RdrName]
-#else
-                    :: [G.LMatch G.RdrName (LHsExpr G.RdrName)]
-#endif
+        match:_ = listifyParsedSpans pms (lineNo, colNo) :: [Gap.GLMatch]
     case varPat of
       Nothing  -> return Nothing
       Just varPat' -> do
-        varT <- getType tcm varPat'  -- Finally we get the type of the var
-        bsT  <- getType tcm bs
+        varT <- Gap.getType tcm varPat'  -- Finally we get the type of the var
+        bsT  <- Gap.getType tcm bs
         case (varT, bsT) of
           (Just varT', Just (_,bsT')) ->
             let (L matchL (G.Match _ _ (G.GRHSs rhsLs _))) = match

@@ -36,6 +36,7 @@ module Language.Haskell.GhcMod.Gap (
   , benchmarkBuildInfo
   , benchmarkTargets
   , toModuleString
+  , GLMatch
   ) where
 
 import Control.Applicative hiding (empty)
@@ -426,3 +427,12 @@ toModuleString mn = fromFilePath $ M.toFilePath mn
   where
     fromFilePath :: FilePath -> String
     fromFilePath fp = map (\c -> if c=='/' then '.' else c) fp
+
+----------------------------------------------------------------
+----------------------------------------------------------------
+
+#if __GLASGOW_HASKELL__ >= 708
+type GLMatch = LMatch RdrName (LHsExpr RdrName)
+#else
+type GLMatch = LMatch RdrName
+#endif
