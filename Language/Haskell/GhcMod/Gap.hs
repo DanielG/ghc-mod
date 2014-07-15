@@ -456,6 +456,6 @@ getClass [L loc (InstDecl (L _ (HsAppTy (L _ (HsTyVar className)) _)) _ _ _)] = 
 getClass _ = Nothing
 
 #if __GLASGOW_HASKELL__ < 706
-occName :: G.RdrName -> OccName
+occName :: RdrName -> OccName
 occName = rdrNameOcc
 #endif
