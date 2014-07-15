@@ -27,6 +27,7 @@ setModeSimple df = df {
     ghcMode   = CompManager
   , ghcLink   = NoLink
   , hscTarget = HscNothing
+  , optLevel  = 0
   }
 
 -- Slow
@@ -38,6 +39,7 @@ setModeIntelligent df = df {
     ghcMode   = CompManager
   , ghcLink   = LinkInMemory
   , hscTarget = HscInterpreted
+  , optLevel  = 0
   }
 
 setIncludeDirs :: [IncludeDir] -> DynFlags -> DynFlags
