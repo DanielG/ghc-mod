@@ -33,6 +33,9 @@ module Language.Haskell.GhcMod.Gap (
   , fileModSummary
   , WarnFlags
   , emptyWarnFlags
+  , benchmarkBuildInfo
+  , benchmarkTargets
+  , toModuleString
   ) where
 
 import Control.Applicative hiding (empty)
@@ -58,6 +61,7 @@ import StringBuffer
 import TcType
 import Var (varType)
 
+import qualified Distribution.PackageDescription as P
 import qualified InstEnv
 import qualified Pretty
 import qualified StringBuffer as SB
@@ -80,6 +84,7 @@ import Data.Convertible
 
 #if __GLASGOW_HASKELL__ >= 704
 import qualified Data.IntSet as I (IntSet, empty)
+import qualified Distribution.ModuleName as M (ModuleName,toFilePath)
 #endif
 
 ----------------------------------------------------------------
@@ -398,3 +403,26 @@ type WarnFlags = [WarningFlag]
 emptyWarnFlags :: WarnFlags
 emptyWarnFlags = []
 #endif
+
+----------------------------------------------------------------
+----------------------------------------------------------------
+
+benchmarkBuildInfo :: P.PackageDescription -> [P.BuildInfo]
+#if __GLASGOW_HASKELL__ >= 704
+benchmarkBuildInfo pd = map P.benchmarkBuildInfo $ P.benchmarks pd
+#else
+benchmarkBuildInfo pd = []
+#endif
+
+benchmarkTargets :: P.PackageDescription -> [String]
+#if __GLASGOW_HASKELL__ >= 704
+benchmarkTargets pd = map toModuleString $ concatMap P.benchmarkModules $ P.benchmarks pd
+#else
+benchmarkTargets = []
+#endif
+
+toModuleString :: M.ModuleName -> String
+toModuleString mn = fromFilePath $ M.toFilePath mn
+  where
+    fromFilePath :: FilePath -> String
+    fromFilePath fp = map (\c -> if c=='/' then '.' else c) fp
