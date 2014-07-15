@@ -74,7 +74,9 @@ import Control.Monad.Base (MonadBase, liftBase)
 import Control.Monad.Reader.Class
 import Control.Monad.State.Class
 import Control.Monad.Trans.Class
-import Control.Monad.Trans.Maybe -- fixme
+#if __GLASGOW_HASKELL__ < 708
+import Control.Monad.Trans.Maybe
+#endif
 import Control.Monad.Trans.Control (MonadBaseControl(..), StM, liftBaseWith,
   control, liftBaseOp, liftBaseOp_)
 import Control.Monad.Trans.RWS.Lazy (RWST(..), runRWST)
