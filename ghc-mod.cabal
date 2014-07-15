@@ -145,7 +145,7 @@ Test-Suite doctest
   Type:                 exitcode-stdio-1.0
   Default-Language:     Haskell2010
   HS-Source-Dirs:       test
-  Ghc-Options:          -threaded -Wall
+  Ghc-Options:          -Wall
   Default-Extensions:   ConstraintKinds, FlexibleContexts
   Main-Is:              doctests.hs
   Build-Depends:        base
