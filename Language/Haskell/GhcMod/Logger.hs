@@ -21,7 +21,6 @@ import Language.Haskell.GhcMod.DynFlags (withDynFlags, withCmdFlags)
 import qualified Language.Haskell.GhcMod.Gap as Gap
 import Language.Haskell.GhcMod.Convert (convert')
 import Language.Haskell.GhcMod.Monad
-import Language.Haskell.GhcMod.Types (Options(..))
 import Outputable (PprStyle, SDoc)
 import System.FilePath (normalise)
 

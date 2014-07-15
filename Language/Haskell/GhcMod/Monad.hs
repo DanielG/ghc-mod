@@ -70,12 +70,10 @@ import Data.Monoid (Monoid)
 import Control.Applicative (Alternative)
 import Control.Monad (MonadPlus, liftM, void)
 import Control.Monad.Base (MonadBase, liftBase)
-import Control.Monad.Trans.RWS.Lazy (liftCatch)
 
 import Control.Monad.Reader.Class
 import Control.Monad.State.Class
 import Control.Monad.Trans.Class
-import Control.Monad.Trans.Maybe
 import Control.Monad.Trans.Control (MonadBaseControl(..), StM, liftBaseWith,
   control, liftBaseOp, liftBaseOp_)
 import Control.Monad.Trans.RWS.Lazy (RWST(..), runRWST)

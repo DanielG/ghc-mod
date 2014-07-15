@@ -6,7 +6,6 @@ import Data.List (nub, sort)
 import qualified GHC as G
 import Language.Haskell.GhcMod.Monad
 import Language.Haskell.GhcMod.Convert
-import Language.Haskell.GhcMod.Types
 import Packages (pkgIdMap, exposedModules, sourcePackageId, display)
 import UniqFM (eltsUFM)
 
