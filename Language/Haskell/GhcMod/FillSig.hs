@@ -18,12 +18,6 @@ import Outputable (PprStyle)
 import qualified Type as Ty
 import qualified HsBinds as Ty
 import qualified Class as Ty
-#if __GLASGOW_HASKELL__ >= 706
-import OccName (occName)
-#else
-import OccName (OccName)
-import RdrName (rdrNameOcc)
-#endif
 import qualified Language.Haskell.Exts.Annotated as HE
 
 ----------------------------------------------------------------
@@ -79,32 +73,9 @@ getSignature modSum lineNo colNo = do
         -- We found an instance declaration
         TypecheckedModule{tm_renamed_source = Just tcs
                          ,tm_checked_module_info = minfo} <- G.typecheckModule p
-        case listifyRenamedSpans tcs (lineNo, colNo) :: [G.LInstDecl G.Name] of
-          -- Instance declarations of sort 'instance F (G a)'
-#if __GLASGOW_HASKELL__ >= 708
-          [L loc (G.ClsInstD (G.ClsInstDecl {G.cid_poly_ty =
-            (L _ (G.HsForAllTy _ _ _ (L _ (G.HsAppTy (L _ (G.HsTyVar clsName)) _))))}))] ->
-#elif __GLASGOW_HASKELL__ >= 706
-          [L loc (G.ClsInstD
-            (L _ (G.HsForAllTy _ _ _ (L _ (G.HsAppTy (L _ (G.HsTyVar clsName)) _)))) _ _ _)] ->
-#else
-          [L loc (G.InstDecl
-            (L _ (G.HsForAllTy _ _ _ (L _ (G.HsAppTy (L _ (G.HsTyVar clsName)) _)))) _ _ _)] ->
-#endif
-               obtainClassInfo minfo clsName loc
-          -- Instance declarations of sort 'instance F G' (no variables)
-#if __GLASGOW_HASKELL__ >= 708
-          [L loc (G.ClsInstD (G.ClsInstDecl {G.cid_poly_ty =
-            (L _ (G.HsAppTy (L _ (G.HsTyVar clsName)) _))}))] ->
-#elif __GLASGOW_HASKELL__ >= 706
-          [L loc (G.ClsInstD
-            (L _ (G.HsAppTy (L _ (G.HsTyVar clsName)) _)) _ _ _)] ->
-#else
-          [L loc (G.InstDecl
-            (L _ (G.HsAppTy (L _ (G.HsTyVar clsName)) _)) _ _ _)] ->
-#endif
-               obtainClassInfo minfo clsName loc
-          _ -> return Nothing
+        case Gap.getClass $ listifyRenamedSpans tcs (lineNo, colNo) of
+            Just (clsName,loc) -> obtainClassInfo minfo clsName loc
+            Nothing            -> return Nothing
       _ -> return Nothing
   where obtainClassInfo :: GhcMonad m => G.ModuleInfo -> G.Name -> SrcSpan -> m (Maybe SigInfo)
         obtainClassInfo minfo clsName loc = do
@@ -158,7 +129,7 @@ class FnArgsInfo ty name | ty -> name, name -> ty where
   getFnArgs :: ty -> [FnArg]
 
 instance FnArgsInfo (G.HsType G.RdrName) (G.RdrName) where
-  getFnName dflag style name = showOccName dflag style $ occName name
+  getFnName dflag style name = showOccName dflag style $ Gap.occName name
   getFnArgs (G.HsForAllTy _ _ _ (L _ iTy))  = getFnArgs iTy
   getFnArgs (G.HsParTy (L _ iTy))           = getFnArgs iTy
   getFnArgs (G.HsFunTy (L _ lTy) (L _ rTy)) = (if fnarg lTy then FnArgFunction else FnArgNormal):getFnArgs rTy
@@ -168,11 +139,6 @@ instance FnArgsInfo (G.HsType G.RdrName) (G.RdrName) where
                            (G.HsFunTy _ _)                -> True
                            _                              -> False
   getFnArgs _ = []
-
-#if __GLASGOW_HASKELL__ < 706
-occName :: G.RdrName -> OccName
-occName = rdrNameOcc
-#endif
 
 instance FnArgsInfo (HE.Type HE.SrcSpanInfo) (HE.Name HE.SrcSpanInfo) where
   getFnName _ _ (HE.Ident  _ s) = s

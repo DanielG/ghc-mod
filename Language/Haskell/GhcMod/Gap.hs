@@ -37,6 +37,8 @@ module Language.Haskell.GhcMod.Gap (
   , benchmarkTargets
   , toModuleString
   , GLMatch
+  , getClass
+  , occName
   ) where
 
 import Control.Applicative hiding (empty)
@@ -81,6 +83,7 @@ import GHC hiding (ClsInst)
 import GHC hiding (Instance)
 import Control.Arrow hiding ((<+>))
 import Data.Convertible
+import RdrName (rdrNameOcc)
 #endif
 
 #if __GLASGOW_HASKELL__ >= 704
@@ -435,4 +438,24 @@ toModuleString mn = fromFilePath $ M.toFilePath mn
 type GLMatch = LMatch RdrName (LHsExpr RdrName)
 #else
 type GLMatch = LMatch RdrName
+#endif
+
+getClass :: [LInstDecl Name] -> Maybe (Name, SrcSpan)
+#if __GLASGOW_HASKELL__ >= 708
+-- Instance declarations of sort 'instance F (G a)'
+getClass [L loc (ClsInstD (ClsInstDecl {cid_poly_ty = (L _ (HsForAllTy _ _ _ (L _ (HsAppTy (L _ (HsTyVar className)) _))))}))] = Just (className, loc)
+-- Instance declarations of sort 'instance F G' (no variables)
+getClass [L loc (ClsInstD (ClsInstDecl {cid_poly_ty = (L _ (HsAppTy (L _ (HsTyVar className)) _))}))] = Just (className, loc)
+#elif __GLASGOW_HASKELL__ >= 706
+getClass [L loc (ClsInstD (L _ (HsForAllTy _ _ _ (L _ (HsAppTy (L _ (HsTyVar className)) _)))) _ _ _)] = Just (className, loc)
+getClass[L loc (ClsInstD (L _ (HsAppTy (L _ (HsTyVar className)) _)) _ _ _)] = Just (className, loc)
+#else
+getClass [L loc (InstDecl (L _ (HsForAllTy _ _ _ (L _ (HsAppTy (L _ (HsTyVar className)) _)))) _ _ _)] = Just (className, loc)
+getClass [L loc (InstDecl (L _ (HsAppTy (L _ (HsTyVar className)) _)) _ _ _)] = Just (className, loc)
+#endif
+getClass _ = Nothing
+
+#if __GLASGOW_HASKELL__ < 706
+occName :: G.RdrName -> OccName
+occName = rdrNameOcc
 #endif
