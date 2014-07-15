@@ -1,3 +1,5 @@
+{-# LANGUAGE TemplateHaskell #-} -- for HscInterpreted
+
 module Info () where
 
 fib :: Int -> Int
