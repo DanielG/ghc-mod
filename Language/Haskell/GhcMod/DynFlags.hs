@@ -5,7 +5,7 @@ import Language.Haskell.GhcMod.Types
 
 import Control.Applicative ((<$>))
 import Control.Monad (forM, void)
-import GHC (DynFlags(..), GhcLink(..), HscTarget(..), LoadHowMuch(..))
+import GHC (DynFlags(..), GhcMode(..), GhcLink(..), HscTarget(..), LoadHowMuch(..))
 import qualified GHC as G
 import GhcMonad
 import GHC.Paths (libdir)
@@ -22,7 +22,8 @@ setEmptyLogger df = Gap.setLogAction df $ \_ _ _ _ _ -> return ()
 -- HscInterpreted
 setLinkerOptions :: DynFlags -> DynFlags
 setLinkerOptions df = df {
-    ghcLink   = LinkInMemory
+    ghcMode   = CompManager
+  , ghcLink   = LinkInMemory
   , hscTarget = HscInterpreted
   }
 
