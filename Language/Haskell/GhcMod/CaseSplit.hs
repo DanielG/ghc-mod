@@ -1,24 +1,24 @@
 {-# LANGUAGE CPP #-}
 
 module Language.Haskell.GhcMod.CaseSplit (
-  splits
+    splits
   ) where
 
+import CoreMonad (liftIO)
 import Data.List (find, intercalate)
 import qualified Data.Text as T
 import qualified Data.Text.IO as T (readFile)
+import qualified DataCon as Ty
 import Exception (ghandle, SomeException(..))
 import GHC (GhcMonad, LHsBind, LPat, Id, ParsedModule(..), TypecheckedModule(..), DynFlags, SrcSpan, Type, GenLocated(L))
 import qualified GHC as G
+import Language.Haskell.GhcMod.Convert
 import qualified Language.Haskell.GhcMod.Gap as Gap
 import Language.Haskell.GhcMod.Monad
 import Language.Haskell.GhcMod.SrcUtils
-import Language.Haskell.GhcMod.Convert
-import CoreMonad (liftIO)
 import Outputable (PprStyle)
-import qualified Type as Ty
 import qualified TyCon as Ty
-import qualified DataCon as Ty
+import qualified Type as Ty
 
 ----------------------------------------------------------------
 -- CASE SPLITTING
