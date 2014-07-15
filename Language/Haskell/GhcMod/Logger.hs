@@ -6,7 +6,7 @@ module Language.Haskell.GhcMod.Logger (
   ) where
 
 import Bag (Bag, bagToList)
-import Control.Applicative ((<$>),(*>))
+import Control.Applicative ((<$>))
 import CoreMonad (liftIO)
 import Data.IORef (IORef, newIORef, readIORef, writeIORef, modifyIORef)
 import Data.List (isPrefixOf)
@@ -28,21 +28,29 @@ import System.FilePath (normalise)
 
 type Builder = [String] -> [String]
 
-newtype LogRef = LogRef (IORef Builder)
+data Log = Log [String] Builder
+
+newtype LogRef = LogRef (IORef Log)
+
+emptyLog :: Log
+emptyLog = Log [] id
 
 newLogRef :: IO LogRef
-newLogRef = LogRef <$> newIORef id
+newLogRef = LogRef <$> newIORef emptyLog
 
 readAndClearLogRef :: IOish m => LogRef -> GhcModT m String
 readAndClearLogRef (LogRef ref) = do
-    b <- liftIO $ readIORef ref
-    liftIO $ writeIORef ref id
+    Log _ b <- liftIO $ readIORef ref
+    liftIO $ writeIORef ref emptyLog
     convert' (b [])
 
 appendLogRef :: DynFlags -> LogRef -> DynFlags -> Severity -> SrcSpan -> PprStyle -> SDoc -> IO ()
-appendLogRef df (LogRef ref) _ sev src style msg = do
-        let !l = ppMsg src sev df style msg
-        modifyIORef ref (\b -> b . (l:))
+appendLogRef df (LogRef ref) _ sev src style msg = modifyIORef ref update
+  where
+    l = ppMsg src sev df style msg
+    update lg@(Log ls b)
+      | l `elem` ls = lg
+      | otherwise   = Log (l:ls) (b . (l:))
 
 ----------------------------------------------------------------
 
@@ -57,7 +65,9 @@ withLogger setDF body = ghandle sourceError $ do
     logref <- liftIO $ newLogRef
     wflags <- filter ("-fno-warn" `isPrefixOf`) . ghcOpts <$> options
     withDynFlags (setLogger logref . setDF) $ do
-        withCmdFlags wflags $ do body *> (Right <$> readAndClearLogRef logref)
+        withCmdFlags wflags $ do
+            body
+            Right <$> readAndClearLogRef logref
   where
     setLogger logref df = Gap.setLogAction df $ appendLogRef df logref
 

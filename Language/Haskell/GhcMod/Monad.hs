@@ -189,7 +189,7 @@ initSession :: GhcMonad m
 initSession build Options {..} CompilerOptions {..} = do
     df <- G.getSessionDynFlags
     void $ G.setSessionDynFlags =<< (addCmdOpts ghcOptions
-      $ setLinkerOptions
+      $ setModeSimple
       $ setIncludeDirs includeDirs
       $ setBuildEnv build
       $ setEmptyLogger

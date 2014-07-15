@@ -34,8 +34,7 @@ check :: IOish m
       => [FilePath]  -- ^ The target files.
       -> GhcModT m (Either String String)
 check fileNames = do
-  withLogger setAllWaringFlags $ do
-    setTargetFiles fileNames
+  withLogger setAllWaringFlags $ setTargetFiles fileNames
 
 ----------------------------------------------------------------
 

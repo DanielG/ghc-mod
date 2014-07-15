@@ -4,11 +4,12 @@ import qualified Language.Haskell.GhcMod.Gap as Gap
 import Language.Haskell.GhcMod.Types
 
 import Control.Applicative ((<$>))
-import Control.Monad (forM, void)
+import Control.Monad (forM, void, (>=>))
 import GHC (DynFlags(..), GhcMode(..), GhcLink(..), HscTarget(..), LoadHowMuch(..))
 import qualified GHC as G
 import GhcMonad
 import GHC.Paths (libdir)
+import DynFlags (ExtensionFlag(..), xopt)
 
 import System.IO.Unsafe (unsafePerformIO)
 
@@ -17,11 +18,23 @@ data Build = CabalPkg | SingleFile deriving Eq
 setEmptyLogger :: DynFlags -> DynFlags
 setEmptyLogger df = Gap.setLogAction df $ \_ _ _ _ _ -> return ()
 
--- we don't want to generate object code so we compile to bytecode
--- (HscInterpreted) which implies LinkInMemory
--- HscInterpreted
-setLinkerOptions :: DynFlags -> DynFlags
-setLinkerOptions df = df {
+-- Fast
+-- Friendly to foreign export
+-- Not friendly to Template Haskell
+-- Uses small memory
+setModeSimple :: DynFlags -> DynFlags
+setModeSimple df = df {
+    ghcMode   = CompManager
+  , ghcLink   = NoLink
+  , hscTarget = HscNothing
+  }
+
+-- Slow
+-- Not friendly to foreign export
+-- Friendly to Template Haskell
+-- Uses large memory
+setModeIntelligent :: DynFlags -> DynFlags
+setModeIntelligent df = df {
     ghcMode   = CompManager
   , ghcLink   = LinkInMemory
   , hscTarget = HscInterpreted
@@ -59,7 +72,28 @@ setTargetFiles :: (GhcMonad m) => [FilePath] -> m ()
 setTargetFiles files = do
     targets <- forM files $ \file -> G.guessTarget file Nothing
     G.setTargets targets
-    void $ G.load LoadAllTargets
+    xs <- G.depanal [] False
+    -- FIXME, checking state
+    loadTargets $ needsFallback xs
+  where
+    loadTargets False = do
+        -- Reporting error A and error B
+        void $ G.load LoadAllTargets
+        mss <- filter (\x -> G.ms_hspp_file x `elem` files) <$> G.getModuleGraph
+        -- Reporting error B and error C
+        mapM_ (G.parseModule >=> G.typecheckModule >=> G.desugarModule) mss
+        -- Error B duplicates. But we cannot ignore both error reportings,
+        -- sigh. So, the logger makes log messages unique by itself.
+    loadTargets True = do
+        df <- G.getSessionDynFlags
+        void $ G.setSessionDynFlags (setModeIntelligent df)
+        void $ G.load LoadAllTargets
+
+needsFallback :: G.ModuleGraph -> Bool
+needsFallback = any (hasTHorQQ . G.ms_hspp_opts)
+  where
+    hasTHorQQ :: DynFlags -> Bool
+    hasTHorQQ dflags = any (`xopt` dflags) [Opt_TemplateHaskell, Opt_QuasiQuotes]
 
 ----------------------------------------------------------------
 
