@@ -3,6 +3,8 @@
 module Language.Haskell.GhcMod.FillSig (
     fillSig
   , sig
+  , refineVar
+  , refine
   ) where
 
 import Data.Char (isSymbol)
@@ -221,3 +223,53 @@ infiniteSupply initialSupply = initialSupply ++ concatMap (\n -> map (\v -> v ++
 isSymbolName :: String -> Bool
 isSymbolName (c:_) = c `elem` "!#$%&*+./<=>?@\\^|-~" || isSymbol c
 isSymbolName []    = error "This should never happen"
+
+
+----------------------------------------------------------------
+-- REWRITE A HOLE / UNDEFINED VIA A FUNCTION
+----------------------------------------------------------------
+
+-- | Create a initial body from a signature.
+refineVar :: Options
+          -> Cradle
+          -> FilePath     -- ^ A target file.
+          -> Int          -- ^ Line number.
+          -> Int          -- ^ Column number.
+          -> Expression   -- ^ A Haskell expression.
+          -> IO String
+refineVar opt cradle file lineNo colNo e = runGhcMod opt $ do
+    initializeFlagsWithCradle opt cradle
+    refine file lineNo colNo e
+
+refine :: FilePath     -- ^ A target file.
+       -> Int          -- ^ Line number.
+       -> Int          -- ^ Column number.
+       -> Expression   -- ^ A Haskell expression.
+       -> GhcMod String
+refine file lineNo colNo expr = ghandle handler body
+  where
+    body = inModuleContext file $ \dflag style -> do
+        opt <- options
+        modSum <- Gap.fileModSummary file
+        ty <- G.exprType expr
+        whenFound opt (findVar modSum lineNo colNo) $ \s -> case s of
+          loc -> "a"
+            
+    handler (SomeException _) = emptyResult =<< options
+
+-- Look for the variable in the specified
+findVar :: GhcMonad m => G.ModSummary -> Int -> Int -> m (SrcSpan, Type)
+findVar modSum lineNo colNo = do
+    p <- G.parseModule modSum
+    tcm@TypecheckedModule{tm_typechecked_source = tcs} <- G.typecheckModule p
+    let es = listifySpans tcs (lineNo, colNo) :: [LHsExpr Id]
+    ets <- mapM (getType tcm) es
+    return $ catMaybes $ concat [ets, bts, pts]
+    
+findVar :: GhcMonad m => G.ModSummary -> Int -> Int -> m (Maybe SrcSpan)
+findVar modSum lineNo colNo = do
+   ParsedModule{pm_parsed_source = ps} <- G.parseModule modSum
+   -- Inspect the parse tree to find the variable
+   case listifyParsedSpans ps (lineNo, colNo) :: [G.LHsExpr G.RdrName] of
+     (L loc (G.HsVar _)):_ -> return $ Just loc
+     _                     -> return Nothing

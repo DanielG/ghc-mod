@@ -40,6 +40,7 @@ usage =    progVersion
         ++ "\t ghc-mod type" ++ ghcOptHelp ++ "<HaskellFile> <module> <line-no> <column-no>\n"
         ++ "\t ghc-mod split" ++ ghcOptHelp ++ "<HaskellFile> <module> <line-no> <column-no>\n"
         ++ "\t ghc-mod sig" ++ ghcOptHelp ++ "<HaskellFile> <module> <line-no> <column-no>\n"
+        ++ "\t ghc-mod refine" ++ ghcOptHelp ++ "<HaskellFile> <module> <line-no> <column-no> <expression>\n"
         ++ "\t ghc-mod find <symbol>\n"
         ++ "\t ghc-mod lint [-h opt] <HaskellFile>\n"
         ++ "\t ghc-mod root\n"
@@ -107,6 +108,7 @@ main = flip E.catches handlers $ do
         cmdArg1 = cmdArg !. 1
         cmdArg3 = cmdArg !. 3
         cmdArg4 = cmdArg !. 4
+        cmdArg5 = cmdArg !. 5
         remainingArgs = tail cmdArg
         nArgs n f = if length remainingArgs == n
                         then f
@@ -123,6 +125,7 @@ main = flip E.catches handlers $ do
       "type"    -> nArgs 4 $ typeExpr opt cradle cmdArg1 (read cmdArg3) (read cmdArg4)
       "split"   -> nArgs 4 $ splitVar opt cradle cmdArg1 (read cmdArg3) (read cmdArg4)
       "sig"     -> nArgs 4 $ fillSig opt cradle cmdArg1 (read cmdArg3) (read cmdArg4)
+      "refine"  -> nArgs 5 $ refineVar opt cradle cmdArg1 (read cmdArg3) (read cmdArg4) cmdArg5
       "find"    -> runGhcMod opt $ nArgs 1 $ findSymbol cmdArg1
       "lint"    -> nArgs 1 withFile (lintSyntax opt) cmdArg1
       "root"    -> rootInfo opt cradle

@@ -21,6 +21,7 @@ module Language.Haskell.GhcMod (
   , infoExpr
   , typeExpr
   , fillSig
+  , refineVar
   , listModules
   , listLanguages
   , listFlags
