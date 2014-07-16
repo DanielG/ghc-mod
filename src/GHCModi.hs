@@ -116,15 +116,15 @@ replace (x:xs)    =  x  : replace xs
 
 ----------------------------------------------------------------
 
-setupDB :: IOish m => MVar SymMdlDb -> GhcModT m ()
+setupDB :: IOish m => MVar SymbolDb -> GhcModT m ()
 setupDB mvar = ghandle handler $ do
-    liftIO . putMVar mvar =<< getSymMdlDb
+    liftIO (putMVar mvar =<< getSymbolDb)
   where
     handler (SomeException _) = return () -- fixme: put emptyDb?
 
 ----------------------------------------------------------------
 
-loop :: IOish m => Set FilePath -> MVar SymMdlDb -> GhcModT m ()
+loop :: IOish m => Set FilePath -> MVar SymbolDb -> GhcModT m ()
 loop set mvar = do
     cmdArg <- liftIO getLine
     let (cmd,arg') = break (== ' ') cmdArg
@@ -192,12 +192,12 @@ isSameMainFile file (Just x)
 
 ----------------------------------------------------------------
 
-findSym :: IOish m => Set FilePath -> String -> MVar SymMdlDb
+findSym :: IOish m => Set FilePath -> String -> MVar SymbolDb
         -> GhcModT m (String, Bool, Set FilePath)
 findSym set sym mvar = do
     db <- liftIO $ readMVar mvar
     opt <- options
-    let ret = lookupSym' opt sym db
+    let ret = lookupSymbol opt sym db
     return (ret, True, set)
 
 lintStx :: IOish m => Set FilePath

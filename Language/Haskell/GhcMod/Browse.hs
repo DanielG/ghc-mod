@@ -1,7 +1,6 @@
 module Language.Haskell.GhcMod.Browse (
     browse
-  , browseAll)
-  where
+  ) where
 
 import Control.Applicative ((<$>))
 import Control.Exception (SomeException(..))
@@ -12,7 +11,7 @@ import Exception (ghandle)
 import FastString (mkFastString)
 import GHC (GhcException(CmdLineError), ModuleInfo, Name, TyThing, DynFlags, Type, TyCon)
 import qualified GHC as G
-import Language.Haskell.GhcMod.Doc (showPage, showOneLine, styleUnqualified)
+import Language.Haskell.GhcMod.Doc (showPage, styleUnqualified)
 import Language.Haskell.GhcMod.DynFlags
 import Language.Haskell.GhcMod.Gap
 import Language.Haskell.GhcMod.Monad
@@ -135,20 +134,3 @@ removeForAlls' ty (Just (pre, ftype))
 
 showOutputable :: Outputable a => DynFlags -> a -> String
 showOutputable dflag = unwords . lines . showPage dflag styleUnqualified . ppr
-
-----------------------------------------------------------------
-
--- | Browsing all functions in all system/user modules.
-browseAll :: IOish m => DynFlags -> GhcModT m [(String,String)]
-browseAll dflag = do
-    ms <- G.packageDbModules True
-    is <- mapM G.getModuleInfo ms
-    return $ concatMap (toNameModule dflag) (zip ms is)
-
-toNameModule :: DynFlags -> (G.Module, Maybe ModuleInfo) -> [(String,String)]
-toNameModule _     (_,Nothing)  = []
-toNameModule dflag (m,Just inf) = map (\name -> (toStr name, mdl)) names
-  where
-    mdl = G.moduleNameString (G.moduleName m)
-    names = G.modInfoExports inf
-    toStr = showOneLine dflag styleUnqualified . ppr
