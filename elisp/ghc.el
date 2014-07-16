@@ -28,7 +28,7 @@
 	       (< emacs-minor-version minor)))
       (error "ghc-mod requires at least Emacs %d.%d" major minor)))
 
-(defconst ghc-version "4.1.0")
+(defconst ghc-version "5.0.0")
 
 ;; (eval-when-compile
 ;;  (require 'haskell-mode))
@@ -121,13 +121,14 @@
 (defun ghc-debug ()
   (interactive)
   (let ((el-path (locate-file "ghc.el" load-path))
-	(ghc-path (executable-find "ghc"))
+	(ghc-path (executable-find "ghc")) ;; FIXME
 	(ghc-mod-path (executable-find ghc-module-command))
 	(ghc-modi-path (executable-find ghc-interactive-command))
 	(el-ver ghc-version)
 	(ghc-ver (ghc-run-ghc-mod '("--version") "ghc"))
 	(ghc-mod-ver (ghc-run-ghc-mod '("version")))
-	(ghc-modi-ver (ghc-run-ghc-mod '("version") ghc-interactive-command)))
+	(ghc-modi-ver (ghc-run-ghc-mod '("version") ghc-interactive-command))
+	(path (getenv "PATH")))
     (switch-to-buffer (get-buffer-create "**GHC Debug**"))
     (erase-buffer)
     (insert "Path: check if you are using intended programs.\n")
@@ -139,6 +140,8 @@
     (insert (format "\t  ghc.el version %s\n" el-ver))
     (insert (format "\t %s\n" ghc-mod-ver))
     (insert (format "\t%s\n" ghc-modi-ver))
-    (insert (format "\t%s\n" ghc-ver))))
+    (insert (format "\t%s\n" ghc-ver))
+    (insert "\nEnvironment variables:\n")
+    (insert (format "\tPATH=%s\n" path))))
 
 (provide 'ghc)

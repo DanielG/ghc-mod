@@ -12,24 +12,25 @@ module Language.Haskell.GhcMod (
   -- * Types
   , ModuleString
   , Expression
-  -- * 'IO' utilities
-  , bootInfo
+  , GhcPkgDb
+  -- * 'GhcMod' utilities
+  , boot
   , browse
+  , check
   , checkSyntax
-  , lintSyntax
-  , expandTemplate
-  , infoExpr
-  , typeExpr
-  , fillSig
-  , refineVar
-  , listModules
-  , listLanguages
-  , listFlags
   , debugInfo
-  , rootInfo
-  , packageDoc
+  , expandTemplate
   , findSymbol
-  , splitVar
+  , info
+  , lint
+  , pkgDoc
+  , rootInfo
+  , types
+  , splits
+  , sig
+  , modules
+  , languages
+  , flags
   ) where
 
 import Language.Haskell.GhcMod.Boot

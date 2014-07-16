@@ -6,7 +6,7 @@ module Language.Haskell.GhcMod.Logger (
   ) where
 
 import Bag (Bag, bagToList)
-import Control.Applicative ((<$>),(*>))
+import Control.Applicative ((<$>))
 import CoreMonad (liftIO)
 import Data.IORef (IORef, newIORef, readIORef, writeIORef, modifyIORef)
 import Data.List (isPrefixOf)
@@ -17,11 +17,10 @@ import GHC (DynFlags, SrcSpan, Severity(SevError))
 import qualified GHC as G
 import HscTypes (SourceError, srcErrorMessages)
 import Language.Haskell.GhcMod.Doc (showPage, getStyle)
-import Language.Haskell.GhcMod.GHCApi (withDynFlags, withCmdFlags)
+import Language.Haskell.GhcMod.DynFlags (withDynFlags, withCmdFlags)
 import qualified Language.Haskell.GhcMod.Gap as Gap
 import Language.Haskell.GhcMod.Convert (convert')
 import Language.Haskell.GhcMod.Monad
-import Language.Haskell.GhcMod.Types (Options(..))
 import Outputable (PprStyle, SDoc)
 import System.FilePath (normalise)
 
@@ -29,35 +28,46 @@ import System.FilePath (normalise)
 
 type Builder = [String] -> [String]
 
-newtype LogRef = LogRef (IORef Builder)
+data Log = Log [String] Builder
+
+newtype LogRef = LogRef (IORef Log)
+
+emptyLog :: Log
+emptyLog = Log [] id
 
 newLogRef :: IO LogRef
-newLogRef = LogRef <$> newIORef id
+newLogRef = LogRef <$> newIORef emptyLog
 
-readAndClearLogRef :: LogRef -> GhcMod String
+readAndClearLogRef :: IOish m => LogRef -> GhcModT m String
 readAndClearLogRef (LogRef ref) = do
-    b <- liftIO $ readIORef ref
-    liftIO $ writeIORef ref id
+    Log _ b <- liftIO $ readIORef ref
+    liftIO $ writeIORef ref emptyLog
     convert' (b [])
 
 appendLogRef :: DynFlags -> LogRef -> DynFlags -> Severity -> SrcSpan -> PprStyle -> SDoc -> IO ()
-appendLogRef df (LogRef ref) _ sev src style msg = do
-        let !l = ppMsg src sev df style msg
-        modifyIORef ref (\b -> b . (l:))
+appendLogRef df (LogRef ref) _ sev src style msg = modifyIORef ref update
+  where
+    l = ppMsg src sev df style msg
+    update lg@(Log ls b)
+      | l `elem` ls = lg
+      | otherwise   = Log (l:ls) (b . (l:))
 
 ----------------------------------------------------------------
 
 -- | Set the session flag (e.g. "-Wall" or "-w:") then
 --   executes a body. Logged messages are returned as 'String'.
 --   Right is success and Left is failure.
-withLogger :: (DynFlags -> DynFlags)
-           -> GhcMod ()
-           -> GhcMod (Either String String)
+withLogger :: IOish m
+           => (DynFlags -> DynFlags)
+           -> GhcModT m ()
+           -> GhcModT m (Either String String)
 withLogger setDF body = ghandle sourceError $ do
     logref <- liftIO $ newLogRef
     wflags <- filter ("-fno-warn" `isPrefixOf`) . ghcOpts <$> options
     withDynFlags (setLogger logref . setDF) $ do
-        withCmdFlags wflags $ do body *> (Right <$> readAndClearLogRef logref)
+        withCmdFlags wflags $ do
+            body
+            Right <$> readAndClearLogRef logref
   where
     setLogger logref df = Gap.setLogAction df $ appendLogRef df logref
 
@@ -65,7 +75,7 @@ withLogger setDF body = ghandle sourceError $ do
 ----------------------------------------------------------------
 
 -- | Converting 'SourceError' to 'String'.
-sourceError :: SourceError -> GhcMod (Either String String)
+sourceError :: IOish m => SourceError -> GhcModT m (Either String String)
 sourceError err = do
     dflags <- G.getSessionDynFlags
     style <- toGhcMod getStyle

@@ -1,5 +1,6 @@
 module Language.Haskell.GhcMod.Cradle (
     findCradle
+  , findCradle'
   , findCradleWithoutSandbox
   ) where
 
@@ -22,8 +23,10 @@ import System.FilePath ((</>), takeDirectory)
 --   in a cabal directory.
 findCradle :: IO Cradle
 findCradle = do
-    wdir <- getCurrentDirectory
-    cabalCradle wdir ||> sandboxCradle wdir ||> plainCradle wdir
+    findCradle' =<< getCurrentDirectory
+
+findCradle' :: FilePath -> IO Cradle
+findCradle' dir = cabalCradle dir ||> sandboxCradle dir ||> plainCradle dir
 
 cabalCradle :: FilePath -> IO Cradle
 cabalCradle wdir = do

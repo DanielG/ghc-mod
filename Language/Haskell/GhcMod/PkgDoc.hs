@@ -1,30 +1,26 @@
-module Language.Haskell.GhcMod.PkgDoc (packageDoc) where
+module Language.Haskell.GhcMod.PkgDoc (pkgDoc) where
 
+import CoreMonad (liftIO)
 import Language.Haskell.GhcMod.Types
 import Language.Haskell.GhcMod.GhcPkg
+import Language.Haskell.GhcMod.Monad
 
 import Control.Applicative ((<$>))
 import System.Process (readProcess)
 
 -- | Obtaining the package name and the doc path of a module.
-packageDoc :: Options
-           -> Cradle
-           -> ModuleString
-           -> IO String
-packageDoc _ cradle mdl = pkgDoc cradle mdl
-
-pkgDoc :: Cradle -> String -> IO String
-pkgDoc cradle mdl = do
-    pkg <- trim <$> readProcess "ghc-pkg" toModuleOpts []
+pkgDoc :: IOish m => String -> GhcModT m String
+pkgDoc mdl = cradle >>= \c -> liftIO $ do
+    pkg <- trim <$> readProcess "ghc-pkg" (toModuleOpts c) []
     if pkg == "" then
         return "\n"
       else do
-        htmlpath <- readProcess "ghc-pkg" (toDocDirOpts pkg) []
+        htmlpath <- readProcess "ghc-pkg" (toDocDirOpts pkg c) []
         let ret = pkg ++ " " ++ drop 14 htmlpath
         return ret
   where
-    toModuleOpts = ["find-module", mdl, "--simple-output"]
-                   ++ ghcPkgDbStackOpts (cradlePkgDbStack cradle)
-    toDocDirOpts pkg = ["field", pkg, "haddock-html"]
-                       ++ ghcPkgDbStackOpts (cradlePkgDbStack cradle)
+    toModuleOpts c = ["find-module", mdl, "--simple-output"]
+                   ++ ghcPkgDbStackOpts (cradlePkgDbStack c)
+    toDocDirOpts pkg c = ["field", pkg, "haddock-html"]
+                       ++ ghcPkgDbStackOpts (cradlePkgDbStack c)
     trim = takeWhile (`notElem` " \n")

@@ -10,9 +10,10 @@ module Language.Haskell.GhcMod.CabalApi (
   , cabalConfigDependencies
   ) where
 
-import Language.Haskell.GhcMod.Types
-import Language.Haskell.GhcMod.GhcPkg
 import Language.Haskell.GhcMod.CabalConfig
+import Language.Haskell.GhcMod.Gap (benchmarkBuildInfo, benchmarkTargets, toModuleString)
+import Language.Haskell.GhcMod.GhcPkg
+import Language.Haskell.GhcMod.Types
 
 import Control.Applicative ((<$>))
 import qualified Control.Exception as E
@@ -20,7 +21,6 @@ import Control.Monad (filterM)
 import CoreMonad (liftIO)
 import Data.Maybe (maybeToList)
 import Data.Set (fromList, toList)
-import Distribution.ModuleName (ModuleName,toFilePath)
 import Distribution.Package (Dependency(Dependency)
                            , PackageName(PackageName))
 import qualified Distribution.Package as C
@@ -119,11 +119,7 @@ cabalAllBuildInfo pd = libBI ++ execBI ++ testBI ++ benchBI
     libBI   = map P.libBuildInfo       $ maybeToList $ P.library pd
     execBI  = map P.buildInfo          $ P.executables pd
     testBI  = map P.testBuildInfo      $ P.testSuites pd
-#if __GLASGOW_HASKELL__ >= 704
-    benchBI = map P.benchmarkBuildInfo $ P.benchmarks pd
-#else
-    benchBI = []
-#endif
+    benchBI = benchmarkBuildInfo pd
 
 ----------------------------------------------------------------
 
@@ -172,16 +168,7 @@ cabalAllTargets pd = do
             Just l -> P.libModules l
 
     libTargets = map toModuleString lib
-#if __GLASGOW_HASKELL__ >= 704
-    benchTargets = map toModuleString $ concatMap P.benchmarkModules $ P.benchmarks  pd
-#else
-    benchTargets = []
-#endif
-    toModuleString :: ModuleName -> String
-    toModuleString mn = fromFilePath $ toFilePath mn
-
-    fromFilePath :: FilePath -> String
-    fromFilePath fp = map (\c -> if c=='/' then '.' else c) fp
+    benchTargets = benchmarkTargets pd
 
     getTestTarget :: TestSuite -> IO [String]
     getTestTarget ts =

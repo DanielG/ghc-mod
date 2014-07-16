@@ -18,10 +18,10 @@ spec = do
             getPackageDbStack "test/data/" `shouldReturn` [GlobalDb, PackageDb $ cwd </> "test/data/.cabal-sandbox/i386-osx-ghc-7.6.3-packages.conf.d"]
 #endif
 
-        it "parses a config file and extracts sandbox package db" $ do
+        it "can parse a config file and extract the sandbox package-db" $ do
             cwd <- getCurrentDirectory
             pkgDb <- getSandboxDb "test/data/"
             pkgDb `shouldBe` (cwd </> "test/data/.cabal-sandbox/i386-osx-ghc-7.6.3-packages.conf.d")
 
-        it "throws an error if a config file is broken" $ do
+        it "throws an error if the sandbox config file is broken" $ do
             getSandboxDb "test/data/broken-sandbox" `shouldThrow` anyException

@@ -1,5 +1,5 @@
 Name:                   ghc-mod
-Version:                4.1.0
+Version:                5.0.0
 Author:                 Kazu Yamamoto <kazu@iij.ad.jp>
 Maintainer:             Kazu Yamamoto <kazu@iij.ad.jp>
 License:                BSD3
@@ -51,6 +51,7 @@ Extra-Source-Files:     ChangeLog
 Library
   Default-Language:     Haskell2010
   GHC-Options:          -Wall
+  Default-Extensions:   ConstraintKinds, FlexibleContexts
   Exposed-Modules:      Language.Haskell.GhcMod
                         Language.Haskell.GhcMod.Ghc
                         Language.Haskell.GhcMod.Monad
@@ -67,6 +68,7 @@ Library
                         Language.Haskell.GhcMod.Convert
                         Language.Haskell.GhcMod.Debug
                         Language.Haskell.GhcMod.Doc
+                        Language.Haskell.GhcMod.DynFlags
                         Language.Haskell.GhcMod.FillSig
                         Language.Haskell.GhcMod.Find
                         Language.Haskell.GhcMod.Flag
@@ -100,7 +102,7 @@ Library
                       , time
                       , transformers
                       , transformers-base
-                      , mtl
+                      , mtl >= 2.0
                       , monad-control
                       , split
                       , haskell-src-exts
@@ -116,10 +118,12 @@ Executable ghc-mod
   Main-Is:              GHCMod.hs
   Other-Modules:        Paths_ghc_mod
   GHC-Options:          -Wall
+  Default-Extensions:   ConstraintKinds, FlexibleContexts
   HS-Source-Dirs:       src
   Build-Depends:        base >= 4.0 && < 5
                       , directory
                       , filepath
+                      , mtl >= 2.0
                       , ghc
                       , ghc-mod
 
@@ -128,6 +132,7 @@ Executable ghc-modi
   Main-Is:              GHCModi.hs
   Other-Modules:        Paths_ghc_mod
   GHC-Options:          -Wall
+  Default-Extensions:   ConstraintKinds, FlexibleContexts
   HS-Source-Dirs:       src
   Build-Depends:        base >= 4.0 && < 5
                       , containers
@@ -140,13 +145,15 @@ Test-Suite doctest
   Type:                 exitcode-stdio-1.0
   Default-Language:     Haskell2010
   HS-Source-Dirs:       test
-  Ghc-Options:          -threaded -Wall
+  Ghc-Options:          -Wall
+  Default-Extensions:   ConstraintKinds, FlexibleContexts
   Main-Is:              doctests.hs
   Build-Depends:        base
                       , doctest >= 0.9.3
 
 Test-Suite spec
   Default-Language:     Haskell2010
+  Default-Extensions:   ConstraintKinds, FlexibleContexts
   Main-Is:              Main.hs
   Hs-Source-Dirs:       test, .
   Type:                 exitcode-stdio-1.0
@@ -178,7 +185,7 @@ Test-Suite spec
                       , time
                       , transformers
                       , transformers-base
-                      , mtl
+                      , mtl >= 2.0
                       , monad-control
                       , hspec >= 1.8.2
                       , split

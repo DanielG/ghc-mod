@@ -1,10 +1,7 @@
 {-# LANGUAGE MultiParamTypeClasses, FunctionalDependencies, FlexibleInstances, CPP #-}
 
 module Language.Haskell.GhcMod.FillSig (
-    fillSig
-  , sig
-  , refineVar
-  , refine
+    sig
   ) where
 
 import Data.Char (isSymbol)
@@ -12,23 +9,16 @@ import Data.List (find, intercalate)
 import Exception (ghandle, SomeException(..))
 import GHC (GhcMonad, Id, ParsedModule(..), TypecheckedModule(..), DynFlags, SrcSpan, Type, GenLocated(L))
 import qualified GHC as G
-import Language.Haskell.GhcMod.GHCApi
 import qualified Language.Haskell.GhcMod.Gap as Gap
 import Language.Haskell.GhcMod.Convert
 import Language.Haskell.GhcMod.Monad
 import Language.Haskell.GhcMod.SrcUtils
 import Language.Haskell.GhcMod.Types
-import MonadUtils (liftIO)
+import CoreMonad (liftIO)
 import Outputable (PprStyle)
 import qualified Type as Ty
 import qualified HsBinds as Ty
 import qualified Class as Ty
-#if __GLASGOW_HASKELL__ >= 706
-import OccName (occName)
-#else
-import OccName (OccName)
-import RdrName (rdrNameOcc)
-#endif
 import qualified Language.Haskell.Exts.Annotated as HE
 
 ----------------------------------------------------------------
@@ -40,24 +30,14 @@ data SigInfo = Signature SrcSpan [G.RdrName] (G.HsType G.RdrName)
              | InstanceDecl SrcSpan G.Class
 
 -- Signature for fallback operation via haskell-src-exts
-data HESigInfo = HESignature HE.SrcSpan [HE.Name HE.SrcSpanInfo] (HE.Type HE.SrcSpanInfo) 
+data HESigInfo = HESignature HE.SrcSpan [HE.Name HE.SrcSpanInfo] (HE.Type HE.SrcSpanInfo)
 
 -- | Create a initial body from a signature.
-fillSig :: Options
-        -> Cradle
-        -> FilePath     -- ^ A target file.
-        -> Int          -- ^ Line number.
-        -> Int          -- ^ Column number.
-        -> IO String
-fillSig opt cradle file lineNo colNo = runGhcMod opt $ do
-    initializeFlagsWithCradle opt cradle
-    sig file lineNo colNo
-
--- | Create a initial body from a signature.
-sig :: FilePath     -- ^ A target file.
+sig :: IOish m
+    => FilePath     -- ^ A target file.
     -> Int          -- ^ Line number.
     -> Int          -- ^ Column number.
-    -> GhcMod String
+    -> GhcModT m String
 sig file lineNo colNo = ghandle handler body
   where
     body = inModuleContext file $ \dflag style -> do
@@ -69,13 +49,13 @@ sig file lineNo colNo = ghandle handler body
           InstanceDecl loc cls -> do
              ("instance", fourInts loc, map (\x -> initialBody dflag style (G.idType x) x)
                                             (Ty.classMethods cls))
-            
+
     handler (SomeException _) = do
       opt <- options
       -- Code cannot be parsed by ghc module
       -- Fallback: try to get information via haskell-src-exts
       whenFound opt (getSignatureFromHE file lineNo colNo) $
-        \(HESignature loc names ty) -> 
+        \(HESignature loc names ty) ->
            ("function", fourIntsHE loc, map (initialBody undefined undefined ty) names)
 
 ----------------------------------------------------------------
@@ -94,32 +74,9 @@ getSignature modSum lineNo colNo = do
         -- We found an instance declaration
         TypecheckedModule{tm_renamed_source = Just tcs
                          ,tm_checked_module_info = minfo} <- G.typecheckModule p
-        case listifyRenamedSpans tcs (lineNo, colNo) :: [G.LInstDecl G.Name] of
-          -- Instance declarations of sort 'instance F (G a)'
-#if __GLASGOW_HASKELL__ >= 708
-          [L loc (G.ClsInstD (G.ClsInstDecl {G.cid_poly_ty =
-            (L _ (G.HsForAllTy _ _ _ (L _ (G.HsAppTy (L _ (G.HsTyVar clsName)) _))))}))] ->
-#elif __GLASGOW_HASKELL__ >= 706
-          [L loc (G.ClsInstD
-            (L _ (G.HsForAllTy _ _ _ (L _ (G.HsAppTy (L _ (G.HsTyVar clsName)) _)))) _ _ _)] ->
-#else
-          [L loc (G.InstDecl
-            (L _ (G.HsForAllTy _ _ _ (L _ (G.HsAppTy (L _ (G.HsTyVar clsName)) _)))) _ _ _)] ->
-#endif
-               obtainClassInfo minfo clsName loc
-          -- Instance declarations of sort 'instance F G' (no variables)
-#if __GLASGOW_HASKELL__ >= 708
-          [L loc (G.ClsInstD (G.ClsInstDecl {G.cid_poly_ty =
-            (L _ (G.HsAppTy (L _ (G.HsTyVar clsName)) _))}))] ->
-#elif __GLASGOW_HASKELL__ >= 706
-          [L loc (G.ClsInstD
-            (L _ (G.HsAppTy (L _ (G.HsTyVar clsName)) _)) _ _ _)] ->
-#else
-          [L loc (G.InstDecl
-            (L _ (G.HsAppTy (L _ (G.HsTyVar clsName)) _)) _ _ _)] ->
-#endif
-               obtainClassInfo minfo clsName loc
-          _ -> return Nothing
+        case Gap.getClass $ listifyRenamedSpans tcs (lineNo, colNo) of
+            Just (clsName,loc) -> obtainClassInfo minfo clsName loc
+            Nothing            -> return Nothing
       _ -> return Nothing
   where obtainClassInfo :: GhcMonad m => G.ModuleInfo -> G.Name -> SrcSpan -> m (Maybe SigInfo)
         obtainClassInfo minfo clsName loc = do
@@ -173,7 +130,7 @@ class FnArgsInfo ty name | ty -> name, name -> ty where
   getFnArgs :: ty -> [FnArg]
 
 instance FnArgsInfo (G.HsType G.RdrName) (G.RdrName) where
-  getFnName dflag style name = showOccName dflag style $ occName name
+  getFnName dflag style name = showOccName dflag style $ Gap.occName name
   getFnArgs (G.HsForAllTy _ _ _ (L _ iTy))  = getFnArgs iTy
   getFnArgs (G.HsParTy (L _ iTy))           = getFnArgs iTy
   getFnArgs (G.HsFunTy (L _ lTy) (L _ rTy)) = (if fnarg lTy then FnArgFunction else FnArgNormal):getFnArgs rTy
@@ -183,11 +140,6 @@ instance FnArgsInfo (G.HsType G.RdrName) (G.RdrName) where
                            (G.HsFunTy _ _)                -> True
                            _                              -> False
   getFnArgs _ = []
-
-#if __GLASGOW_HASKELL__ < 706
-occName :: G.RdrName -> OccName
-occName = rdrNameOcc
-#endif
 
 instance FnArgsInfo (HE.Type HE.SrcSpanInfo) (HE.Name HE.SrcSpanInfo) where
   getFnName _ _ (HE.Ident  _ s) = s
@@ -229,23 +181,13 @@ isSymbolName []    = error "This should never happen"
 -- REWRITE A HOLE / UNDEFINED VIA A FUNCTION
 ----------------------------------------------------------------
 
--- | Create a initial body from a signature.
-refineVar :: Options
-          -> Cradle
-          -> FilePath     -- ^ A target file.
-          -> Int          -- ^ Line number.
-          -> Int          -- ^ Column number.
-          -> Expression   -- ^ A Haskell expression.
-          -> IO String
-refineVar opt cradle file lineNo colNo e = runGhcMod opt $ do
-    initializeFlagsWithCradle opt cradle
-    refine file lineNo colNo e
-
-refine :: FilePath     -- ^ A target file.
+{-
+refine :: IOish m
+       => FilePath     -- ^ A target file.
        -> Int          -- ^ Line number.
        -> Int          -- ^ Column number.
        -> Expression   -- ^ A Haskell expression.
-       -> GhcMod String
+       -> GhcModT m String
 refine file lineNo colNo expr = ghandle handler body
   where
     body = inModuleContext file $ \dflag style -> do
@@ -273,3 +215,4 @@ findVar modSum lineNo colNo = do
    case listifyParsedSpans ps (lineNo, colNo) :: [G.LHsExpr G.RdrName] of
      (L loc (G.HsVar _)):_ -> return $ Just loc
      _                     -> return Nothing
+-}

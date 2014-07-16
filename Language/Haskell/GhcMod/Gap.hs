@@ -33,6 +33,12 @@ module Language.Haskell.GhcMod.Gap (
   , fileModSummary
   , WarnFlags
   , emptyWarnFlags
+  , benchmarkBuildInfo
+  , benchmarkTargets
+  , toModuleString
+  , GLMatch
+  , getClass
+  , occName
   ) where
 
 import Control.Applicative hiding (empty)
@@ -58,6 +64,7 @@ import StringBuffer
 import TcType
 import Var (varType)
 
+import qualified Distribution.PackageDescription as P
 import qualified InstEnv
 import qualified Pretty
 import qualified StringBuffer as SB
@@ -76,10 +83,12 @@ import GHC hiding (ClsInst)
 import GHC hiding (Instance)
 import Control.Arrow hiding ((<+>))
 import Data.Convertible
+import RdrName (rdrNameOcc)
 #endif
 
 #if __GLASGOW_HASKELL__ >= 704
 import qualified Data.IntSet as I (IntSet, empty)
+import qualified Distribution.ModuleName as M (ModuleName,toFilePath)
 #endif
 
 ----------------------------------------------------------------
@@ -280,8 +289,10 @@ class HasType a where
 
 instance HasType (LHsBind Id) where
 #if __GLASGOW_HASKELL__ >= 708
-    getType _ (L spn FunBind{fun_matches = MG _ in_tys out_typ}) = return $ Just (spn, typ)
-      where typ = mkFunTys in_tys out_typ
+    getType _ (L spn FunBind{fun_matches = m}) = return $ Just (spn, typ)
+      where in_tys = mg_arg_tys m
+            out_typ = mg_res_ty m
+            typ = mkFunTys in_tys out_typ
 #else
     getType _ (L spn FunBind{fun_matches = MatchGroup _ typ}) = return $ Just (spn, typ)
 #endif
@@ -395,4 +406,56 @@ emptyWarnFlags = I.empty
 type WarnFlags = [WarningFlag]
 emptyWarnFlags :: WarnFlags
 emptyWarnFlags = []
+#endif
+
+----------------------------------------------------------------
+----------------------------------------------------------------
+
+benchmarkBuildInfo :: P.PackageDescription -> [P.BuildInfo]
+#if __GLASGOW_HASKELL__ >= 704
+benchmarkBuildInfo pd = map P.benchmarkBuildInfo $ P.benchmarks pd
+#else
+benchmarkBuildInfo pd = []
+#endif
+
+benchmarkTargets :: P.PackageDescription -> [String]
+#if __GLASGOW_HASKELL__ >= 704
+benchmarkTargets pd = map toModuleString $ concatMap P.benchmarkModules $ P.benchmarks pd
+#else
+benchmarkTargets = []
+#endif
+
+toModuleString :: M.ModuleName -> String
+toModuleString mn = fromFilePath $ M.toFilePath mn
+  where
+    fromFilePath :: FilePath -> String
+    fromFilePath fp = map (\c -> if c=='/' then '.' else c) fp
+
+----------------------------------------------------------------
+----------------------------------------------------------------
+
+#if __GLASGOW_HASKELL__ >= 708
+type GLMatch = LMatch RdrName (LHsExpr RdrName)
+#else
+type GLMatch = LMatch RdrName
+#endif
+
+getClass :: [LInstDecl Name] -> Maybe (Name, SrcSpan)
+#if __GLASGOW_HASKELL__ >= 708
+-- Instance declarations of sort 'instance F (G a)'
+getClass [L loc (ClsInstD (ClsInstDecl {cid_poly_ty = (L _ (HsForAllTy _ _ _ (L _ (HsAppTy (L _ (HsTyVar className)) _))))}))] = Just (className, loc)
+-- Instance declarations of sort 'instance F G' (no variables)
+getClass [L loc (ClsInstD (ClsInstDecl {cid_poly_ty = (L _ (HsAppTy (L _ (HsTyVar className)) _))}))] = Just (className, loc)
+#elif __GLASGOW_HASKELL__ >= 706
+getClass [L loc (ClsInstD (L _ (HsForAllTy _ _ _ (L _ (HsAppTy (L _ (HsTyVar className)) _)))) _ _ _)] = Just (className, loc)
+getClass[L loc (ClsInstD (L _ (HsAppTy (L _ (HsTyVar className)) _)) _ _ _)] = Just (className, loc)
+#else
+getClass [L loc (InstDecl (L _ (HsForAllTy _ _ _ (L _ (HsAppTy (L _ (HsTyVar className)) _)))) _ _ _)] = Just (className, loc)
+getClass [L loc (InstDecl (L _ (HsAppTy (L _ (HsTyVar className)) _)) _ _ _)] = Just (className, loc)
+#endif
+getClass _ = Nothing
+
+#if __GLASGOW_HASKELL__ < 706
+occName :: RdrName -> OccName
+occName = rdrNameOcc
 #endif
