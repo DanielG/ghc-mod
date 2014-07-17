@@ -19,7 +19,7 @@ import Data.List (groupBy, sort)
 import Data.List.Split (splitOn)
 import Data.Maybe (fromMaybe)
 import DynFlags (DynFlags(..), systemPackageConfig)
-import Exception (handleIO)
+import Exception (ghandle, handleIO)
 import qualified GHC as G
 import Language.Haskell.GhcMod.Convert
 import Language.Haskell.GhcMod.Monad
@@ -113,7 +113,7 @@ dumpSymbol = do
         Just dir -> do
             let cache = dir </> symbolCache
                 pkgdb = dir </> packageCache
-            do -- fixme: bracket
+            ghandle (\(SomeException _) -> return "") $ do
                 create <- liftIO $ needToCreate cache pkgdb
                 when create $ do
                     sm <- getSymbol
