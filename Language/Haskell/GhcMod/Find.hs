@@ -1,4 +1,4 @@
-{-# LANGUAGE CPP, BangPatterns #-}
+{-# LANGUAGE CPP #-}
 
 module Language.Haskell.GhcMod.Find (
     Symbol
@@ -118,7 +118,7 @@ dumpSymbol = do
                 when create $ do
                     sm <- getSymbol
                     void . liftIO $ withFile cache WriteMode $ \hdl ->
-                        mapM (hPutStrLn hdl . show) sm
+                        mapM (hPrint hdl) sm
                 return cache
     return $ ret ++ "\n"
 

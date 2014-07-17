@@ -14,6 +14,10 @@ import Language.Haskell.GhcMod.Types
 import qualified Language.Haskell.GhcMod.Cabal16 as C16
 import qualified Language.Haskell.GhcMod.Cabal18 as C18
 
+#ifndef MIN_VERSION_mtl
+#define MIN_VERSION_mtl(x,y,z) 1
+#endif
+
 import qualified Control.Exception as E
 import Control.Applicative ((<$>))
 import Control.Monad (mplus)
@@ -59,7 +63,7 @@ configDependencies :: PackageIdentifier -> CabalConfig -> [Package]
 configDependencies thisPkg config = map fromInstalledPackageId deps
  where
     deps :: [InstalledPackageId]
-    deps = case (deps18 `mplus` deps16) of
+    deps = case deps18 `mplus` deps16 of
         Right ps -> ps
         Left msg -> error msg
 

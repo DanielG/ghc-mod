@@ -16,7 +16,7 @@ import UniqFM (eltsUFM)
 modules :: IOish m => GhcModT m String
 modules = do
     opt <- options
-    convert opt . (arrange opt) <$> (getModules `G.gcatch` handler)
+    convert opt . arrange opt <$> (getModules `G.gcatch` handler)
   where
     getModules = getExposedModules <$> G.getSessionDynFlags
     getExposedModules = concatMap exposedModules'

@@ -1,4 +1,4 @@
-{-# LANGUAGE ScopedTypeVariables, RecordWildCards #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 
 module Language.Haskell.GhcMod.GHCApi (
     ghcPkgDb
@@ -42,8 +42,7 @@ modules :: G.PackageConfig -> [ModuleString]
 modules = map G.moduleNameString . G.exposedModules
 
 findModule :: ModuleString -> PkgDb -> [Package]
-findModule m db = do
-  M.elems $ package `M.map` (containsModule `M.filter` db)
+findModule m db = M.elems $ package `M.map` (containsModule `M.filter` db)
  where
     containsModule :: G.PackageConfig -> Bool
     containsModule pkgConf =
@@ -83,5 +82,4 @@ localModuleInfo :: GhcMonad m => ModuleString -> m (Maybe G.ModuleInfo)
 localModuleInfo mdl = moduleInfo Nothing mdl
 
 bindings :: G.ModuleInfo -> [Binding]
-bindings minfo = do
-  map (G.occNameString . G.getOccName) $ G.modInfoExports minfo
+bindings minfo = map (G.occNameString . G.getOccName) $ G.modInfoExports minfo

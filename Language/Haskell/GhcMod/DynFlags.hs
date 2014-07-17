@@ -101,8 +101,7 @@ needsFallback = any (hasTHorQQ . G.ms_hspp_opts)
 
 -- | Return the 'DynFlags' currently in use in the GHC session.
 getDynamicFlags :: IO DynFlags
-getDynamicFlags = do
-    G.runGhc (Just libdir) G.getSessionDynFlags
+getDynamicFlags = G.runGhc (Just libdir) G.getSessionDynFlags
 
 withDynFlags :: GhcMonad m
              => (DynFlags -> DynFlags)
@@ -136,7 +135,7 @@ setAllWaringFlags :: DynFlags -> DynFlags
 setAllWaringFlags df = df { warningFlags = allWarningFlags }
 
 allWarningFlags :: Gap.WarnFlags
-allWarningFlags = unsafePerformIO $ do
+allWarningFlags = unsafePerformIO $
     G.runGhc (Just libdir) $ do
         df <- G.getSessionDynFlags
         df' <- addCmdOpts ["-Wall"] df

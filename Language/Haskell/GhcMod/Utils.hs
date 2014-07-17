@@ -18,7 +18,7 @@ extractParens str = extractParens' str 0
    extractParens' (s:ss) level
        | s `elem` "([{" = s : extractParens' ss (level+1)
        | level == 0 = extractParens' ss 0
-       | s `elem` "}])" && level == 1 = s:[]
+       | s `elem` "}])" && level == 1 = [s]
        | s `elem` "}])" = s : extractParens' ss (level-1)
        | otherwise = s : extractParens' ss level
 

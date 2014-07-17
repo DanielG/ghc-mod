@@ -22,8 +22,7 @@ import System.FilePath ((</>), takeDirectory)
 --   Find a sandbox according to a cabal sandbox config
 --   in a cabal directory.
 findCradle :: IO Cradle
-findCradle = do
-    findCradle' =<< getCurrentDirectory
+findCradle = findCradle' =<< getCurrentDirectory
 
 findCradle' :: FilePath -> IO Cradle
 findCradle' dir = cabalCradle dir ||> sandboxCradle dir ||> plainCradle dir

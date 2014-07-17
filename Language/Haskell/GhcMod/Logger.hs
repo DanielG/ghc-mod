@@ -1,4 +1,4 @@
-{-# LANGUAGE BangPatterns, CPP #-}
+{-# LANGUAGE CPP #-}
 
 module Language.Haskell.GhcMod.Logger (
     withLogger
@@ -63,9 +63,9 @@ withLogger :: IOish m
            -> GhcModT m ()
            -> GhcModT m (Either String String)
 withLogger setDF body = ghandle sourceError $ do
-    logref <- liftIO $ newLogRef
+    logref <- liftIO newLogRef
     wflags <- filter ("-fno-warn" `isPrefixOf`) . ghcOpts <$> options
-    withDynFlags (setLogger logref . setDF) $ do
+    withDynFlags (setLogger logref . setDF) $
         withCmdFlags wflags $ do
             body
             Right <$> readAndClearLogRef logref
@@ -80,7 +80,7 @@ sourceError :: IOish m => SourceError -> GhcModT m (Either String String)
 sourceError err = do
     dflags <- G.getSessionDynFlags
     style <- toGhcMod getStyle
-    ret <- convert' $ (errBagToStrList dflags style . srcErrorMessages $ err)
+    ret <- convert' (errBagToStrList dflags style . srcErrorMessages $ err)
     return $ Left ret
 
 errBagToStrList :: DynFlags -> PprStyle -> Bag ErrMsg -> [String]

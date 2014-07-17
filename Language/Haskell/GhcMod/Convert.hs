@@ -81,14 +81,14 @@ instance ToString ((Int,Int,Int,Int),String) where
     toPlain opt x = tupToString opt x
 
 instance ToString (String, (Int,Int,Int,Int),[String]) where
-    toLisp  opt (s,x,y) = toSexp2 $ [toLisp opt s, ('(' :) . fourIntsToString opt x . (')' :), toLisp opt y]
+    toLisp  opt (s,x,y) = toSexp2 [toLisp opt s, ('(' :) . fourIntsToString opt x . (')' :), toLisp opt y]
     toPlain opt (s,x,y) = inter '\n' [toPlain opt s, fourIntsToString opt x, toPlain opt y]
 
 toSexp1 :: Options -> [String] -> Builder
 toSexp1 opt ss = ('(' :) . inter ' ' (map (quote opt) ss) . (')' :)
 
 toSexp2 :: [Builder] -> Builder
-toSexp2 ss = ('(' :) . (inter ' ' ss) . (')' :)
+toSexp2 ss = ('(' :) . inter ' ' ss . (')' :)
 
 fourIntsToString :: Options -> (Int,Int,Int,Int) -> Builder
 fourIntsToString _ (a,b,c,d) = (show a ++) . (' ' :)

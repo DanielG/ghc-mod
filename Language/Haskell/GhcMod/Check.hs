@@ -19,7 +19,7 @@ checkSyntax :: IOish m
             => [FilePath]  -- ^ The target files.
             -> GhcModT m String
 checkSyntax [] = return ""
-checkSyntax files = withErrorHandler sessionName $ do
+checkSyntax files = withErrorHandler sessionName $
     either id id <$> check files
   where
     sessionName = case files of
@@ -33,8 +33,7 @@ checkSyntax files = withErrorHandler sessionName $ do
 check :: IOish m
       => [FilePath]  -- ^ The target files.
       -> GhcModT m (Either String String)
-check fileNames = do
-  withLogger setAllWaringFlags $ setTargetFiles fileNames
+check fileNames = withLogger setAllWaringFlags $ setTargetFiles fileNames
 
 ----------------------------------------------------------------
 
@@ -43,7 +42,7 @@ expandTemplate :: IOish m
                => [FilePath]  -- ^ The target files.
                -> GhcModT m String
 expandTemplate [] = return ""
-expandTemplate files = withErrorHandler sessionName $ do
+expandTemplate files = withErrorHandler sessionName $
     either id id <$> expand files
   where
     sessionName = case files of
