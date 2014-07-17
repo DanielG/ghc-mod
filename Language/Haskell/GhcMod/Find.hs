@@ -46,9 +46,8 @@ import qualified Data.Map as M
 
 -- | Type of function and operation names.
 type Symbol = String
-type Db = Map Symbol [ModuleString]
 -- | Database from 'Symbol' to \['ModuleString'\].
-newtype SymbolDb = SymbolDb Db
+newtype SymbolDb = SymbolDb (Map Symbol [ModuleString])
 
 ----------------------------------------------------------------
 
@@ -81,7 +80,7 @@ lookupSymbol opt sym db = convert opt $ lookupSymbol' sym db
 loadSymbolDb :: IO SymbolDb
 loadSymbolDb = SymbolDb <$> readSymbolDb
 
-readSymbolDb :: IO Db
+readSymbolDb :: IO (Map Symbol [ModuleString])
 readSymbolDb = handle (\(SomeException _) -> return M.empty) $ do
     file <- chop <$> readProcess "ghc-mod" ["dumpsym"] []
     M.fromAscList . map conv . lines <$> readFile file
