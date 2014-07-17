@@ -31,7 +31,6 @@ import Data.Set (Set)
 import qualified Data.Set as S
 import Data.Typeable (Typeable)
 import Data.Version (showVersion)
-import Exception (ghandle)
 import GHC (GhcMonad)
 import qualified GHC as G
 import Language.Haskell.GhcMod
@@ -101,7 +100,7 @@ main = E.handle cmdHandler $
 --            c = cradle0 { cradleCurrentDir = rootdir } TODO: ?????
         setCurrentDirectory rootdir
         mvar <- liftIO newEmptyMVar
-        void $ forkIO $ runGhcModT opt $ setupDB mvar
+        void $ forkIO $ setupDB mvar
         runGhcModT opt $ loop S.empty mvar
       where
         -- this is just in case.
@@ -116,11 +115,8 @@ replace (x:xs)    =  x  : replace xs
 
 ----------------------------------------------------------------
 
-setupDB :: IOish m => MVar SymbolDb -> GhcModT m ()
-setupDB mvar = ghandle handler $ do
-    liftIO (putMVar mvar =<< getSymbolDb)
-  where
-    handler (SomeException _) = return () -- fixme: put emptyDb?
+setupDB :: MVar SymbolDb -> IO ()
+setupDB mvar = getSymbolDb >>= putMVar mvar
 
 ----------------------------------------------------------------
 
