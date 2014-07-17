@@ -11,6 +11,7 @@ module Language.Haskell.GhcMod.Find (
 
 import Config (cProjectVersion,cTargetPlatformString)
 import Control.Applicative ((<$>))
+import Control.Exception (handle, SomeException(..))
 import Control.Monad (when, void)
 import CoreMonad (liftIO)
 import Data.Function (on)
@@ -80,14 +81,9 @@ getSymbolDb :: IO SymbolDb
 getSymbolDb = SymbolDb <$> loadSymbolDb
 
 loadSymbolDb :: IO Db
-loadSymbolDb = do
+loadSymbolDb = handle (\(SomeException _) -> return M.empty) $ do
     file <- chop <$> readProcess "ghc-mod" ["dumpsym"] []
-    exist <- doesFileExist file -- False if file is ""
-    !db <- if exist then
-               M.fromAscList . map conv . lines <$> liftIO (readFile file)
-             else
-               return M.empty
-    return db
+    M.fromAscList . map conv . lines <$> readFile file
   where
     conv :: String -> (Symbol,[ModuleString])
     conv = read
