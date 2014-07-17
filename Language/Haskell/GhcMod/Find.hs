@@ -1,13 +1,17 @@
 {-# LANGUAGE CPP #-}
 
-module Language.Haskell.GhcMod.Find (
+module Language.Haskell.GhcMod.Find
+#ifndef SPEC
+  (
     Symbol
   , SymbolDb
   , loadSymbolDb
   , lookupSymbol
   , dumpSymbol
   , findSymbol
-  ) where
+  )
+#endif
+  where
 
 import Config (cProjectVersion,cTargetPlatformString)
 import Control.Applicative ((<$>))
