@@ -2,7 +2,6 @@ module CheckSpec where
 
 import Data.List (isSuffixOf, isInfixOf, isPrefixOf)
 import Language.Haskell.GhcMod
-import Language.Haskell.GhcMod.Cradle
 import System.FilePath
 import Test.Hspec
 
