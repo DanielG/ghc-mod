@@ -10,6 +10,7 @@ import qualified Control.Exception as E
 import Data.Typeable (Typeable)
 import Data.Version (showVersion)
 import Language.Haskell.GhcMod
+import Language.Haskell.GhcMod.Ghc
 import Language.Haskell.GhcMod.Monad
 import Paths_ghc_mod
 import System.Console.GetOpt (OptDescr(..), ArgDescr(..), ArgOrder(..))
@@ -130,6 +131,7 @@ main = flip E.catches handlers $ do
       "lint"    -> nArgs 1 $ withFile lint cmdArg1
       "root"    -> rootInfo
       "doc"     -> nArgs 1 $ pkgDoc cmdArg1
+      "dumpsym" -> dumpSymbol
       "boot"    -> boot
       "version" -> return progVersion
       "help"    -> return $ O.usageInfo usage argspec
