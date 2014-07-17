@@ -1,13 +1,17 @@
 {-# LANGUAGE CPP #-}
 
-module Language.Haskell.GhcMod.Find (
+module Language.Haskell.GhcMod.Find
+#ifndef SPEC
+  (
     Symbol
   , SymbolDb
   , loadSymbolDb
   , lookupSymbol
   , dumpSymbol
   , findSymbol
-  ) where
+  )
+#endif
+  where
 
 import Config (cProjectVersion,cTargetPlatformString)
 import Control.Applicative ((<$>))
@@ -23,12 +27,13 @@ import Exception (ghandle, handleIO)
 import qualified GHC as G
 import Language.Haskell.GhcMod.Convert
 import Language.Haskell.GhcMod.Monad
+import Language.Haskell.GhcMod.Utils
 import Language.Haskell.GhcMod.Types
 import Name (getOccString)
 import System.Directory (doesDirectoryExist, getAppUserDataDirectory, doesFileExist, getModificationTime)
 import System.FilePath ((</>))
 import System.IO
-import System.Process (readProcess)
+import System.Environment (getExecutablePath)
 
 #ifndef MIN_VERSION_containers
 #define MIN_VERSION_containers(x,y,z) 1
@@ -46,9 +51,8 @@ import qualified Data.Map as M
 
 -- | Type of function and operation names.
 type Symbol = String
-type Db = Map Symbol [ModuleString]
 -- | Database from 'Symbol' to \['ModuleString'\].
-newtype SymbolDb = SymbolDb Db
+newtype SymbolDb = SymbolDb (Map Symbol [ModuleString])
 
 ----------------------------------------------------------------
 
@@ -81,9 +85,18 @@ lookupSymbol opt sym db = convert opt $ lookupSymbol' sym db
 loadSymbolDb :: IO SymbolDb
 loadSymbolDb = SymbolDb <$> readSymbolDb
 
-readSymbolDb :: IO Db
+ghcModExecutable :: IO FilePath
+ghcModExecutable =
+#ifndef SPEC
+    getExecutablePath
+#else
+    return "dist/build/ghc-mod/ghc-mod"
+#endif
+
+readSymbolDb :: IO (Map Symbol [ModuleString])
 readSymbolDb = handle (\(SomeException _) -> return M.empty) $ do
-    file <- chop <$> readProcess "ghc-mod" ["dumpsym"] []
+    ghcMod <- ghcModExecutable
+    file <- chop <$> readProcess' ghcMod ["dumpsym"]
     M.fromAscList . map conv . lines <$> readFile file
   where
     conv :: String -> (Symbol,[ModuleString])

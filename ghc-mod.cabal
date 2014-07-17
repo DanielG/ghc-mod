@@ -197,6 +197,7 @@ Test-Suite spec
     Build-Depends:      Cabal >= 1.18
   if impl(ghc < 7.6.0)
     Build-Depends:      executable-path
+  CPP-Options:        -DSPEC=1
 
 Source-Repository head
   Type:                 git
