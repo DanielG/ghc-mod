@@ -5,27 +5,27 @@
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
 module Language.Haskell.GhcMod.Monad (
-   GhcMod
- , runGhcMod
- , liftGhcMod
- , GhcModT
- , IOish
- , GhcModEnv(..)
- , GhcModWriter
- , GhcModState(..)
- , runGhcModT'
- , runGhcModT
- , newGhcModEnv
- , withErrorHandler
- , toGhcMod
- , options
- , cradle
- , Options(..)
- , defaultOptions
- , module Control.Monad.Reader.Class
- , module Control.Monad.Writer.Class
- , module Control.Monad.State.Class
- ) where
+  -- * Monad Types
+    GhcMod
+  , GhcModT
+  , IOish
+  , GhcModEnv(..)
+  , GhcModState(..)
+  , GhcModWriter
+  -- * Monad utilities
+  , runGhcMod
+  , runGhcModT
+  , runGhcModT'
+  , withErrorHandler
+  , liftGhcMod
+  , toGhcMod
+  , newGhcModEnv
+  , options
+  , cradle
+  , module Control.Monad.Reader.Class
+  , module Control.Monad.Writer.Class
+  , module Control.Monad.State.Class
+  ) where
 
 #if __GLASGOW_HASKELL__ < 708
 -- 'CoreMonad.MonadIO' and 'Control.Monad.IO.Class.MonadIO' are different

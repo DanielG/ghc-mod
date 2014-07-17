@@ -34,7 +34,6 @@ import Data.Version (showVersion)
 import GHC (GhcMonad)
 import qualified GHC as G
 import Language.Haskell.GhcMod
-import Language.Haskell.GhcMod.Monad
 import Paths_ghc_mod
 import System.Console.GetOpt
 import System.Directory (setCurrentDirectory)

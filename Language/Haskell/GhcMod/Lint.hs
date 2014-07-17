@@ -6,6 +6,7 @@ import CoreMonad (liftIO)
 import Language.Haskell.GhcMod.Logger (checkErrorPrefix)
 import Language.Haskell.GhcMod.Convert
 import Language.Haskell.GhcMod.Monad
+import Language.Haskell.GhcMod.Types
 import Language.Haskell.HLint (hlint)
 
 -- | Checking syntax of a target file using hlint.
