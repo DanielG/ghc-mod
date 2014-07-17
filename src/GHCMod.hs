@@ -125,7 +125,7 @@ main = flip E.catches handlers $ do
       "type"    -> nArgs 4 $ types cmdArg1 (read cmdArg3) (read cmdArg4)
       "split"   -> nArgs 4 $ splits cmdArg1 (read cmdArg3) (read cmdArg4)
       "sig"     -> nArgs 4 $ sig cmdArg1 (read cmdArg3) (read cmdArg4)
-      --"refine"  -> nArgs 5 $ refine cmdArg1 (read cmdArg3) (read cmdArg4) cmdArg5
+      "refine"  -> nArgs 5 $ refine cmdArg1 (read cmdArg3) (read cmdArg4) cmdArg5
       "find"    -> nArgs 1 $ findSymbol cmdArg1
       "lint"    -> nArgs 1 $ withFile lint cmdArg1
       "root"    -> rootInfo

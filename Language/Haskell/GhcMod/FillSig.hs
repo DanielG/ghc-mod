@@ -2,6 +2,7 @@
 
 module Language.Haskell.GhcMod.FillSig (
     sig
+  , refine
   ) where
 
 import Data.Char (isSymbol)
@@ -181,13 +182,14 @@ isSymbolName []    = error "This should never happen"
 -- REWRITE A HOLE / UNDEFINED VIA A FUNCTION
 ----------------------------------------------------------------
 
-{-
 refine :: IOish m
        => FilePath     -- ^ A target file.
        -> Int          -- ^ Line number.
        -> Int          -- ^ Column number.
        -> Expression   -- ^ A Haskell expression.
        -> GhcModT m String
+refine file lineNo colNo expr = undefined
+{-
 refine file lineNo colNo expr = ghandle handler body
   where
     body = inModuleContext file $ \dflag style -> do
