@@ -3,7 +3,7 @@
 module Language.Haskell.GhcMod.Find (
     Symbol
   , SymbolDb
-  , getSymbolDb
+  , loadSymbolDb
   , lookupSymbol
   , dumpSymbol
   , findSymbol
@@ -44,10 +44,10 @@ import qualified Data.Map as M
 
 ----------------------------------------------------------------
 
--- | Type of key for `SymbolDb`.
+-- | Type of function and operation names.
 type Symbol = String
 type Db = Map Symbol [ModuleString]
--- | Database from 'Symbol' to modules.
+-- | Database from 'Symbol' to \['ModuleString'\].
 newtype SymbolDb = SymbolDb Db
 
 ----------------------------------------------------------------
@@ -65,23 +65,24 @@ packageConfDir = "package.conf.d"
 
 -- | Finding modules to which the symbol belong.
 findSymbol :: IOish m => Symbol -> GhcModT m String
-findSymbol sym = convert' =<< lookupSymbol' sym <$> liftIO getSymbolDb
+findSymbol sym = convert' =<< lookupSymbol' sym <$> liftIO loadSymbolDb
 
 lookupSymbol' :: Symbol -> SymbolDb -> [ModuleString]
 lookupSymbol' sym (SymbolDb db) = fromMaybe [] (M.lookup sym db)
 
--- | Looking up 'SymbolDb' with 'Symbol' to find modules.
+-- | Looking up 'SymbolDb' with 'Symbol' to \['ModuleString'\]
+--   which will be concatenated.
 lookupSymbol :: Options -> Symbol -> SymbolDb -> String
 lookupSymbol opt sym db = convert opt $ lookupSymbol' sym db
 
 ---------------------------------------------------------------
 
--- | Creating 'SymbolDb'.
-getSymbolDb :: IO SymbolDb
-getSymbolDb = SymbolDb <$> loadSymbolDb
+-- | Loading a file and creates 'SymbolDb'.
+loadSymbolDb :: IO SymbolDb
+loadSymbolDb = SymbolDb <$> readSymbolDb
 
-loadSymbolDb :: IO Db
-loadSymbolDb = handle (\(SomeException _) -> return M.empty) $ do
+readSymbolDb :: IO Db
+readSymbolDb = handle (\(SomeException _) -> return M.empty) $ do
     file <- chop <$> readProcess "ghc-mod" ["dumpsym"] []
     M.fromAscList . map conv . lines <$> readFile file
   where
@@ -101,6 +102,9 @@ getPath = do
         []  -> return Nothing
         u:_ -> liftIO $ resolvePackageDb df u
 
+-- | Dumping a set of ('Symbol',\['ModuleString'\]) to a file
+--   if the file does not exist or is invalid.
+--   The file name is printed.
 dumpSymbol :: IOish m => GhcModT m String
 dumpSymbol = do
     mdir <- getPath

@@ -34,7 +34,6 @@ import Data.Version (showVersion)
 import GHC (GhcMonad)
 import qualified GHC as G
 import Language.Haskell.GhcMod
-import Language.Haskell.GhcMod.Ghc
 import Language.Haskell.GhcMod.Monad
 import Paths_ghc_mod
 import System.Console.GetOpt
@@ -116,7 +115,7 @@ replace (x:xs)    =  x  : replace xs
 ----------------------------------------------------------------
 
 setupDB :: MVar SymbolDb -> IO ()
-setupDB mvar = getSymbolDb >>= putMVar mvar
+setupDB mvar = loadSymbolDb >>= putMVar mvar
 
 ----------------------------------------------------------------
 

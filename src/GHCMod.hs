@@ -10,7 +10,6 @@ import qualified Control.Exception as E
 import Data.Typeable (Typeable)
 import Data.Version (showVersion)
 import Language.Haskell.GhcMod
-import Language.Haskell.GhcMod.Ghc
 import Language.Haskell.GhcMod.Monad
 import Paths_ghc_mod
 import System.Console.GetOpt (OptDescr(..), ArgDescr(..), ArgOrder(..))

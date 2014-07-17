@@ -53,7 +53,6 @@ Library
   GHC-Options:          -Wall
   Default-Extensions:   ConstraintKinds, FlexibleContexts
   Exposed-Modules:      Language.Haskell.GhcMod
-                        Language.Haskell.GhcMod.Ghc
                         Language.Haskell.GhcMod.Monad
                         Language.Haskell.GhcMod.Internal
   Other-Modules:        Language.Haskell.GhcMod.Boot

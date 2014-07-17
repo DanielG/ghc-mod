@@ -13,6 +13,8 @@ module Language.Haskell.GhcMod (
   , ModuleString
   , Expression
   , GhcPkgDb
+  , Symbol
+  , SymbolDb
   -- * 'GhcMod' utilities
   , boot
   , browse
@@ -21,6 +23,7 @@ module Language.Haskell.GhcMod (
   , debugInfo
   , expandTemplate
   , findSymbol
+  , dumpSymbol
   , info
   , lint
   , pkgDoc
@@ -31,6 +34,9 @@ module Language.Haskell.GhcMod (
   , modules
   , languages
   , flags
+  -- * SymbolDb
+  , loadSymbolDb
+  , lookupSymbol
   ) where
 
 import Language.Haskell.GhcMod.Boot
