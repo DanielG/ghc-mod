@@ -1,5 +1,6 @@
 module Language.Haskell.GhcMod.Utils where
 
+import MonadUtils (MonadIO, liftIO)
 import Control.Exception (bracket)
 import System.Directory (getCurrentDirectory, setCurrentDirectory)
 import System.Process (readProcessWithExitCode)
@@ -22,12 +23,12 @@ extractParens str = extractParens' str 0
        | s `elem` "}])" = s : extractParens' ss (level-1)
        | otherwise = s : extractParens' ss level
 
-readProcess' :: String -> [String] -> IO String
+readProcess' :: MonadIO m => String -> [String] -> m String
 readProcess' cmd opts = do
-  (rv,output,err) <- readProcessWithExitCode cmd opts ""
+  (rv,output,err) <- liftIO $ readProcessWithExitCode cmd opts ""
   case rv of
     ExitFailure val -> do
-        hPutStrLn stderr err
+        liftIO $ hPutStrLn stderr err
         fail $ cmd ++ " " ++ unwords opts ++ " (exit " ++ show val ++ ")"
     ExitSuccess ->
         return output
