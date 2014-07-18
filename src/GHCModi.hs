@@ -190,8 +190,7 @@ findSym :: IOish m => Set FilePath -> String -> MVar SymbolDb
         -> GhcModT m (String, Bool, Set FilePath)
 findSym set sym mvar = do
     db <- liftIO $ readMVar mvar
-    opt <- options
-    let ret = lookupSymbol opt sym db
+    ret <- lookupSymbol sym db
     return (ret, True, set)
 
 lintStx :: IOish m => Set FilePath

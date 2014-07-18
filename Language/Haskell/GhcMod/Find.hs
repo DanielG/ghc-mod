@@ -1,4 +1,4 @@
-{-# LANGUAGE CPP #-}
+{-# LANGUAGE CPP, BangPatterns #-}
 
 module Language.Haskell.GhcMod.Find
 #ifndef SPEC
@@ -9,6 +9,7 @@ module Language.Haskell.GhcMod.Find
   , lookupSymbol
   , dumpSymbol
   , findSymbol
+  , lookupSym
   )
 #endif
   where
@@ -69,15 +70,15 @@ packageConfDir = "package.conf.d"
 
 -- | Finding modules to which the symbol belong.
 findSymbol :: IOish m => Symbol -> GhcModT m String
-findSymbol sym = convert' =<< lookupSymbol' sym <$> liftIO loadSymbolDb
-
-lookupSymbol' :: Symbol -> SymbolDb -> [ModuleString]
-lookupSymbol' sym (SymbolDb db) = fromMaybe [] (M.lookup sym db)
+findSymbol sym = liftIO loadSymbolDb >>= lookupSymbol sym
 
 -- | Looking up 'SymbolDb' with 'Symbol' to \['ModuleString'\]
 --   which will be concatenated.
-lookupSymbol :: Options -> Symbol -> SymbolDb -> String
-lookupSymbol opt sym db = convert opt $ lookupSymbol' sym db
+lookupSymbol :: IOish m => Symbol -> SymbolDb -> GhcModT m String
+lookupSymbol sym db = convert' $ lookupSym sym db
+
+lookupSym :: Symbol -> SymbolDb -> [ModuleString]
+lookupSym sym (SymbolDb db) = fromMaybe [] $ M.lookup sym db
 
 ---------------------------------------------------------------
 
