@@ -12,7 +12,9 @@ module Language.Haskell.GhcMod.Monad (
   -- ** Environment, state and logging
   , GhcModEnv(..)
   , newGhcModEnv
-  , GhcModState(..)
+  , GhcModState
+  , defaultState
+  , Mode(..)
   , GhcModWriter
   -- * Monad utilities
   , runGhcMod
@@ -22,9 +24,11 @@ module Language.Haskell.GhcMod.Monad (
   -- ** Conversion
   , liftGhcMod
   , toGhcMod
-  -- ** Accessing 'GhcModEnv'
+  -- ** Accessing 'GhcModEnv' and 'GhcModState'
   , options
   , cradle
+  , getMode
+  , setMode
   -- ** Exporting convenient modules
   , module Control.Monad.Reader.Class
   , module Control.Monad.Writer.Class
@@ -101,10 +105,12 @@ data GhcModEnv = GhcModEnv {
     , gmCradle     :: Cradle
     }
 
-data GhcModState = GhcModState deriving (Eq,Show,Read)
+data GhcModState = GhcModState Mode deriving (Eq,Show,Read)
+
+data Mode = Simple | Intelligent deriving (Eq,Show,Read)
 
 defaultState :: GhcModState
-defaultState = GhcModState
+defaultState = GhcModState Simple
 
 type GhcModWriter = ()
 
@@ -280,6 +286,16 @@ options = gmOptions <$> ask
 
 cradle :: IOish m => GhcModT m Cradle
 cradle = gmCradle <$> ask
+
+getMode :: IOish m => GhcModT m Mode
+getMode = do
+    GhcModState mode <- get
+    return mode
+
+setMode :: IOish m => Mode -> GhcModT m ()
+setMode mode = put $ GhcModState mode
+
+----------------------------------------------------------------
 
 instance (MonadBaseControl IO m) => MonadBase IO (GhcModT m) where
     liftBase = GhcModT . liftBase
