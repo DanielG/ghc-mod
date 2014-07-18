@@ -68,7 +68,8 @@ packageConfDir = "package.conf.d"
 
 ----------------------------------------------------------------
 
--- | Finding modules to which the symbol belong.
+-- | Looking up 'SymbolDb' with 'Symbol' to \['ModuleString'\]
+--   which will be concatenated. 'loadSymbolDb' is called internally.
 findSymbol :: IOish m => Symbol -> GhcModT m String
 findSymbol sym = liftIO loadSymbolDb >>= lookupSymbol sym
 
