@@ -1,13 +1,18 @@
 {-# LANGUAGE CPP, BangPatterns #-}
 
-module Language.Haskell.GhcMod.Find (
+module Language.Haskell.GhcMod.Find
+#ifndef SPEC
+  (
     Symbol
   , SymbolDb
-  , getSymbolDb
+  , loadSymbolDb
   , lookupSymbol
   , dumpSymbol
   , findSymbol
-  ) where
+  , lookupSym
+  )
+#endif
+  where
 
 import Config (cProjectVersion,cTargetPlatformString)
 import Control.Applicative ((<$>))
@@ -19,16 +24,17 @@ import Data.List (groupBy, sort)
 import Data.List.Split (splitOn)
 import Data.Maybe (fromMaybe)
 import DynFlags (DynFlags(..), systemPackageConfig)
-import Exception (handleIO)
+import Exception (ghandle, handleIO)
 import qualified GHC as G
 import Language.Haskell.GhcMod.Convert
 import Language.Haskell.GhcMod.Monad
+import Language.Haskell.GhcMod.Utils
 import Language.Haskell.GhcMod.Types
 import Name (getOccString)
 import System.Directory (doesDirectoryExist, getAppUserDataDirectory, doesFileExist, getModificationTime)
 import System.FilePath ((</>))
 import System.IO
-import System.Process (readProcess)
+import System.Environment (getExecutablePath)
 
 #ifndef MIN_VERSION_containers
 #define MIN_VERSION_containers(x,y,z) 1
@@ -44,11 +50,10 @@ import qualified Data.Map as M
 
 ----------------------------------------------------------------
 
--- | Type of key for `SymbolDb`.
+-- | Type of function and operation names.
 type Symbol = String
-type Db = Map Symbol [ModuleString]
--- | Database from 'Symbol' to modules.
-newtype SymbolDb = SymbolDb Db
+-- | Database from 'Symbol' to \['ModuleString'\].
+newtype SymbolDb = SymbolDb (Map Symbol [ModuleString])
 
 ----------------------------------------------------------------
 
@@ -63,26 +68,37 @@ packageConfDir = "package.conf.d"
 
 ----------------------------------------------------------------
 
--- | Finding modules to which the symbol belong.
+-- | Looking up 'SymbolDb' with 'Symbol' to \['ModuleString'\]
+--   which will be concatenated. 'loadSymbolDb' is called internally.
 findSymbol :: IOish m => Symbol -> GhcModT m String
-findSymbol sym = convert' =<< lookupSymbol' sym <$> liftIO getSymbolDb
+findSymbol sym = liftIO loadSymbolDb >>= lookupSymbol sym
 
-lookupSymbol' :: Symbol -> SymbolDb -> [ModuleString]
-lookupSymbol' sym (SymbolDb db) = fromMaybe [] (M.lookup sym db)
+-- | Looking up 'SymbolDb' with 'Symbol' to \['ModuleString'\]
+--   which will be concatenated.
+lookupSymbol :: IOish m => Symbol -> SymbolDb -> GhcModT m String
+lookupSymbol sym db = convert' $ lookupSym sym db
 
--- | Looking up 'SymbolDb' with 'Symbol' to find modules.
-lookupSymbol :: Options -> Symbol -> SymbolDb -> String
-lookupSymbol opt sym db = convert opt $ lookupSymbol' sym db
+lookupSym :: Symbol -> SymbolDb -> [ModuleString]
+lookupSym sym (SymbolDb db) = fromMaybe [] $ M.lookup sym db
 
 ---------------------------------------------------------------
 
--- | Creating 'SymbolDb'.
-getSymbolDb :: IO SymbolDb
-getSymbolDb = SymbolDb <$> loadSymbolDb
+-- | Loading a file and creates 'SymbolDb'.
+loadSymbolDb :: IO SymbolDb
+loadSymbolDb = SymbolDb <$> readSymbolDb
 
-loadSymbolDb :: IO Db
-loadSymbolDb = handle (\(SomeException _) -> return M.empty) $ do
-    file <- chop <$> readProcess "ghc-mod" ["dumpsym"] []
+ghcModExecutable :: IO FilePath
+ghcModExecutable =
+#ifndef SPEC
+    getExecutablePath
+#else
+    return "dist/build/ghc-mod/ghc-mod"
+#endif
+
+readSymbolDb :: IO (Map Symbol [ModuleString])
+readSymbolDb = handle (\(SomeException _) -> return M.empty) $ do
+    ghcMod <- ghcModExecutable
+    file <- chop <$> readProcess' ghcMod ["dumpsym"]
     M.fromAscList . map conv . lines <$> readFile file
   where
     conv :: String -> (Symbol,[ModuleString])
@@ -101,6 +117,9 @@ getPath = do
         []  -> return Nothing
         u:_ -> liftIO $ resolvePackageDb df u
 
+-- | Dumping a set of ('Symbol',\['ModuleString'\]) to a file
+--   if the file does not exist or is invalid.
+--   The file name is printed.
 dumpSymbol :: IOish m => GhcModT m String
 dumpSymbol = do
     mdir <- getPath
@@ -109,12 +128,12 @@ dumpSymbol = do
         Just dir -> do
             let cache = dir </> symbolCache
                 pkgdb = dir </> packageCache
-            do -- fixme: bracket
+            ghandle (\(SomeException _) -> return "") $ do
                 create <- liftIO $ needToCreate cache pkgdb
                 when create $ do
                     sm <- getSymbol
                     void . liftIO $ withFile cache WriteMode $ \hdl ->
-                        mapM (hPutStrLn hdl . show) sm
+                        mapM (hPrint hdl) sm
                 return cache
     return $ ret ++ "\n"
 

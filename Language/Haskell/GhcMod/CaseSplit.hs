@@ -184,7 +184,7 @@ getBindingText text srcSpan =
            [T.drop (sc - 1) $ T.take ec $ head lines_]
       else -- several lines
             let (first,rest,last_) = (head lines_, tail $ init lines_, last lines_)
-             in (T.drop (sc - 1) first) : rest ++ [T.take ec last_]
+             in T.drop (sc - 1) first : rest ++ [T.take ec last_]
 
 srcSpanDifference :: SrcSpan -> SrcSpan -> (Int,Int,Int,Int)
 srcSpanDifference b v =

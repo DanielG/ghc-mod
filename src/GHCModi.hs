@@ -31,11 +31,8 @@ import Data.Set (Set)
 import qualified Data.Set as S
 import Data.Typeable (Typeable)
 import Data.Version (showVersion)
-import GHC (GhcMonad)
 import qualified GHC as G
 import Language.Haskell.GhcMod
-import Language.Haskell.GhcMod.Ghc
-import Language.Haskell.GhcMod.Monad
 import Paths_ghc_mod
 import System.Console.GetOpt
 import System.Directory (setCurrentDirectory)
@@ -116,7 +113,7 @@ replace (x:xs)    =  x  : replace xs
 ----------------------------------------------------------------
 
 setupDB :: MVar SymbolDb -> IO ()
-setupDB mvar = getSymbolDb >>= putMVar mvar
+setupDB mvar = loadSymbolDb >>= putMVar mvar
 
 ----------------------------------------------------------------
 
@@ -154,14 +151,14 @@ checkStx :: IOish m
          -> FilePath
          -> GhcModT m (String, Bool, Set FilePath)
 checkStx set file = do
-    set' <- toGhcMod $ newFileSet set file
+    set' <- newFileSet set file
     let files = S.toList set'
     eret <- check files
     case eret of
         Right ret -> return (ret, True, set')
         Left ret  -> return (ret, True, set) -- fxime: set
 
-newFileSet :: GhcMonad m => Set FilePath -> FilePath -> m (Set FilePath)
+newFileSet :: IOish m => Set FilePath -> FilePath -> GhcModT m (Set FilePath)
 newFileSet set file = do
     let set1
          | S.member file set = set
@@ -171,7 +168,7 @@ newFileSet set file = do
         Nothing       -> set1
         Just mainfile -> S.delete mainfile set1
 
-getModSummaryForMain :: GhcMonad m => m (Maybe G.ModSummary)
+getModSummaryForMain :: IOish m => GhcModT m (Maybe G.ModSummary)
 getModSummaryForMain = find isMain <$> G.getModuleGraph
   where
     isMain m = G.moduleNameString (G.moduleName (G.ms_mod m)) == "Main"
@@ -193,21 +190,19 @@ findSym :: IOish m => Set FilePath -> String -> MVar SymbolDb
         -> GhcModT m (String, Bool, Set FilePath)
 findSym set sym mvar = do
     db <- liftIO $ readMVar mvar
-    opt <- options
-    let ret = lookupSymbol opt sym db
+    ret <- lookupSymbol sym db
     return (ret, True, set)
 
 lintStx :: IOish m => Set FilePath
         -> FilePath
         -> GhcModT m (String, Bool, Set FilePath)
 lintStx set optFile = do
-    ret <- local env' $ lint file
+    ret <- withOptions changeOpt $ lint file
     return (ret, True, set)
   where
     (opts,file) = parseLintOptions optFile
     hopts = if opts == "" then [] else read opts
-    env' e = e { gmOptions = opt' $ gmOptions e }
-    opt' o = o { hlintOpts = hopts }
+    changeOpt o = o { hlintOpts = hopts }
 
 -- |
 -- >>> parseLintOptions "[\"--ignore=Use camelCase\", \"--ignore=Eta reduce\"] file name"

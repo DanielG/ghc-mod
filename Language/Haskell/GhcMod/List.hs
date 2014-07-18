@@ -4,8 +4,9 @@ import Control.Applicative ((<$>))
 import Control.Exception (SomeException(..))
 import Data.List (nub, sort)
 import qualified GHC as G
-import Language.Haskell.GhcMod.Monad
 import Language.Haskell.GhcMod.Convert
+import Language.Haskell.GhcMod.Monad
+import Language.Haskell.GhcMod.Types
 import Packages (pkgIdMap, exposedModules, sourcePackageId, display)
 import UniqFM (eltsUFM)
 
@@ -15,7 +16,7 @@ import UniqFM (eltsUFM)
 modules :: IOish m => GhcModT m String
 modules = do
     opt <- options
-    convert opt . (arrange opt) <$> (getModules `G.gcatch` handler)
+    convert opt . arrange opt <$> (getModules `G.gcatch` handler)
   where
     getModules = getExposedModules <$> G.getSessionDynFlags
     getExposedModules = concatMap exposedModules'

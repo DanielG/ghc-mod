@@ -11,11 +11,11 @@ import Exception (ghandle)
 import FastString (mkFastString)
 import GHC (GhcException(CmdLineError), ModuleInfo, Name, TyThing, DynFlags, Type, TyCon)
 import qualified GHC as G
-import Language.Haskell.GhcMod.Doc (showPage, styleUnqualified)
-import Language.Haskell.GhcMod.DynFlags
-import Language.Haskell.GhcMod.Gap
-import Language.Haskell.GhcMod.Monad
 import Language.Haskell.GhcMod.Convert
+import Language.Haskell.GhcMod.Doc (showPage, styleUnqualified)
+import Language.Haskell.GhcMod.Gap
+import Language.Haskell.GhcMod.Monad (IOish, GhcModT, options)
+import Language.Haskell.GhcMod.Target (setTargetFiles)
 import Language.Haskell.GhcMod.Types
 import Name (getOccString)
 import Outputable (ppr, Outputable)

@@ -53,19 +53,17 @@ Library
   GHC-Options:          -Wall
   Default-Extensions:   ConstraintKinds, FlexibleContexts
   Exposed-Modules:      Language.Haskell.GhcMod
-                        Language.Haskell.GhcMod.Ghc
-                        Language.Haskell.GhcMod.Monad
                         Language.Haskell.GhcMod.Internal
   Other-Modules:        Language.Haskell.GhcMod.Boot
                         Language.Haskell.GhcMod.Browse
-                        Language.Haskell.GhcMod.CabalApi
-                        Language.Haskell.GhcMod.CabalConfig
                         Language.Haskell.GhcMod.Cabal16
                         Language.Haskell.GhcMod.Cabal18
+                        Language.Haskell.GhcMod.CabalApi
+                        Language.Haskell.GhcMod.CabalConfig
                         Language.Haskell.GhcMod.CaseSplit
                         Language.Haskell.GhcMod.Check
-                        Language.Haskell.GhcMod.Cradle
                         Language.Haskell.GhcMod.Convert
+                        Language.Haskell.GhcMod.Cradle
                         Language.Haskell.GhcMod.Debug
                         Language.Haskell.GhcMod.Doc
                         Language.Haskell.GhcMod.DynFlags
@@ -76,16 +74,18 @@ Library
                         Language.Haskell.GhcMod.GHCChoice
                         Language.Haskell.GhcMod.Gap
                         Language.Haskell.GhcMod.GhcPkg
-                        Language.Haskell.GhcMod.Logger
                         Language.Haskell.GhcMod.Info
                         Language.Haskell.GhcMod.Lang
                         Language.Haskell.GhcMod.Lint
                         Language.Haskell.GhcMod.List
+                        Language.Haskell.GhcMod.Logger
+                        Language.Haskell.GhcMod.Monad
                         Language.Haskell.GhcMod.PkgDoc
-                        Language.Haskell.GhcMod.Utils
-                        Language.Haskell.GhcMod.Types
                         Language.Haskell.GhcMod.Read
                         Language.Haskell.GhcMod.SrcUtils
+                        Language.Haskell.GhcMod.Target
+                        Language.Haskell.GhcMod.Types
+                        Language.Haskell.GhcMod.Utils
   Build-Depends:        base >= 4.0 && < 5
                       , containers
                       , deepseq
@@ -198,6 +198,7 @@ Test-Suite spec
     Build-Depends:      Cabal >= 1.18
   if impl(ghc < 7.6.0)
     Build-Depends:      executable-path
+  CPP-Options:        -DSPEC=1
 
 Source-Repository head
   Type:                 git

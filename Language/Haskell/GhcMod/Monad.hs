@@ -5,27 +5,36 @@
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
 module Language.Haskell.GhcMod.Monad (
-   GhcMod
- , runGhcMod
- , liftGhcMod
- , GhcModT
- , IOish
- , GhcModEnv(..)
- , GhcModWriter
- , GhcModState(..)
- , runGhcModT'
- , runGhcModT
- , newGhcModEnv
- , withErrorHandler
- , toGhcMod
- , options
- , cradle
- , Options(..)
- , defaultOptions
- , module Control.Monad.Reader.Class
- , module Control.Monad.Writer.Class
- , module Control.Monad.State.Class
- ) where
+  -- * Monad Types
+    GhcMod
+  , GhcModT
+  , IOish
+  -- ** Environment, state and logging
+  , GhcModEnv(..)
+  , newGhcModEnv
+  , GhcModState
+  , defaultState
+  , Mode(..)
+  , GhcModWriter
+  -- * Monad utilities
+  , runGhcMod
+  , runGhcModT
+  , runGhcModT'
+  , withErrorHandler
+  -- ** Conversion
+  , liftGhcMod
+  , toGhcModT
+  -- ** Accessing 'GhcModEnv' and 'GhcModState'
+  , options
+  , cradle
+  , getMode
+  , setMode
+  , withOptions
+  -- ** Exporting convenient modules
+  , module Control.Monad.Reader.Class
+  , module Control.Monad.Writer.Class
+  , module Control.Monad.State.Class
+  ) where
 
 #if __GLASGOW_HASKELL__ < 708
 -- 'CoreMonad.MonadIO' and 'Control.Monad.IO.Class.MonadIO' are different
@@ -97,10 +106,12 @@ data GhcModEnv = GhcModEnv {
     , gmCradle     :: Cradle
     }
 
-data GhcModState = GhcModState deriving (Eq,Show,Read)
+data GhcModState = GhcModState Mode deriving (Eq,Show,Read)
+
+data Mode = Simple | Intelligent deriving (Eq,Show,Read)
 
 defaultState :: GhcModState
-defaultState = GhcModState
+defaultState = GhcModState Simple
 
 type GhcModWriter = ()
 
@@ -188,8 +199,9 @@ initSession :: GhcMonad m
             -> m ()
 initSession build Options {..} CompilerOptions {..} = do
     df <- G.getSessionDynFlags
-    void $ G.setSessionDynFlags =<< (addCmdOpts ghcOptions
-      $ setModeSimple
+    void $ G.setSessionDynFlags =<< addCmdOpts ghcOptions
+      ( setModeSimple
+      $ Gap.setFlags
       $ setIncludeDirs includeDirs
       $ setBuildEnv build
       $ setEmptyLogger
@@ -263,8 +275,8 @@ withErrorHandler label = ghandle ignore
         exitSuccess
 
 -- | This is only a transitional mechanism don't use it for new code.
-toGhcMod :: IOish m => Ghc a -> GhcModT m a
-toGhcMod a = do
+toGhcModT :: IOish m => Ghc a -> GhcModT m a
+toGhcModT a = do
     s <- gmGhcSession <$> ask
     liftIO $ unGhc a $ Session s
 
@@ -275,6 +287,25 @@ options = gmOptions <$> ask
 
 cradle :: IOish m => GhcModT m Cradle
 cradle = gmCradle <$> ask
+
+getMode :: IOish m => GhcModT m Mode
+getMode = do
+    GhcModState mode <- get
+    return mode
+
+setMode :: IOish m => Mode -> GhcModT m ()
+setMode mode = put $ GhcModState mode
+
+----------------------------------------------------------------
+
+withOptions :: IOish m => (Options -> Options) -> GhcModT m a -> GhcModT m a
+withOptions changeOpt action = local changeEnv action
+  where
+    changeEnv e = e { gmOptions = changeOpt opt }
+      where
+        opt = gmOptions e
+
+----------------------------------------------------------------
 
 instance (MonadBaseControl IO m) => MonadBase IO (GhcModT m) where
     liftBase = GhcModT . liftBase

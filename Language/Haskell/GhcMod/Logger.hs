@@ -1,4 +1,4 @@
-{-# LANGUAGE BangPatterns, CPP #-}
+{-# LANGUAGE CPP #-}
 
 module Language.Haskell.GhcMod.Logger (
     withLogger
@@ -21,6 +21,7 @@ import Language.Haskell.GhcMod.DynFlags (withDynFlags, withCmdFlags)
 import qualified Language.Haskell.GhcMod.Gap as Gap
 import Language.Haskell.GhcMod.Convert (convert')
 import Language.Haskell.GhcMod.Monad
+import Language.Haskell.GhcMod.Types
 import Outputable (PprStyle, SDoc)
 import System.FilePath (normalise)
 
@@ -62,9 +63,9 @@ withLogger :: IOish m
            -> GhcModT m ()
            -> GhcModT m (Either String String)
 withLogger setDF body = ghandle sourceError $ do
-    logref <- liftIO $ newLogRef
+    logref <- liftIO newLogRef
     wflags <- filter ("-fno-warn" `isPrefixOf`) . ghcOpts <$> options
-    withDynFlags (setLogger logref . setDF) $ do
+    withDynFlags (setLogger logref . setDF) $
         withCmdFlags wflags $ do
             body
             Right <$> readAndClearLogRef logref
@@ -78,8 +79,8 @@ withLogger setDF body = ghandle sourceError $ do
 sourceError :: IOish m => SourceError -> GhcModT m (Either String String)
 sourceError err = do
     dflags <- G.getSessionDynFlags
-    style <- toGhcMod getStyle
-    ret <- convert' $ (errBagToStrList dflags style . srcErrorMessages $ err)
+    style <- toGhcModT getStyle
+    ret <- convert' (errBagToStrList dflags style . srcErrorMessages $ err)
     return $ Left ret
 
 errBagToStrList :: DynFlags -> PprStyle -> Bag ErrMsg -> [String]

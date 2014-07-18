@@ -16,7 +16,7 @@ debugInfo :: IOish m => GhcModT m String
 debugInfo = cradle >>= \c -> convert' =<< do
     CompilerOptions gopts incDir pkgs <-
         if isJust $ cradleCabalFile c then
-            (fromCabalFile c ||> simpleCompilerOption)
+            fromCabalFile c ||> simpleCompilerOption
           else
             simpleCompilerOption
     return [
