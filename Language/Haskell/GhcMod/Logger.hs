@@ -79,7 +79,7 @@ withLogger setDF body = ghandle sourceError $ do
 sourceError :: IOish m => SourceError -> GhcModT m (Either String String)
 sourceError err = do
     dflags <- G.getSessionDynFlags
-    style <- toGhcMod getStyle
+    style <- toGhcModT getStyle
     ret <- convert' (errBagToStrList dflags style . srcErrorMessages $ err)
     return $ Left ret
 

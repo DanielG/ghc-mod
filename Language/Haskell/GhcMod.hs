@@ -15,7 +15,12 @@ module Language.Haskell.GhcMod (
   , GhcPkgDb
   , Symbol
   , SymbolDb
-  , module Language.Haskell.GhcMod.Monad
+  -- * Monad Types
+  , GhcModT
+  , IOish
+  -- * Monad utilities
+  , runGhcModT
+  , withOptions
   -- * 'GhcMod' utilities
   , boot
   , browse

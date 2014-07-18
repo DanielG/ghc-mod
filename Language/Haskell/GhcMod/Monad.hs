@@ -23,12 +23,13 @@ module Language.Haskell.GhcMod.Monad (
   , withErrorHandler
   -- ** Conversion
   , liftGhcMod
-  , toGhcMod
+  , toGhcModT
   -- ** Accessing 'GhcModEnv' and 'GhcModState'
   , options
   , cradle
   , getMode
   , setMode
+  , withOptions
   -- ** Exporting convenient modules
   , module Control.Monad.Reader.Class
   , module Control.Monad.Writer.Class
@@ -274,8 +275,8 @@ withErrorHandler label = ghandle ignore
         exitSuccess
 
 -- | This is only a transitional mechanism don't use it for new code.
-toGhcMod :: IOish m => Ghc a -> GhcModT m a
-toGhcMod a = do
+toGhcModT :: IOish m => Ghc a -> GhcModT m a
+toGhcModT a = do
     s <- gmGhcSession <$> ask
     liftIO $ unGhc a $ Session s
 
@@ -294,6 +295,15 @@ getMode = do
 
 setMode :: IOish m => Mode -> GhcModT m ()
 setMode mode = put $ GhcModState mode
+
+----------------------------------------------------------------
+
+withOptions :: IOish m => (Options -> Options) -> GhcModT m a -> GhcModT m a
+withOptions changeOpt action = local changeEnv action
+  where
+    changeEnv e = e { gmOptions = changeOpt opt }
+      where
+        opt = gmOptions e
 
 ----------------------------------------------------------------
 
