@@ -7,6 +7,7 @@ module Language.Haskell.GhcMod.FillSig (
 
 import Data.Char (isSymbol)
 import Data.List (find, intercalate)
+import Data.Maybe (isJust)
 import Exception (ghandle, SomeException(..))
 import GHC (GhcMonad, Id, ParsedModule(..), TypecheckedModule(..), DynFlags, SrcSpan, Type, GenLocated(L))
 import qualified GHC as G
@@ -188,33 +189,26 @@ refine :: IOish m
        -> Int          -- ^ Column number.
        -> Expression   -- ^ A Haskell expression.
        -> GhcModT m String
-refine file lineNo colNo expr = undefined
-{-
 refine file lineNo colNo expr = ghandle handler body
   where
     body = inModuleContext file $ \dflag style -> do
         opt <- options
         modSum <- Gap.fileModSummary file
-        ty <- G.exprType expr
-        whenFound opt (findVar modSum lineNo colNo) $ \s -> case s of
-          loc -> "a"
+        -- ty <- G.exprType expr  -- If involving local bindings, it's not useful
+        whenFound opt (findVar dflag style modSum lineNo colNo) $ \s -> case s of
+          (loc, name, ty) -> (fourInts loc, name)
             
     handler (SomeException _) = emptyResult =<< options
 
--- Look for the variable in the specified
-findVar :: GhcMonad m => G.ModSummary -> Int -> Int -> m (SrcSpan, Type)
-findVar modSum lineNo colNo = do
+-- Look for the variable in the specified position
+findVar :: GhcMonad m => DynFlags -> PprStyle -> G.ModSummary -> Int -> Int -> m (Maybe (SrcSpan, String, Type))
+findVar dflag style modSum lineNo colNo = do
     p <- G.parseModule modSum
     tcm@TypecheckedModule{tm_typechecked_source = tcs} <- G.typecheckModule p
-    let es = listifySpans tcs (lineNo, colNo) :: [LHsExpr Id]
-    ets <- mapM (getType tcm) es
-    return $ catMaybes $ concat [ets, bts, pts]
-    
-findVar :: GhcMonad m => G.ModSummary -> Int -> Int -> m (Maybe SrcSpan)
-findVar modSum lineNo colNo = do
-   ParsedModule{pm_parsed_source = ps} <- G.parseModule modSum
-   -- Inspect the parse tree to find the variable
-   case listifyParsedSpans ps (lineNo, colNo) :: [G.LHsExpr G.RdrName] of
-     (L loc (G.HsVar _)):_ -> return $ Just loc
-     _                     -> return Nothing
--}
+    case listifySpans tcs (lineNo, colNo) :: [G.LHsExpr Id] of
+      e@(L _ (G.HsVar i)):_ -> do tyInfo <- Gap.getType tcm e
+                                  let name = getFnName dflag style i
+                                  if isJust tyInfo && (name == "undefined" || head name == '_')
+                                     then let Just (s,t) = tyInfo in return $ Just (s, name, t)
+                                     else return Nothing
+      _                     -> return Nothing
