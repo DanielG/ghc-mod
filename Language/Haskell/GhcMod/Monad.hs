@@ -9,7 +9,9 @@ module Language.Haskell.GhcMod.Monad (
     GhcMod
   , GhcModT
   , IOish
+  -- ** Environment, state and logging
   , GhcModEnv(..)
+  , newGhcModEnv
   , GhcModState(..)
   , GhcModWriter
   -- * Monad utilities
@@ -17,11 +19,13 @@ module Language.Haskell.GhcMod.Monad (
   , runGhcModT
   , runGhcModT'
   , withErrorHandler
+  -- ** Conversion
   , liftGhcMod
   , toGhcMod
-  , newGhcModEnv
+  -- ** Accessing 'GhcModEnv'
   , options
   , cradle
+  -- ** Exporting convenient modules
   , module Control.Monad.Reader.Class
   , module Control.Monad.Writer.Class
   , module Control.Monad.State.Class
