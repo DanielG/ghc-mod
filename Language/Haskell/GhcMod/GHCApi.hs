@@ -11,7 +11,8 @@ module Language.Haskell.GhcMod.GHCApi (
   ) where
 
 import Language.Haskell.GhcMod.GhcPkg
-import Language.Haskell.GhcMod.DynFlags
+import Language.Haskell.GhcMod.Monad (IOish, GhcModT)
+import Language.Haskell.GhcMod.Target (setTargetFiles)
 import Language.Haskell.GhcMod.Types
 
 import Control.Applicative ((<$>))
@@ -64,10 +65,10 @@ type Binding = String
 -- should look for @module@ in the working directory.
 --
 -- To map a 'ModuleString' to a package see 'findModule'
-moduleInfo :: GhcMonad m
+moduleInfo :: IOish m
            => Maybe Package
            -> ModuleString
-           -> m (Maybe G.ModuleInfo)
+           -> GhcModT m (Maybe G.ModuleInfo)
 moduleInfo mpkg mdl = do
     let mdlName = G.mkModuleName mdl
         mfsPkgId = G.packageIdFS . ghcPkgId <$> mpkg
@@ -78,7 +79,7 @@ moduleInfo mpkg mdl = do
        Just _ -> return ()
        Nothing -> setTargetFiles [mdl]
 
-localModuleInfo :: GhcMonad m => ModuleString -> m (Maybe G.ModuleInfo)
+localModuleInfo :: IOish m => ModuleString -> GhcModT m (Maybe G.ModuleInfo)
 localModuleInfo mdl = moduleInfo Nothing mdl
 
 bindings :: G.ModuleInfo -> [Binding]

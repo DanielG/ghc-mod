@@ -9,7 +9,8 @@ import Control.Applicative ((<$>))
 import Language.Haskell.GhcMod.DynFlags
 import qualified Language.Haskell.GhcMod.Gap as Gap
 import Language.Haskell.GhcMod.Logger
-import Language.Haskell.GhcMod.Monad
+import Language.Haskell.GhcMod.Monad (IOish, GhcModT, withErrorHandler)
+import Language.Haskell.GhcMod.Target (setTargetFiles)
 
 ----------------------------------------------------------------
 

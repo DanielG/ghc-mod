@@ -1,9 +1,8 @@
 module Language.Haskell.GhcMod.DynFlags where
 
 import Control.Applicative ((<$>))
-import Control.Monad (forM, void, (>=>))
-import DynFlags (ExtensionFlag(..), xopt)
-import GHC (DynFlags(..), GhcMode(..), GhcLink(..), HscTarget(..), LoadHowMuch(..))
+import Control.Monad (void)
+import GHC (DynFlags(..), GhcMode(..), GhcLink(..), HscTarget(..))
 import qualified GHC as G
 import GHC.Paths (libdir)
 import GhcMonad
@@ -64,36 +63,6 @@ addCmdOpts cmdOpts df =
     tfst <$> G.parseDynamicFlags df (map G.noLoc cmdOpts)
   where
     tfst (a,_,_) = a
-
-----------------------------------------------------------------
-
--- | Set the files as targets and load them.
-setTargetFiles :: (GhcMonad m) => [FilePath] -> m ()
-setTargetFiles files = do
-    targets <- forM files $ \file -> G.guessTarget file Nothing
-    G.setTargets targets
-    xs <- G.depanal [] False
-    -- FIXME, checking state
-    loadTargets $ needsFallback xs
-  where
-    loadTargets False = do
-        -- Reporting error A and error B
-        void $ G.load LoadAllTargets
-        mss <- filter (\x -> G.ms_hspp_file x `elem` files) <$> G.getModuleGraph
-        -- Reporting error B and error C
-        mapM_ (G.parseModule >=> G.typecheckModule >=> G.desugarModule) mss
-        -- Error B duplicates. But we cannot ignore both error reportings,
-        -- sigh. So, the logger makes log messages unique by itself.
-    loadTargets True = do
-        df <- G.getSessionDynFlags
-        void $ G.setSessionDynFlags (setModeIntelligent df)
-        void $ G.load LoadAllTargets
-
-needsFallback :: G.ModuleGraph -> Bool
-needsFallback = any (hasTHorQQ . G.ms_hspp_opts)
-  where
-    hasTHorQQ :: DynFlags -> Bool
-    hasTHorQQ dflags = any (`xopt` dflags) [Opt_TemplateHaskell, Opt_QuasiQuotes]
 
 ----------------------------------------------------------------
 

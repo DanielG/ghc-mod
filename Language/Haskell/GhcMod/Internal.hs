@@ -40,6 +40,7 @@ import Language.Haskell.GhcMod.CabalApi
 import Language.Haskell.GhcMod.DynFlags
 import Language.Haskell.GhcMod.GHCChoice
 import Language.Haskell.GhcMod.Logger
+import Language.Haskell.GhcMod.Target
 import Language.Haskell.GhcMod.Types
 
 -- | Obtaining the directory for ghc system libraries.
