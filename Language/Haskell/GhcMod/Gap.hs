@@ -39,6 +39,7 @@ module Language.Haskell.GhcMod.Gap (
   , GLMatch
   , getClass
   , occName
+  , setFlags
   ) where
 
 import Control.Applicative hiding (empty)
@@ -458,4 +459,14 @@ getClass _ = Nothing
 #if __GLASGOW_HASKELL__ < 706
 occName :: RdrName -> OccName
 occName = rdrNameOcc
+#endif
+
+----------------------------------------------------------------
+----------------------------------------------------------------
+
+setFlags :: DynFlags -> DynFlags
+#if __GLASGOW_HASKELL__ >= 708
+setFlags df = df `gopt_unset` Opt_SpecConstr -- consume memory if -O2
+#else
+setFlags = id
 #endif

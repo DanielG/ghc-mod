@@ -2,7 +2,7 @@ module Language.Haskell.GhcMod.DynFlags where
 
 import Control.Applicative ((<$>))
 import Control.Monad (forM, void, (>=>))
-import DynFlags (ExtensionFlag(..), xopt, GeneralFlag(..), gopt_unset)
+import DynFlags (ExtensionFlag(..), xopt)
 import GHC (DynFlags(..), GhcMode(..), GhcLink(..), HscTarget(..), LoadHowMuch(..))
 import qualified GHC as G
 import GHC.Paths (libdir)
@@ -39,9 +39,6 @@ setModeIntelligent df = df {
   , hscTarget = HscInterpreted
   , optLevel  = 0
   }
-
-setFlags :: DynFlags -> DynFlags
-setFlags df = df `gopt_unset` Opt_SpecConstr -- consume memory if -O2
 
 setIncludeDirs :: [IncludeDir] -> DynFlags -> DynFlags
 setIncludeDirs idirs df = df { importPaths = idirs }

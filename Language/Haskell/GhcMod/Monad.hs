@@ -190,7 +190,7 @@ initSession build Options {..} CompilerOptions {..} = do
     df <- G.getSessionDynFlags
     void $ G.setSessionDynFlags =<< addCmdOpts ghcOptions
       ( setModeSimple
-      $ setFlags
+      $ Gap.setFlags
       $ setIncludeDirs includeDirs
       $ setBuildEnv build
       $ setEmptyLogger
