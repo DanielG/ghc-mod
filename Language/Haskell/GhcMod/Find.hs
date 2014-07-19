@@ -32,7 +32,7 @@ import Language.Haskell.GhcMod.Utils
 import Language.Haskell.GhcMod.Types
 import Name (getOccString)
 import System.Directory (doesDirectoryExist, getAppUserDataDirectory, doesFileExist, getModificationTime)
-import System.FilePath ((</>))
+import System.FilePath ((</>), takeDirectory)
 import System.IO
 import System.Environment (getExecutablePath)
 
@@ -88,11 +88,12 @@ loadSymbolDb :: IO SymbolDb
 loadSymbolDb = SymbolDb <$> readSymbolDb
 
 ghcModExecutable :: IO FilePath
-ghcModExecutable =
 #ifndef SPEC
-    getExecutablePath
+ghcModExecutable = do
+    dir <- takeDirectory <$> getExecutablePath
+    return $ dir </> "ghc-mod"
 #else
-    return "dist/build/ghc-mod/ghc-mod"
+ghcModExecutable = return "dist/build/ghc-mod/ghc-mod"
 #endif
 
 readSymbolDb :: IO (Map Symbol [ModuleString])
