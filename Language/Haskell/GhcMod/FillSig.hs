@@ -108,19 +108,33 @@ initialBody :: FnArgsInfo ty name => DynFlags -> PprStyle -> ty -> name -> Strin
 initialBody dflag style ty name = initialBody' (getFnName dflag style name) (getFnArgs ty)
 
 initialBody' :: String -> [FnArg] -> String
-initialBody' fname args =
+initialBody' fname args = initialHead fname args ++ " = "
+                          ++ (if isSymbolName fname then "" else '_':fname) ++ "_body"
+
+initialHead :: String -> [FnArg] -> String
+initialHead fname args =
   case initialBodyArgs args infiniteVars infiniteFns of
     []      -> fname
     arglist -> if isSymbolName fname
                then head arglist ++ " " ++ fname ++ " " ++ unwords (tail arglist)
                else fname ++ " " ++ unwords arglist
-  ++ " = " ++ (if isSymbolName fname then "" else '_':fname) ++ "_body"
 
 initialBodyArgs :: [FnArg] -> [String] -> [String] -> [String]
 initialBodyArgs [] _ _ = []
 initialBodyArgs (FnArgFunction:xs) vs (f:fs) = f : initialBodyArgs xs vs fs
 initialBodyArgs (FnArgNormal:xs)   (v:vs) fs = v : initialBodyArgs xs vs fs
 initialBodyArgs _                  _      _  = error "This should never happen" -- Lists are infinite
+
+initialHead1 :: String -> [FnArg] -> [String] -> String
+initialHead1 fname args elts =
+  case initialBodyArgs1 args elts of
+    []      -> fname
+    arglist -> if isSymbolName fname
+               then head arglist ++ " " ++ fname ++ " " ++ unwords (tail arglist)
+               else fname ++ " " ++ unwords arglist
+
+initialBodyArgs1 :: [FnArg] -> [String] -> [String]
+initialBodyArgs1 args elts = take (length args) elts
 
 -- Getting the initial body of function and instances differ
 -- This is because for functions we only use the parsed file
@@ -194,21 +208,33 @@ refine file lineNo colNo expr = ghandle handler body
     body = inModuleContext file $ \dflag style -> do
         opt <- options
         modSum <- Gap.fileModSummary file
-        -- ty <- G.exprType expr  -- If involving local bindings, it's not useful
-        whenFound opt (findVar dflag style modSum lineNo colNo) $ \s -> case s of
-          (loc, name, ty) -> (fourInts loc, name)
+        p <- G.parseModule modSum
+        tcm@TypecheckedModule{tm_typechecked_source = tcs} <- G.typecheckModule p
+        ety <- G.exprType expr
+        whenFound opt (findVar dflag style tcm tcs lineNo colNo) $ \(loc, name, rty) ->
+          let eArgs = getFnArgs ety
+              rArgs = getFnArgs rty
+              diffArgs' = length eArgs - length rArgs
+              diffArgs  = if diffArgs' < 0 then 0 else diffArgs'
+              iArgs = take diffArgs eArgs
+           in (fourInts loc, initialHead1 expr iArgs (infinitePrefixSupply name))
             
     handler (SomeException _) = emptyResult =<< options
 
 -- Look for the variable in the specified position
-findVar :: GhcMonad m => DynFlags -> PprStyle -> G.ModSummary -> Int -> Int -> m (Maybe (SrcSpan, String, Type))
-findVar dflag style modSum lineNo colNo = do
-    p <- G.parseModule modSum
-    tcm@TypecheckedModule{tm_typechecked_source = tcs} <- G.typecheckModule p
+findVar :: GhcMonad m => DynFlags -> PprStyle
+                      -> G.TypecheckedModule -> G.TypecheckedSource
+                      -> Int -> Int -> m (Maybe (SrcSpan, String, Type))
+findVar dflag style tcm tcs lineNo colNo =
     case listifySpans tcs (lineNo, colNo) :: [G.LHsExpr Id] of
-      e@(L _ (G.HsVar i)):_ -> do tyInfo <- Gap.getType tcm e
-                                  let name = getFnName dflag style i
-                                  if isJust tyInfo && (name == "undefined" || head name == '_')
-                                     then let Just (s,t) = tyInfo in return $ Just (s, name, t)
-                                     else return Nothing
-      _                     -> return Nothing
+      e@(L _ (G.HsVar i)):_ ->
+        do tyInfo <- Gap.getType tcm e
+           let name = getFnName dflag style i
+           if isJust tyInfo && (name == "undefined" || head name == '_')
+              then let Just (s,t) = tyInfo in return $ Just (s, name, t)
+              else return Nothing
+      _ -> return Nothing
+
+infinitePrefixSupply :: String -> [String]
+infinitePrefixSupply "undefined" = repeat "undefined"
+infinitePrefixSupply p = map (\n -> p ++ "_" ++ show n) ([1 ..] :: [Integer])
