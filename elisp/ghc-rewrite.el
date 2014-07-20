@@ -14,6 +14,7 @@
 ;; Common code for case splitting and refinement
 
 (defun ghc-perform-rewriting (info)
+  "Replace code with new string obtained from ghc-mod"
   (let* ((current-line    (line-number-at-pos))
 	 (begin-line      (ghc-sinfo-get-beg-line info))
 	 (begin-line-diff (+ 1 (- begin-line current-line)))
@@ -35,6 +36,7 @@
 (ghc-defstruct sinfo beg-line beg-column end-line end-column info)
 
 (defun ghc-case-split ()
+  "Split the variable at point into its possible constructors"
   (interactive)
   (let ((info (ghc-obtain-case-split)))
     (if (null info)
@@ -54,6 +56,7 @@
 ;;;
 
 (defun ghc-refine ()
+  "Refine a hole using a user-specified function"
   (interactive)
   (let ((info (ghc-obtain-refine (read-string "Refine with: "))))
     (if (null info)
@@ -75,6 +78,7 @@
 (ghc-defstruct icsinfo sort pos fns)
 
 (defun ghc-initial-code-from-signature ()
+  "Include initial code from a function signature or instance declaration"
   (interactive)
   (let ((info (ghc-obtain-initial-code-from-signature)))
     (if (null info)
