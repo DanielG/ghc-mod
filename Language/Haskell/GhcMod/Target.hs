@@ -8,18 +8,27 @@ import DynFlags (ExtensionFlag(..), xopt)
 import GHC (DynFlags(..), LoadHowMuch(..))
 import qualified GHC as G
 import Language.Haskell.GhcMod.DynFlags
-import Language.Haskell.GhcMod.Monad (IOish, GhcModT)
+import Language.Haskell.GhcMod.Monad
 
 -- | Set the files as targets and load them.
 setTargetFiles :: IOish m => [FilePath] -> GhcModT m ()
 setTargetFiles files = do
     targets <- forM files $ \file -> G.guessTarget file Nothing
     G.setTargets targets
-    xs <- G.depanal [] False
-    -- FIXME, checking state
-    loadTargets $ needsFallback xs
+    mode <- getMode
+    if mode == Intelligent then
+        loadTargets Intelligent
+      else do
+        mdls <- G.depanal [] False
+        let fallback = needsFallback mdls
+        if fallback then do
+            resetTargets targets
+            setIntelligent
+            loadTargets Intelligent
+          else
+            loadTargets Simple
   where
-    loadTargets False = do
+    loadTargets Simple = do
         -- Reporting error A and error B
         void $ G.load LoadAllTargets
         mss <- filter (\x -> G.ms_hspp_file x `elem` files) <$> G.getModuleGraph
@@ -27,10 +36,18 @@ setTargetFiles files = do
         mapM_ (G.parseModule >=> G.typecheckModule >=> G.desugarModule) mss
         -- Error B duplicates. But we cannot ignore both error reportings,
         -- sigh. So, the logger makes log messages unique by itself.
-    loadTargets True = do
+    loadTargets Intelligent = do
         df <- G.getSessionDynFlags
         void $ G.setSessionDynFlags (setModeIntelligent df)
         void $ G.load LoadAllTargets
+    resetTargets targets = do
+        G.setTargets []
+        void $ G.load LoadAllTargets
+        G.setTargets targets
+    setIntelligent = do
+        newdf <- setModeIntelligent <$> G.getSessionDynFlags
+        void $ G.setSessionDynFlags newdf
+        setMode Intelligent
 
 needsFallback :: G.ModuleGraph -> Bool
 needsFallback = any (hasTHorQQ . G.ms_hspp_opts)
