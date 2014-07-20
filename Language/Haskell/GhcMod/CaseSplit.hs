@@ -5,7 +5,8 @@ module Language.Haskell.GhcMod.CaseSplit (
   ) where
 
 import CoreMonad (liftIO)
-import Data.List (find, intercalate)
+import Data.Function (on)
+import Data.List (find, intercalate, sortBy)
 import qualified Data.Text as T
 import qualified Data.Text.IO as T (readFile)
 import qualified DataCon as Ty
@@ -57,7 +58,7 @@ getSrcSpanTypeForSplit :: GhcMonad m => G.ModSummary -> Int -> Int -> m (Maybe S
 getSrcSpanTypeForSplit modSum lineNo colNo = do
     p@ParsedModule{pm_parsed_source = pms} <- G.parseModule modSum
     tcm@TypecheckedModule{tm_typechecked_source = tcs} <- G.typecheckModule p
-    let bs:_ = listifySpans tcs (lineNo, colNo) :: [LHsBind Id]
+    let bs:_ = sortBy (cmp `on` G.getLoc) $ listifySpans tcs (lineNo, colNo) :: [LHsBind Id]
         varPat  = find isPatternVar $ listifySpans tcs (lineNo, colNo) :: Maybe (LPat Id)
         match:_ = listifyParsedSpans pms (lineNo, colNo) :: [Gap.GLMatch]
     case varPat of

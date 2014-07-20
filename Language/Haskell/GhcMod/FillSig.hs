@@ -6,7 +6,8 @@ module Language.Haskell.GhcMod.FillSig (
   ) where
 
 import Data.Char (isSymbol)
-import Data.List (find)
+import Data.Function (on)
+import Data.List (find, sortBy)
 import Data.Maybe (isJust)
 import Exception (ghandle, SomeException(..))
 import GHC (GhcMonad, Id, ParsedModule(..), TypecheckedModule(..), DynFlags, SrcSpan, Type, GenLocated(L))
@@ -211,30 +212,46 @@ refine file lineNo colNo expr = ghandle handler body
         p <- G.parseModule modSum
         tcm@TypecheckedModule{tm_typechecked_source = tcs} <- G.typecheckModule p
         ety <- G.exprType expr
-        whenFound opt (findVar dflag style tcm tcs lineNo colNo) $ \(loc, name, rty) ->
+        whenFound opt (findVar dflag style tcm tcs lineNo colNo) $ \(loc, name, rty, paren) ->
           let eArgs = getFnArgs ety
               rArgs = getFnArgs rty
               diffArgs' = length eArgs - length rArgs
               diffArgs  = if diffArgs' < 0 then 0 else diffArgs'
               iArgs = take diffArgs eArgs
-           in (fourInts loc, initialHead1 expr iArgs (infinitePrefixSupply name))
+              text = initialHead1 expr iArgs (infinitePrefixSupply name)
+           in (fourInts loc, doParen paren text)
             
     handler (SomeException _) = emptyResult =<< options
 
 -- Look for the variable in the specified position
 findVar :: GhcMonad m => DynFlags -> PprStyle
                       -> G.TypecheckedModule -> G.TypecheckedSource
-                      -> Int -> Int -> m (Maybe (SrcSpan, String, Type))
+                      -> Int -> Int -> m (Maybe (SrcSpan, String, Type, Bool))
 findVar dflag style tcm tcs lineNo colNo =
-    case listifySpans tcs (lineNo, colNo) :: [G.LHsExpr Id] of
-      e@(L _ (G.HsVar i)):_ ->
+  let lst = sortBy (cmp `on` G.getLoc) $ listifySpans tcs (lineNo, colNo) :: [G.LHsExpr Id]
+  in case lst of
+      e@(L _ (G.HsVar i)):others ->
         do tyInfo <- Gap.getType tcm e
            let name = getFnName dflag style i
-           if isJust tyInfo && (name == "undefined" || head name == '_')
-              then let Just (s,t) = tyInfo in return $ Just (s, name, t)
+           if (name == "undefined" || head name == '_') && isJust tyInfo
+              then let Just (s,t) = tyInfo
+                       b = case others of  -- If inside an App, we need parenthesis
+                             [] -> False
+                             (L _ (G.HsApp (L _ a1) (L _ a2))):_ ->
+                               isSearchedVar i a1 || isSearchedVar i a2
+                             _  -> False
+                    in return $ Just (s, name, t, b)
               else return Nothing
       _ -> return Nothing
 
 infinitePrefixSupply :: String -> [String]
 infinitePrefixSupply "undefined" = repeat "undefined"
 infinitePrefixSupply p = map (\n -> p ++ "_" ++ show n) ([1 ..] :: [Integer])
+
+doParen :: Bool -> String -> String
+doParen False s = s
+doParen True  s = if ' ' `elem` s then '(':s ++ ")" else s
+
+isSearchedVar :: Id -> G.HsExpr Id -> Bool
+isSearchedVar i (G.HsVar i2) = i == i2
+isSearchedVar _ _ = False
