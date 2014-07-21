@@ -34,7 +34,7 @@ import Name (getOccString)
 import System.Directory (doesDirectoryExist, getAppUserDataDirectory, doesFileExist, getModificationTime)
 import System.FilePath ((</>), takeDirectory)
 import System.IO
-import System.Environment (getExecutablePath)
+import System.Environment
 
 #ifndef MIN_VERSION_containers
 #define MIN_VERSION_containers(x,y,z) 1
@@ -90,11 +90,18 @@ loadSymbolDb = SymbolDb <$> readSymbolDb
 ghcModExecutable :: IO FilePath
 #ifndef SPEC
 ghcModExecutable = do
-    dir <- takeDirectory <$> getExecutablePath
+    dir <- getExecutablePath'
     return $ dir </> "ghc-mod"
 #else
 ghcModExecutable = return "dist/build/ghc-mod/ghc-mod"
 #endif
+ where
+    getExecutablePath' :: IO FilePath
+# if __GLASGOW_HASKELL__ >= 706
+    getExecutablePath' = takeDirectory <$> getExecutablePath
+# else
+    getExecutablePath' = return ""
+# endif
 
 readSymbolDb :: IO (Map Symbol [ModuleString])
 readSymbolDb = handle (\(SomeException _) -> return M.empty) $ do
