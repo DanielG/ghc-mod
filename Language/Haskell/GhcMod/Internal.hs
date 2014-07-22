@@ -31,20 +31,18 @@ module Language.Haskell.GhcMod.Internal (
   , newGhcModEnv
   , GhcModState
   , defaultState
-  , Mode(..)
-  , GhcModWriter
+  , CompilerMode(..)
+  , GhcModLog
   -- * Monad utilities
-  , runGhcMod
   , runGhcModT'
   , withErrorHandler
   -- ** Conversion
-  , liftGhcMod
   , toGhcModT
   -- ** Accessing 'GhcModEnv' and 'GhcModState'
   , options
   , cradle
-  , getMode
-  , setMode
+  , getCompilerMode
+  , setCompilerMode
   , withOptions
   -- * 'Ghc' Choice
   , (||>)
