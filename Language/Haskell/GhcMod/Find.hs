@@ -54,7 +54,8 @@ import qualified Data.Map as M
 -- | Type of function and operation names.
 type Symbol = String
 -- | Database from 'Symbol' to \['ModuleString'\].
-newtype SymbolDb = SymbolDb (Map Symbol [ModuleString]) deriving (Show)
+newtype SymbolDb = SymbolDb (Map Symbol [ModuleString])
+    deriving (Show)
 
 ----------------------------------------------------------------
 
@@ -158,21 +159,28 @@ isNewerThan ref file = do
 -- | Browsing all functions in all system/user modules.
 getSymbolTable :: IOish m => GhcModT m [(Symbol,[ModuleString])]
 getSymbolTable = do
-    ms <- G.packageDbModules True
-    let ns = map (G.moduleNameString . G.moduleName) ms
-    is <- mapM G.getModuleInfo ms
-    let symbols = concatMap toNameModule (zip is ns)
-    return $ uniquefy symbols
+    ghcModules <- G.packageDbModules True
+    moduleInfos <- mapM G.getModuleInfo ghcModules
+    let modules = do
+         m <- ghcModules
+         let moduleName = G.moduleNameString $ G.moduleName m
+--             modulePkg = G.packageIdString $ G.modulePackageId m
+         return moduleName
 
-toNameModule :: (Maybe G.ModuleInfo,ModuleString) -> [(Symbol,ModuleString)]
-toNameModule (Nothing,_)  = []
-toNameModule (Just inf,mdlname) =
+    return $ collectModules
+           $ extractBindings `concatMap` (moduleInfos `zip` modules)
+
+extractBindings :: (Maybe G.ModuleInfo, ModuleString)
+                -> [(Symbol, ModuleString)]
+extractBindings (Nothing,_)  = []
+extractBindings (Just inf,mdlname) =
     map (\name -> (getOccString name, mdlname)) names
   where
     names = G.modInfoExports inf
 
-uniquefy :: [(Symbol,ModuleString)] -> [(Symbol,[ModuleString])]
-uniquefy = map tieup . groupBy ((==) `on` fst) . sort
+collectModules :: [(Symbol,ModuleString)]
+               -> [(Symbol,[ModuleString])]
+collectModules = map tieup . groupBy ((==) `on` fst) . sort
   where
     tieup x = (head (map fst x), map snd x)
 
