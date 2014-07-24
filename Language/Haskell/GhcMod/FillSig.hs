@@ -31,9 +31,17 @@ import qualified Language.Haskell.Exts.Annotated as HE
 -- Possible signatures we can find: function or instance
 data SigInfo = Signature SrcSpan [G.RdrName] (G.HsType G.RdrName)
              | InstanceDecl SrcSpan G.Class
+             | TyFamDecl SrcSpan G.RdrName TyFamType {- True if closed -} [G.RdrName]
 
 -- Signature for fallback operation via haskell-src-exts
 data HESigInfo = HESignature HE.SrcSpan [HE.Name HE.SrcSpanInfo] (HE.Type HE.SrcSpanInfo)
+               | HEFamSignature HE.SrcSpan TyFamType (HE.Name HE.SrcSpanInfo) [HE.Name HE.SrcSpanInfo]
+
+data TyFamType = Closed | Open | Data
+initialTyFamString :: TyFamType -> (String, String)
+initialTyFamString Closed = ("instance", "")
+initialTyFamString Open   = ("function", "type instance ")
+initialTyFamString Data   = ("function", "data instance ")
 
 -- | Create a initial body from a signature.
 sig :: IOish m
@@ -52,14 +60,20 @@ sig file lineNo colNo = ghandle handler body
           InstanceDecl loc cls ->
              ("instance", fourInts loc, map (\x -> initialBody dflag style (G.idType x) x)
                                             (Ty.classMethods cls))
+          TyFamDecl loc name flavour vars ->
+            let (rTy, initial) = initialTyFamString flavour
+             in (rTy, fourInts loc, [initial ++ initialFamBody dflag style name vars])
 
     handler (SomeException _) = do
       opt <- options
       -- Code cannot be parsed by ghc module
       -- Fallback: try to get information via haskell-src-exts
-      whenFound opt (getSignatureFromHE file lineNo colNo) $
-        \(HESignature loc names ty) ->
-           ("function", fourIntsHE loc, map (initialBody undefined undefined ty) names)
+      whenFound opt (getSignatureFromHE file lineNo colNo) $ \x -> case x of
+        HESignature loc names ty ->
+          ("function", fourIntsHE loc, map (initialBody undefined undefined ty) names)
+        HEFamSignature loc flavour name vars ->
+          let (rTy, initial) = initialTyFamString flavour
+           in (rTy, fourIntsHE loc, [initial ++ initialFamBody undefined undefined name vars])
 
 ----------------------------------------------------------------
 -- a. Code for getting the information
@@ -77,9 +91,31 @@ getSignature modSum lineNo colNo = do
         -- We found an instance declaration
         TypecheckedModule{tm_renamed_source = Just tcs
                          ,tm_checked_module_info = minfo} <- G.typecheckModule p
-        case Gap.getClass $ listifyRenamedSpans tcs (lineNo, colNo) of
+        let lst = listifyRenamedSpans tcs (lineNo, colNo)
+        case Gap.getClass lst of
             Just (clsName,loc) -> obtainClassInfo minfo clsName loc
-            Nothing            -> return Nothing
+            _                  -> return Nothing
+#if __GLASGOW_HASKELL__ >= 708
+      [L loc (G.TyClD (G.FamDecl (G.FamilyDecl info (L _ name) (G.HsQTvs _ vars) _)))] -> do
+#elif __GLASGOW_HASKELL__ >= 706
+      [L loc (G.TyClD (G.TyFamily info (L _ name) (G.HsQTvs _ vars) _))] -> do
+#else
+      [L loc (G.TyClD (G.TyFamily info (L _ name) vars _))] -> do
+#endif
+#if __GLASGOW_HASKELL__ >= 708
+        let flavour = case info of
+                        G.ClosedTypeFamily _ -> Closed
+                        G.OpenTypeFamily     -> Open
+                        G.DataFamily         -> Data
+#else
+        let flavour = case info of  -- Closed type families where introduced in GHC 7.8
+                        G.TypeFamily -> Open
+                        G.DataFamily -> Data
+#endif
+            getTyFamVarName = \x -> case x of
+                                      L _ (G.UserTyVar n)     -> n
+                                      L _ (G.KindedTyVar n _) -> n
+         in return $ Just (TyFamDecl loc name flavour $ map getTyFamVarName vars)
       _ -> return Nothing
   where obtainClassInfo :: GhcMonad m => G.ModuleInfo -> G.Name -> SrcSpan -> m (Maybe SigInfo)
         obtainClassInfo minfo clsName loc = do
@@ -94,16 +130,23 @@ getSignatureFromHE file lineNo colNo = do
   presult <- liftIO $ HE.parseFile file
   return $ case presult of
              HE.ParseOk (HE.Module _ _ _ _ mdecls) -> do
-               HE.TypeSig (HE.SrcSpanInfo s _) names ty <- find (typeSigInRangeHE lineNo colNo) mdecls
-               return $ HESignature s names ty
+               decl <- find (typeSigInRangeHE lineNo colNo) mdecls
+               case decl of 
+                 HE.TypeSig (HE.SrcSpanInfo s _) names ty -> return $ HESignature s names ty
+                 HE.TypeFamDecl (HE.SrcSpanInfo s _) (HE.DHead _ name tys) _ ->
+                   return $ HEFamSignature s Open name (map cleanTyVarBind tys)
+                 HE.DataFamDecl (HE.SrcSpanInfo s _) _ (HE.DHead _ name tys) _ ->
+                   return $ HEFamSignature s Open name (map cleanTyVarBind tys)
              _ -> Nothing
+  where cleanTyVarBind (HE.KindedVar _ n _) = n
+        cleanTyVarBind (HE.UnkindedVar _ n) = n
 
 ----------------------------------------------------------------
 -- b. Code for generating initial code
 
 -- A list of function arguments, and whether they are functions or normal arguments
 -- is built from either a function signature or an instance signature
-data FnArg = FnArgFunction | FnArgNormal
+data FnArg = FnArgFunction | FnArgNormal | FnExplicitName String
 
 initialBody :: FnArgsInfo ty name => DynFlags -> PprStyle -> ty -> name -> String
 initialBody dflag style ty name = initialBody' (getFnName dflag style name) (getFnArgs ty)
@@ -111,6 +154,11 @@ initialBody dflag style ty name = initialBody' (getFnName dflag style name) (get
 initialBody' :: String -> [FnArg] -> String
 initialBody' fname args = initialHead fname args ++ " = "
                           ++ (if isSymbolName fname then "" else '_':fname) ++ "_body"
+
+initialFamBody :: FnArgsInfo ty name => DynFlags -> PprStyle -> name -> [name] -> String
+initialFamBody dflag style name args = initialHead (getFnName dflag style name)
+                                         (map (\arg -> FnExplicitName (getFnName dflag style arg)) args)
+                                         ++ " = ()"
 
 initialHead :: String -> [FnArg] -> String
 initialHead fname args =
@@ -124,6 +172,7 @@ initialBodyArgs :: [FnArg] -> [String] -> [String] -> [String]
 initialBodyArgs [] _ _ = []
 initialBodyArgs (FnArgFunction:xs) vs (f:fs) = f : initialBodyArgs xs vs fs
 initialBodyArgs (FnArgNormal:xs)   (v:vs) fs = v : initialBodyArgs xs vs fs
+initialBodyArgs (FnExplicitName n:xs)  vs fs = n : initialBodyArgs xs vs fs
 initialBodyArgs _                  _      _  = error "This should never happen" -- Lists are infinite
 
 initialHead1 :: String -> [FnArg] -> [String] -> String

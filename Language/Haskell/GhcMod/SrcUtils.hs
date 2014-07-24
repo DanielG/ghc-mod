@@ -72,7 +72,11 @@ fourIntsHE loc = ( HE.srcSpanStartLine loc, HE.srcSpanStartColumn loc
 
 -- Check whether (line,col) is inside a given SrcSpanInfo
 typeSigInRangeHE :: Int -> Int -> HE.Decl HE.SrcSpanInfo -> Bool
-typeSigInRangeHE lineNo colNo (HE.TypeSig (HE.SrcSpanInfo s _)  _ _) =
+typeSigInRangeHE lineNo colNo (HE.TypeSig (HE.SrcSpanInfo s _) _ _) =
+  HE.srcSpanStart s <= (lineNo, colNo) && HE.srcSpanEnd s >= (lineNo, colNo)
+typeSigInRangeHE lineNo colNo (HE.TypeFamDecl (HE.SrcSpanInfo s _) _ _) =
+  HE.srcSpanStart s <= (lineNo, colNo) && HE.srcSpanEnd s >= (lineNo, colNo)
+typeSigInRangeHE lineNo colNo (HE.DataFamDecl (HE.SrcSpanInfo s _) _ _ _) =
   HE.srcSpanStart s <= (lineNo, colNo) && HE.srcSpanEnd s >= (lineNo, colNo)
 typeSigInRangeHE _  _ _= False
 
