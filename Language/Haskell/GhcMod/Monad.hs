@@ -127,10 +127,22 @@ instance Error GhcModError where
 
 ----------------------------------------------------------------
 
+-- | A constraint alias (-XConstraintKinds) to make functions dealing with
+-- 'GhcModT' somewhat cleaner.
+--
+-- Basicially an @IOish m => m@ is a 'Monad' supporting arbitrary 'IO' and
+-- exception handling. Usually this will simply be 'IO' but we parametrise it in
+-- the exported API so users have the option to use a custom underlying monad.
 type IOish m = (Functor m, MonadIO m, MonadBaseControl IO m)
 
 type GhcMod a = GhcModT (ErrorT GhcModError IO) a
 
+-- | The GhcMod monad transformer data type. This is basically a wrapper around
+-- RWST with custom instances for 'GhcMonad' and it's constraints.
+--
+-- The inner monad should have instances for 'MonadIO' and 'MonadBaseControl'
+-- 'IO'. Most @mtl@ monads already have 'MonadBaseControl' 'IO' instances, see
+-- the @monad-control@ package.
 newtype GhcModT m a = GhcModT {
       unGhcModT :: RWST GhcModEnv GhcModWriter GhcModState m a
     } deriving (Functor
