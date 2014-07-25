@@ -107,11 +107,11 @@ Library
                       , split
                       , haskell-src-exts
                       , text
-  if impl(ghc < 7.7)
+  if impl(ghc >= 7.8)
+    Build-Depends:      Cabal >= 1.18
+  else
     Build-Depends:      convertible
                       , Cabal >= 1.10 && < 1.17
-  else
-    Build-Depends:      Cabal >= 1.18
 
 Executable ghc-mod
   Default-Language:     Haskell2010
@@ -191,12 +191,12 @@ Test-Suite spec
                       , split
                       , haskell-src-exts
                       , text
-  if impl(ghc < 7.7)
+  if impl(ghc >= 7.8)
+    Build-Depends:      Cabal >= 1.18
+  else
     Build-Depends:      convertible
                       , Cabal >= 1.10 && < 1.17
-  else
-    Build-Depends:      Cabal >= 1.18
-  if impl(ghc < 7.6.0)
+  if impl(ghc < 7.6)
     Build-Depends:      executable-path
   CPP-Options:        -DSPEC=1
 
