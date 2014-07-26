@@ -24,6 +24,7 @@ import qualified Type as Ty
 
 import Debug.Trace
 import Language.Haskell.GhcMod.Doc
+import ErrUtils
 
 ----------------------------------------------------------------
 -- CASE SPLITTING
@@ -59,7 +60,7 @@ splits file lineNo colNo = ghandle handler body
              text <- genCaseSplitTextFile file (SplitToTextInfo varName' bndLoc varLoc $
                                                 getTyCons dflag style varName varT)
              return (fourInts bndLoc, text)
-    handler (SomeException _) = emptyResult =<< options
+    handler (SomeException e) = trace (show e) $ emptyResult =<< options
 
 ----------------------------------------------------------------
 -- a. Code for getting the information of the variable
@@ -100,18 +101,19 @@ getPatternVarName _                      = error "This should never happened"
 getSrcSpanTypeForTypeSplit :: GhcMonad m => DynFlags -> PprStyle -> G.ModSummary -> Int -> Int -> m (Maybe SplitInfo)
 getSrcSpanTypeForTypeSplit dflag style modSum lineNo colNo = do
     p <- G.parseModule modSum
-    TypecheckedModule{tm_typechecked_source = tcs} <- G.typecheckModule p
-    let lst = listifySpans tcs (lineNo, colNo) :: [G.LTyFamInstEqn Id]
-        (L eqL _):_ = trace (showOneLine dflag style $ ppr lst) $ sortBy (cmp `on` G.getLoc) lst
-        varPat = find isTypePatternVar $ listifySpans tcs (lineNo, colNo) :: Maybe (G.LHsType Id)
-    case trace (showPage dflag style (ppr tcs)) $ varPat of
-      Just (L varSpan (G.HsTyVar vName)) ->
-        return $ Just (TySplitInfo (G.getName vName) eqL (varSpan, G.idType vName))
+    TypecheckedModule{tm_renamed_source = Just rs
+                     ,tm_checked_module_info = modinfo} <- G.typecheckModule p
+    case listifyRenamedSpans rs (lineNo, colNo) :: [G.LTyFamInstEqn G.Name] of
+      [L loc (G.TyFamInstEqn (L _ name) _ _)] -> do
+        -- We found a type family instance declaration
+        let lst = listifyRenamedSpans rs (lineNo, colNo) :: [G.LHsType G.Name]
+            hsTypes = sortBy (cmp `on` G.getLoc) lst
+            (L varLoc (G.HsTyVar varName)):_ = trace (showOneLine dflag style $ ppr hsTypes) $ hsTypes
+        tcResult <- G.lookupName varName
+        case trace (showOneLine dflag style $ ppr tcResult) $ tcResult of
+          Just _ -> return $ Nothing -- Just (TySplitInfo name loc (varLoc, tcKi))
+          _ -> return Nothing
       _ -> return Nothing
-
-isTypePatternVar :: G.LHsType Id -> Bool
-isTypePatternVar (L _ (G.HsTyVar _)) = True
-isTypePatternVar _                   = False
 
 ----------------------------------------------------------------
 -- b. Code for getting the possible constructors
@@ -121,12 +123,6 @@ getTyCons dflag style name ty | Just (tyCon, _) <- Ty.splitTyConApp_maybe ty =
   let name' = showName dflag style name  -- Convert name to string
   in getTyCon dflag style name' tyCon
 getTyCons dflag style name _ = [showName dflag style name]
-
-getKiCons :: DynFlags -> PprStyle -> G.Name -> G.Kind ->  [String]
-getKiCons dflag style name ty | Just (tyCon, _) <- Ty.splitTyConApp_maybe ty =
-  let name' = showName dflag style name  -- Convert name to string
-  in getTyCon dflag style name' tyCon
-getKiCons dflag style name _ = [showName dflag style name]
 
 -- Write cases for one type
 getTyCon :: DynFlags -> PprStyle -> String -> Ty.TyCon -> [String]
