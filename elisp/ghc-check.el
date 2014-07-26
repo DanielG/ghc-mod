@@ -30,9 +30,19 @@
   "Face used for marking warning lines."
   :group 'ghc)
 
+(defface ghc-face-hole
+  '((((supports :underline (:style wave)))
+     :underline (:style wave :color "purple"))
+    (t
+     :inherit warning))
+  "Face used for marking hole lines."
+  :group 'ghc)
+
 (defvar ghc-check-error-fringe (propertize "!" 'display '(left-fringe exclamation-mark)))
 
 (defvar ghc-check-warning-fringe (propertize "?" 'display '(left-fringe question-mark)))
+
+(defvar ghc-check-hole-fringe (propertize "_" 'display '(left-fringe horizontal-bar)))
 
 (defvar ghc-display-error nil
   "*An action to display errors/warnings for 'M-n' and 'M-p:
@@ -52,7 +62,7 @@ nil            does not display errors/warnings.
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(ghc-defstruct hilit-info file line msg err)
+(ghc-defstruct hilit-info file line msg err hole)
 
 (defun ghc-check-send ()
   (let ((file (buffer-file-name)))
@@ -105,11 +115,13 @@ nil            does not display errors/warnings.
 	       ;; don't take column to make multiple same errors to a single.
 	       (msg (match-string 4 err))
 	       (wrn (string-match "^Warning" msg))
+               (hole (string-match "Found hole" msg))
 	       (info (ghc-make-hilit-info
 		      :file file
 		      :line line
 		      :msg  msg
-		      :err  (not wrn))))
+		      :err  (and (not wrn) (not hole))
+                      :hole hole)))
 	  (unless (member info infos)
 	    (ghc-add infos info)))))))
 
@@ -123,6 +135,7 @@ nil            does not display errors/warnings.
 	      (msg  (ghc-hilit-info-get-msg  info))
 	      (file (ghc-hilit-info-get-file info))
 	      (err  (ghc-hilit-info-get-err  info))
+              (hole (ghc-hilit-info-get-hole info))
 	      beg end ovl)
 	  ;; FIXME: This is the Shlemiel painter's algorithm.
 	  ;; If this is a bottleneck for a large code, let's fix.
@@ -143,8 +156,8 @@ nil            does not display errors/warnings.
 	  (overlay-put ovl 'ghc-file file)
 	  (overlay-put ovl 'ghc-msg msg)
 	  (overlay-put ovl 'help-echo msg)
-	  (let ((fringe (if err ghc-check-error-fringe ghc-check-warning-fringe))
-		(face (if err 'ghc-face-error 'ghc-face-warn)))
+	  (let ((fringe (if err ghc-check-error-fringe (if hole ghc-check-hole-fringe ghc-check-warning-fringe)))
+		(face (if err 'ghc-face-error (if hole 'ghc-face-hole 'ghc-face-warn))))
 	    (overlay-put ovl 'before-string fringe)
 	    (overlay-put ovl 'face face)))))))
 
