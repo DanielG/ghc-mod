@@ -69,7 +69,7 @@ nil            does not display errors/warnings.
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(ghc-defstruct hilit-info file line msg err hole)
+(ghc-defstruct hilit-info file line msg err hole coln)
 
 (defun ghc-check-send ()
   (let ((file (buffer-file-name)))
@@ -119,13 +119,16 @@ nil            does not display errors/warnings.
       (when (string-match regex err)
 	(let* ((file (expand-file-name (match-string 1 err))) ;; for Windows
 	       (line (string-to-number (match-string 2 err)))
-	       ;; don't take column to make multiple same errors to a single.
+               (coln (string-to-number (match-string 3 err)))
 	       (msg (match-string 4 err))
 	       (wrn (string-match "^Warning" msg))
-               (hole (string-match "Found hole" msg))
+               (hole (save-match-data
+                        (when (string-match "Found hole .\\(_[_[:alnum:]]*\\)." msg)
+                              (message (match-string 1 msg)) (match-string 1 msg))))
 	       (info (ghc-make-hilit-info
 		      :file file
 		      :line line
+                      :coln coln
 		      :msg  msg
 		      :err  (and (not wrn) (not hole))
                       :hole hole)))
@@ -143,11 +146,18 @@ nil            does not display errors/warnings.
 	      (file (ghc-hilit-info-get-file info))
 	      (err  (ghc-hilit-info-get-err  info))
               (hole (ghc-hilit-info-get-hole info))
+              (coln (ghc-hilit-info-get-coln info))
 	      beg end ovl)
 	  ;; FIXME: This is the Shlemiel painter's algorithm.
 	  ;; If this is a bottleneck for a large code, let's fix.
 	  (goto-char (point-min))
 	  (cond
+           ((and (string= ofile file) hole)
+            (forward-line (1- line))
+            (forward-char (1- coln))
+            (setq beg (point))
+            (forward-char (length hole))
+            (setq end (point)))
 	   ((string= ofile file)
 	    (forward-line (1- line))
 	    (while (eq (char-after) 32) (forward-char))
