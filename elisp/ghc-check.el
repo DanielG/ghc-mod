@@ -10,6 +10,7 @@
 
 (require 'ghc-func)
 (require 'ghc-process)
+(require 'button)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -124,7 +125,7 @@ nil            does not display errors/warnings.
 	       (wrn (string-match "^Warning" msg))
                (hole (save-match-data
                         (when (string-match "Found hole .\\(_[_[:alnum:]]*\\)." msg)
-                              (message (match-string 1 msg)) (match-string 1 msg))))
+                              (match-string 1 msg))))
 	       (info (ghc-make-hilit-info
 		      :file file
 		      :line line
@@ -238,6 +239,32 @@ nil            does not display errors/warnings.
 	      nil))
 	(ghc-make-file-msgs :file file :msgs holes)))))
 
+;; Based on http://superuser.com/questions/331895/how-to-get-emacs-to-highlight-and-link-file-paths
+(defun find-file-button (button)
+  (let ((text (buffer-substring (button-start button) (button-end button))))
+    (when (string-match "\\(/[^:]*\\):\\([[:digit:]]+\\):\\([[:digit:]]+\\)" text)
+      (let* ((file (match-string 1 text))
+             (line (string-to-number (match-string 2 text)))
+             (coln (string-to-number (match-string 3 text)))
+             (buf  (find-file file)))
+            (with-current-buffer buf 
+               (let* ((this-line (line-number-at-pos))
+                      (diff (- line this-line)))
+                 (beginning-of-line)
+                 (forward-line diff)
+                 (forward-char (1- coln))))))))
+
+(define-button-type 'find-file-button
+  'follow-link t
+  'action #'find-file-button)
+
+(defun buttonize-buffer ()
+  "turn all file paths into buttons"
+  (save-excursion
+    (goto-char (point-min))
+    (while (re-search-forward "/[^ \t:]*:[[:digit:]]+:[[:digit:]]+" nil t)
+      (make-button (match-beginning 0) (match-end 0) :type 'find-file-button))))
+
 (defun ghc-display-holes ()
   (interactive)
   (let ((file-msgs (ghc-get-only-holes)))
@@ -248,12 +275,14 @@ nil            does not display errors/warnings.
 	(ghc-display
 	 nil
 	 (lambda ()
-	   (mapc (lambda (x) (insert x "\n\n")) msgs)))))))
+           (progn
+	     (mapc (lambda (x) (insert x "\n\n")) msgs)
+             (buttonize-buffer)) ))))))
 
 (defun ghc-display-holes-to-minibuf ()
   (let ((file-msgs (ghc-get-only-holes)))
     (if (null file-msgs)
-	(message "No errors or warnings")
+	(message "No holes")
       (let* ((file (ghc-file-msgs-get-file file-msgs))
 	     (msgs (ghc-file-msgs-get-msgs file-msgs))
 	     (errmsg (mapconcat 'identity msgs "\n"))
