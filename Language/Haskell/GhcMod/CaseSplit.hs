@@ -22,10 +22,6 @@ import Outputable (ppr, PprStyle)
 import qualified TyCon as Ty
 import qualified Type as Ty
 
-import Debug.Trace
-import Language.Haskell.GhcMod.Doc
-import ErrUtils
-
 ----------------------------------------------------------------
 -- CASE SPLITTING
 ----------------------------------------------------------------
@@ -49,7 +45,7 @@ splits file lineNo colNo = ghandle handler body
     body = inModuleContext file $ \dflag style -> do
         opt <- options
         modSum <- Gap.fileModSummary file
-        whenFound' opt (getSrcSpanTypeForSplit dflag style modSum lineNo colNo) $ \x -> case x of
+        whenFound' opt (getSrcSpanTypeForSplit modSum lineNo colNo) $ \x -> case x of
           (SplitInfo varName bndLoc (varLoc,varT) _matches) -> do
              let varName' = showName dflag style varName  -- Convert name to string
              text <- genCaseSplitTextFile file (SplitToTextInfo varName' bndLoc varLoc $
@@ -60,17 +56,17 @@ splits file lineNo colNo = ghandle handler body
              text <- genCaseSplitTextFile file (SplitToTextInfo varName' bndLoc varLoc $
                                                 getTyCons dflag style varName varT)
              return (fourInts bndLoc, text)
-    handler (SomeException e) = trace (show e) $ emptyResult =<< options
+    handler (SomeException _) = emptyResult =<< options
 
 ----------------------------------------------------------------
 -- a. Code for getting the information of the variable
 
-getSrcSpanTypeForSplit :: GhcMonad m => DynFlags -> PprStyle -> G.ModSummary -> Int -> Int -> m (Maybe SplitInfo)
-getSrcSpanTypeForSplit dflag style modSum lineNo colNo = do
+getSrcSpanTypeForSplit :: GhcMonad m => G.ModSummary -> Int -> Int -> m (Maybe SplitInfo)
+getSrcSpanTypeForSplit modSum lineNo colNo = do
   fn <- getSrcSpanTypeForFnSplit modSum lineNo colNo
   if isJust fn
      then return fn
-     else getSrcSpanTypeForTypeSplit dflag style modSum lineNo colNo
+     else getSrcSpanTypeForTypeSplit modSum lineNo colNo
 
 -- Information for a function case split
 getSrcSpanTypeForFnSplit :: GhcMonad m => G.ModSummary -> Int -> Int -> m (Maybe SplitInfo)
@@ -97,23 +93,9 @@ getPatternVarName :: LPat Id -> G.Name
 getPatternVarName (L _ (G.VarPat vName)) = G.getName vName
 getPatternVarName _                      = error "This should never happened"
 
--- Information for a type family case split
-getSrcSpanTypeForTypeSplit :: GhcMonad m => DynFlags -> PprStyle -> G.ModSummary -> Int -> Int -> m (Maybe SplitInfo)
-getSrcSpanTypeForTypeSplit dflag style modSum lineNo colNo = do
-    p <- G.parseModule modSum
-    TypecheckedModule{tm_renamed_source = Just rs
-                     ,tm_checked_module_info = modinfo} <- G.typecheckModule p
-    case listifyRenamedSpans rs (lineNo, colNo) :: [G.LTyFamInstEqn G.Name] of
-      [L loc (G.TyFamInstEqn (L _ name) _ _)] -> do
-        -- We found a type family instance declaration
-        let lst = listifyRenamedSpans rs (lineNo, colNo) :: [G.LHsType G.Name]
-            hsTypes = sortBy (cmp `on` G.getLoc) lst
-            (L varLoc (G.HsTyVar varName)):_ = trace (showOneLine dflag style $ ppr hsTypes) $ hsTypes
-        tcResult <- G.lookupName varName
-        case trace (showOneLine dflag style $ ppr tcResult) $ tcResult of
-          Just _ -> return $ Nothing -- Just (TySplitInfo name loc (varLoc, tcKi))
-          _ -> return Nothing
-      _ -> return Nothing
+-- TODO: Information for a type family case split
+getSrcSpanTypeForTypeSplit :: GhcMonad m => G.ModSummary -> Int -> Int -> m (Maybe SplitInfo)
+getSrcSpanTypeForTypeSplit _modSum _lineNo _colNo = return Nothing
 
 ----------------------------------------------------------------
 -- b. Code for getting the possible constructors
