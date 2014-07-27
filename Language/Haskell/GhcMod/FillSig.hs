@@ -112,9 +112,15 @@ getSignature modSum lineNo colNo = do
                         G.TypeFamily -> Open
                         G.DataFamily -> Data
 #endif
+#if __GLASGOW_HASKELL__ >= 706
             getTyFamVarName = \x -> case x of
                                       L _ (G.UserTyVar n)     -> n
                                       L _ (G.KindedTyVar n _) -> n
+#else
+            getTyFamVarName = \x -> case x of  -- In GHC 7.4, HsTyVarBndr's have an extra arg
+                                      L _ (G.UserTyVar n _)     -> n
+                                      L _ (G.KindedTyVar n _ _) -> n
+#endif
          in return $ Just (TyFamDecl loc name flavour $ map getTyFamVarName vars)
       _ -> return Nothing
   where obtainClassInfo :: GhcMonad m => G.ModuleInfo -> G.Name -> SrcSpan -> m (Maybe SigInfo)
