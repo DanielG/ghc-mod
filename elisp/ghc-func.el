@@ -158,8 +158,7 @@
           (turn-on-haskell-font-lock)))
       (display-buffer buf 
         '((display-buffer-reuse-window
-           display-buffer-pop-up-window)
-          (window-height . 20))))))
+           display-buffer-pop-up-window))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 

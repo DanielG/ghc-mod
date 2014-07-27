@@ -76,6 +76,8 @@
 (defvar ghc-case-split-key  "\C-c\C-s")
 (defvar ghc-initial-sig-key "\C-c\C-g")
 (defvar ghc-refine-key      "\C-c\C-r")
+(defvar ghc-prev-hole-key   "\C-c\ep")
+(defvar ghc-next-hole-key   "\C-c\en")
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -111,6 +113,8 @@
     (define-key haskell-mode-map ghc-case-split-key  'ghc-case-split)
     (define-key haskell-mode-map ghc-initial-sig-key 'ghc-initial-code-from-signature)
     (define-key haskell-mode-map ghc-refine-key      'ghc-refine)
+    (define-key haskell-mode-map ghc-prev-hole-key   'ghc-goto-prev-hole)
+    (define-key haskell-mode-map ghc-next-hole-key   'ghc-goto-next-hole)
     (ghc-comp-init)
     (setq ghc-initialized t))
   (ghc-import-module)

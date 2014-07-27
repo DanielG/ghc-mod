@@ -52,6 +52,13 @@ nil            does not display errors/warnings.
 'other-buffer  displays errors/warnings in the other buffer.
 ")
 
+(defvar ghc-display-hole 'other-buffer
+  "*An action to display hole information for 'C-c C-j' and 'C-c C-h'
+
+'minibuffer    displays errors/warnings in the minibuffer.
+'other-buffer  displays errors/warnings in the other buffer"
+)
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defun ghc-check-syntax ()
@@ -156,6 +163,7 @@ nil            does not display errors/warnings.
 	  (overlay-put ovl 'ghc-file file)
 	  (overlay-put ovl 'ghc-msg msg)
 	  (overlay-put ovl 'help-echo msg)
+          (overlay-put ovl 'ghc-hole hole)
 	  (let ((fringe (if err ghc-check-error-fringe (if hole ghc-check-hole-fringe ghc-check-warning-fringe)))
 		(face (if err 'ghc-face-error (if hole 'ghc-face-hole 'ghc-face-warn))))
 	    (overlay-put ovl 'before-string fringe)
@@ -235,6 +243,34 @@ nil            does not display errors/warnings.
   (cond
    ((eq ghc-display-error 'minibuffer) (ghc-display-errors-to-minibuf))
    ((eq ghc-display-error 'other-buffer) (ghc-display-errors))))
+
+(defun ghc-goto-prev-hole ()
+  (interactive)
+  (let* ((here (point))
+         (ovls0 (ghc-check-overlay-at here))
+         (end (if ovls0 (overlay-start (car ovls0)) here))
+         (ovls1 (overlays-in (point-min) end))
+         (ovls2 (ghc-filter (lambda (ovl) (overlay-get ovl 'ghc-check)) ovls1))
+         (ovls3 (ghc-filter (lambda (ovl) (overlay-get ovl 'ghc-hole)) ovls2))
+         (pnts (mapcar 'overlay-start ovls3)))
+    (if pnts (goto-char (apply 'max pnts))))
+  (cond
+   ((eq ghc-display-hole 'minibuffer) (ghc-display-errors-to-minibuf))
+   ((eq ghc-display-hole 'other-buffer) (ghc-display-errors))))
+
+(defun ghc-goto-next-hole ()
+  (interactive)
+  (let* ((here (point))
+         (ovls0 (ghc-check-overlay-at here))
+         (beg (if ovls0 (overlay-end (car ovls0)) here))
+         (ovls1 (overlays-in beg (point-max)))
+         (ovls2 (ghc-filter (lambda (ovl) (overlay-get ovl 'ghc-check)) ovls1))
+         (ovls3 (ghc-filter (lambda (ovl) (overlay-get ovl 'ghc-hole)) ovls2))
+         (pnts (mapcar 'overlay-start ovls3)))
+    (if pnts (goto-char (apply 'min pnts))))
+  (cond
+   ((eq ghc-display-hole 'minibuffer) (ghc-display-errors-to-minibuf))
+   ((eq ghc-display-hole 'other-buffer) (ghc-display-errors))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
