@@ -216,6 +216,42 @@ nil            does not display errors/warnings.
             (message "%s" errmsg)
           (message "%s\n\n%s" file errmsg))))))
 
+(defun ghc-get-only-holes ()
+  (let ((ovls (ghc-check-overlay-at (point))))
+    (when ovls
+      (let ((msgs (mapcar (lambda (ovl) (overlay-get ovl 'ghc-msg)) ovls))
+	    (file (overlay-get (car ovls) 'ghc-file))
+	    holes)
+	(dolist (msg msgs)
+	  (if (string-match "Found hole" msg)
+	      (ghc-add holes msg)
+	      nil))
+	(ghc-make-file-msgs :file file :msgs holes)))))
+
+(defun ghc-display-holes ()
+  (interactive)
+  (let ((file-msgs (ghc-get-only-holes)))
+    (if (null file-msgs)
+	(message "No holes")
+      (let ((file (ghc-file-msgs-get-file file-msgs))
+	    (msgs (ghc-file-msgs-get-msgs file-msgs)))
+	(ghc-display
+	 nil
+	 (lambda ()
+	   (mapc (lambda (x) (insert x "\n\n")) msgs)))))))
+
+(defun ghc-display-holes-to-minibuf ()
+  (let ((file-msgs (ghc-get-only-holes)))
+    (if (null file-msgs)
+	(message "No errors or warnings")
+      (let* ((file (ghc-file-msgs-get-file file-msgs))
+	     (msgs (ghc-file-msgs-get-msgs file-msgs))
+	     (errmsg (mapconcat 'identity msgs "\n"))
+	     (buffile buffer-file-name))
+        (if (string-equal buffile file)
+            (message "%s" errmsg)
+          (message "%s\n\n%s" file errmsg))))))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defun ghc-goto-prev-error ()
@@ -255,8 +291,8 @@ nil            does not display errors/warnings.
          (pnts (mapcar 'overlay-start ovls3)))
     (if pnts (goto-char (apply 'max pnts))))
   (cond
-   ((eq ghc-display-hole 'minibuffer) (ghc-display-errors-to-minibuf))
-   ((eq ghc-display-hole 'other-buffer) (ghc-display-errors))))
+   ((eq ghc-display-hole 'minibuffer) (ghc-display-holes-to-minibuf))
+   ((eq ghc-display-hole 'other-buffer) (ghc-display-holes))))
 
 (defun ghc-goto-next-hole ()
   (interactive)
@@ -269,8 +305,8 @@ nil            does not display errors/warnings.
          (pnts (mapcar 'overlay-start ovls3)))
     (if pnts (goto-char (apply 'min pnts))))
   (cond
-   ((eq ghc-display-hole 'minibuffer) (ghc-display-errors-to-minibuf))
-   ((eq ghc-display-hole 'other-buffer) (ghc-display-errors))))
+   ((eq ghc-display-hole 'minibuffer) (ghc-display-holes-to-minibuf))
+   ((eq ghc-display-hole 'other-buffer) (ghc-display-holes))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
