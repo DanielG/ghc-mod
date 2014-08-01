@@ -39,8 +39,9 @@ class ToString a where
     toPlain :: Options -> a -> Builder
 
 lineSep :: Options -> String
-lineSep opt = lsep
+lineSep opt = interpret lsep
   where
+    interpret s = read $ "\"" ++ s ++ "\""
     LineSeparator lsep = lineSeparator opt
 
 -- |
