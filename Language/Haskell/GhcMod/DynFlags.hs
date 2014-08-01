@@ -1,3 +1,5 @@
+{-# LANGUAGE CPP #-}
+
 module Language.Haskell.GhcMod.DynFlags where
 
 import Control.Applicative ((<$>))
@@ -109,3 +111,11 @@ allWarningFlags = unsafePerformIO $
         return $ G.warningFlags df'
 
 ----------------------------------------------------------------
+
+-- | Set 'DynFlags' equivalent to "-fno-max-relevant-bindings".
+setNoMaxRelevantBindings :: DynFlags -> DynFlags
+#if __GLASGOW_HASKELL__ >= 708
+setNoMaxRelevantBindings df = df { maxRelevantBinds = Nothing }
+#else
+setNoMaxRelevantBindings = id
+#endif

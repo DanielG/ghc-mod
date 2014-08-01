@@ -130,6 +130,7 @@ loop set mvar = do
         "type"   -> showType set arg
         "split"  -> doSplit set arg
         "sig"    -> doSig set arg
+        "refine" -> doRefine set arg
         "boot"   -> bootIt set
         "browse" -> browseIt set arg
         "quit"   -> return ("quit", False, set)
@@ -258,6 +259,16 @@ doSig set fileArg  = do
     let [file, line, column] = words fileArg
     set' <- newFileSet set file
     ret <- sig file (read line) (read column)
+    return (ret, True, set')
+
+doRefine :: IOish m
+         => Set FilePath
+         -> FilePath
+         -> GhcModT m (String, Bool, Set FilePath)
+doRefine set fileArg  = do
+    let [file, line, column, expr] = words fileArg
+    set' <- newFileSet set file
+    ret <- refine file (read line) (read column) expr
     return (ret, True, set')
 
 ----------------------------------------------------------------

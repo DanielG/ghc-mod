@@ -5,18 +5,20 @@ module Language.Haskell.GhcMod.CaseSplit (
   ) where
 
 import CoreMonad (liftIO)
-import Data.List (find, intercalate)
+import Data.Function (on)
+import Data.List (find, intercalate, sortBy)
+import Data.Maybe (isJust)
 import qualified Data.Text as T
 import qualified Data.Text.IO as T (readFile)
 import qualified DataCon as Ty
 import Exception (ghandle, SomeException(..))
-import GHC (GhcMonad, LHsBind, LPat, Id, ParsedModule(..), TypecheckedModule(..), DynFlags, SrcSpan, Type, GenLocated(L))
+import GHC (GhcMonad, LPat, Id, ParsedModule(..), TypecheckedModule(..), DynFlags, SrcSpan, Type, GenLocated(L))
 import qualified GHC as G
 import Language.Haskell.GhcMod.Convert
 import qualified Language.Haskell.GhcMod.Gap as Gap
 import Language.Haskell.GhcMod.Monad
 import Language.Haskell.GhcMod.SrcUtils
-import Outputable (PprStyle)
+import Outputable (ppr, PprStyle)
 import qualified TyCon as Ty
 import qualified Type as Ty
 
@@ -24,7 +26,8 @@ import qualified Type as Ty
 -- CASE SPLITTING
 ----------------------------------------------------------------
 
-data SplitInfo = SplitInfo G.Name (SrcSpan,Type) (SrcSpan, Type) [SrcSpan]
+data SplitInfo = SplitInfo G.Name SrcSpan (SrcSpan, Type) [SrcSpan]
+               | TySplitInfo G.Name SrcSpan (SrcSpan, Ty.Kind)
 data SplitToTextInfo = SplitToTextInfo { sVarName     :: String
                                        , sBindingSpan :: SrcSpan
                                        , sVarSpan     :: SrcSpan
@@ -42,8 +45,13 @@ splits file lineNo colNo = ghandle handler body
     body = inModuleContext file $ \dflag style -> do
         opt <- options
         modSum <- Gap.fileModSummary file
-        whenFound' opt (getSrcSpanTypeForSplit modSum lineNo colNo) $
-          \(SplitInfo varName (bndLoc,_) (varLoc,varT) _matches) -> do
+        whenFound' opt (getSrcSpanTypeForSplit modSum lineNo colNo) $ \x -> case x of
+          (SplitInfo varName bndLoc (varLoc,varT) _matches) -> do
+             let varName' = showName dflag style varName  -- Convert name to string
+             text <- genCaseSplitTextFile file (SplitToTextInfo varName' bndLoc varLoc $
+                                                getTyCons dflag style varName varT)
+             return (fourInts bndLoc, text)
+          (TySplitInfo varName bndLoc (varLoc,varT)) -> do
              let varName' = showName dflag style varName  -- Convert name to string
              text <- genCaseSplitTextFile file (SplitToTextInfo varName' bndLoc varLoc $
                                                 getTyCons dflag style varName varT)
@@ -55,20 +63,26 @@ splits file lineNo colNo = ghandle handler body
 
 getSrcSpanTypeForSplit :: GhcMonad m => G.ModSummary -> Int -> Int -> m (Maybe SplitInfo)
 getSrcSpanTypeForSplit modSum lineNo colNo = do
+  fn <- getSrcSpanTypeForFnSplit modSum lineNo colNo
+  if isJust fn
+     then return fn
+     else getSrcSpanTypeForTypeSplit modSum lineNo colNo
+
+-- Information for a function case split
+getSrcSpanTypeForFnSplit :: GhcMonad m => G.ModSummary -> Int -> Int -> m (Maybe SplitInfo)
+getSrcSpanTypeForFnSplit modSum lineNo colNo = do
     p@ParsedModule{pm_parsed_source = pms} <- G.parseModule modSum
     tcm@TypecheckedModule{tm_typechecked_source = tcs} <- G.typecheckModule p
-    let bs:_ = listifySpans tcs (lineNo, colNo) :: [LHsBind Id]
-        varPat  = find isPatternVar $ listifySpans tcs (lineNo, colNo) :: Maybe (LPat Id)
+    let varPat  = find isPatternVar $ listifySpans tcs (lineNo, colNo) :: Maybe (LPat Id)
         match:_ = listifyParsedSpans pms (lineNo, colNo) :: [Gap.GLMatch]
     case varPat of
       Nothing  -> return Nothing
       Just varPat' -> do
         varT <- Gap.getType tcm varPat'  -- Finally we get the type of the var
-        bsT  <- Gap.getType tcm bs
-        case (varT, bsT) of
-          (Just varT', Just (_,bsT')) ->
+        case varT of
+          Just varT' ->
             let (L matchL (G.Match _ _ (G.GRHSs rhsLs _))) = match
-            in return $ Just (SplitInfo (getPatternVarName varPat') (matchL,bsT') varT' (map G.getLoc rhsLs) )
+            in return $ Just (SplitInfo (getPatternVarName varPat') matchL varT' (map G.getLoc rhsLs) )
           _ -> return Nothing
 
 isPatternVar :: LPat Id -> Bool
@@ -77,7 +91,11 @@ isPatternVar _                  = False
 
 getPatternVarName :: LPat Id -> G.Name
 getPatternVarName (L _ (G.VarPat vName)) = G.getName vName
-getPatternVarName _                      = error "This should never happend"
+getPatternVarName _                      = error "This should never happened"
+
+-- TODO: Information for a type family case split
+getSrcSpanTypeForTypeSplit :: GhcMonad m => G.ModSummary -> Int -> Int -> m (Maybe SplitInfo)
+getSrcSpanTypeForTypeSplit _modSum _lineNo _colNo = return Nothing
 
 ----------------------------------------------------------------
 -- b. Code for getting the possible constructors

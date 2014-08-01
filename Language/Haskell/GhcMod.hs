@@ -35,6 +35,7 @@ module Language.Haskell.GhcMod (
   , types
   , splits
   , sig
+  , refine
   , modules
   , languages
   , flags

@@ -34,7 +34,9 @@ checkSyntax files = withErrorHandler sessionName $
 check :: IOish m
       => [FilePath]  -- ^ The target files.
       -> GhcModT m (Either String String)
-check fileNames = withLogger setAllWaringFlags $ setTargetFiles fileNames
+check fileNames =
+  withLogger (setAllWaringFlags . setNoMaxRelevantBindings) $
+    setTargetFiles fileNames
 
 ----------------------------------------------------------------
 

@@ -156,7 +156,9 @@
             (turn-off-haskell-font-lock)
           (haskell-font-lock-defaults-create)
           (turn-on-haskell-font-lock)))
-      (display-buffer buf))))
+      (display-buffer buf 
+        '((display-buffer-reuse-window
+           display-buffer-pop-up-window))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
