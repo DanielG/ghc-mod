@@ -3,6 +3,7 @@
 module Language.Haskell.GhcMod.FillSig (
     sig
   , refine
+  , auto
   ) where
 
 import Data.Char (isSymbol)
@@ -23,6 +24,7 @@ import qualified Type as Ty
 import qualified HsBinds as Ty
 import qualified Class as Ty
 import qualified Language.Haskell.Exts.Annotated as HE
+import Djinn.GHC
 
 ----------------------------------------------------------------
 -- INTIAL CODE FROM FUNCTION OR INSTANCE SIGNATURE
@@ -143,6 +145,7 @@ getSignatureFromHE file lineNo colNo = do
                    return $ HEFamSignature s Open name (map cleanTyVarBind tys)
                  HE.DataFamDecl (HE.SrcSpanInfo s _) _ (HE.DHead _ name tys) _ ->
                    return $ HEFamSignature s Open name (map cleanTyVarBind tys)
+                 _ -> fail ""
              _ -> Nothing
   where cleanTyVarBind (HE.KindedVar _ n _) = n
         cleanTyVarBind (HE.UnkindedVar _ n) = n
@@ -310,3 +313,26 @@ doParen True  s = if ' ' `elem` s then '(':s ++ ")" else s
 isSearchedVar :: Id -> G.HsExpr Id -> Bool
 isSearchedVar i (G.HsVar i2) = i == i2
 isSearchedVar _ _ = False
+
+
+----------------------------------------------------------------
+-- REFINE AUTOMATICALLY
+----------------------------------------------------------------
+
+auto :: IOish m
+     => FilePath     -- ^ A target file.
+     -> Int          -- ^ Line number.
+     -> Int          -- ^ Column number.
+     -> GhcModT m String
+auto file lineNo colNo = ghandle handler body
+  where
+    body = inModuleContext file $ \dflag style -> do
+        opt <- options
+        modSum <- Gap.fileModSummary file
+        p <- G.parseModule modSum
+        tcm@TypecheckedModule{tm_typechecked_source = tcs} <- G.typecheckModule p
+        whenFound' opt (findVar dflag style tcm tcs lineNo colNo) $ \(loc, _name, rty, paren) -> do
+          text:_ <- djinn False rty
+          return (fourInts loc, doParen paren text)
+            
+    handler (SomeException _) = emptyResult =<< options
