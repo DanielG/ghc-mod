@@ -8,7 +8,7 @@ module Language.Haskell.GhcMod.FillSig (
 
 import Data.Char (isSymbol)
 import Data.Function (on)
-import Data.List (find, sortBy)
+import Data.List (find, nub, sortBy)
 import Data.Maybe (isJust)
 import Exception (ghandle, SomeException(..))
 import GHC (GhcMonad, Id, ParsedModule(..), TypecheckedModule(..), DynFlags, SrcSpan, Type, GenLocated(L))
@@ -332,7 +332,7 @@ auto file lineNo colNo = ghandle handler body
         p <- G.parseModule modSum
         tcm@TypecheckedModule{tm_typechecked_source = tcs} <- G.typecheckModule p
         whenFound' opt (findVar dflag style tcm tcs lineNo colNo) $ \(loc, _name, rty, paren) -> do
-          text:_ <- djinn False rty
-          return (fourInts loc, doParen paren text)
+          djinns <- djinn True rty
+          return (fourInts loc, map (doParen paren) (nub djinns))
             
     handler (SomeException _) = emptyResult =<< options
