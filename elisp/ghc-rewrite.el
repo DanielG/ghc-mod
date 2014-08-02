@@ -75,7 +75,7 @@
 ;;; Auto
 ;;;
 
-(defun ghc-perform-rewriting-auto (info)
+(defun ghc-perform-rewriting-auto (info msg)
   "Replace code with new string obtained from ghc-mod from auto mode"
   (let* ((current-line    (line-number-at-pos))
 	 (begin-line      (ghc-sinfo-get-beg-line info))
@@ -87,15 +87,34 @@
 	 (end-line-pos    (line-beginning-position end-line-diff))
 	 (end-pos         (- (+ end-line-pos (ghc-sinfo-get-end-column info)) 1)) )
     (delete-region begin-pos end-pos)
-    (insert (first (ghc-sinfo-get-info info))) )
-  )
+    (insert msg)))
 
-(defun ghc-show-auto-messages (msgs)
-  (ghc-display-with-name nil
-    (lambda ()
-      (insert "Possible completions:\n")
-      (mapc (lambda (x) (insert "- " x "\n")) msgs))
-    "*Djinn completions*"))
+(defun auto-button (button)
+  (let ((text (buffer-substring (button-start button) (button-end button))))
+    (with-current-buffer ghc-auto-buffer
+       (ghc-perform-rewriting-auto ghc-auto-info text))))
+
+(define-button-type 'auto-button
+  'follow-link t
+  'help-echo "mouse-2, RET: Insert this completion"
+  'action #'auto-button)
+
+(defun ghc-show-auto-messages (info)
+  (let ((buf (current-buffer)))
+    (setq ghc-auto-info   info)
+    (setq ghc-auto-buffer buf)
+    (ghc-display nil
+      (lambda ()
+        (insert "Possible completions:\n")
+        (mapc 
+          (lambda (x) 
+            (let* ((ins1      (insert "- "))
+                   (pos-begin (point))
+                   (ins       (insert x))
+                   (pos-end   (point))
+                   (ins3      (insert "\n")))
+              (make-button pos-begin pos-end :type 'auto-button)))
+          (ghc-sinfo-get-info info))))))
 
 (defun ghc-auto ()
   "Try to automatically fill the contents of a hole"
@@ -104,8 +123,8 @@
     (if (null info)
 	(message "No automatic completions found")
         (if (= (length (ghc-sinfo-get-info info)) 1)
-            (ghc-perform-rewriting-auto info)
-            (ghc-show-auto-messages (ghc-sinfo-get-info info))))))
+            (ghc-perform-rewriting-auto info (first (ghc-sinfo-get-info info)))
+            (ghc-show-auto-messages info)))))
 
 (defun ghc-obtain-auto ()
   (let* ((ln (int-to-string (line-number-at-pos)))
