@@ -9,7 +9,7 @@ module Language.Haskell.GhcMod.FillSig (
 import Data.Char (isSymbol)
 import Data.Function (on)
 import Data.List (find, nub, sortBy)
-import qualified Data.Map.Strict as M
+import qualified Data.Map as M
 import Data.Maybe (isJust, catMaybes)
 import Exception (ghandle, SomeException(..))
 import GHC (GhcMonad, Id, ParsedModule(..), TypecheckedModule(..), DynFlags, SrcSpan, Type, GenLocated(L))
