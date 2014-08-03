@@ -107,7 +107,7 @@ Library
                       , split
                       , haskell-src-exts
                       , text
-                      , djinn-ghc >= 0.0.2
+                      , djinn-ghc >= 0.0.2.1
   if impl(ghc >= 7.8)
     Build-Depends:      Cabal >= 1.18
   else
@@ -192,7 +192,7 @@ Test-Suite spec
                       , split
                       , haskell-src-exts
                       , text
-                      , djinn-ghc >= 0.0.2
+                      , djinn-ghc >= 0.0.2.1
   if impl(ghc >= 7.8)
     Build-Depends:      Cabal >= 1.18
   else
