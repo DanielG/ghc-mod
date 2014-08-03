@@ -14,7 +14,6 @@ import Data.Maybe (isJust, catMaybes)
 import Exception (ghandle, SomeException(..))
 import GHC (GhcMonad, Id, ParsedModule(..), TypecheckedModule(..), DynFlags, SrcSpan, Type, GenLocated(L))
 import qualified GHC as G
-import qualified ConLike as G
 import qualified Name as G
 import qualified Language.Haskell.GhcMod.Gap as Gap
 import Language.Haskell.GhcMod.Convert
@@ -22,7 +21,7 @@ import Language.Haskell.GhcMod.Monad
 import Language.Haskell.GhcMod.SrcUtils
 import Language.Haskell.GhcMod.Types
 import CoreMonad (liftIO)
-import Outputable (PprStyle, ppr)
+import Outputable (PprStyle)
 import qualified Type as Ty
 import qualified HsBinds as Ty
 import qualified Class as Ty
