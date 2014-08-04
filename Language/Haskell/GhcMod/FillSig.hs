@@ -26,7 +26,6 @@ import qualified Type as Ty
 import qualified HsBinds as Ty
 import qualified Class as Ty
 import qualified Var as Ty
-import qualified DataCon as Ty
 import qualified HsPat as Ty
 import qualified Language.Haskell.Exts.Annotated as HE
 import Djinn.GHC
@@ -391,8 +390,14 @@ getPatsForVariable tcs (lineNo, colNo) =
    in case bnd of
         G.PatBind { Ty.pat_lhs = L ploc pat }  -> case pat of
           Ty.ConPatIn (L _ i) _ -> (i, [L ploc pat])
+          _                     -> (error "This should never happen", [])
         G.FunBind { Ty.fun_id = L _ funId } ->
-          let m = sortBy (cmp `on` G.getLoc) $ listifySpans tcs (lineNo, colNo) :: [G.LMatch Id (G.LHsExpr Id)]
+          let m = sortBy (cmp `on` G.getLoc) $ listifySpans tcs (lineNo, colNo)
+#if __GLASGOW_HASKELL__ >= 708
+                    :: [G.LMatch Id (G.LHsExpr Id)]
+#else
+                    :: [G.LMatch Id]
+#endif
               (L _ (G.Match pats _ _):_) = m
            in (funId, pats)
         _ -> (error "This should never happen", [])
@@ -402,7 +407,11 @@ getBindingsForPat (Ty.VarPat i) = M.singleton (G.getName i) (Ty.varType i)
 getBindingsForPat (Ty.LazyPat (L _ l)) = getBindingsForPat l
 getBindingsForPat (Ty.BangPat (L _ b)) = getBindingsForPat b
 getBindingsForPat (Ty.AsPat (L _ a) (L _ i)) = M.insert (G.getName a) (Ty.varType a) (getBindingsForPat i)
+#if __GLASGOW_HASKELL__ >= 708
 getBindingsForPat (Ty.ListPat  l _ _) = M.unions $ map (\(L _ i) -> getBindingsForPat i) l
+#else
+getBindingsForPat (Ty.ListPat  l _)   = M.unions $ map (\(L _ i) -> getBindingsForPat i) l
+#endif
 getBindingsForPat (Ty.TuplePat l _ _) = M.unions $ map (\(L _ i) -> getBindingsForPat i) l
 getBindingsForPat (Ty.PArrPat  l _)   = M.unions $ map (\(L _ i) -> getBindingsForPat i) l
 getBindingsForPat (Ty.ViewPat _ (L _ i) _) = getBindingsForPat i
