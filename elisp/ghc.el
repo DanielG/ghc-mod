@@ -75,7 +75,7 @@
 (defvar ghc-deeper-key      "\C-c>")
 (defvar ghc-case-split-key  "\C-c\C-s")
 (defvar ghc-initial-sig-key "\C-c\C-g")
-(defvar ghc-refine-key      "\C-c\C-r")
+(defvar ghc-refine-key      "\C-c\C-f")
 (defvar ghc-auto-key        "\C-c\C-a")
 (defvar ghc-prev-hole-key   "\C-c\ep")
 (defvar ghc-next-hole-key   "\C-c\en")
