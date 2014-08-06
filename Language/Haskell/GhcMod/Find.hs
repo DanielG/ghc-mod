@@ -129,6 +129,8 @@ getSymbolCachePath = do
 -- | Dumping a set of ('Symbol',\['ModuleString'\]) to a file
 --   if the file does not exist or is invalid.
 --   The file name is printed.
+
+-- TODO: Before releaseing add a version number to the name of the cache file
 dumpSymbol :: IOish m => GhcModT m String
 dumpSymbol = do
     dir <- getSymbolCachePath
