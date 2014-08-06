@@ -11,6 +11,9 @@
 (require 'ghc-func)
 (require 'ghc-process)
 
+(defvar ghc-auto-info nil)
+(defvar ghc-auto-buffer nil)
+
 ;; Common code for case splitting and refinement
 
 (defun ghc-perform-rewriting (info)
@@ -123,7 +126,7 @@
     (if (null info)
 	(message "No automatic completions found")
         (if (= (length (ghc-sinfo-get-info info)) 1)
-            (ghc-perform-rewriting-auto info (first (ghc-sinfo-get-info info)))
+            (ghc-perform-rewriting-auto info (car (ghc-sinfo-get-info info)))
             (ghc-show-auto-messages info)))))
 
 (defun ghc-obtain-auto ()
