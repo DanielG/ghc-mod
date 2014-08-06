@@ -96,7 +96,7 @@ Library
                       , ghc-syb-utils
                       , hlint >= 1.8.61
                       , io-choice
-                      , monad-journal
+                      , monad-journal >= 0.2.2.0
                       , old-time
                       , process
                       , syb
@@ -181,7 +181,7 @@ Test-Suite spec
                       , ghc-syb-utils
                       , hlint >= 1.7.1
                       , io-choice
-                      , monad-journal
+                      , monad-journal >= 0.2.2.0
                       , old-time
                       , process
                       , syb

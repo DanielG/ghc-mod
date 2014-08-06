@@ -8,8 +8,6 @@ install:
   - cabal update
   - cabal install happy --constraint 'transformers <= 0.3.0.0'
   - happy --version
-  - git clone -b for-ghc-mod https://github.com/DanielG/monad-journal.git
-  - cabal install ./monad-journal --constraint 'transformers <= 0.3.0.0'
   - cabal install -j --only-dependencies --enable-tests
 
 script:
