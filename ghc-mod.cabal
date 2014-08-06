@@ -169,6 +169,7 @@ Test-Suite spec
                         LangSpec
                         LintSpec
                         ListSpec
+                        MonadSpec
                         GhcPkgSpec
                         TestUtils
   Build-Depends:        base >= 4.0 && < 5
