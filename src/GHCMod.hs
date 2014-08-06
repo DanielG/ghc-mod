@@ -41,6 +41,7 @@ usage =    progVersion
         ++ "\t ghc-mod split" ++ ghcOptHelp ++ "<HaskellFile> <module> <line-no> <column-no>\n"
         ++ "\t ghc-mod sig" ++ ghcOptHelp ++ "<HaskellFile> <module> <line-no> <column-no>\n"
         ++ "\t ghc-mod refine" ++ ghcOptHelp ++ "<HaskellFile> <module> <line-no> <column-no> <expression>\n"
+        ++ "\t ghc-mod auto" ++ ghcOptHelp ++ "<HaskellFile> <module> <line-no> <column-no>\n"
         ++ "\t ghc-mod find <symbol>\n"
         ++ "\t ghc-mod lint [-h opt] <HaskellFile>\n"
         ++ "\t ghc-mod root\n"
@@ -125,6 +126,7 @@ main = flip E.catches handlers $ do
       "split"   -> nArgs 4 $ splits cmdArg1 (read cmdArg3) (read cmdArg4)
       "sig"     -> nArgs 4 $ sig cmdArg1 (read cmdArg3) (read cmdArg4)
       "refine"  -> nArgs 5 $ refine cmdArg1 (read cmdArg3) (read cmdArg4) cmdArg5
+      "auto"    -> nArgs 4 $ auto cmdArg1 (read cmdArg3) (read cmdArg4)
       "find"    -> nArgs 1 $ findSymbol cmdArg1
       "lint"    -> nArgs 1 $ withFile lint cmdArg1
       "root"    -> rootInfo

@@ -256,6 +256,7 @@ nil            does not display errors/warnings.
 
 (define-button-type 'find-file-button
   'follow-link t
+  'help-echo "mouse-2, RET: Go to definition"
   'action #'find-file-button)
 
 (defun buttonize-buffer ()

@@ -3,15 +3,18 @@
 module Language.Haskell.GhcMod.FillSig (
     sig
   , refine
+  , auto
   ) where
 
 import Data.Char (isSymbol)
 import Data.Function (on)
-import Data.List (find, sortBy)
-import Data.Maybe (isJust)
+import Data.List (find, nub, sortBy)
+import qualified Data.Map as M
+import Data.Maybe (isJust, catMaybes)
 import Exception (ghandle, SomeException(..))
 import GHC (GhcMonad, Id, ParsedModule(..), TypecheckedModule(..), DynFlags, SrcSpan, Type, GenLocated(L))
 import qualified GHC as G
+import qualified Name as G
 import qualified Language.Haskell.GhcMod.Gap as Gap
 import Language.Haskell.GhcMod.Convert
 import Language.Haskell.GhcMod.Monad
@@ -22,7 +25,10 @@ import Outputable (PprStyle)
 import qualified Type as Ty
 import qualified HsBinds as Ty
 import qualified Class as Ty
+import qualified Var as Ty
+import qualified HsPat as Ty
 import qualified Language.Haskell.Exts.Annotated as HE
+import Djinn.GHC
 
 ----------------------------------------------------------------
 -- INTIAL CODE FROM FUNCTION OR INSTANCE SIGNATURE
@@ -143,6 +149,7 @@ getSignatureFromHE file lineNo colNo = do
                    return $ HEFamSignature s Open name (map cleanTyVarBind tys)
                  HE.DataFamDecl (HE.SrcSpanInfo s _) _ (HE.DHead _ name tys) _ ->
                    return $ HEFamSignature s Open name (map cleanTyVarBind tys)
+                 _ -> fail ""
              _ -> Nothing
   where cleanTyVarBind (HE.KindedVar _ n _) = n
         cleanTyVarBind (HE.UnkindedVar _ n) = n
@@ -310,3 +317,114 @@ doParen True  s = if ' ' `elem` s then '(':s ++ ")" else s
 isSearchedVar :: Id -> G.HsExpr Id -> Bool
 isSearchedVar i (G.HsVar i2) = i == i2
 isSearchedVar _ _ = False
+
+
+----------------------------------------------------------------
+-- REFINE AUTOMATICALLY
+----------------------------------------------------------------
+
+auto :: IOish m
+     => FilePath     -- ^ A target file.
+     -> Int          -- ^ Line number.
+     -> Int          -- ^ Column number.
+     -> GhcModT m String
+auto file lineNo colNo = ghandle handler body
+  where
+    body = inModuleContext file $ \dflag style -> do
+        opt <- options
+        modSum <- Gap.fileModSummary file
+        p <- G.parseModule modSum
+        tcm@TypecheckedModule{tm_typechecked_source = tcs
+                             ,tm_checked_module_info = minfo} <- G.typecheckModule p
+        whenFound' opt (findVar dflag style tcm tcs lineNo colNo) $ \(loc, _name, rty, paren) -> do
+          topLevel <- getEverythingInTopLevel minfo
+          let (f,pats) = getPatsForVariable tcs (lineNo,colNo)
+              -- Remove self function to prevent recursion, and id to trim cases
+              filterFn = (\(n,_) -> let funName = G.getOccString n
+                                        recName = G.getOccString (G.getName f)
+                                     in not $ funName `elem` recName:notWantedFuns)
+              -- Find without using other functions in top-level
+              localBnds = M.unions $ map (\(L _ pat) -> getBindingsForPat pat) pats
+              lbn = filter filterFn (M.toList localBnds)
+          djinnsEmpty <- djinn True (Just minfo) lbn rty (Max 10) 100000
+          let -- Find with the entire top-level
+              almostEnv = M.toList $ M.union localBnds topLevel
+              env = filter filterFn almostEnv
+          djinns <- djinn True (Just minfo) env rty (Max 10) 100000
+          return (fourInts loc, map (doParen paren) $ nub (djinnsEmpty ++ djinns))
+            
+    handler (SomeException _) = emptyResult =<< options
+
+-- Functions we do not want in completions
+notWantedFuns :: [String]
+notWantedFuns = ["id", "asTypeOf", "const"]
+
+-- Get all things defined in top-level
+getEverythingInTopLevel :: GhcMonad m => G.ModuleInfo -> m (M.Map G.Name Type)
+getEverythingInTopLevel m = do
+  let modInfo  = tyThingsToInfo (G.modInfoTyThings m)
+      topNames = G.modInfoTopLevelScope m
+  case topNames of
+    Just topNames' -> do topThings <- mapM G.lookupGlobalName topNames'
+                         let topThings' = catMaybes topThings
+                             topInfo    = tyThingsToInfo topThings'
+                         return $ M.union modInfo topInfo
+    Nothing -> return modInfo
+
+tyThingsToInfo :: [Ty.TyThing] -> M.Map G.Name Type
+tyThingsToInfo [] = M.empty
+tyThingsToInfo (G.AnId i : xs) = M.insert (G.getName i) (Ty.varType i) (tyThingsToInfo xs)
+-- Getting information about constructors is not needed
+-- because they will be added by djinn-ghc when traversing types
+-- #if __GLASGOW_HASKELL__ >= 708
+-- tyThingToInfo (G.AConLike (G.RealDataCon con)) = return [(Ty.dataConName con, Ty.dataConUserType con)]
+-- #else
+-- tyThingToInfo (G.AConLike con) = return [(Ty.dataConName con, Ty.dataConUserType con)]
+-- #endif
+tyThingsToInfo (_:xs) = tyThingsToInfo xs
+
+-- Find the Id of the function and the pattern where the hole is located
+getPatsForVariable :: G.TypecheckedSource -> (Int,Int) -> (Id, [Ty.LPat Id])
+getPatsForVariable tcs (lineNo, colNo) =
+  let (L _ bnd:_) = sortBy (cmp `on` G.getLoc) $ listifySpans tcs (lineNo, colNo) :: [G.LHsBind Id]
+   in case bnd of
+        G.PatBind { Ty.pat_lhs = L ploc pat }  -> case pat of
+          Ty.ConPatIn (L _ i) _ -> (i, [L ploc pat])
+          _                     -> (error "This should never happen", [])
+        G.FunBind { Ty.fun_id = L _ funId } ->
+          let m = sortBy (cmp `on` G.getLoc) $ listifySpans tcs (lineNo, colNo)
+#if __GLASGOW_HASKELL__ >= 708
+                    :: [G.LMatch Id (G.LHsExpr Id)]
+#else
+                    :: [G.LMatch Id]
+#endif
+              (L _ (G.Match pats _ _):_) = m
+           in (funId, pats)
+        _ -> (error "This should never happen", [])
+
+getBindingsForPat :: Ty.Pat Id -> M.Map G.Name Type
+getBindingsForPat (Ty.VarPat i) = M.singleton (G.getName i) (Ty.varType i)
+getBindingsForPat (Ty.LazyPat (L _ l)) = getBindingsForPat l
+getBindingsForPat (Ty.BangPat (L _ b)) = getBindingsForPat b
+getBindingsForPat (Ty.AsPat (L _ a) (L _ i)) = M.insert (G.getName a) (Ty.varType a) (getBindingsForPat i)
+#if __GLASGOW_HASKELL__ >= 708
+getBindingsForPat (Ty.ListPat  l _ _) = M.unions $ map (\(L _ i) -> getBindingsForPat i) l
+#else
+getBindingsForPat (Ty.ListPat  l _)   = M.unions $ map (\(L _ i) -> getBindingsForPat i) l
+#endif
+getBindingsForPat (Ty.TuplePat l _ _) = M.unions $ map (\(L _ i) -> getBindingsForPat i) l
+getBindingsForPat (Ty.PArrPat  l _)   = M.unions $ map (\(L _ i) -> getBindingsForPat i) l
+getBindingsForPat (Ty.ViewPat _ (L _ i) _) = getBindingsForPat i
+getBindingsForPat (Ty.SigPatIn  (L _ i) _) = getBindingsForPat i
+getBindingsForPat (Ty.SigPatOut (L _ i) _) = getBindingsForPat i
+getBindingsForPat (Ty.ConPatIn (L _ i) d) = M.insert (G.getName i) (Ty.varType i) (getBindingsForRecPat d)
+getBindingsForPat (Ty.ConPatOut { Ty.pat_args = d }) = getBindingsForRecPat d
+getBindingsForPat _ = M.empty
+
+getBindingsForRecPat :: Ty.HsConPatDetails Id -> M.Map G.Name Type
+getBindingsForRecPat (Ty.PrefixCon args) = M.unions $ map (\(L _ i) -> getBindingsForPat i) args
+getBindingsForRecPat (Ty.InfixCon (L _ a1) (L _ a2)) = M.union (getBindingsForPat a1) (getBindingsForPat a2)
+getBindingsForRecPat (Ty.RecCon (Ty.HsRecFields { Ty.rec_flds = fields })) = getBindingsForRecFields fields
+  where getBindingsForRecFields [] = M.empty
+        getBindingsForRecFields (Ty.HsRecField { Ty.hsRecFieldArg = (L _ a) } : fs) =
+          M.union (getBindingsForPat a) (getBindingsForRecFields fs)

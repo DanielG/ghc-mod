@@ -5,8 +5,7 @@ module Language.Haskell.GhcMod.CaseSplit (
   ) where
 
 import CoreMonad (liftIO)
-import Data.Function (on)
-import Data.List (find, intercalate, sortBy)
+import Data.List (find, intercalate)
 import Data.Maybe (isJust)
 import qualified Data.Text as T
 import qualified Data.Text.IO as T (readFile)
@@ -18,7 +17,7 @@ import Language.Haskell.GhcMod.Convert
 import qualified Language.Haskell.GhcMod.Gap as Gap
 import Language.Haskell.GhcMod.Monad
 import Language.Haskell.GhcMod.SrcUtils
-import Outputable (ppr, PprStyle)
+import Outputable (PprStyle)
 import qualified TyCon as Ty
 import qualified Type as Ty
 
