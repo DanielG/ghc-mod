@@ -15,6 +15,7 @@ module Language.Haskell.GhcMod.Monad (
   , defaultState
   , CompilerMode(..)
   , GhcModLog
+  , GhcModError(..)
   -- * Monad utilities
   , runGhcModT
   , runGhcModT'
