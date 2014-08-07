@@ -96,6 +96,7 @@ Library
                       , ghc-syb-utils
                       , hlint >= 1.8.61
                       , io-choice
+                      , monad-journal >= 0.2.2.0
                       , old-time
                       , process
                       , syb
@@ -168,6 +169,7 @@ Test-Suite spec
                         LangSpec
                         LintSpec
                         ListSpec
+                        MonadSpec
                         GhcPkgSpec
                         TestUtils
   Build-Depends:        base >= 4.0 && < 5
@@ -180,6 +182,7 @@ Test-Suite spec
                       , ghc-syb-utils
                       , hlint >= 1.7.1
                       , io-choice
+                      , monad-journal >= 0.2.2.0
                       , old-time
                       , process
                       , syb

@@ -98,7 +98,11 @@ main = E.handle cmdHandler $
         setCurrentDirectory rootdir
         mvar <- liftIO newEmptyMVar
         void $ forkIO $ setupDB mvar
-        runGhcModT opt $ loop S.empty mvar
+        (res, _) <- runGhcModT opt $ loop S.empty mvar
+
+        case res of
+          Right () -> return ()
+          Left e -> error $ show e
       where
         -- this is just in case.
         -- If an error is caught here, it is a bug of GhcMod library.

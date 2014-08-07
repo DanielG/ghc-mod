@@ -15,7 +15,7 @@ setTargetFiles :: IOish m => [FilePath] -> GhcModT m ()
 setTargetFiles files = do
     targets <- forM files $ \file -> G.guessTarget file Nothing
     G.setTargets targets
-    mode <- getMode
+    mode <- gmCompilerMode <$> get
     if mode == Intelligent then
         loadTargets Intelligent
       else do
@@ -47,7 +47,7 @@ setTargetFiles files = do
     setIntelligent = do
         newdf <- setModeIntelligent <$> G.getSessionDynFlags
         void $ G.setSessionDynFlags newdf
-        setMode Intelligent
+        setCompilerMode Intelligent
 
 needsFallback :: G.ModuleGraph -> Bool
 needsFallback = any (hasTHorQQ . G.ms_hspp_opts)

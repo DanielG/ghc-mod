@@ -6,34 +6,33 @@
 
 module Language.Haskell.GhcMod.Monad (
   -- * Monad Types
-    GhcMod
-  , GhcModT
+    GhcModT
   , IOish
   -- ** Environment, state and logging
   , GhcModEnv(..)
   , newGhcModEnv
-  , GhcModState
+  , GhcModState(..)
   , defaultState
-  , Mode(..)
-  , GhcModWriter
+  , CompilerMode(..)
+  , GhcModLog
+  , GhcModError(..)
   -- * Monad utilities
-  , runGhcMod
   , runGhcModT
   , runGhcModT'
   , withErrorHandler
   -- ** Conversion
-  , liftGhcMod
   , toGhcModT
   -- ** Accessing 'GhcModEnv' and 'GhcModState'
   , options
   , cradle
-  , getMode
-  , setMode
+  , getCompilerMode
+  , setCompilerMode
   , withOptions
   -- ** Exporting convenient modules
   , module Control.Monad.Reader.Class
   , module Control.Monad.Writer.Class
   , module Control.Monad.State.Class
+  , module Control.Monad.Journal.Class
   ) where
 
 #if __GLASGOW_HASKELL__ < 708
@@ -77,20 +76,27 @@ import Data.Monoid (Monoid)
 #endif
 
 import Control.Applicative (Alternative)
-import Control.Monad (MonadPlus, liftM, void)
+import Control.Arrow (first)
+import Control.Monad (MonadPlus, void, liftM)
 import Control.Monad.Base (MonadBase, liftBase)
 
-import Control.Monad.Reader.Class
-import Control.Monad.State.Class
-import Control.Monad.Trans.Class
-#if __GLASGOW_HASKELL__ < 708
-import Control.Monad.Trans.Maybe
-#endif
+-- Monad transformer stuff
 import Control.Monad.Trans.Control (MonadBaseControl(..), StM, liftBaseWith,
   control, liftBaseOp, liftBaseOp_)
-import Control.Monad.Trans.RWS.Lazy (RWST(..), runRWST)
+
+import Control.Monad.Trans.Class
+import Control.Monad.Reader.Class
 import Control.Monad.Writer.Class
-import Control.Monad.Error (Error(..), ErrorT(..), MonadError)
+import Control.Monad.State.Class
+
+import Control.Monad.Error (Error(..), MonadError, ErrorT, runErrorT)
+import Control.Monad.Reader (ReaderT, runReaderT)
+import Control.Monad.State.Strict (StateT, runStateT)
+import Control.Monad.Trans.Journal (JournalT, runJournalT)
+#ifdef MONADIO_INSTANCES
+import Control.Monad.Trans.Maybe (MaybeT)
+#endif
+import Control.Monad.Journal.Class
 
 import Data.Maybe (fromJust, isJust)
 import Data.IORef (IORef, readIORef, writeIORef, newIORef)
@@ -106,14 +112,16 @@ data GhcModEnv = GhcModEnv {
     , gmCradle     :: Cradle
     }
 
-data GhcModState = GhcModState Mode deriving (Eq,Show,Read)
+type GhcModLog = ()
 
-data Mode = Simple | Intelligent deriving (Eq,Show,Read)
+data GhcModState = GhcModState {
+      gmCompilerMode :: CompilerMode
+    } deriving (Eq,Show,Read)
+
+data CompilerMode = Simple | Intelligent deriving (Eq,Show,Read)
 
 defaultState :: GhcModState
 defaultState = GhcModState Simple
-
-type GhcModWriter = ()
 
 data GhcModError = GMENoMsg
                  | GMEString String
@@ -132,20 +140,22 @@ instance Error GhcModError where
 --
 -- Basicially an @IOish m => m@ is a 'Monad' supporting arbitrary 'IO' and
 -- exception handling. Usually this will simply be 'IO' but we parametrise it in
--- the exported API so users have the option to use a custom underlying monad.
+-- the exported API so users have the option to use a custom inner monad.
 type IOish m = (Functor m, MonadIO m, MonadBaseControl IO m)
 
-type GhcMod a = GhcModT (ErrorT GhcModError IO) a
-
--- | The GhcMod monad transformer data type. This is basically a wrapper around
--- RWST with custom instances for 'GhcMonad' and it's constraints.
+-- | The GhcMod monad transformer data type. This is basically a newtype wrapper
+-- around 'StateT', 'ErrorT', 'JournalT' and 'ReaderT' with custom instances for
+-- 'GhcMonad' and it's constraints.
 --
 -- The inner monad should have instances for 'MonadIO' and 'MonadBaseControl'
 -- 'IO'. Most @mtl@ monads already have 'MonadBaseControl' 'IO' instances, see
 -- the @monad-control@ package.
 newtype GhcModT m a = GhcModT {
-      unGhcModT :: RWST GhcModEnv GhcModWriter GhcModState m a
-    } deriving (Functor
+      unGhcModT :: StateT GhcModState
+                     (ErrorT GhcModError
+                       (JournalT GhcModLog
+                         (ReaderT GhcModEnv m) ) ) a
+    } deriving ( Functor
                , Applicative
                , Alternative
                , Monad
@@ -155,23 +165,29 @@ newtype GhcModT m a = GhcModT {
                , Control.Monad.IO.Class.MonadIO
 #endif
                , MonadReader GhcModEnv
-               , MonadWriter GhcModWriter
+               , MonadWriter w
                , MonadState GhcModState
-               , MonadTrans
+               , MonadError GhcModError
                )
 
-deriving instance MonadError GhcModError m => MonadError GhcModError (GhcModT m)
+instance MonadTrans GhcModT where
+    lift = GhcModT . lift . lift . lift . lift
 
 #if MONADIO_INSTANCES
-instance (Monoid w, MonadIO m) => MonadIO (RWST r w s m) where
+instance MonadIO m => MonadIO (StateT s m) where
+    liftIO = lift . liftIO
+
+instance MonadIO m => MonadIO (ReaderT r m) where
+    liftIO = lift . liftIO
+
+instance (Monoid w, MonadIO m) => MonadIO (JournalT w m) where
     liftIO = lift . liftIO
 
 instance (Error e, MonadIO m) => MonadIO (ErrorT e m) where
     liftIO = lift . liftIO
 
-instance (MonadIO m) => MonadIO (MaybeT m) where
+instance MonadIO m => MonadIO (MaybeT m) where
     liftIO = lift . liftIO
-
 #endif
 
 ----------------------------------------------------------------
@@ -231,18 +247,18 @@ newGhcModEnv opt dir = do
         , gmCradle = c
         }
 
--- | Run a @GhcModT m@ computation, i.e. one with a custom underlying monad.
---
--- You probably don't want this, look at 'runGhcMod' instead.
-runGhcModT :: IOish m => Options -> GhcModT m a -> m a
+-- | Run a @GhcModT m@ computation.
+runGhcModT :: IOish m
+           => Options
+           -> GhcModT m a
+           -> m (Either GhcModError a, GhcModLog)
 runGhcModT opt action = do
     env <- liftBase $ newGhcModEnv opt =<< getCurrentDirectory
-    (a,(_,_)) <- runGhcModT' env defaultState $ do
+    first (fmap fst) <$> (runGhcModT' env defaultState $ do
         dflags <- getSessionDynFlags
         defaultCleanupHandler dflags $ do
             initializeFlagsWithCradle opt (gmCradle env)
-            action
-    return a
+            action)
 
 -- | Run a computation inside @GhcModT@ providing the RWST environment and
 -- initial state. This is a low level function, use it only if you know what to
@@ -253,28 +269,12 @@ runGhcModT' :: IOish m
            => GhcModEnv
            -> GhcModState
            -> GhcModT m a
-           -> m (a,(GhcModState, GhcModWriter))
+           -> m (Either GhcModError (a, GhcModState), GhcModLog)
 runGhcModT' r s a = do
-  (a',s',w) <- runRWST (unGhcModT $ initGhcMonad (Just libdir) >> a) r s
-  return (a',(s',w))
-
--- | Run a 'GhcMod' computation. If you want an underlying monad other than
--- 'ErrorT e IO' you should look at 'runGhcModT'
-runGhcMod :: Options
-          -> GhcMod a
-          -> IO (Either GhcModError a)
-runGhcMod o a =
-  runErrorT $ runGhcModT o a
-
-liftErrorT :: IOish m => GhcModT m a -> GhcModT (ErrorT GhcModError m) a
-liftErrorT action =
-    GhcModT $ RWST $ \e s -> ErrorT $ Right <$> (runRWST $ unGhcModT action) e s
-
--- | Lift @(GhcModT IO)@ into @GhcMod@, which is an alias for @GhcModT (ErrorT
--- GhcModError IO)@.
-liftGhcMod :: GhcModT IO a -> GhcMod a
-liftGhcMod = liftErrorT
-
+  (res, w') <-
+      flip runReaderT r $ runJournalT $ runErrorT $ flip runStateT s
+        $ (unGhcModT $ initGhcMonad (Just libdir) >> a)
+  return $ (res, w')
 ----------------------------------------------------------------
 
 withErrorHandler :: IOish m => String -> GhcModT m a -> GhcModT m a
@@ -300,13 +300,11 @@ options = gmOptions <$> ask
 cradle :: IOish m => GhcModT m Cradle
 cradle = gmCradle <$> ask
 
-getMode :: IOish m => GhcModT m Mode
-getMode = do
-    GhcModState mode <- get
-    return mode
+getCompilerMode :: (Functor m, MonadState GhcModState m) => m CompilerMode
+getCompilerMode = gmCompilerMode <$> get
 
-setMode :: IOish m => Mode -> GhcModT m ()
-setMode mode = put $ GhcModState mode
+setCompilerMode :: MonadState GhcModState m => CompilerMode -> m ()
+setCompilerMode mode = (\s -> put s { gmCompilerMode = mode } ) =<< get
 
 ----------------------------------------------------------------
 
@@ -324,8 +322,10 @@ instance (MonadBaseControl IO m) => MonadBase IO (GhcModT m) where
 
 instance (MonadBaseControl IO m) => MonadBaseControl IO (GhcModT m) where
     newtype StM (GhcModT m) a = StGhcMod {
-          unStGhcMod :: StM (RWST GhcModEnv GhcModWriter GhcModState m) a }
-
+          unStGhcMod :: StM (StateT GhcModState
+                              (ErrorT GhcModError
+                                (JournalT GhcModLog
+                                  (ReaderT GhcModEnv m) ) ) ) a }
     liftBaseWith f = GhcModT . liftBaseWith $ \runInBase ->
         f $ liftM StGhcMod . runInBase . unGhcModT
 

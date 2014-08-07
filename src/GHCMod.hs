@@ -113,7 +113,7 @@ main = flip E.catches handlers $ do
         nArgs n f = if length remainingArgs == n
                         then f
                         else E.throw (ArgumentsMismatch cmdArg0)
-    res <- runGhcModT opt $ case cmdArg0 of
+    (res, _) <- runGhcModT opt $ case cmdArg0 of
       "list"    -> modules
       "lang"    -> languages
       "flag"    -> flags
@@ -136,7 +136,9 @@ main = flip E.catches handlers $ do
       "version" -> return progVersion
       "help"    -> return $ O.usageInfo usage argspec
       cmd       -> E.throw (NoSuchCommand cmd)
-    putStr res
+    case res of
+      Right s -> putStr s
+      Left e -> error $ show e
   where
     handlers = [Handler (handleThenExit handler1), Handler (handleThenExit handler2)]
     handleThenExit handler e = handler e >> exitFailure

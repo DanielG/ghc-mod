@@ -18,13 +18,14 @@ import Config (cProjectVersion,cTargetPlatformString)
 import Control.Applicative ((<$>))
 import Control.Exception (handle, SomeException(..))
 import Control.Monad (when, void)
+import Control.Monad.Error.Class
 import CoreMonad (liftIO)
 import Data.Function (on)
 import Data.List (groupBy, sort)
 import Data.List.Split (splitOn)
 import Data.Maybe (fromMaybe)
 import DynFlags (DynFlags(..), systemPackageConfig)
-import Exception (ghandle, handleIO)
+import Exception (handleIO)
 import qualified GHC as G
 import Language.Haskell.GhcMod.Convert
 import Language.Haskell.GhcMod.Monad
@@ -54,6 +55,7 @@ import qualified Data.Map as M
 type Symbol = String
 -- | Database from 'Symbol' to \['ModuleString'\].
 newtype SymbolDb = SymbolDb (Map Symbol [ModuleString])
+    deriving (Show)
 
 ----------------------------------------------------------------
 
@@ -117,61 +119,70 @@ readSymbolDb = handle (\(SomeException _) -> return M.empty) $ do
 ----------------------------------------------------------------
 -- used 'ghc-mod dumpsym'
 
-getPath :: IOish m => GhcModT m (Maybe String)
-getPath = do
-    df <- G.getSessionDynFlags
-    stack <- cradlePkgDbStack . gmCradle <$> ask
-    case filter (GlobalDb /=) stack of
-        []  -> return Nothing
-        u:_ -> liftIO $ resolvePackageDb df u
+getSymbolCachePath :: IOish m => GhcModT m FilePath
+getSymbolCachePath = do
+    u:_ <- filter (/= GlobalDb) . cradlePkgDbStack <$> cradle
+    Just db <- (liftIO . flip resolvePackageDb u) =<< G.getSessionDynFlags
+    return db
+  `catchError` const (fail "Couldn't find non-global package database for symbol cache")
 
 -- | Dumping a set of ('Symbol',\['ModuleString'\]) to a file
 --   if the file does not exist or is invalid.
 --   The file name is printed.
+
+-- TODO: Before releaseing add a version number to the name of the cache file
 dumpSymbol :: IOish m => GhcModT m String
 dumpSymbol = do
-    mdir <- getPath
-    ret <- case mdir of
-        Nothing  -> return ""
-        Just dir -> do
-            let cache = dir </> symbolCache
-                pkgdb = dir </> packageCache
-            ghandle (\(SomeException _) -> return "") $ do
-                create <- liftIO $ needToCreate cache pkgdb
-                when create $ do
-                    sm <- getSymbol
-                    void . liftIO $ withFile cache WriteMode $ \hdl ->
-                        mapM (hPrint hdl) sm
-                return cache
-    return $ ret ++ "\n"
+    dir <- getSymbolCachePath
+    let cache = dir </> symbolCache
+        pkgdb = dir </> packageCache
 
-needToCreate :: FilePath -> FilePath -> IO Bool
-needToCreate file1 file2 = do
-    exist <- doesFileExist file1
+    create <- liftIO $ cache `isNewerThan` pkgdb
+    when create $ (liftIO . writeSymbolCache cache) =<< getSymbolTable
+    return $ unlines [cache]
+
+writeSymbolCache :: FilePath
+                 -> [(Symbol,[ModuleString])]
+                 -> IO ()
+writeSymbolCache cache sm = do
+  void . withFile cache WriteMode $ \hdl ->
+      mapM (hPrint hdl) sm
+
+isNewerThan :: FilePath -> FilePath -> IO Bool
+isNewerThan ref file = do
+    exist <- doesFileExist ref
     if not exist then
         return True
       else do
-        m1 <- getModificationTime file1
-        m2 <- getModificationTime file2
-        return $ m1 <= m2 -- including equal just in case
+        tRef <- getModificationTime ref
+        tFile <- getModificationTime file
+        return $ tRef <= tFile -- including equal just in case
 
 -- | Browsing all functions in all system/user modules.
-getSymbol :: IOish m => GhcModT m [(Symbol,[ModuleString])]
-getSymbol = do
-    ms <- G.packageDbModules True
-    let ns = map (G.moduleNameString . G.moduleName) ms
-    is <- mapM G.getModuleInfo ms
-    let symbols = concatMap toNameModule (zip is ns)
-    return $ uniquefy symbols
+getSymbolTable :: IOish m => GhcModT m [(Symbol,[ModuleString])]
+getSymbolTable = do
+    ghcModules <- G.packageDbModules True
+    moduleInfos <- mapM G.getModuleInfo ghcModules
+    let modules = do
+         m <- ghcModules
+         let moduleName = G.moduleNameString $ G.moduleName m
+--             modulePkg = G.packageIdString $ G.modulePackageId m
+         return moduleName
 
-toNameModule :: (Maybe G.ModuleInfo,ModuleString) -> [(Symbol,ModuleString)]
-toNameModule (Nothing,_)  = []
-toNameModule (Just inf,mdlname) = map (\name -> (getOccString name, mdlname)) names
+    return $ collectModules
+           $ extractBindings `concatMap` (moduleInfos `zip` modules)
+
+extractBindings :: (Maybe G.ModuleInfo, ModuleString)
+                -> [(Symbol, ModuleString)]
+extractBindings (Nothing,_)  = []
+extractBindings (Just inf,mdlname) =
+    map (\name -> (getOccString name, mdlname)) names
   where
     names = G.modInfoExports inf
 
-uniquefy :: [(Symbol,ModuleString)] -> [(Symbol,[ModuleString])]
-uniquefy = map tieup . groupBy ((==) `on` fst) . sort
+collectModules :: [(Symbol,ModuleString)]
+               -> [(Symbol,[ModuleString])]
+collectModules = map tieup . groupBy ((==) `on` fst) . sort
   where
     tieup x = (head (map fst x), map snd x)
 
