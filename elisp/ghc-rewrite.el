@@ -31,6 +31,18 @@
     (insert (ghc-sinfo-get-info info)) )
   )
 
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;
+;;; Combined rewriting
+;;;
+
+(defun ghc-try-rewrite ()
+  "Try to apply initial code generation and case splitting"
+  (interactive)
+  (when (null (ghc-try-initial-code-from-signature))
+        (ghc-try-case-split)))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
 ;;; Case splitting
@@ -41,9 +53,13 @@
 (defun ghc-case-split ()
   "Split the variable at point into its possible constructors"
   (interactive)
+  (when (null (ghc-try-case-split))
+        (message "Cannot split into cases")))
+
+(defun ghc-try-case-split ()
   (let ((info (ghc-obtain-case-split)))
     (if (null info)
-	(message "Cannot split in cases")
+	'()
         (ghc-perform-rewriting info)) ))
 
 (defun ghc-obtain-case-split ()
@@ -61,10 +77,14 @@
 (defun ghc-refine ()
   "Refine a hole using a user-specified function"
   (interactive)
+  (when (null (ghc-try-refine))
+        (message "Cannot refine")))
+
+(defun ghc-try-refine ()
   (let ((info (ghc-obtain-refine (read-string "Refine with: "))))
     (if (null info)
-	(message "Cannot refine")
-	(ghc-perform-rewriting info)) ))
+	'()
+        (ghc-perform-rewriting info)) ))
 
 (defun ghc-obtain-refine (expr)
   (let* ((ln (int-to-string (line-number-at-pos)))
@@ -144,11 +164,17 @@
 (ghc-defstruct icsinfo sort pos fns)
 
 (defun ghc-initial-code-from-signature ()
+  "Refine a hole using a user-specified function"
+  (interactive)
+  (when (null (ghc-try-initial-code-from-signature))
+        (message "Cannot obtain initial code")))
+
+(defun ghc-try-initial-code-from-signature ()
   "Include initial code from a function signature or instance declaration"
   (interactive)
   (let ((info (ghc-obtain-initial-code-from-signature)))
     (if (null info)
-	(message "Cannot obtain initial code")
+	'()
 	(let* ((ln-current (line-number-at-pos))
 	       (sort (ghc-icsinfo-get-sort info))
 	       (pos (ghc-icsinfo-get-pos info))
