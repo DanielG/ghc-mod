@@ -16,10 +16,10 @@ import Language.Haskell.GhcMod.Gap (benchmarkBuildInfo, benchmarkTargets,
 import Language.Haskell.GhcMod.GhcPkg
 import Language.Haskell.GhcMod.Types
 
+import MonadUtils (MonadIO, liftIO)
 import Control.Applicative ((<$>))
 import qualified Control.Exception as E
 import Control.Monad (filterM)
-import Control.Monad.IO.Class (MonadIO, liftIO)
 import Control.Monad.Error.Class (MonadError(..))
 import Data.Maybe (maybeToList)
 import Data.Set (fromList, toList)
