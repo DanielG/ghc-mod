@@ -94,6 +94,7 @@ import Control.Monad.State.Strict (StateT, runStateT)
 import Control.Monad.Trans.Journal (JournalT, runJournalT)
 #ifdef MONADIO_INSTANCES
 import Control.Monad.Trans.Maybe (MaybeT)
+import Control.Monad.Error (Error(..))
 #endif
 import Control.Monad.Journal.Class
 
