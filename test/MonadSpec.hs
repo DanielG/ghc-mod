@@ -25,3 +25,8 @@ spec = do
     describe "runGhcModT" $
         it "complains if the cabal file fails to parse while a sandbox is present" $ withDirectory_ "test/data/broken-cabal" $ do
           shouldReturnError $ runD' (gmCradle <$> ask)
+
+    describe "gmsGet/Put" $
+        it "work" $ do
+          (runD $ gmsPut (GhcModState Intelligent) >> gmsGet)
+            `shouldReturn` (GhcModState Intelligent)

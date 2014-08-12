@@ -23,6 +23,8 @@ module Language.Haskell.GhcMod.Monad (
   -- ** Conversion
   , toGhcModT
   -- ** Accessing 'GhcModEnv' and 'GhcModState'
+  , gmsGet
+  , gmsPut
   , options
   , cradle
   , getCompilerMode
