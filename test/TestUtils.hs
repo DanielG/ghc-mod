@@ -12,8 +12,6 @@ module TestUtils (
 import Language.Haskell.GhcMod.Monad
 import Language.Haskell.GhcMod.Types
 
-import Control.Applicative
-
 isolateCradle :: IOish m => GhcModT m a -> GhcModT m a
 isolateCradle action =
     local modifyEnv  $ action
@@ -30,9 +28,11 @@ runIsolatedGhcMod opt action = do
   extract $ runGhcModT opt $ isolateCradle action
 
 -- | Run GhcMod in isolated cradle with default options
+runID :: GhcModT IO a -> IO a
 runID = runIsolatedGhcMod defaultOptions
 
 -- | Run GhcMod in isolated cradle
+runI :: Options -> GhcModT IO a -> IO a
 runI = runIsolatedGhcMod
 
 -- | Run GhcMod
