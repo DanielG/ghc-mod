@@ -31,6 +31,11 @@ spec = do
                 res <- runID $ checkSyntax ["Baz.hs"]
                 res `shouldSatisfy` ("Baz.hs:5:1:Warning:" `isPrefixOf`)
 
+        it "works with foreign exports" $ do
+            withDirectory_ "test/data" $ do
+                res <- runID $ checkSyntax ["ForeignExport.hs"]
+                res `shouldBe` ""
+
         context "when no errors are found" $ do
             it "doesn't output an empty line" $ do
                 withDirectory_ "test/data/ghc-mod-check/Data" $ do
