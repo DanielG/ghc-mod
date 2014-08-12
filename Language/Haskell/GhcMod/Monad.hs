@@ -122,16 +122,6 @@ data CompilerMode = Simple | Intelligent deriving (Eq,Show,Read)
 defaultState :: GhcModState
 defaultState = GhcModState Simple
 
-data GhcModError = GMENoMsg
-                 | GMEString String
-                 | GMECabal
-                 | GMEGhc
-                   deriving (Eq,Show,Read)
-
-instance Error GhcModError where
-    noMsg = GMENoMsg
-    strMsg = GMEString
-
 ----------------------------------------------------------------
 
 -- | A constraint alias (-XConstraintKinds) to make functions dealing with
