@@ -153,7 +153,8 @@ newtype GhcModT m a = GhcModT {
 #if DIFFERENT_MONADIO
                , Control.Monad.IO.Class.MonadIO
 #endif
-               , MonadReader GhcModEnv
+               , MonadReader GhcModEnv -- TODO: make MonadReader instance
+                                       -- pass-through like MonadState
                , MonadWriter w
                , MonadError GhcModError
                )
