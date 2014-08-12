@@ -1,3 +1,27 @@
+2014-08-12 v5.0.0
+	* ghc-mod consumes much less memory than ghc-mod-4.1.
+	* @serras brought the results of Google Summer code
+	  including case splitting and better type hole
+	* @DanielG provided the new monad based API
+
+2014-05-16 v4.1.6
+	* Reverting "Trying to fix rare hang on Nix".
+
+2014-05-16 v4.1.5
+	* Fixing the build on GHC 7.8.3.
+
+2014-05-16 v4.1.4
+	* Trying to fix rare hang on Nix.
+
+2014-05-16 v4.1.3
+	* Making -g-fxxx work.
+
+2014-05-16 v4.1.2
+	* Setting Opt_WarnTypedHoles correctly.
+
+2014-05-16 v4.1.1
+	* Making Emacs front-end more stable.
+
 2014-04-30 v4.1.0
 	* ghc-modi now provides "type", "info", and "boot".
 	* ghc-mod now provides "find".
