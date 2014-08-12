@@ -49,7 +49,6 @@ import Language.Haskell.GhcMod.Types
 import Language.Haskell.GhcMod.Cradle
 import Language.Haskell.GhcMod.DynFlags
 import Language.Haskell.GhcMod.GhcPkg
-import Language.Haskell.GhcMod.GHCChoice
 import Language.Haskell.GhcMod.CabalApi
 import qualified Language.Haskell.GhcMod.Gap as Gap
 
@@ -200,7 +199,7 @@ initializeFlagsWithCradle :: GhcMonad m
         -> Cradle
         -> m ()
 initializeFlagsWithCradle opt c
-  | cabal     = withCabal |||> withSandbox
+  | cabal     = withCabal
   | otherwise = withSandbox
   where
     mCradleFile = cradleCabalFile c

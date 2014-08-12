@@ -1,6 +1,9 @@
+{-# LANGUAGE ScopedTypeVariables #-}
 module MonadSpec where
 
 import Test.Hspec
+import Dir
+import Control.Applicative
 import Control.Monad.Error.Class
 import Language.Haskell.GhcMod.Types
 import Language.Haskell.GhcMod.Monad
@@ -17,3 +20,8 @@ spec = do
                          return "hello"
                      `catchError` (const $ fail "oh noes")
              a `shouldBe` (Left $ GMEString "oh noes")
+
+    describe "runGhcModT" $
+        it "complains if the cabal file fails to parse while a sandbox is present" $ withDirectory_ "test/data/broken-cabal" $ do
+          (a,_) <- runGhcModT defaultOptions (gmCradle <$> ask)
+          a `shouldSatisfy` (\(Left _) -> True)

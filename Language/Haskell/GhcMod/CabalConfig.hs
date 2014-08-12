@@ -1,6 +1,7 @@
 {-# LANGUAGE CPP #-}
 
--- | Reading cabal @dist/setup-config@
+-- | This module facilitates extracting information from Cabal's on-disk
+-- 'LocalBuildInfo' (@dist/setup-config@).
 module Language.Haskell.GhcMod.CabalConfig (
     CabalConfig
   , cabalConfigDependencies
@@ -37,10 +38,12 @@ import Distribution.Simple.LocalBuildInfo (ComponentName)
 import System.FilePath ((</>))
 ----------------------------------------------------------------
 
+-- | 'Show'ed cabal 'LocalBuildInfo' string
 type CabalConfig = String
 
--- | Get file containing 'LocalBuildInfo' data. If it doesn't exist run @cabal
--- configure@ i.e. configure with default options like @cabal build@ would do.
+-- | Get contents of the file containing 'LocalBuildInfo' data. If it doesn't
+-- exist run @cabal configure@ i.e. configure with default options like @cabal
+-- build@ would do.
 getConfig :: Cradle -> IO CabalConfig
 getConfig cradle =
     readFile path `E.catch` (\(E.SomeException _) -> configure >> readFile path)
@@ -55,10 +58,12 @@ getConfig cradle =
 configPath :: FilePath
 configPath = localBuildInfoFile defaultDistPref
 
+-- | Get list of 'Package's needed by all components of the current package
 cabalConfigDependencies :: Cradle -> PackageIdentifier -> IO [Package]
 cabalConfigDependencies cradle thisPkg =
     configDependencies thisPkg <$> getConfig cradle
 
+-- | Extract list of depencenies for all components from 'CabalConfig'
 configDependencies :: PackageIdentifier -> CabalConfig -> [Package]
 configDependencies thisPkg config = map fromInstalledPackageId deps
  where
@@ -116,6 +121,8 @@ configDependencies thisPkg config = map fromInstalledPackageId deps
            Right x -> x
            Left msg -> error $ "reading config " ++ f ++ " failed ("++msg++")"
 
+-- | Find @field@ in 'CabalConfig'. Returns 'Left' containing a user readable
+-- error message with lots of context on failure.
 extractField :: CabalConfig -> String -> Either String String
 extractField config field =
     case extractParens <$> find (field `isPrefixOf`) (tails config) of
