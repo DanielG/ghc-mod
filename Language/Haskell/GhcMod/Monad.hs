@@ -187,7 +187,7 @@ instance MonadIO m => MonadIO (MaybeT m) where
 -- | Initialize the 'DynFlags' relating to the compilation of a single
 -- file or GHC session according to the 'Cradle' and 'Options'
 -- provided.
-initializeFlagsWithCradle :: GhcMonad m
+initializeFlagsWithCradle :: (GhcMonad m, MonadError GhcModError m)
         => Options
         -> Cradle
         -> m ()
@@ -199,7 +199,7 @@ initializeFlagsWithCradle opt c
     cabal = isJust mCradleFile
     ghcopts = ghcOpts opt
     withCabal = do
-        pkgDesc <- liftIO $ parseCabalFile $ fromJust mCradleFile
+        pkgDesc <- parseCabalFile $ fromJust mCradleFile
         compOpts <- liftIO $ getCompilerOptions ghcopts c pkgDesc
         initSession CabalPkg opt compOpts
     withSandbox = initSession SingleFile opt compOpts
