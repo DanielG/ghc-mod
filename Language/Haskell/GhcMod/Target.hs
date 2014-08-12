@@ -15,7 +15,7 @@ setTargetFiles :: IOish m => [FilePath] -> GhcModT m ()
 setTargetFiles files = do
     targets <- forM files $ \file -> G.guessTarget file Nothing
     G.setTargets targets
-    mode <- gmCompilerMode <$> get
+    mode <- getCompilerMode
     if mode == Intelligent then
         loadTargets Intelligent
       else do

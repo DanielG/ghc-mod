@@ -30,8 +30,6 @@ module Language.Haskell.GhcMod.Monad (
   , withOptions
   -- ** Exporting convenient modules
   , module Control.Monad.Reader.Class
-  , module Control.Monad.Writer.Class
-  , module Control.Monad.State.Class
   , module Control.Monad.Journal.Class
   ) where
 
@@ -85,10 +83,10 @@ import Control.Monad.Trans.Control (MonadBaseControl(..), StM, liftBaseWith,
 
 import Control.Monad.Trans.Class
 import Control.Monad.Reader.Class
-import Control.Monad.Writer.Class
-import Control.Monad.State.Class
+import Control.Monad.Writer.Class (MonadWriter)
+import Control.Monad.State.Class (MonadState(..))
 
-import Control.Monad.Error (Error(..), MonadError, ErrorT, runErrorT)
+import Control.Monad.Error (MonadError, ErrorT, runErrorT)
 import Control.Monad.Reader (ReaderT, runReaderT)
 import Control.Monad.State.Strict (StateT, runStateT)
 import Control.Monad.Trans.Journal (JournalT, runJournalT)
@@ -155,12 +153,17 @@ newtype GhcModT m a = GhcModT {
 #endif
                , MonadReader GhcModEnv
                , MonadWriter w
-               , MonadState GhcModState
                , MonadError GhcModError
                )
 
 instance MonadTrans GhcModT where
     lift = GhcModT . lift . lift . lift . lift
+
+instance MonadState s m => MonadState s (GhcModT m) where
+    get = GhcModT $ lift $ lift $ lift $ get
+    put = GhcModT . lift . lift . lift . put
+    state = GhcModT . lift . lift . lift . state
+
 
 #if MONADIO_INSTANCES
 instance MonadIO m => MonadIO (StateT s m) where
@@ -283,17 +286,23 @@ toGhcModT a = do
 
 ----------------------------------------------------------------
 
+gmsGet :: IOish m => GhcModT m GhcModState
+gmsGet = GhcModT get
+
+gmsPut :: IOish m => GhcModState -> GhcModT m ()
+gmsPut = GhcModT . put
+
 options :: IOish m => GhcModT m Options
 options = gmOptions <$> ask
 
 cradle :: IOish m => GhcModT m Cradle
 cradle = gmCradle <$> ask
 
-getCompilerMode :: (Functor m, MonadState GhcModState m) => m CompilerMode
-getCompilerMode = gmCompilerMode <$> get
+getCompilerMode :: IOish m => GhcModT m CompilerMode
+getCompilerMode = gmCompilerMode <$> gmsGet
 
-setCompilerMode :: MonadState GhcModState m => CompilerMode -> m ()
-setCompilerMode mode = (\s -> put s { gmCompilerMode = mode } ) =<< get
+setCompilerMode :: IOish m => CompilerMode -> GhcModT m ()
+setCompilerMode mode = (\s -> gmsPut s { gmCompilerMode = mode } ) =<< gmsGet
 
 ----------------------------------------------------------------
 
