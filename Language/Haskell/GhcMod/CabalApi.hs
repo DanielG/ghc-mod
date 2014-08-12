@@ -20,7 +20,7 @@ import MonadUtils (MonadIO, liftIO)
 import Control.Applicative ((<$>))
 import qualified Control.Exception as E
 import Control.Monad (filterM)
-import Control.Monad.Error.Class (MonadError(..))
+import Control.Monad.Error.Class (Error, MonadError(..))
 import Data.Maybe (maybeToList)
 import Data.Set (fromList, toList)
 import Distribution.Package (Dependency(Dependency)
@@ -71,18 +71,17 @@ includeDirectories cdir wdir dirs = uniqueAndSort (extdirs ++ [cdir,wdir])
 
 ----------------------------------------------------------------
 
--- | Parsing a cabal file and returns 'PackageDescription'.
---   'IOException' is thrown if parsing fails.
-parseCabalFile :: (MonadIO m, MonadError GhcModError m)
+-- | Parse a cabal file and return a 'PackageDescription'.
+parseCabalFile :: (MonadIO m, Error e,  MonadError e m)
                => FilePath
                -> m PackageDescription
 parseCabalFile file = do
     cid <- liftIO $ getGHCId
     epgd <- liftIO $ readPackageDescription silent file
     case toPkgDesc cid epgd of
-        Left deps    -> throwError $ GMECabal $ show deps ++ " are not installed"
+        Left deps    -> fail $ show deps ++ " are not installed"
         Right (pd,_) -> if nullPkg pd
-                        then throwError $ GMECabal $ file ++ " is broken"
+                        then fail $ file ++ " is broken"
                         else return pd
   where
     toPkgDesc cid =

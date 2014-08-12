@@ -12,8 +12,6 @@ data GhcModError = GMENoMsg
                  | GMEString String
                  -- ^ Some Error with a message. These are produced mostly by
                  -- 'fail' calls on GhcModT.
-                 | GMECabal String
-                 | GMEGhc
                    deriving (Eq,Show,Read)
 
 instance Error GhcModError where
