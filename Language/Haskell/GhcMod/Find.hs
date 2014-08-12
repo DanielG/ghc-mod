@@ -94,6 +94,8 @@ lookupSym sym (SymbolDb db) = fromMaybe [] $ M.lookup sym db
 loadSymbolDb :: IO SymbolDb
 loadSymbolDb = SymbolDb <$> readSymbolDb
 
+-- | Returns the path to the currently running ghc-mod executable. With ghc<7.6
+-- this is a guess but >=7.6 uses 'getExecutablePath'.
 ghcModExecutable :: IO FilePath
 #ifndef SPEC
 ghcModExecutable = do
