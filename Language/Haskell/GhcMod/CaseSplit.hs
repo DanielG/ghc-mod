@@ -4,7 +4,6 @@ module Language.Haskell.GhcMod.CaseSplit (
     splits
   ) where
 
-import CoreMonad (liftIO)
 import Data.List (find, intercalate)
 import Data.Maybe (isJust)
 import qualified Data.Text as T
