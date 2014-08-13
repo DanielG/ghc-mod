@@ -61,6 +61,7 @@ newtype SymbolDb = SymbolDb (Map Symbol [ModuleString])
 
 -- | When introducing incompatible changes to the 'symbolCache' file format
 -- increment this version number.
+symbolCacheVersion :: Integer
 symbolCacheVersion = 0
 
 -- | Filename of the symbol table cache file.
