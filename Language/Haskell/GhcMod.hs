@@ -18,6 +18,7 @@ module Language.Haskell.GhcMod (
   -- * Monad Types
   , GhcModT
   , IOish
+  , GhcModError(..)
   -- * Monad utilities
   , runGhcModT
   , withOptions

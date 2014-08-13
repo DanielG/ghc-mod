@@ -2,8 +2,21 @@ module Language.Haskell.GhcMod.Types where
 
 import Data.List (intercalate)
 import qualified Data.Map as M
+import Control.Monad.Error (Error(..))
 
 import PackageConfig (PackageConfig)
+
+-- |
+data GhcModError = GMENoMsg
+                 -- ^ Unknown error
+                 | GMEString String
+                 -- ^ Some Error with a message. These are produced mostly by
+                 -- 'fail' calls on GhcModT.
+                   deriving (Eq,Show,Read)
+
+instance Error GhcModError where
+    noMsg = GMENoMsg
+    strMsg = GMEString
 
 -- | Output style.
 data OutputStyle = LispStyle  -- ^ S expression style.

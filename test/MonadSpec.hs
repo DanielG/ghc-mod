@@ -3,6 +3,7 @@ module MonadSpec where
 
 import Test.Hspec
 import Dir
+import TestUtils
 import Control.Applicative
 import Control.Monad.Error.Class
 import Language.Haskell.GhcMod.Types
@@ -23,5 +24,9 @@ spec = do
 
     describe "runGhcModT" $
         it "complains if the cabal file fails to parse while a sandbox is present" $ withDirectory_ "test/data/broken-cabal" $ do
-          (a,_) <- runGhcModT defaultOptions (gmCradle <$> ask)
-          a `shouldSatisfy` (\(Left _) -> True)
+          shouldReturnError $ runD' (gmCradle <$> ask)
+
+    describe "gmsGet/Put" $
+        it "work" $ do
+          (runD $ gmsPut (GhcModState Intelligent) >> gmsGet)
+            `shouldReturn` (GhcModState Intelligent)

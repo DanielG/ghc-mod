@@ -1,16 +1,20 @@
 module TestUtils (
     run
   , runD
+  , runD'
   , runI
   , runID
   , runIsolatedGhcMod
   , isolateCradle
+  , shouldReturnError
   , module Language.Haskell.GhcMod.Monad
   , module Language.Haskell.GhcMod.Types
   ) where
 
 import Language.Haskell.GhcMod.Monad
 import Language.Haskell.GhcMod.Types
+
+import Test.Hspec
 
 isolateCradle :: IOish m => GhcModT m a -> GhcModT m a
 isolateCradle action =
@@ -42,3 +46,16 @@ run opt a = extract $ runGhcModT opt a
 -- | Run GhcMod with default options
 runD :: GhcModT IO a -> IO a
 runD = extract . runGhcModT defaultOptions
+
+runD' :: GhcModT IO a -> IO (Either GhcModError a, GhcModLog)
+runD' = runGhcModT defaultOptions
+
+shouldReturnError :: Show a
+                  => IO (Either GhcModError a, GhcModLog)
+                  -> Expectation
+shouldReturnError action = do
+  (a,_) <- action
+  a `shouldSatisfy` isLeft
+ where
+   isLeft (Left _) = True
+   isLeft _ = False

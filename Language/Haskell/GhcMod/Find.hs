@@ -59,8 +59,13 @@ newtype SymbolDb = SymbolDb (Map Symbol [ModuleString])
 
 ----------------------------------------------------------------
 
+-- | When introducing incompatible changes to the 'symbolCache' file format
+-- increment this version number.
+symbolCacheVersion = 0
+
+-- | Filename of the symbol table cache file.
 symbolCache :: String
-symbolCache = "ghc-mod.cache"
+symbolCache = "ghc-mod-"++ show symbolCacheVersion ++".cache"
 
 packageCache :: String
 packageCache = "package.cache"
@@ -89,6 +94,8 @@ lookupSym sym (SymbolDb db) = fromMaybe [] $ M.lookup sym db
 loadSymbolDb :: IO SymbolDb
 loadSymbolDb = SymbolDb <$> readSymbolDb
 
+-- | Returns the path to the currently running ghc-mod executable. With ghc<7.6
+-- this is a guess but >=7.6 uses 'getExecutablePath'.
 ghcModExecutable :: IO FilePath
 #ifndef SPEC
 ghcModExecutable = do
@@ -130,7 +137,6 @@ getSymbolCachePath = do
 --   if the file does not exist or is invalid.
 --   The file name is printed.
 
--- TODO: Before releaseing add a version number to the name of the cache file
 dumpSymbol :: IOish m => GhcModT m String
 dumpSymbol = do
     dir <- getSymbolCachePath
