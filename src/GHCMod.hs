@@ -138,7 +138,8 @@ main = flip E.catches handlers $ do
       cmd       -> E.throw (NoSuchCommand cmd)
     case res of
       Right s -> putStr s
-      Left e -> error $ show e
+      Left (GMENoMsg) -> hPutStrLn stderr "Unknown error"
+      Left (GMEString msg) -> hPutStrLn stderr msg
   where
     handlers = [Handler (handleThenExit handler1), Handler (handleThenExit handler2)]
     handleThenExit handler e = handler e >> exitFailure
