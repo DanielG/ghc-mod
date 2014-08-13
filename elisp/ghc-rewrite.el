@@ -10,6 +10,8 @@
 
 (require 'ghc-func)
 (require 'ghc-process)
+(require 'button)
+(require 'dropdown-list)
 
 (defvar ghc-auto-info nil)
 (defvar ghc-auto-buffer nil)
@@ -31,6 +33,18 @@
     (insert (ghc-sinfo-get-info info)) )
   )
 
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;
+;;; Combined rewriting
+;;;
+
+(defun ghc-try-rewrite ()
+  "Try to apply initial code generation and case splitting"
+  (interactive)
+  (when (null (ghc-try-initial-code-from-signature))
+        (ghc-try-case-split)))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
 ;;; Case splitting
@@ -41,9 +55,13 @@
 (defun ghc-case-split ()
   "Split the variable at point into its possible constructors"
   (interactive)
+  (when (null (ghc-try-case-split))
+        (message "Cannot split into cases")))
+
+(defun ghc-try-case-split ()
   (let ((info (ghc-obtain-case-split)))
     (if (null info)
-	(message "Cannot split in cases")
+	'()
         (ghc-perform-rewriting info)) ))
 
 (defun ghc-obtain-case-split ()
@@ -61,10 +79,14 @@
 (defun ghc-refine ()
   "Refine a hole using a user-specified function"
   (interactive)
+  (when (null (ghc-try-refine))
+        (message "Cannot refine")))
+
+(defun ghc-try-refine ()
   (let ((info (ghc-obtain-refine (read-string "Refine with: "))))
     (if (null info)
-	(message "Cannot refine")
-	(ghc-perform-rewriting info)) ))
+	'()
+        (ghc-perform-rewriting info)) ))
 
 (defun ghc-obtain-refine (expr)
   (let* ((ln (int-to-string (line-number-at-pos)))
@@ -92,32 +114,38 @@
     (delete-region begin-pos end-pos)
     (insert msg)))
 
-(defun auto-button (button)
-  (let ((text (buffer-substring (button-start button) (button-end button))))
-    (with-current-buffer ghc-auto-buffer
-       (ghc-perform-rewriting-auto ghc-auto-info text))))
+;; (defun auto-button (button)
+;;   (let ((text (buffer-substring (button-start button) (button-end button))))
+;;     (with-current-buffer ghc-auto-buffer
+;;        (ghc-perform-rewriting-auto ghc-auto-info text))))
 
-(define-button-type 'auto-button
-  'follow-link t
-  'help-echo "mouse-2, RET: Insert this completion"
-  'action #'auto-button)
+;; (define-button-type 'auto-button
+;;   'follow-link t
+;;   'help-echo "mouse-2, RET: Insert this completion"
+;;   'action #'auto-button)
+
+;; (defun ghc-show-auto-messages (info)
+;;   (let ((buf (current-buffer)))
+;;     (setq ghc-auto-info   info)
+;;     (setq ghc-auto-buffer buf)
+;;     (ghc-display nil
+;;       (lambda ()
+;;         (insert "Possible completions:\n")
+;;         (mapc 
+;;           (lambda (x) 
+;;             (let* ((ins1      (insert "- "))
+;;                    (pos-begin (point))
+;;                    (ins       (insert x))
+;;                    (pos-end   (point))
+;;                    (ins3      (insert "\n")))
+;;               (make-button pos-begin pos-end :type 'auto-button)))
+;;           (ghc-sinfo-get-info info))))))
 
 (defun ghc-show-auto-messages (info)
-  (let ((buf (current-buffer)))
-    (setq ghc-auto-info   info)
-    (setq ghc-auto-buffer buf)
-    (ghc-display nil
-      (lambda ()
-        (insert "Possible completions:\n")
-        (mapc 
-          (lambda (x) 
-            (let* ((ins1      (insert "- "))
-                   (pos-begin (point))
-                   (ins       (insert x))
-                   (pos-end   (point))
-                   (ins3      (insert "\n")))
-              (make-button pos-begin pos-end :type 'auto-button)))
-          (ghc-sinfo-get-info info))))))
+  (let* ((completions (ghc-sinfo-get-info info))
+         (selected    (dropdown-list completions)))
+    (when selected
+          (ghc-perform-rewriting-auto info (nth selected completions)))))
 
 (defun ghc-auto ()
   "Try to automatically fill the contents of a hole"
@@ -144,11 +172,17 @@
 (ghc-defstruct icsinfo sort pos fns)
 
 (defun ghc-initial-code-from-signature ()
+  "Refine a hole using a user-specified function"
+  (interactive)
+  (when (null (ghc-try-initial-code-from-signature))
+        (message "Cannot obtain initial code")))
+
+(defun ghc-try-initial-code-from-signature ()
   "Include initial code from a function signature or instance declaration"
   (interactive)
   (let ((info (ghc-obtain-initial-code-from-signature)))
     (if (null info)
-	(message "Cannot obtain initial code")
+	'()
 	(let* ((ln-current (line-number-at-pos))
 	       (sort (ghc-icsinfo-get-sort info))
 	       (pos (ghc-icsinfo-get-pos info))
