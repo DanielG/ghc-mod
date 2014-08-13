@@ -28,7 +28,8 @@ newtype LineSeparator = LineSeparator String
 data Options = Options {
     outputStyle   :: OutputStyle
   , hlintOpts     :: [String]
-  , ghcOpts       :: [GHCOption]
+    -- | GHC command line options set on the @ghc-mod@ command line
+  , ghcUserOptions:: [GHCOption]
   -- | If 'True', 'browse' also returns operators.
   , operators     :: Bool
   -- | If 'True', 'browse' also returns types.
@@ -44,7 +45,7 @@ defaultOptions :: Options
 defaultOptions = Options {
     outputStyle   = PlainStyle
   , hlintOpts     = []
-  , ghcOpts       = []
+  , ghcUserOptions= []
   , operators     = False
   , detailed      = False
   , qualified     = False

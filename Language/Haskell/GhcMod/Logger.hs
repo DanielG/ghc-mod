@@ -64,7 +64,7 @@ withLogger :: IOish m
            -> GhcModT m (Either String String)
 withLogger setDF body = ghandle sourceError $ do
     logref <- liftIO newLogRef
-    wflags <- filter ("-fno-warn" `isPrefixOf`) . ghcOpts <$> options
+    wflags <- filter ("-fno-warn" `isPrefixOf`) . ghcUserOptions <$> options
     withDynFlags (setLogger logref . setDF) $
         withCmdFlags wflags $ do
             body

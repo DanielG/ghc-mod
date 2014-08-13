@@ -63,7 +63,7 @@ argspec = [ Option "l" ["tolisp"]
             (ReqArg (\h opts -> opts { hlintOpts = h : hlintOpts opts }) "hlintOpt")
             "hlint options"
           , Option "g" ["ghcOpt"]
-            (ReqArg (\g opts -> opts { ghcOpts = g : ghcOpts opts }) "ghcOpt")
+            (ReqArg (\g opts -> opts { ghcUserOptions = g : ghcUserOptions opts }) "ghcOpt")
             "GHC options"
           , Option "o" ["operators"]
             (NoArg (\opts -> opts { operators = True }))
