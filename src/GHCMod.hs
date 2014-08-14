@@ -65,6 +65,9 @@ argspec = [ Option "l" ["tolisp"]
           , Option "g" ["ghcOpt"]
             (ReqArg (\g opts -> opts { ghcUserOptions = g : ghcUserOptions opts }) "ghcOpt")
             "GHC options"
+          , Option "v" ["verbose"]
+            (NoArg (\opts -> opts { ghcUserOptions = "-v" : ghcUserOptions opts }))
+            "verbose"
           , Option "o" ["operators"]
             (NoArg (\opts -> opts { operators = True }))
             "print operators, too"
