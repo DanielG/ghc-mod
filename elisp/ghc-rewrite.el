@@ -11,7 +11,7 @@
 (require 'ghc-func)
 (require 'ghc-process)
 (require 'button)
-(require 'dropdown-list)
+;(require 'dropdown-list)
 
 (defvar ghc-auto-info nil)
 (defvar ghc-auto-buffer nil)
@@ -114,38 +114,64 @@
     (delete-region begin-pos end-pos)
     (insert msg)))
 
-;; (defun auto-button (button)
-;;   (let ((text (buffer-substring (button-start button) (button-end button))))
-;;     (with-current-buffer ghc-auto-buffer
-;;        (ghc-perform-rewriting-auto ghc-auto-info text))))
+;; Option 1: using button
 
-;; (define-button-type 'auto-button
-;;   'follow-link t
-;;   'help-echo "mouse-2, RET: Insert this completion"
-;;   'action #'auto-button)
+(defun ghc-auto-completion-window ()
+   (get-buffer-window ghc-error-buffer-name 0))
 
-;; (defun ghc-show-auto-messages (info)
-;;   (let ((buf (current-buffer)))
-;;     (setq ghc-auto-info   info)
-;;     (setq ghc-auto-buffer buf)
-;;     (ghc-display nil
-;;       (lambda ()
-;;         (insert "Possible completions:\n")
-;;         (mapc 
-;;           (lambda (x) 
-;;             (let* ((ins1      (insert "- "))
-;;                    (pos-begin (point))
-;;                    (ins       (insert x))
-;;                    (pos-end   (point))
-;;                    (ins3      (insert "\n")))
-;;               (make-button pos-begin pos-end :type 'auto-button)))
-;;           (ghc-sinfo-get-info info))))))
+(defun auto-button (button)
+  (let ((text (buffer-substring (button-start button) (button-end button))))
+    (with-current-buffer ghc-auto-buffer
+       (ghc-perform-rewriting-auto ghc-auto-info text))
+    (quit-restore-window)))
+
+(define-button-type 'auto-button
+  'follow-link t
+  'help-echo "mouse-2, RET: Insert this completion"
+  'action #'auto-button)
 
 (defun ghc-show-auto-messages (info)
-  (let* ((completions (ghc-sinfo-get-info info))
-         (selected    (dropdown-list completions)))
-    (when selected
-          (ghc-perform-rewriting-auto info (nth selected completions)))))
+  (let ((buf (current-buffer)))
+    (setq ghc-auto-info   info)
+    (setq ghc-auto-buffer buf)
+    (ghc-display nil
+      (lambda ()
+        (insert "Possible completions:\n")
+        (mapc 
+          (lambda (x) 
+            (let* (; (ins1      (insert "- "))
+                   (pos-begin (point))
+                   (ins       (insert x))
+                   (pos-end   (point))
+                   (ins3      (insert "\n")))
+              (make-button pos-begin pos-end :type 'auto-button)))
+          (ghc-sinfo-get-info info))))
+    (select-window (ghc-auto-completion-window))))
+
+;; Option 2: using dropdown-list
+
+;; (defun ghc-show-auto-messages (info)
+;;   (let* ((completions (ghc-sinfo-get-info info))
+;;          (selected    (dropdown-list completions)))
+;;     (when selected
+;;           (ghc-perform-rewriting-auto info (nth selected completions)))))
+
+;; Option 3: using minibuffer
+
+;; (defvar ghc-auto-completion-buffer-name "*Djinn Completions*")
+
+;; (defun ghc-auto-completion-window ()
+;;   (get-buffer-window ghc-auto-completion-buffer-name 0))
+
+;; (defun ghc-show-auto-messages (info)
+;;   (let* ((completions (ghc-sinfo-get-info info))
+;;          (buf         (generate-new-buffer "djinn-completion-temp")))
+;;     (with-current-buffer
+;;       (progn
+;;         (with-output-to-temp-buffer ghc-auto-completion-buffer-name
+;;           (display-completion-list completions))
+;;         (select-window (ghc-auto-completion-window))
+;;         (buffer-string)))))
 
 (defun ghc-auto ()
   "Try to automatically fill the contents of a hole"
