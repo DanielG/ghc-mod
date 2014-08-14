@@ -11,7 +11,9 @@
 (require 'ghc-func)
 (require 'ghc-process)
 (require 'button)
-(require 'dropdown-list)
+(condition-case nil
+    (require 'dropdown-list)
+  (file-error nil))
 
 (defvar ghc-auto-info nil)
 (defvar ghc-auto-buffer nil)
