@@ -118,13 +118,13 @@ getSignature modSum lineNo colNo = do
                         G.DataFamily -> Data
 #endif
 #if __GLASGOW_HASKELL__ >= 706
-            getTyFamVarName = \x -> case x of
-                                      L _ (G.UserTyVar n)     -> n
-                                      L _ (G.KindedTyVar n _) -> n
+            getTyFamVarName x = case x of
+                L _ (G.UserTyVar n)     -> n
+                L _ (G.KindedTyVar n _) -> n
 #else
-            getTyFamVarName = \x -> case x of  -- In GHC 7.4, HsTyVarBndr's have an extra arg
-                                      L _ (G.UserTyVar n _)     -> n
-                                      L _ (G.KindedTyVar n _ _) -> n
+            getTyFamVarName x = case x of  -- In GHC 7.4, HsTyVarBndr's have an extra arg
+                L _ (G.UserTyVar n _)     -> n
+                L _ (G.KindedTyVar n _ _) -> n
 #endif
          in return $ Just (TyFamDecl loc name flavour $ map getTyFamVarName vars)
       _ -> return Nothing
@@ -169,7 +169,7 @@ initialBody' fname args = initialHead fname args ++ " = "
 
 initialFamBody :: FnArgsInfo ty name => DynFlags -> PprStyle -> name -> [name] -> String
 initialFamBody dflag style name args = initialHead (getFnName dflag style name)
-                                         (map (\arg -> FnExplicitName (getFnName dflag style arg)) args)
+                                         (map (FnExplicitName . getFnName dflag style) args)
                                          ++ " = ()"
 
 initialHead :: String -> [FnArg] -> String
@@ -298,7 +298,7 @@ findVar dflag style tcm tcs lineNo colNo =
               then let Just (s,t) = tyInfo
                        b = case others of  -- If inside an App, we need parenthesis
                              [] -> False
-                             (L _ (G.HsApp (L _ a1) (L _ a2))):_ ->
+                             L _ (G.HsApp (L _ a1) (L _ a2)):_ ->
                                isSearchedVar i a1 || isSearchedVar i a2
                              _  -> False
                     in return $ Just (s, name, t, b)
@@ -339,9 +339,9 @@ auto file lineNo colNo = ghandle handler body
           topLevel <- getEverythingInTopLevel minfo
           let (f,pats) = getPatsForVariable tcs (lineNo,colNo)
               -- Remove self function to prevent recursion, and id to trim cases
-              filterFn = (\(n,_) -> let funName = G.getOccString n
-                                        recName = G.getOccString (G.getName f)
-                                     in not $ funName `elem` recName:notWantedFuns)
+              filterFn (n,_) = let funName = G.getOccString n
+                                   recName = G.getOccString (G.getName f)
+                               in funName `notElem` recName:notWantedFuns
               -- Find without using other functions in top-level
               localBnds = M.unions $ map (\(L _ pat) -> getBindingsForPat pat) pats
               lbn = filter filterFn (M.toList localBnds)

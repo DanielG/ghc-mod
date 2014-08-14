@@ -1,4 +1,4 @@
-{-# LANGUAGE CPP, BangPatterns #-}
+{-# LANGUAGE CPP #-}
 
 module Language.Haskell.GhcMod.Find
 #ifndef SPEC
@@ -150,7 +150,7 @@ dumpSymbol = do
 writeSymbolCache :: FilePath
                  -> [(Symbol,[ModuleString])]
                  -> IO ()
-writeSymbolCache cache sm = do
+writeSymbolCache cache sm =
   void . withFile cache WriteMode $ \hdl ->
       mapM (hPrint hdl) sm
 

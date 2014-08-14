@@ -36,7 +36,7 @@ checkSyntax files = withErrorHandler sessionName $
 check :: IOish m
       => [FilePath]  -- ^ The target files.
       -> GhcModT m (Either String String)
-check fileNames = overrideGhcUserOptions $ \ghcOpts -> do
+check fileNames = overrideGhcUserOptions $ \ghcOpts ->
   withLogger (setAllWaringFlags . setNoMaxRelevantBindings) $ do
     _ <- G.setSessionDynFlags =<< addCmdOpts ghcOpts =<< G.getSessionDynFlags
     setTargetFiles fileNames

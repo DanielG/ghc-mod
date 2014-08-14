@@ -1,7 +1,6 @@
 {-# LANGUAGE CPP, GeneralizedNewtypeDeriving, FlexibleInstances #-}
 {-# LANGUAGE FlexibleContexts, MultiParamTypeClasses, RankNTypes #-}
 {-# LANGUAGE TypeFamilies, UndecidableInstances, RecordWildCards #-}
-{-# LANGUAGE StandaloneDeriving #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
 module Language.Haskell.GhcMod.Monad (
@@ -167,7 +166,7 @@ instance MonadTrans GhcModT where
     lift = GhcModT . lift . lift . lift . lift
 
 instance MonadState s m => MonadState s (GhcModT m) where
-    get = GhcModT $ lift $ lift $ lift $ get
+    get = GhcModT $ lift $ lift $ lift get
     put = GhcModT . lift . lift . lift . put
     state = GhcModT . lift . lift . lift . state
 
@@ -271,9 +270,9 @@ runGhcModT' :: IOish m
            -> m (Either GhcModError (a, GhcModState), GhcModLog)
 runGhcModT' r s a = do
   (res, w') <-
-      flip runReaderT r $ runJournalT $ runErrorT $ flip runStateT s
-        $ (unGhcModT $ initGhcMonad (Just libdir) >> a)
-  return $ (res, w')
+      flip runReaderT r $ runJournalT $ runErrorT $
+        runStateT (unGhcModT $ initGhcMonad (Just libdir) >> a) s
+  return (res, w')
 ----------------------------------------------------------------
 
 withErrorHandler :: IOish m => String -> GhcModT m a -> GhcModT m a

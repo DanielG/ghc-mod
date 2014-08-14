@@ -76,7 +76,7 @@ parseCabalFile :: (MonadIO m, Error e,  MonadError e m)
                => FilePath
                -> m PackageDescription
 parseCabalFile file = do
-    cid <- liftIO $ getGHCId
+    cid <- liftIO getGHCId
     epgd <- liftIO $ readPackageDescription silent file
     case toPkgDesc cid epgd of
         Left deps    -> fail $ show deps ++ " are not installed"
