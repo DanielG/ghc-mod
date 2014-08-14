@@ -20,7 +20,6 @@ import Language.Haskell.GhcMod.Convert
 import Language.Haskell.GhcMod.Monad
 import Language.Haskell.GhcMod.SrcUtils
 import Language.Haskell.GhcMod.Types
-import CoreMonad (liftIO)
 import Outputable (PprStyle)
 import qualified Type as Ty
 import qualified HsBinds as Ty

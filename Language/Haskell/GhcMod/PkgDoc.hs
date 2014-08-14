@@ -1,6 +1,5 @@
 module Language.Haskell.GhcMod.PkgDoc (pkgDoc) where
 
-import CoreMonad (liftIO)
 import Language.Haskell.GhcMod.Types
 import Language.Haskell.GhcMod.GhcPkg
 import Language.Haskell.GhcMod.Monad

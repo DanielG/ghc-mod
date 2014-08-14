@@ -1,7 +1,6 @@
 module Language.Haskell.GhcMod.Debug (debugInfo, rootInfo) where
 
 import Control.Applicative ((<$>))
-import CoreMonad (liftIO)
 import Data.List (intercalate)
 import Data.Maybe (isJust, fromJust)
 import Language.Haskell.GhcMod.Convert

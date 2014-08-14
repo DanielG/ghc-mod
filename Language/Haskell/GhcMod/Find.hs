@@ -19,7 +19,6 @@ import Control.Applicative ((<$>))
 import Control.Exception (handle, SomeException(..))
 import Control.Monad (when, void)
 import Control.Monad.Error.Class
-import CoreMonad (liftIO)
 import Data.Function (on)
 import Data.List (groupBy, sort)
 import Data.List.Split (splitOn)

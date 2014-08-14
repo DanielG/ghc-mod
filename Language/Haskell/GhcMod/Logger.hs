@@ -7,7 +7,6 @@ module Language.Haskell.GhcMod.Logger (
 
 import Bag (Bag, bagToList)
 import Control.Applicative ((<$>))
-import CoreMonad (liftIO)
 import Data.IORef (IORef, newIORef, readIORef, writeIORef, modifyIORef)
 import Data.List (isPrefixOf)
 import Data.Maybe (fromMaybe)
