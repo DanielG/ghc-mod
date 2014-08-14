@@ -44,12 +44,10 @@ module Language.Haskell.GhcMod.Internal (
   , getCompilerMode
   , setCompilerMode
   , withOptions
-  -- * 'Ghc' Choice
+  -- * 'GhcMonad' Choice
   , (||>)
   , goNext
   , runAnyOne
-  -- * 'GhcMonad' Choice
-  , (|||>)
   ) where
 
 import GHC.Paths (libdir)
