@@ -142,7 +142,7 @@ getSignatureFromHE file lineNo colNo = do
   return $ case presult of
              HE.ParseOk (HE.Module _ _ _ _ mdecls) -> do
                decl <- find (typeSigInRangeHE lineNo colNo) mdecls
-               case decl of 
+               case decl of
                  HE.TypeSig (HE.SrcSpanInfo s _) names ty -> return $ HESignature s names ty
                  HE.TypeFamDecl (HE.SrcSpanInfo s _) (HE.DHead _ name tys) _ ->
                    return $ HEFamSignature s Open name (map cleanTyVarBind tys)
@@ -281,7 +281,7 @@ refine file lineNo colNo expr = ghandle handler body
               iArgs = take diffArgs eArgs
               text = initialHead1 expr iArgs (infinitePrefixSupply name)
            in (fourInts loc, doParen paren text)
-            
+
     handler (SomeException _) = emptyResult =<< options
 
 -- Look for the variable in the specified position
@@ -351,7 +351,7 @@ auto file lineNo colNo = ghandle handler body
               env = filter filterFn almostEnv
           djinns <- djinn True (Just minfo) env rty (Max 10) 100000
           return (fourInts loc, map (doParen paren) $ nub (djinnsEmpty ++ djinns))
-            
+
     handler (SomeException _) = emptyResult =<< options
 
 -- Functions we do not want in completions
