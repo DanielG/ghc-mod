@@ -88,8 +88,8 @@ withCmdFlags :: GhcMonad m => [GHCOption] -> m a -> m a
 withCmdFlags flags body = G.gbracket setup teardown (\_ -> body)
   where
     setup = do
-        dflags <- G.getSessionDynFlags >>= addCmdOpts flags
-        void $ G.setSessionDynFlags dflags
+        dflags <- G.getSessionDynFlags
+        void $ G.setSessionDynFlags =<< addCmdOpts flags dflags
         return dflags
     teardown = void . G.setSessionDynFlags
 

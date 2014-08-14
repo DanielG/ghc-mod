@@ -30,7 +30,10 @@ module Language.Haskell.GhcMod.Monad (
   , getCompilerMode
   , setCompilerMode
   , withOptions
-  -- ** Exporting convenient modules
+  , withTempSession
+  , overrideGhcUserOptions
+  -- ** Re-exporting convenient stuff
+  , liftIO
   , module Control.Monad.Reader.Class
   , module Control.Monad.Journal.Class
   ) where
@@ -57,7 +60,7 @@ import Exception
 import GHC
 import qualified GHC as G
 import GHC.Paths (libdir)
-import GhcMonad
+import GhcMonad hiding (withTempSession)
 #if __GLASGOW_HASKELL__ <= 702
 import HscTypes
 #endif
@@ -201,7 +204,7 @@ initializeFlagsWithCradle opt c
   where
     mCradleFile = cradleCabalFile c
     cabal = isJust mCradleFile
-    ghcopts = ghcOpts opt
+    ghcopts = ghcUserOptions opt
     withCabal = do
         pkgDesc <- parseCabalFile $ fromJust mCradleFile
         compOpts <- liftIO $ getCompilerOptions ghcopts c pkgDesc
@@ -281,6 +284,28 @@ withErrorHandler label = ghandle ignore
         hPutStr stderr $ label ++ ":0:0:Error:"
         hPrint stderr e
         exitSuccess
+
+-- | Make a copy of the 'gmGhcSession' IORef, run the action and restore the
+-- original 'HscEnv'.
+withTempSession :: IOish m => GhcModT m a -> GhcModT m a
+withTempSession action = do
+  session <- gmGhcSession <$> ask
+  savedHscEnv <- liftIO $ readIORef session
+  a <- action
+  liftIO $ writeIORef session savedHscEnv
+  return a
+
+-- | This is a very ugly workaround don't use it.
+overrideGhcUserOptions :: IOish m => ([GHCOption] -> GhcModT m b) -> GhcModT m b
+overrideGhcUserOptions action = withTempSession $ do
+  env <- ask
+  opt <- options
+  let ghcOpts = ghcUserOptions opt
+      opt' = opt { ghcUserOptions = [] }
+
+  initializeFlagsWithCradle opt' (gmCradle env)
+
+  action ghcOpts
 
 -- | This is only a transitional mechanism don't use it for new code.
 toGhcModT :: IOish m => Ghc a -> GhcModT m a

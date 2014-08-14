@@ -58,7 +58,7 @@ argspec = [ Option "b" ["boundary"]
             (NoArg (\opts -> opts { outputStyle = LispStyle }))
             "print as a list of Lisp"
           , Option "g" []
-            (ReqArg (\s opts -> opts { ghcOpts = s : ghcOpts opts }) "flag") "specify a ghc flag"
+            (ReqArg (\s opts -> opts { ghcUserOptions = s : ghcUserOptions opts }) "flag") "specify a ghc flag"
           ]
 
 usage :: String
