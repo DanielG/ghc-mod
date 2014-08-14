@@ -2,14 +2,15 @@
 
 module Language.Haskell.GhcMod.Logger (
     withLogger
+  , withLoggerTwice
   , checkErrorPrefix
   ) where
 
-import Bag (Bag, bagToList)
+import Bag (Bag, bagToList, filterBag, unionBags)
 import Control.Applicative ((<$>))
 import Data.IORef (IORef, newIORef, readIORef, writeIORef, modifyIORef)
-import Data.List (isPrefixOf)
-import Data.Maybe (fromMaybe)
+import Data.List (isPrefixOf, find)
+import Data.Maybe (fromMaybe, isJust)
 import ErrUtils (ErrMsg, errMsgShortDoc, errMsgExtraInfo)
 import Exception (ghandle)
 import GHC (DynFlags, SrcSpan, Severity(SevError))
@@ -71,19 +72,69 @@ withLogger setDF body = ghandle sourceError $ do
   where
     setLogger logref df = Gap.setLogAction df $ appendLogRef df logref
 
+withLoggerTwice :: IOish m
+                => (DynFlags -> DynFlags)
+                -> GhcModT m ()
+                -> (DynFlags -> DynFlags)
+                -> GhcModT m ()
+                -> GhcModT m (Either String String)
+withLoggerTwice setDF1 body1 setDF2 body2 = do
+  err1 <- ghandle sourceErrorBag $ do
+    logref <- liftIO newLogRef
+    wflags <- filter ("-fno-warn" `isPrefixOf`) . ghcUserOptions <$> options
+    withDynFlags (setLogger logref . setDF1) $
+        withCmdFlags wflags $ do
+            body1
+            Right <$> readAndClearLogRef logref
+  err2 <- ghandle sourceErrorBag $ do
+    logref <- liftIO newLogRef
+    wflags <- filter ("-fno-warn" `isPrefixOf`) . ghcUserOptions <$> options
+    withDynFlags (setLogger logref . setDF2) $
+        withCmdFlags wflags $ do
+            body2
+            Right <$> readAndClearLogRef logref
+  case (err1, err2) of
+    (Right x, Right _) -> return $ Right x
+    (Left b1, Right _) -> errBagToStr b1
+    (Right _, Left b2) -> errBagToStr b2
+    (Left b1, Left b2) -> do dflags <- G.getSessionDynFlags
+                             style <- toGhcModT getStyle
+                             let merged = mergeErrors dflags style b1 b2
+                             errBagToStr merged
+  where
+    setLogger logref df = Gap.setLogAction df $ appendLogRef df logref
 
 ----------------------------------------------------------------
 
 -- | Converting 'SourceError' to 'String'.
 sourceError :: IOish m => SourceError -> GhcModT m (Either String String)
-sourceError err = do
+sourceError err = errBagToStr (srcErrorMessages err)
+
+errBagToStr :: IOish m => Bag ErrMsg -> GhcModT m (Either String String)
+errBagToStr err = do
     dflags <- G.getSessionDynFlags
     style <- toGhcModT getStyle
-    ret <- convert' (errBagToStrList dflags style . srcErrorMessages $ err)
+    ret <- convert' (errBagToStrList dflags style err)
     return $ Left ret
 
 errBagToStrList :: DynFlags -> PprStyle -> Bag ErrMsg -> [String]
 errBagToStrList dflag style = map (ppErrMsg dflag style) . reverse . bagToList
+
+sourceErrorBag :: IOish m => SourceError -> GhcModT m (Either (Bag ErrMsg) String)
+sourceErrorBag err = return $ Left (srcErrorMessages err)
+
+mergeErrors :: DynFlags -> PprStyle -> Bag ErrMsg -> Bag ErrMsg -> Bag ErrMsg
+mergeErrors dflag style b1 b2 =
+  let b1List = bagToList b1
+      findInB1 = \pr2 msg2 err1 ->
+                    let pr1  = ppMsgPrefix (Gap.errorMsgSpan err1) G.SevWarning dflag style
+                        msg1 = showPage dflag style (errMsgExtraInfo err1)
+                     in pr1 == pr2 && msg1 == msg2
+      mustBeB2 = \err2 ->
+                    let pr2  = ppMsgPrefix (Gap.errorMsgSpan err2) G.SevWarning dflag style
+                        msg2 = showPage dflag style (errMsgExtraInfo err2)
+                     in not . isJust $ find (findInB1 pr2 msg2) b1List
+   in b1 `unionBags` filterBag mustBeB2 b2
 
 ----------------------------------------------------------------
 
@@ -98,22 +149,18 @@ ppMsg :: SrcSpan -> Severity-> DynFlags -> PprStyle -> SDoc -> String
 ppMsg spn sev dflag style msg = prefix ++ cts
   where
     cts  = showPage dflag style msg
-    defaultPrefix
-      | Gap.isDumpSplices dflag = ""
-      | otherwise               = checkErrorPrefix
-    prefix = fromMaybe defaultPrefix $ do
+    prefix = ppMsgPrefix spn sev dflag style
+
+ppMsgPrefix :: SrcSpan -> Severity-> DynFlags -> PprStyle -> String
+ppMsgPrefix spn sev dflag _style =
+  let defaultPrefix
+        | Gap.isDumpSplices dflag = ""
+        | otherwise               = checkErrorPrefix
+   in fromMaybe defaultPrefix $ do
         (line,col,_,_) <- Gap.getSrcSpan spn
         file <- normalise <$> Gap.getSrcFile spn
         let severityCaption = Gap.showSeverityCaption sev
-            pref0
-              | typeWarning1 `isPrefixOf` cts ||
-                typeWarning2 `isPrefixOf` cts = file ++ ":" ++ show line ++ ":" ++ show col ++ ":"
-              | otherwise                     = file ++ ":" ++ show line ++ ":" ++ show col ++ ":" ++ severityCaption
-        return pref0
-    -- DeferTypeErrors turns a type error to a warning.
-    -- So, let's turns it the error again.
-    typeWarning1 = "Couldn't match expected type"
-    typeWarning2 = "Couldn't match type"
+        return $ file ++ ":" ++ show line ++ ":" ++ show col ++ ":" ++ severityCaption
 
 checkErrorPrefix :: String
 checkErrorPrefix = "Dummy:0:0:Error:"
