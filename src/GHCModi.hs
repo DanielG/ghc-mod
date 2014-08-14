@@ -39,6 +39,8 @@ import System.Directory (setCurrentDirectory)
 import System.Environment (getArgs)
 import System.IO (hFlush,stdout)
 
+import Utils
+
 ----------------------------------------------------------------
 
 type Logger = IO String
@@ -56,7 +58,7 @@ argspec = [ Option "b" ["boundary"]
             (NoArg (\opts -> opts { outputStyle = LispStyle }))
             "print as a list of Lisp"
           , Option "g" []
-            (ReqArg (\s opts -> opts { ghcOpts = s : ghcOpts opts }) "flag") "specify a ghc flag"
+            (ReqArg (\s opts -> opts { ghcUserOptions = s : ghcUserOptions opts }) "flag") "specify a ghc flag"
           ]
 
 usage :: String
@@ -231,7 +233,7 @@ showInfo :: IOish m
          -> FilePath
          -> GhcModT m (String, Bool, Set FilePath)
 showInfo set fileArg = do
-    let [file, expr] = words fileArg
+    let [file, expr] = splitN 2 fileArg
     set' <- newFileSet set file
     ret <- info file expr
     return (ret, True, set')
@@ -241,7 +243,7 @@ showType :: IOish m
          -> FilePath
          -> GhcModT m (String, Bool, Set FilePath)
 showType set fileArg  = do
-    let [file, line, column] = words fileArg
+    let [file, line, column] = splitN 3 fileArg
     set' <- newFileSet set file
     ret <- types file (read line) (read column)
     return (ret, True, set')
@@ -251,7 +253,7 @@ doSplit :: IOish m
         -> FilePath
         -> GhcModT m (String, Bool, Set FilePath)
 doSplit set fileArg  = do
-    let [file, line, column] = words fileArg
+    let [file, line, column] = splitN 3 fileArg
     set' <- newFileSet set file
     ret <- splits file (read line) (read column)
     return (ret, True, set')
@@ -261,7 +263,7 @@ doSig :: IOish m
       -> FilePath
       -> GhcModT m (String, Bool, Set FilePath)
 doSig set fileArg  = do
-    let [file, line, column] = words fileArg
+    let [file, line, column] = splitN 3 fileArg
     set' <- newFileSet set file
     ret <- sig file (read line) (read column)
     return (ret, True, set')
@@ -271,7 +273,7 @@ doRefine :: IOish m
          -> FilePath
          -> GhcModT m (String, Bool, Set FilePath)
 doRefine set fileArg  = do
-    let [file, line, column, expr] = words fileArg
+    let [file, line, column, expr] = splitN 4 fileArg
     set' <- newFileSet set file
     ret <- refine file (read line) (read column) expr
     return (ret, True, set')
@@ -281,7 +283,7 @@ doAuto :: IOish m
        -> FilePath
        -> GhcModT m (String, Bool, Set FilePath)
 doAuto set fileArg  = do
-    let [file, line, column] = words fileArg
+    let [file, line, column] = splitN 3 fileArg
     set' <- newFileSet set file
     ret <- auto file (read line) (read column)
     return (ret, True, set')

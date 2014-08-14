@@ -1,7 +1,6 @@
 {-# LANGUAGE CPP, GeneralizedNewtypeDeriving, FlexibleInstances #-}
 {-# LANGUAGE FlexibleContexts, MultiParamTypeClasses, RankNTypes #-}
 {-# LANGUAGE TypeFamilies, UndecidableInstances, RecordWildCards #-}
-{-# LANGUAGE StandaloneDeriving #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
 module Language.Haskell.GhcMod.Monad (
@@ -23,15 +22,18 @@ module Language.Haskell.GhcMod.Monad (
   -- ** Conversion
   , toGhcModT
   -- ** Accessing 'GhcModEnv' and 'GhcModState'
+  , gmsGet
+  , gmsPut
   , options
   , cradle
   , getCompilerMode
   , setCompilerMode
   , withOptions
-  -- ** Exporting convenient modules
+  , withTempSession
+  , overrideGhcUserOptions
+  -- ** Re-exporting convenient stuff
+  , liftIO
   , module Control.Monad.Reader.Class
-  , module Control.Monad.Writer.Class
-  , module Control.Monad.State.Class
   , module Control.Monad.Journal.Class
   ) where
 
@@ -57,7 +59,7 @@ import Exception
 import GHC
 import qualified GHC as G
 import GHC.Paths (libdir)
-import GhcMonad
+import GhcMonad hiding (withTempSession)
 #if __GLASGOW_HASKELL__ <= 702
 import HscTypes
 #endif
@@ -85,15 +87,16 @@ import Control.Monad.Trans.Control (MonadBaseControl(..), StM, liftBaseWith,
 
 import Control.Monad.Trans.Class
 import Control.Monad.Reader.Class
-import Control.Monad.Writer.Class
-import Control.Monad.State.Class
+import Control.Monad.Writer.Class (MonadWriter)
+import Control.Monad.State.Class (MonadState(..))
 
-import Control.Monad.Error (Error(..), MonadError, ErrorT, runErrorT)
+import Control.Monad.Error (MonadError, ErrorT, runErrorT)
 import Control.Monad.Reader (ReaderT, runReaderT)
 import Control.Monad.State.Strict (StateT, runStateT)
 import Control.Monad.Trans.Journal (JournalT, runJournalT)
 #ifdef MONADIO_INSTANCES
 import Control.Monad.Trans.Maybe (MaybeT)
+import Control.Monad.Error (Error(..))
 #endif
 import Control.Monad.Journal.Class
 
@@ -121,16 +124,6 @@ data CompilerMode = Simple | Intelligent deriving (Eq,Show,Read)
 
 defaultState :: GhcModState
 defaultState = GhcModState Simple
-
-data GhcModError = GMENoMsg
-                 | GMEString String
-                 | GMECabal
-                 | GMEGhc
-                   deriving (Eq,Show,Read)
-
-instance Error GhcModError where
-    noMsg = GMENoMsg
-    strMsg = GMEString
 
 ----------------------------------------------------------------
 
@@ -163,14 +156,20 @@ newtype GhcModT m a = GhcModT {
 #if DIFFERENT_MONADIO
                , Control.Monad.IO.Class.MonadIO
 #endif
-               , MonadReader GhcModEnv
+               , MonadReader GhcModEnv -- TODO: make MonadReader instance
+                                       -- pass-through like MonadState
                , MonadWriter w
-               , MonadState GhcModState
                , MonadError GhcModError
                )
 
 instance MonadTrans GhcModT where
     lift = GhcModT . lift . lift . lift . lift
+
+instance MonadState s m => MonadState s (GhcModT m) where
+    get = GhcModT $ lift $ lift $ lift get
+    put = GhcModT . lift . lift . lift . put
+    state = GhcModT . lift . lift . lift . state
+
 
 #if MONADIO_INSTANCES
 instance MonadIO m => MonadIO (StateT s m) where
@@ -194,7 +193,7 @@ instance MonadIO m => MonadIO (MaybeT m) where
 -- | Initialize the 'DynFlags' relating to the compilation of a single
 -- file or GHC session according to the 'Cradle' and 'Options'
 -- provided.
-initializeFlagsWithCradle :: GhcMonad m
+initializeFlagsWithCradle :: (GhcMonad m, MonadError GhcModError m)
         => Options
         -> Cradle
         -> m ()
@@ -204,9 +203,9 @@ initializeFlagsWithCradle opt c
   where
     mCradleFile = cradleCabalFile c
     cabal = isJust mCradleFile
-    ghcopts = ghcOpts opt
+    ghcopts = ghcUserOptions opt
     withCabal = do
-        pkgDesc <- liftIO $ parseCabalFile $ fromJust mCradleFile
+        pkgDesc <- parseCabalFile $ fromJust mCradleFile
         compOpts <- liftIO $ getCompilerOptions ghcopts c pkgDesc
         initSession CabalPkg opt compOpts
     withSandbox = initSession SingleFile opt compOpts
@@ -253,7 +252,7 @@ runGhcModT :: IOish m
            -> m (Either GhcModError a, GhcModLog)
 runGhcModT opt action = do
     env <- liftBase $ newGhcModEnv opt =<< getCurrentDirectory
-    first (fmap fst) <$> (runGhcModT' env defaultState $ do
+    first (fst <$>) <$> (runGhcModT' env defaultState $ do
         dflags <- getSessionDynFlags
         defaultCleanupHandler dflags $ do
             initializeFlagsWithCradle opt (gmCradle env)
@@ -271,9 +270,9 @@ runGhcModT' :: IOish m
            -> m (Either GhcModError (a, GhcModState), GhcModLog)
 runGhcModT' r s a = do
   (res, w') <-
-      flip runReaderT r $ runJournalT $ runErrorT $ flip runStateT s
-        $ (unGhcModT $ initGhcMonad (Just libdir) >> a)
-  return $ (res, w')
+      flip runReaderT r $ runJournalT $ runErrorT $
+        runStateT (unGhcModT $ initGhcMonad (Just libdir) >> a) s
+  return (res, w')
 ----------------------------------------------------------------
 
 withErrorHandler :: IOish m => String -> GhcModT m a -> GhcModT m a
@@ -285,6 +284,28 @@ withErrorHandler label = ghandle ignore
         hPrint stderr e
         exitSuccess
 
+-- | Make a copy of the 'gmGhcSession' IORef, run the action and restore the
+-- original 'HscEnv'.
+withTempSession :: IOish m => GhcModT m a -> GhcModT m a
+withTempSession action = do
+  session <- gmGhcSession <$> ask
+  savedHscEnv <- liftIO $ readIORef session
+  a <- action
+  liftIO $ writeIORef session savedHscEnv
+  return a
+
+-- | This is a very ugly workaround don't use it.
+overrideGhcUserOptions :: IOish m => ([GHCOption] -> GhcModT m b) -> GhcModT m b
+overrideGhcUserOptions action = withTempSession $ do
+  env <- ask
+  opt <- options
+  let ghcOpts = ghcUserOptions opt
+      opt' = opt { ghcUserOptions = [] }
+
+  initializeFlagsWithCradle opt' (gmCradle env)
+
+  action ghcOpts
+
 -- | This is only a transitional mechanism don't use it for new code.
 toGhcModT :: IOish m => Ghc a -> GhcModT m a
 toGhcModT a = do
@@ -293,17 +314,23 @@ toGhcModT a = do
 
 ----------------------------------------------------------------
 
+gmsGet :: IOish m => GhcModT m GhcModState
+gmsGet = GhcModT get
+
+gmsPut :: IOish m => GhcModState -> GhcModT m ()
+gmsPut = GhcModT . put
+
 options :: IOish m => GhcModT m Options
 options = gmOptions <$> ask
 
 cradle :: IOish m => GhcModT m Cradle
 cradle = gmCradle <$> ask
 
-getCompilerMode :: (Functor m, MonadState GhcModState m) => m CompilerMode
-getCompilerMode = gmCompilerMode <$> get
+getCompilerMode :: IOish m => GhcModT m CompilerMode
+getCompilerMode = gmCompilerMode <$> gmsGet
 
-setCompilerMode :: MonadState GhcModState m => CompilerMode -> m ()
-setCompilerMode mode = (\s -> put s { gmCompilerMode = mode } ) =<< get
+setCompilerMode :: IOish m => CompilerMode -> GhcModT m ()
+setCompilerMode mode = (\s -> gmsPut s { gmCompilerMode = mode } ) =<< gmsGet
 
 ----------------------------------------------------------------
 

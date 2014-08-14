@@ -20,7 +20,6 @@ import Language.Haskell.GhcMod.Convert
 import Language.Haskell.GhcMod.Monad
 import Language.Haskell.GhcMod.SrcUtils
 import Language.Haskell.GhcMod.Types
-import CoreMonad (liftIO)
 import Outputable (PprStyle)
 import qualified Type as Ty
 import qualified HsBinds as Ty
@@ -119,13 +118,13 @@ getSignature modSum lineNo colNo = do
                         G.DataFamily -> Data
 #endif
 #if __GLASGOW_HASKELL__ >= 706
-            getTyFamVarName = \x -> case x of
-                                      L _ (G.UserTyVar n)     -> n
-                                      L _ (G.KindedTyVar n _) -> n
+            getTyFamVarName x = case x of
+                L _ (G.UserTyVar n)     -> n
+                L _ (G.KindedTyVar n _) -> n
 #else
-            getTyFamVarName = \x -> case x of  -- In GHC 7.4, HsTyVarBndr's have an extra arg
-                                      L _ (G.UserTyVar n _)     -> n
-                                      L _ (G.KindedTyVar n _ _) -> n
+            getTyFamVarName x = case x of  -- In GHC 7.4, HsTyVarBndr's have an extra arg
+                L _ (G.UserTyVar n _)     -> n
+                L _ (G.KindedTyVar n _ _) -> n
 #endif
          in return $ Just (TyFamDecl loc name flavour $ map getTyFamVarName vars)
       _ -> return Nothing
@@ -143,7 +142,7 @@ getSignatureFromHE file lineNo colNo = do
   return $ case presult of
              HE.ParseOk (HE.Module _ _ _ _ mdecls) -> do
                decl <- find (typeSigInRangeHE lineNo colNo) mdecls
-               case decl of 
+               case decl of
                  HE.TypeSig (HE.SrcSpanInfo s _) names ty -> return $ HESignature s names ty
                  HE.TypeFamDecl (HE.SrcSpanInfo s _) (HE.DHead _ name tys) _ ->
                    return $ HEFamSignature s Open name (map cleanTyVarBind tys)
@@ -170,7 +169,7 @@ initialBody' fname args = initialHead fname args ++ " = "
 
 initialFamBody :: FnArgsInfo ty name => DynFlags -> PprStyle -> name -> [name] -> String
 initialFamBody dflag style name args = initialHead (getFnName dflag style name)
-                                         (map (\arg -> FnExplicitName (getFnName dflag style arg)) args)
+                                         (map (FnExplicitName . getFnName dflag style) args)
                                          ++ " = ()"
 
 initialHead :: String -> [FnArg] -> String
@@ -282,7 +281,7 @@ refine file lineNo colNo expr = ghandle handler body
               iArgs = take diffArgs eArgs
               text = initialHead1 expr iArgs (infinitePrefixSupply name)
            in (fourInts loc, doParen paren text)
-            
+
     handler (SomeException _) = emptyResult =<< options
 
 -- Look for the variable in the specified position
@@ -299,7 +298,7 @@ findVar dflag style tcm tcs lineNo colNo =
               then let Just (s,t) = tyInfo
                        b = case others of  -- If inside an App, we need parenthesis
                              [] -> False
-                             (L _ (G.HsApp (L _ a1) (L _ a2))):_ ->
+                             L _ (G.HsApp (L _ a1) (L _ a2)):_ ->
                                isSearchedVar i a1 || isSearchedVar i a2
                              _  -> False
                     in return $ Just (s, name, t, b)
@@ -340,9 +339,9 @@ auto file lineNo colNo = ghandle handler body
           topLevel <- getEverythingInTopLevel minfo
           let (f,pats) = getPatsForVariable tcs (lineNo,colNo)
               -- Remove self function to prevent recursion, and id to trim cases
-              filterFn = (\(n,_) -> let funName = G.getOccString n
-                                        recName = G.getOccString (G.getName f)
-                                     in not $ funName `elem` recName:notWantedFuns)
+              filterFn (n,_) = let funName = G.getOccString n
+                                   recName = G.getOccString (G.getName f)
+                               in funName `notElem` recName:notWantedFuns
               -- Find without using other functions in top-level
               localBnds = M.unions $ map (\(L _ pat) -> getBindingsForPat pat) pats
               lbn = filter filterFn (M.toList localBnds)
@@ -352,7 +351,7 @@ auto file lineNo colNo = ghandle handler body
               env = filter filterFn almostEnv
           djinns <- djinn True (Just minfo) env rty (Max 10) 100000
           return (fourInts loc, map (doParen paren) $ nub (djinnsEmpty ++ djinns))
-            
+
     handler (SomeException _) = emptyResult =<< options
 
 -- Functions we do not want in completions

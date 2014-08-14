@@ -11,14 +11,16 @@ module Language.Haskell.GhcMod.CabalApi (
   ) where
 
 import Language.Haskell.GhcMod.CabalConfig
-import Language.Haskell.GhcMod.Gap (benchmarkBuildInfo, benchmarkTargets, toModuleString)
+import Language.Haskell.GhcMod.Gap (benchmarkBuildInfo, benchmarkTargets,
+                                    toModuleString)
 import Language.Haskell.GhcMod.GhcPkg
 import Language.Haskell.GhcMod.Types
 
+import MonadUtils (MonadIO, liftIO)
 import Control.Applicative ((<$>))
 import qualified Control.Exception as E
 import Control.Monad (filterM)
-import CoreMonad (liftIO)
+import Control.Monad.Error.Class (Error, MonadError(..))
 import Data.Maybe (maybeToList)
 import Data.Set (fromList, toList)
 import Distribution.Package (Dependency(Dependency)
@@ -69,19 +71,21 @@ includeDirectories cdir wdir dirs = uniqueAndSort (extdirs ++ [cdir,wdir])
 
 ----------------------------------------------------------------
 
--- | Parsing a cabal file and returns 'PackageDescription'.
---   'IOException' is thrown if parsing fails.
-parseCabalFile :: FilePath -> IO PackageDescription
+-- | Parse a cabal file and return a 'PackageDescription'.
+parseCabalFile :: (MonadIO m, Error e,  MonadError e m)
+               => FilePath
+               -> m PackageDescription
 parseCabalFile file = do
-    cid <- getGHCId
-    epgd <- readPackageDescription silent file
+    cid <- liftIO getGHCId
+    epgd <- liftIO $ readPackageDescription silent file
     case toPkgDesc cid epgd of
-        Left deps    -> E.throwIO $ userError $ show deps ++ " are not installed"
+        Left deps    -> fail $ show deps ++ " are not installed"
         Right (pd,_) -> if nullPkg pd
-                        then E.throwIO $ userError $ file ++ " is broken"
+                        then fail $ file ++ " is broken"
                         else return pd
   where
-    toPkgDesc cid = finalizePackageDescription [] (const True) buildPlatform cid []
+    toPkgDesc cid =
+        finalizePackageDescription [] (const True) buildPlatform cid []
     nullPkg pd = name == ""
       where
         PackageName name = C.pkgName (P.package pd)

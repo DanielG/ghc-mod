@@ -21,10 +21,3 @@ goNext = liftIO . GE.throwIO $ userError "goNext"
 -- | Run any one 'Ghc' monad.
 runAnyOne :: GhcMonad m => [m a] -> m a
 runAnyOne = foldr (||>) goNext
-
-----------------------------------------------------------------
-
--- | Try the left 'GhcMonad' action. If 'IOException' occurs, try
---   the right 'GhcMonad' action.
-(|||>) :: GhcMonad m => m a -> m a -> m a
-x |||> y = x `GE.gcatch` (\(_ :: IOException) -> y)

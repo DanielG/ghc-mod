@@ -247,7 +247,7 @@ nil            does not display errors/warnings.
              (line (string-to-number (match-string 2 text)))
              (coln (string-to-number (match-string 3 text)))
              (buf  (find-file file)))
-            (with-current-buffer buf 
+            (with-current-buffer buf
                (let* ((this-line (line-number-at-pos))
                       (diff (- line this-line)))
                  (beginning-of-line)

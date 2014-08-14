@@ -2,7 +2,6 @@ module Language.Haskell.GhcMod.Lint where
 
 import Exception (ghandle)
 import Control.Exception (SomeException(..))
-import CoreMonad (liftIO)
 import Language.Haskell.GhcMod.Logger (checkErrorPrefix)
 import Language.Haskell.GhcMod.Convert
 import Language.Haskell.GhcMod.Monad

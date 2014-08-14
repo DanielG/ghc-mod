@@ -11,7 +11,9 @@ import TestUtils
 
 main = do
   let sandboxes = [ "test/data", "test/data/check-packageid"
-                  , "test/data/duplicate-pkgver/" ]
+                  , "test/data/duplicate-pkgver/"
+                  , "test/data/broken-cabal/"
+                  ]
       genSandboxCfg dir = withDirectory dir $ \cwd -> do
          system ("sed 's|@CWD@|" ++ cwd ++ "|g' cabal.sandbox.config.in > cabal.sandbox.config")
       pkgDirs =

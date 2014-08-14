@@ -63,8 +63,11 @@ argspec = [ Option "l" ["tolisp"]
             (ReqArg (\h opts -> opts { hlintOpts = h : hlintOpts opts }) "hlintOpt")
             "hlint options"
           , Option "g" ["ghcOpt"]
-            (ReqArg (\g opts -> opts { ghcOpts = g : ghcOpts opts }) "ghcOpt")
+            (ReqArg (\g opts -> opts { ghcUserOptions = g : ghcUserOptions opts }) "ghcOpt")
             "GHC options"
+          , Option "v" ["verbose"]
+            (NoArg (\opts -> opts { ghcUserOptions = "-v" : ghcUserOptions opts }))
+            "verbose"
           , Option "o" ["operators"]
             (NoArg (\opts -> opts { operators = True }))
             "print operators, too"
@@ -138,7 +141,8 @@ main = flip E.catches handlers $ do
       cmd       -> E.throw (NoSuchCommand cmd)
     case res of
       Right s -> putStr s
-      Left e -> error $ show e
+      Left (GMENoMsg) -> hPutStrLn stderr "Unknown error"
+      Left (GMEString msg) -> hPutStrLn stderr msg
   where
     handlers = [Handler (handleThenExit handler1), Handler (handleThenExit handler2)]
     handleThenExit handler e = handler e >> exitFailure

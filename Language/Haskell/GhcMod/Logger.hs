@@ -7,7 +7,6 @@ module Language.Haskell.GhcMod.Logger (
 
 import Bag (Bag, bagToList)
 import Control.Applicative ((<$>))
-import CoreMonad (liftIO)
 import Data.IORef (IORef, newIORef, readIORef, writeIORef, modifyIORef)
 import Data.List (isPrefixOf)
 import Data.Maybe (fromMaybe)
@@ -64,7 +63,7 @@ withLogger :: IOish m
            -> GhcModT m (Either String String)
 withLogger setDF body = ghandle sourceError $ do
     logref <- liftIO newLogRef
-    wflags <- filter ("-fno-warn" `isPrefixOf`) . ghcOpts <$> options
+    wflags <- filter ("-fno-warn" `isPrefixOf`) . ghcUserOptions <$> options
     withDynFlags (setLogger logref . setDF) $
         withCmdFlags wflags $ do
             body
@@ -106,7 +105,15 @@ ppMsg spn sev dflag style msg = prefix ++ cts
         (line,col,_,_) <- Gap.getSrcSpan spn
         file <- normalise <$> Gap.getSrcFile spn
         let severityCaption = Gap.showSeverityCaption sev
-        return $ file ++ ":" ++ show line ++ ":" ++ show col ++ ":" ++ severityCaption
+            pref0
+              | typeWarning1 `isPrefixOf` cts ||
+                typeWarning2 `isPrefixOf` cts = file ++ ":" ++ show line ++ ":" ++ show col ++ ":"
+              | otherwise                     = file ++ ":" ++ show line ++ ":" ++ show col ++ ":" ++ severityCaption
+        return pref0
+    -- DeferTypeErrors turns a type error to a warning.
+    -- So, let's turns it the error again.
+    typeWarning1 = "Couldn't match expected type"
+    typeWarning2 = "Couldn't match type"
 
 checkErrorPrefix :: String
 checkErrorPrefix = "Dummy:0:0:Error:"
