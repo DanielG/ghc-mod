@@ -105,7 +105,13 @@ ppMsg spn sev dflag style msg = prefix ++ cts
         (line,col,_,_) <- Gap.getSrcSpan spn
         file <- normalise <$> Gap.getSrcFile spn
         let severityCaption = Gap.showSeverityCaption sev
-        return $ file ++ ":" ++ show line ++ ":" ++ show col ++ ":" ++ severityCaption
+            pref0
+              | typeWarning `isPrefixOf` cts = file ++ ":" ++ show line ++ ":" ++ show col ++ ":"
+              | otherwise                    = file ++ ":" ++ show line ++ ":" ++ show col ++ ":" ++ severityCaption
+        return pref0
+    -- DeferTypeErrors turns a type error to a warning.
+    -- So, let's turns it the error again.
+    typeWarning = "Couldn't match expected type"
 
 checkErrorPrefix :: String
 checkErrorPrefix = "Dummy:0:0:Error:"
