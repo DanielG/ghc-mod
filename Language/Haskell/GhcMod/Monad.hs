@@ -252,7 +252,7 @@ runGhcModT :: IOish m
            -> m (Either GhcModError a, GhcModLog)
 runGhcModT opt action = do
     env <- liftBase $ newGhcModEnv opt =<< getCurrentDirectory
-    first (fmap fst) <$> (runGhcModT' env defaultState $ do
+    first (fst <$>) <$> (runGhcModT' env defaultState $ do
         dflags <- getSessionDynFlags
         defaultCleanupHandler dflags $ do
             initializeFlagsWithCradle opt (gmCradle env)
