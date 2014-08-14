@@ -33,18 +33,6 @@
     (insert (ghc-sinfo-get-info info)) )
   )
 
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;
-;;; Combined rewriting
-;;;
-
-(defun ghc-try-rewrite ()
-  "Try to apply initial code generation and case splitting"
-  (interactive)
-  (when (null (ghc-try-initial-code-from-signature))
-        (ghc-try-case-split)))
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
 ;;; Case splitting

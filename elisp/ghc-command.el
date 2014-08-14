@@ -19,7 +19,8 @@
    ((ghc-check-overlay-at (point))
     (ghc-check-insert-from-warning))
    (t
-    (message "Nothing to be done"))))
+    (when (null (ghc-try-case-split))
+          (message "Nothing to be done")))))
 
 (defun ghc-insert-module-template ()
   (let* ((fullname (file-name-sans-extension (buffer-file-name)))
