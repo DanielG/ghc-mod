@@ -19,8 +19,6 @@ module Language.Haskell.GhcMod.Monad (
   , runGhcModT
   , runGhcModT'
   , withErrorHandler
-  -- ** Conversion
-  , toGhcModT
   -- ** Accessing 'GhcModEnv' and 'GhcModState'
   , gmsGet
   , gmsPut
@@ -305,12 +303,6 @@ overrideGhcUserOptions action = withTempSession $ do
   initializeFlagsWithCradle opt' (gmCradle env)
 
   action ghcOpts
-
--- | This is only a transitional mechanism don't use it for new code.
-toGhcModT :: IOish m => Ghc a -> GhcModT m a
-toGhcModT a = do
-    s <- gmGhcSession <$> ask
-    liftIO $ unGhc a $ Session s
 
 ----------------------------------------------------------------
 

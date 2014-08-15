@@ -125,7 +125,7 @@ withLoggerTwice setDF1 body1 setDF2 body2 = do
             Right <$> readAndClearLogBagRef logref
   -- Merge errors and warnings
   dflags <- G.getSessionDynFlags
-  style <- toGhcModT getStyle
+  style <- getStyle
   case (err1, err2) of
     (Right b1, Right b2) -> do let (warn1,warn2) = mergeErrors dflags style b1 b2
                                errAndWarnBagToStr Right emptyBag (warn1 `unionBags` b2)
@@ -150,7 +150,7 @@ errBagToStr = errBagToStr' Left
 errBagToStr' :: IOish m => (String -> a) -> Bag ErrMsg -> GhcModT m a
 errBagToStr' f err = do
     dflags <- G.getSessionDynFlags
-    style <- toGhcModT getStyle
+    style <- getStyle
     ret <- convert' (errBagToStrList dflags style err)
     return $ f ret
 
