@@ -158,7 +158,11 @@ errAndWarnBagToStr :: IOish m => (String -> a) -> Bag ErrMsg -> Bag WarnMsg -> G
 errAndWarnBagToStr f err warn = do
     dflags <- G.getSessionDynFlags
     -- style <- toGhcModT getStyle
+#if __GLASGOW_HASKELL__ >= 706
     let style = mkErrStyle dflags neverQualify
+#else
+    let style = mkErrStyle neverQualify
+#endif
     ret <- convert' $ nub (errBagToStrList dflags style err ++ warnBagToStrList dflags style warn)
     return $ f ret
 
