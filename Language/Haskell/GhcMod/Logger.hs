@@ -9,7 +9,7 @@ module Language.Haskell.GhcMod.Logger (
 import Bag (Bag, bagToList, emptyBag, consBag, filterBag, unionBags)
 import Control.Applicative ((<$>))
 import Data.IORef (IORef, newIORef, readIORef, writeIORef, modifyIORef)
-import Data.List (isPrefixOf, find, nub)
+import Data.List (isPrefixOf, find, nub, isInfixOf)
 import Data.Maybe (fromMaybe, isJust)
 import ErrUtils (ErrMsg, WarnMsg, errMsgShortDoc, errMsgExtraInfo, mkPlainWarnMsg)
 import Exception (ghandle)
@@ -167,10 +167,15 @@ sourceErrorBag err = return $ Left (srcErrorMessages err)
 
 mergeErrors :: DynFlags -> PprStyle -> Bag ErrMsg -> Bag ErrMsg -> (Bag ErrMsg, Bag ErrMsg)
 mergeErrors dflag style b1 b2 =
-  let b1Msgs = map (ppWarnMsg dflag style) (bagToList b1)
-      mustBeB2 = \err2 -> let msg2 = ppWarnMsg dflag style err2
-                           in not $ msg2 `elem` b1Msgs
+  let b1Msgs = map (\err1 -> let m = ppWarnMsg dflag style err1 in (m, head $ lines m))
+                   (bagToList b1)
+      mustBeB2 = \err2 -> let msg2  = ppWarnMsg dflag style err2
+                              line2 = head $ lines msg2
+                           in not . isJust $ find (\(msg1, line1) -> msg1 == msg2 || (line1 == line2 && isHoleMsg line1)) b1Msgs
    in (b1, filterBag mustBeB2 b2)
+
+isHoleMsg :: String -> Bool
+isHoleMsg = isInfixOf "Found hole"
 
 ----------------------------------------------------------------
 
