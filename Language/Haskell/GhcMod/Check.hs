@@ -41,7 +41,7 @@ check fileNames = overrideGhcUserOptions $ \ghcOpts -> do
     setAllWaringFlags
     (do _ <- G.setSessionDynFlags =<< addCmdOpts ghcOpts =<< G.getSessionDynFlags
         setTargetFiles fileNames)
-    (setAllWaringFlags . setNoMaxRelevantBindings . Gap.setWarnTypedHoles)
+    (setAllWaringFlags . setNoMaxRelevantBindings . Gap.setWarnTypedHoles  . Gap.setDeferTypeErrors)
     (do _ <- G.setSessionDynFlags =<< addCmdOpts ghcOpts =<< G.getSessionDynFlags
         setTargetFiles fileNames)
 

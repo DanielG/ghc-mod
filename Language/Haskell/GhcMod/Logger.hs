@@ -6,12 +6,12 @@ module Language.Haskell.GhcMod.Logger (
   , checkErrorPrefix
   ) where
 
-import Bag (Bag, bagToList, filterBag, unionBags)
+import Bag (Bag, bagToList, emptyBag, consBag, filterBag, unionBags)
 import Control.Applicative ((<$>))
 import Data.IORef (IORef, newIORef, readIORef, writeIORef, modifyIORef)
-import Data.List (isPrefixOf, find)
+import Data.List (isPrefixOf, find, nub)
 import Data.Maybe (fromMaybe, isJust)
-import ErrUtils (ErrMsg, errMsgShortDoc, errMsgExtraInfo)
+import ErrUtils (ErrMsg, WarnMsg, errMsgShortDoc, errMsgExtraInfo, mkPlainWarnMsg)
 import Exception (ghandle)
 import GHC (DynFlags, SrcSpan, Severity(SevError))
 import qualified GHC as G
@@ -55,6 +55,31 @@ appendLogRef df (LogRef ref) _ sev src style msg = modifyIORef ref update
 
 ----------------------------------------------------------------
 
+data LogBag = LogBag (Bag WarnMsg)
+newtype LogBagRef = LogBagRef (IORef LogBag)
+
+emptyLogBag :: LogBag
+emptyLogBag = LogBag emptyBag
+
+newLogBagRef :: IO LogBagRef
+newLogBagRef = LogBagRef <$> newIORef emptyLogBag
+
+readAndClearLogBagRef :: IOish m => LogBagRef -> GhcModT m (Bag WarnMsg)
+readAndClearLogBagRef (LogBagRef ref) = do
+    LogBag b <- liftIO $ readIORef ref
+    liftIO $ writeIORef ref emptyLogBag
+    return b
+
+appendLogBagRef :: DynFlags -> LogBagRef -> DynFlags -> Severity -> SrcSpan -> PprStyle -> SDoc -> IO ()
+appendLogBagRef df (LogBagRef ref) _ sev src style msg = modifyIORef ref update
+  where
+    warnMsg = mkPlainWarnMsg df src msg
+    warnBag = consBag warnMsg emptyBag
+    update lg@(LogBag b) = let (b1,b2) = mergeErrors df style b warnBag
+                            in LogBag $ b1 `unionBags` b2
+
+----------------------------------------------------------------
+
 -- | Set the session flag (e.g. "-Wall" or "-w:") then
 --   executes a body. Logged messages are returned as 'String'.
 --   Right is success and Left is failure.
@@ -80,29 +105,33 @@ withLoggerTwice :: IOish m
                 -> GhcModT m (Either String String)
 withLoggerTwice setDF1 body1 setDF2 body2 = do
   err1 <- ghandle sourceErrorBag $ do
-    logref <- liftIO newLogRef
+    logref <- liftIO newLogBagRef
     wflags <- filter ("-fno-warn" `isPrefixOf`) . ghcUserOptions <$> options
     withDynFlags (setLogger logref . setDF1) $
         withCmdFlags wflags $ do
             body1
-            Right <$> readAndClearLogRef logref
+            Right <$> readAndClearLogBagRef logref
   err2 <- ghandle sourceErrorBag $ do
-    logref <- liftIO newLogRef
+    logref <- liftIO newLogBagRef
     wflags <- filter ("-fno-warn" `isPrefixOf`) . ghcUserOptions <$> options
     withDynFlags (setLogger logref . setDF2) $
         withCmdFlags wflags $ do
             body2
-            Right <$> readAndClearLogRef logref
+            Right <$> readAndClearLogBagRef logref
+  -- Merge errors and warnings
+  dflags <- G.getSessionDynFlags
+  style <- toGhcModT getStyle
   case (err1, err2) of
-    (Right x, Right _) -> return $ Right x
-    (Left b1, Right _) -> errBagToStr b1
-    (Right _, Left b2) -> errBagToStr b2
-    (Left b1, Left b2) -> do dflags <- G.getSessionDynFlags
-                             style <- toGhcModT getStyle
-                             let merged = mergeErrors dflags style b1 b2
-                             errBagToStr merged
+    (Right b1, Right b2) -> do let (warn1,warn2) = mergeErrors dflags style b1 b2
+                               errAndWarnBagToStr Right emptyBag (warn1 `unionBags` b2)
+    (Left  b1, Right b2) -> do let (err,warn) = mergeErrors dflags style b1 b2
+                               errAndWarnBagToStr Right err warn
+    (Right b1, Left  b2) -> do let (err,warn) = mergeErrors dflags style b2 b1
+                               errAndWarnBagToStr Right err warn
+    (Left  b1, Left  b2) -> do let (err1',err2') = mergeErrors dflags style b1 b2
+                               errAndWarnBagToStr Right (err1' `unionBags` err2') emptyBag
   where
-    setLogger logref df = Gap.setLogAction df $ appendLogRef df logref
+    setLogger logref df = Gap.setLogAction df $ appendLogBagRef df logref
 
 ----------------------------------------------------------------
 
@@ -111,35 +140,49 @@ sourceError :: IOish m => SourceError -> GhcModT m (Either String String)
 sourceError err = errBagToStr (srcErrorMessages err)
 
 errBagToStr :: IOish m => Bag ErrMsg -> GhcModT m (Either String String)
-errBagToStr err = do
+errBagToStr = errBagToStr' Left
+
+errBagToStr' :: IOish m => (String -> a) -> Bag ErrMsg -> GhcModT m a
+errBagToStr' f err = do
     dflags <- G.getSessionDynFlags
     style <- toGhcModT getStyle
     ret <- convert' (errBagToStrList dflags style err)
-    return $ Left ret
+    return $ f ret
+
+errAndWarnBagToStr :: IOish m => (String -> a) -> Bag ErrMsg -> Bag WarnMsg -> GhcModT m a
+errAndWarnBagToStr f err warn = do
+    dflags <- G.getSessionDynFlags
+    style <- toGhcModT getStyle
+    ret <- convert' $ nub (errBagToStrList dflags style err ++ warnBagToStrList dflags style warn)
+    return $ f ret
 
 errBagToStrList :: DynFlags -> PprStyle -> Bag ErrMsg -> [String]
 errBagToStrList dflag style = map (ppErrMsg dflag style) . reverse . bagToList
 
-sourceErrorBag :: IOish m => SourceError -> GhcModT m (Either (Bag ErrMsg) String)
+warnBagToStrList :: DynFlags -> PprStyle -> Bag WarnMsg -> [String]
+warnBagToStrList dflag style = map (ppWarnMsg dflag style) . reverse . bagToList
+
+sourceErrorBag :: IOish m => SourceError -> GhcModT m (Either (Bag ErrMsg) (Bag WarnMsg))
 sourceErrorBag err = return $ Left (srcErrorMessages err)
 
-mergeErrors :: DynFlags -> PprStyle -> Bag ErrMsg -> Bag ErrMsg -> Bag ErrMsg
+mergeErrors :: DynFlags -> PprStyle -> Bag ErrMsg -> Bag ErrMsg -> (Bag ErrMsg, Bag ErrMsg)
 mergeErrors dflag style b1 b2 =
-  let b1List = bagToList b1
-      findInB1 = \pr2 msg2 err1 ->
-                    let pr1  = ppMsgPrefix (Gap.errorMsgSpan err1) G.SevWarning dflag style
-                        msg1 = showPage dflag style (errMsgExtraInfo err1)
-                     in pr1 == pr2 && msg1 == msg2
-      mustBeB2 = \err2 ->
-                    let pr2  = ppMsgPrefix (Gap.errorMsgSpan err2) G.SevWarning dflag style
-                        msg2 = showPage dflag style (errMsgExtraInfo err2)
-                     in not . isJust $ find (findInB1 pr2 msg2) b1List
-   in b1 `unionBags` filterBag mustBeB2 b2
+  let b1Msgs = map (ppWarnMsg dflag style) (bagToList b1)
+      mustBeB2 = \err2 -> let msg2 = ppWarnMsg dflag style err2
+                           in not $ msg2 `elem` b1Msgs
+   in (b1, filterBag mustBeB2 b2)
 
 ----------------------------------------------------------------
 
 ppErrMsg :: DynFlags -> PprStyle -> ErrMsg -> String
-ppErrMsg dflag style err = ppMsg spn SevError dflag style msg ++ ext
+ppErrMsg dflag style err = ppMsg spn SevError dflag style msg ++ (if null ext then "" else "\n" ++ ext)
+   where
+     spn = Gap.errorMsgSpan err
+     msg = errMsgShortDoc err
+     ext = showPage dflag style (errMsgExtraInfo err)
+
+ppWarnMsg :: DynFlags -> PprStyle -> ErrMsg -> String
+ppWarnMsg dflag style err = ppMsg spn G.SevWarning dflag style msg ++ (if null ext then "" else "\n" ++ ext)
    where
      spn = Gap.errorMsgSpan err
      msg = errMsgShortDoc err
