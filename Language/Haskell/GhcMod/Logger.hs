@@ -74,7 +74,11 @@ appendLogBagRef :: DynFlags -> LogBagRef -> DynFlags -> Severity -> SrcSpan -> P
 appendLogBagRef df (LogBagRef ref) _ sev src style msg = modifyIORef ref update
   where
     qstyle = (qualName style, qualModule style)
+#if __GLASGOW_HASKELL__ >= 706
     warnMsg = mkWarnMsg df src qstyle msg
+#else
+    warnMsg = mkWarnMsg src qstyle msg
+#endif
     warnBag = consBag warnMsg emptyBag
     update lg@(LogBag b) = let (b1,b2) = mergeErrors df style b warnBag
                             in LogBag $ b1 `unionBags` b2
