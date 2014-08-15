@@ -11,7 +11,7 @@ import Control.Applicative ((<$>))
 import Data.IORef (IORef, newIORef, readIORef, writeIORef, modifyIORef)
 import Data.List (isPrefixOf, find, nub, isInfixOf)
 import Data.Maybe (fromMaybe, isJust)
-import ErrUtils (ErrMsg, WarnMsg, errMsgShortDoc, errMsgExtraInfo, mkPlainWarnMsg)
+import ErrUtils (ErrMsg, WarnMsg, errMsgShortDoc, errMsgExtraInfo, mkWarnMsg)
 import Exception (ghandle)
 import GHC (DynFlags, SrcSpan, Severity(SevError))
 import qualified GHC as G
@@ -22,7 +22,7 @@ import qualified Language.Haskell.GhcMod.Gap as Gap
 import Language.Haskell.GhcMod.Convert (convert')
 import Language.Haskell.GhcMod.Monad
 import Language.Haskell.GhcMod.Types
-import Outputable (PprStyle, SDoc)
+import Outputable (PprStyle, SDoc, qualName, qualModule, mkErrStyle, neverQualify)
 import System.FilePath (normalise)
 
 ----------------------------------------------------------------
@@ -73,7 +73,8 @@ readAndClearLogBagRef (LogBagRef ref) = do
 appendLogBagRef :: DynFlags -> LogBagRef -> DynFlags -> Severity -> SrcSpan -> PprStyle -> SDoc -> IO ()
 appendLogBagRef df (LogBagRef ref) _ sev src style msg = modifyIORef ref update
   where
-    warnMsg = mkPlainWarnMsg df src msg
+    qstyle = (qualName style, qualModule style)
+    warnMsg = mkWarnMsg df src qstyle msg
     warnBag = consBag warnMsg emptyBag
     update lg@(LogBag b) = let (b1,b2) = mergeErrors df style b warnBag
                             in LogBag $ b1 `unionBags` b2
@@ -152,7 +153,8 @@ errBagToStr' f err = do
 errAndWarnBagToStr :: IOish m => (String -> a) -> Bag ErrMsg -> Bag WarnMsg -> GhcModT m a
 errAndWarnBagToStr f err warn = do
     dflags <- G.getSessionDynFlags
-    style <- toGhcModT getStyle
+    -- style <- toGhcModT getStyle
+    let style = mkErrStyle dflags neverQualify
     ret <- convert' $ nub (errBagToStrList dflags style err ++ warnBagToStrList dflags style warn)
     return $ f ret
 
