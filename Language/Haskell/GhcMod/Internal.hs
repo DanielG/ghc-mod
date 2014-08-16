@@ -36,8 +36,6 @@ module Language.Haskell.GhcMod.Internal (
   -- * Monad utilities
   , runGhcModT'
   , withErrorHandler
-  -- ** Conversion
-  , toGhcModT
   -- ** Accessing 'GhcModEnv' and 'GhcModState'
   , options
   , cradle
