@@ -34,7 +34,7 @@ spec = do
             withDirectory "test/data/subdir1/subdir2" $ \dir -> do
                 cradle <- findCradle
                 pkgDesc <- runD $ parseCabalFile $ fromJust $ cradleCabalFile cradle
-                res <- getCompilerOptions [] cradle pkgDesc
+                res <- runD $ getCompilerOptions [] cradle pkgDesc
                 let res' = res {
                         ghcOptions  = ghcOptions res
                       , includeDirs = map (toRelativeDir dir) (includeDirs res)

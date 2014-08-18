@@ -141,6 +141,7 @@ Executable ghc-modi
                       , containers
                       , directory
                       , filepath
+                      , split
                       , ghc
                       , ghc-mod
 

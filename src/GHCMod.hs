@@ -143,6 +143,8 @@ main = flip E.catches handlers $ do
       Right s -> putStr s
       Left (GMENoMsg) -> hPutStrLn stderr "Unknown error"
       Left (GMEString msg) -> hPutStrLn stderr msg
+      Left (GMECabalConfigure msg) ->
+          hPutStrLn stderr $ "cabal configure failed: " ++ msg
   where
     handlers = [Handler (handleThenExit handler1), Handler (handleThenExit handler2)]
     handleThenExit handler e = handler e >> exitFailure
