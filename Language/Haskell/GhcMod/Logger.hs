@@ -71,7 +71,7 @@ readAndClearLogBagRef (LogBagRef ref) = do
     return b
 
 appendLogBagRef :: DynFlags -> LogBagRef -> DynFlags -> Severity -> SrcSpan -> PprStyle -> SDoc -> IO ()
-appendLogBagRef df (LogBagRef ref) _ sev src style msg = modifyIORef ref update
+appendLogBagRef df (LogBagRef ref) _ _ src style msg = modifyIORef ref update
   where
     qstyle = (qualName style, qualModule style)
 #if __GLASGOW_HASKELL__ >= 706
@@ -80,8 +80,8 @@ appendLogBagRef df (LogBagRef ref) _ sev src style msg = modifyIORef ref update
     warnMsg = mkWarnMsg src qstyle msg
 #endif
     warnBag = consBag warnMsg emptyBag
-    update lg@(LogBag b) = let (b1,b2) = mergeErrors df style b warnBag
-                            in LogBag $ b1 `unionBags` b2
+    update (LogBag b) = let (b1,b2) = mergeErrors df style b warnBag
+                         in LogBag $ b1 `unionBags` b2
 
 ----------------------------------------------------------------
 
@@ -127,7 +127,7 @@ withLoggerTwice setDF1 body1 setDF2 body2 = do
   dflags <- G.getSessionDynFlags
   style <- getStyle
   case (err1, err2) of
-    (Right b1, Right b2) -> do let (warn1,warn2) = mergeErrors dflags style b1 b2
+    (Right b1, Right b2) -> do let (warn1,_) = mergeErrors dflags style b1 b2
                                errAndWarnBagToStr Right emptyBag (warn1 `unionBags` b2)
     (Left  b1, Right b2) -> do let (err,warn) = mergeErrors dflags style b1 b2
                                errAndWarnBagToStr Right err warn

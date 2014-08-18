@@ -19,7 +19,6 @@ import qualified Language.Haskell.GhcMod.Cabal18 as C18
 #define MIN_VERSION_mtl(x,y,z) 1
 #endif
 
-import MonadUtils (MonadIO(liftIO))
 import Control.Applicative ((<$>))
 import Control.Monad (mplus,void)
 #if MIN_VERSION_mtl(2,2,1)
@@ -36,7 +35,9 @@ import Distribution.Package (InstalledPackageId(..)
 import Distribution.Simple.BuildPaths (defaultDistPref)
 import Distribution.Simple.Configure (localBuildInfoFile)
 import Distribution.Simple.LocalBuildInfo (ComponentName)
+import MonadUtils (MonadIO)
 import System.FilePath ((</>))
+
 ----------------------------------------------------------------
 
 -- | 'Show'ed cabal 'LocalBuildInfo' string
