@@ -207,10 +207,10 @@ ppMsg :: SrcSpan -> Severity-> DynFlags -> PprStyle -> SDoc -> String
 ppMsg spn sev dflag style msg = prefix ++ cts
   where
     cts  = showPage dflag style msg
-    prefix = ppMsgPrefix spn sev dflag style
+    prefix = ppMsgPrefix spn sev dflag style cts
 
-ppMsgPrefix :: SrcSpan -> Severity-> DynFlags -> PprStyle -> String
-ppMsgPrefix spn sev dflag _style =
+ppMsgPrefix :: SrcSpan -> Severity-> DynFlags -> PprStyle -> String -> String
+ppMsgPrefix spn sev dflag _style cts =
   let defaultPrefix
         | Gap.isDumpSplices dflag = ""
         | otherwise               = checkErrorPrefix
@@ -218,7 +218,15 @@ ppMsgPrefix spn sev dflag _style =
         (line,col,_,_) <- Gap.getSrcSpan spn
         file <- normalise <$> Gap.getSrcFile spn
         let severityCaption = Gap.showSeverityCaption sev
-        return $ file ++ ":" ++ show line ++ ":" ++ show col ++ ":" ++ severityCaption
+            pref0 | or (map (\x -> x `isPrefixOf` cts) warningAsErrorPrefixes)
+                              = file ++ ":" ++ show line ++ ":" ++ show col ++ ":"
+                  | otherwise = file ++ ":" ++ show line ++ ":" ++ show col ++ ":" ++ severityCaption
+        return pref0
 
 checkErrorPrefix :: String
 checkErrorPrefix = "Dummy:0:0:Error:"
+
+warningAsErrorPrefixes :: [String]
+warningAsErrorPrefixes = ["Couldn't match expected type"
+                         , "Couldn't match type"
+                         , "No instance for"]

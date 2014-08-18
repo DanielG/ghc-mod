@@ -32,13 +32,9 @@ check :: IOish m
       => [FilePath]  -- ^ The target files.
       -> GhcModT m (Either String String)
 check fileNames = overrideGhcUserOptions $ \ghcOpts -> do
-  withLoggerTwice
-    setAllWaringFlags
-    (do _ <- G.setSessionDynFlags =<< addCmdOpts ghcOpts =<< G.getSessionDynFlags
-        setTargetFiles fileNames)
-    (setAllWaringFlags . setNoMaxRelevantBindings . Gap.setWarnTypedHoles  . Gap.setDeferTypeErrors)
-    (do _ <- G.setSessionDynFlags =<< addCmdOpts ghcOpts =<< G.getSessionDynFlags
-        setTargetFiles fileNames)
+  withLogger (setAllWaringFlags . setNoMaxRelevantBindings . Gap.setWarnTypedHoles . Gap.setDeferTypeErrors) $ do
+    _ <- G.setSessionDynFlags =<< addCmdOpts ghcOpts =<< G.getSessionDynFlags
+    setTargetFiles fileNames
 
 ----------------------------------------------------------------
 
