@@ -107,10 +107,12 @@ nil            does not display errors/warnings.
 	    (let* ((errs (ghc-filter 'ghc-hilit-info-get-err infos))
 		   (elen (length errs))
 		   (wlen (- len elen)))
-	      (setq mode-line-process (format " %d:%d" elen wlen))))))))
+	      (setq mode-line-process (format " %d:%d" elen wlen)))))
+	(force-mode-line-update))))
    (t
     (ghc-with-current-buffer ghc-process-original-buffer
-      (setq mode-line-process " failed")))))
+      (setq mode-line-process " failed")
+      (force-mode-line-update)))))
 
 (defun ghc-to-info (errs)
   ;; [^\t] to include \n.
