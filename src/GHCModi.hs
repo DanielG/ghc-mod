@@ -1,4 +1,4 @@
-{-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE ScopedTypeVariables, DeriveDataTypeable #-}
 
 -- Commands:
 --  check <file>
@@ -25,7 +25,8 @@ import Control.Exception (SomeException(..), Exception)
 import qualified Control.Exception as E
 import Control.Monad (when, void)
 import CoreMonad (liftIO)
-import Data.List (find)
+import Data.List (find, intercalate)
+import Data.List.Split (splitOn)
 import Data.Maybe (fromMaybe)
 import Data.Set (Set)
 import qualified Data.Set as S
@@ -38,6 +39,7 @@ import System.Console.GetOpt
 import System.Directory (setCurrentDirectory)
 import System.Environment (getArgs)
 import System.IO (hFlush,stdout)
+import System.Exit (ExitCode, exitFailure)
 
 import Utils
 
@@ -93,7 +95,7 @@ main = E.handle cmdHandler $
     cmdHandler (CmdArg _) = putStr $ usageInfo usage argspec
     go (_,"help":_) = putStr $ usageInfo usage argspec
     go (_,"version":_) = putStr progVersion
-    go (opt,_) = E.handle someHandler $ do
+    go (opt,_) = flip E.catches handlers $ do
         cradle0 <- findCradle
         let rootdir = cradleRootDir cradle0
 --            c = cradle0 { cradleCurrentDir = rootdir } TODO: ?????
@@ -104,17 +106,29 @@ main = E.handle cmdHandler $
 
         case res of
           Right () -> return ()
-          Left e -> error $ show e
+          Left (GMECabalConfigure msg) -> do
+              putStrLn $ notGood $ "cabal configure failed: " ++ msg
+              exitFailure
+          Left e -> bug $ show e
       where
         -- this is just in case.
         -- If an error is caught here, it is a bug of GhcMod library.
-        someHandler (SomeException e) = do
-            putStrLn $ "NG " ++ replace (show e)
+        handlers = [ E.Handler (\(_ :: ExitCode) -> return ())
+                   , E.Handler (\(SomeException e) -> bug $ show e) ]
 
-replace :: String -> String
-replace [] = []
-replace ('\n':xs) = ';' : replace xs
-replace (x:xs)    =  x  : replace xs
+bug :: String -> IO ()
+bug msg = do
+  putStrLn $ notGood $ "BUG: " ++ msg
+  exitFailure
+
+notGood :: String -> String
+notGood msg = "NG " ++ escapeNewlines msg
+
+escapeNewlines :: String -> String
+escapeNewlines = replace "\n" "\\n" . replace "\\n" "\\\\n"
+
+replace :: String -> String -> String -> String
+replace needle replacement = intercalate replacement . splitOn needle
 
 ----------------------------------------------------------------
 
@@ -147,7 +161,7 @@ loop set mvar = do
         liftIO $ putStr ret
         liftIO $ putStrLn "OK"
       else do
-        liftIO $ putStrLn $ "NG " ++ replace ret
+        liftIO $ putStrLn $ notGood ret
     liftIO $ hFlush stdout
     when ok $ loop set' mvar
 

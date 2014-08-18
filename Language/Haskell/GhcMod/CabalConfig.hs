@@ -19,14 +19,15 @@ import qualified Language.Haskell.GhcMod.Cabal18 as C18
 #define MIN_VERSION_mtl(x,y,z) 1
 #endif
 
-import qualified Control.Exception as E
+import MonadUtils (MonadIO(liftIO))
 import Control.Applicative ((<$>))
-import Control.Monad (mplus)
+import Control.Monad (mplus,void)
 #if MIN_VERSION_mtl(2,2,1)
 import Control.Monad.Except ()
 #else
 import Control.Monad.Error ()
 #endif
+import Control.Monad.Error (MonadError(..))
 import Data.Maybe ()
 import Data.Set ()
 import Data.List (find,tails,isPrefixOf,isInfixOf,nub,stripPrefix)
@@ -44,14 +45,16 @@ type CabalConfig = String
 -- | Get contents of the file containing 'LocalBuildInfo' data. If it doesn't
 -- exist run @cabal configure@ i.e. configure with default options like @cabal
 -- build@ would do.
-getConfig :: Cradle -> IO CabalConfig
-getConfig cradle =
-    readFile path `E.catch` (\(E.SomeException _) -> configure >> readFile path)
+getConfig :: (MonadIO m, MonadError GhcModError m)
+          => Cradle
+          -> m CabalConfig
+getConfig cradle = tryFix (liftMonadError (readFile path)) $ \_ ->
+    rethrowError (GMECabalConfigure . gmeMsg) configure
  where
    prjDir = cradleRootDir cradle
    path = prjDir </> configPath
-   configure =
-     withDirectory_ prjDir $ readProcess' "cabal" ["configure"]
+   configure = liftMonadError $ void $
+       withDirectory_ prjDir $ readProcess' "cabal" ["configure"]
 
 
 -- | Path to 'LocalBuildInfo' file, usually @dist/setup-config@
@@ -59,7 +62,10 @@ configPath :: FilePath
 configPath = localBuildInfoFile defaultDistPref
 
 -- | Get list of 'Package's needed by all components of the current package
-cabalConfigDependencies :: Cradle -> PackageIdentifier -> IO [Package]
+cabalConfigDependencies :: (MonadIO m, Functor m, MonadError GhcModError m)
+                        => Cradle
+                        -> PackageIdentifier
+                        -> m [Package]
 cabalConfigDependencies cradle thisPkg =
     configDependencies thisPkg <$> getConfig cradle
 

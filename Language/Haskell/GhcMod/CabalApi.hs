@@ -42,12 +42,13 @@ import System.FilePath ((</>))
 ----------------------------------------------------------------
 
 -- | Getting necessary 'CompilerOptions' from three information sources.
-getCompilerOptions :: [GHCOption]
+getCompilerOptions :: (MonadIO m, MonadError GhcModError m, Functor m)
+                   => [GHCOption]
                    -> Cradle
                    -> PackageDescription
-                   -> IO CompilerOptions
+                   -> m CompilerOptions
 getCompilerOptions ghcopts cradle pkgDesc = do
-    gopts <- getGHCOptions ghcopts cradle rdir $ head buildInfos
+    gopts <- liftIO $ getGHCOptions ghcopts cradle rdir $ head buildInfos
     depPkgs <- cabalConfigDependencies cradle (C.packageId pkgDesc)
     return $ CompilerOptions gopts idirs depPkgs
   where

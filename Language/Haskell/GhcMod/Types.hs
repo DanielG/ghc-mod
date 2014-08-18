@@ -6,12 +6,13 @@ import Control.Monad.Error (Error(..))
 
 import PackageConfig (PackageConfig)
 
--- |
 data GhcModError = GMENoMsg
                  -- ^ Unknown error
-                 | GMEString String
+                 | GMEString { gmeMsg :: String }
                  -- ^ Some Error with a message. These are produced mostly by
                  -- 'fail' calls on GhcModT.
+                 | GMECabalConfigure { gmeMsg :: String }
+                 -- ^ Configuring a cabal project failed.
                    deriving (Eq,Show,Read)
 
 instance Error GhcModError where
