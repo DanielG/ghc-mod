@@ -21,13 +21,8 @@ import Language.Haskell.GhcMod.Target (setTargetFiles)
 checkSyntax :: IOish m
             => [FilePath]  -- ^ The target files.
             -> GhcModT m String
-checkSyntax [] = return ""
-checkSyntax files = withErrorHandler sessionName $
-    either id id <$> check files
-  where
-    sessionName = case files of
-      [file] -> file
-      _      -> "MultipleFiles"
+checkSyntax []    = return ""
+checkSyntax files = withErrorHandler $ either id id <$> check files
 
 ----------------------------------------------------------------
 
@@ -51,13 +46,8 @@ check fileNames = overrideGhcUserOptions $ \ghcOpts -> do
 expandTemplate :: IOish m
                => [FilePath]  -- ^ The target files.
                -> GhcModT m String
-expandTemplate [] = return ""
-expandTemplate files = withErrorHandler sessionName $
-    either id id <$> expand files
-  where
-    sessionName = case files of
-      [file] -> file
-      _      -> "MultipleFiles"
+expandTemplate []    = return ""
+expandTemplate files = withErrorHandler $ either id id <$> expand files
 
 ----------------------------------------------------------------
 

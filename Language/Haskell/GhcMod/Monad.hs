@@ -273,13 +273,13 @@ runGhcModT' r s a = do
   return (res, w')
 ----------------------------------------------------------------
 
-withErrorHandler :: IOish m => String -> GhcModT m a -> GhcModT m a
-withErrorHandler label = ghandle ignore
+withErrorHandler :: IOish m => GhcModT m a -> GhcModT m a
+withErrorHandler = ghandle ignore
   where
     ignore :: IOish m => SomeException -> GhcModT m a
     ignore e = liftIO $ do
-        hPutStr stderr $ label ++ ":0:0:Error:"
         hPrint stderr e
+        -- FIXME: should print NG
         exitSuccess
 
 -- | Make a copy of the 'gmGhcSession' IORef, run the action and restore the

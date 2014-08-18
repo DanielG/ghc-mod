@@ -110,6 +110,18 @@ nil            does not display errors/warnings.
 	      (setq mode-line-process (format " %d:%d" elen wlen)))))
 	(force-mode-line-update))))
    (t
+    (let* ((err (buffer-substring-no-properties (point-min) (point)))
+	   (info (ghc-make-hilit-info
+		  :file "Fail errors:"
+		  :line 0
+		  :coln 0
+		  :msg  err
+		  :err  t
+		  :hole nil))
+	   (infos (list info))
+	   (file ghc-process-original-file)
+	   (buf ghc-process-original-buffer))
+      (ghc-check-highlight-original-buffer file buf infos))
     (ghc-with-current-buffer ghc-process-original-buffer
       (setq mode-line-process " failed")
       (force-mode-line-update)))))
