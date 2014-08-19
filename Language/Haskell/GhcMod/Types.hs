@@ -13,7 +13,7 @@ data GhcModError = GMENoMsg
                  -- 'fail' calls on GhcModT.
                  | GMECabalConfigure { gmeMsg :: String }
                  -- ^ Configuring a cabal project failed.
-                   deriving (Show)
+                   deriving (Eq,Show)
 
 instance Error GhcModError where
     noMsg = GMENoMsg
