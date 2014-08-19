@@ -16,7 +16,7 @@ spec = do
     describe "liftMonadError" $ do
         it "converts IOErrors to GhcModError" $ do
             shouldReturnError $
-                runD' $ liftMonadError $ throw (userError "hello") >> return ""
+                runD' $ liftIOExceptions $ throw (userError "hello") >> return ""
 
             shouldReturnError $
-                runD' $ liftMonadError $ readFile "/DOES_NOT_EXIST" >> return ""
+                runD' $ liftIOExceptions $ readFile "/DOES_NOT_EXIST" >> return ""
