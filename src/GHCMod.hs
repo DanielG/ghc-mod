@@ -141,8 +141,12 @@ main = flip E.catches handlers $ do
       cmd       -> E.throw (NoSuchCommand cmd)
     case res of
       Right s -> putStr s
-      Left (GMENoMsg) -> hPutStrLn stderr "Unknown error"
-      Left (GMEString msg) -> hPutStrLn stderr msg
+      Left (GMEException e) ->
+          hPutStrLn stderr $ "Exception: " ++ show e
+      Left (GMENoMsg) ->
+          hPutStrLn stderr "Unknown error"
+      Left (GMEString msg) ->
+          hPutStrLn stderr msg
       Left (GMECabalConfigure msg) ->
           hPutStrLn stderr $ "cabal configure failed: " ++ msg
   where

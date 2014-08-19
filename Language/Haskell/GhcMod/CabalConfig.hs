@@ -49,12 +49,12 @@ type CabalConfig = String
 getConfig :: (MonadIO m, MonadError GhcModError m)
           => Cradle
           -> m CabalConfig
-getConfig cradle = tryFix (liftMonadError (readFile path)) $ \_ ->
+getConfig cradle = tryFix (liftIOExceptions (readFile path)) $ \_ ->
     rethrowError (GMECabalConfigure . gmeMsg) configure
  where
    prjDir = cradleRootDir cradle
    path = prjDir </> configPath
-   configure = liftMonadError $ void $
+   configure = liftIOExceptions $ void $
        withDirectory_ prjDir $ readProcess' "cabal" ["configure"]
 
 
