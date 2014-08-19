@@ -10,9 +10,9 @@ import Language.Haskell.GhcMod.DynFlags
 import qualified Language.Haskell.GhcMod.Gap as Gap
 import qualified GHC as G
 import Language.Haskell.GhcMod.Logger
-import Language.Haskell.GhcMod.Monad (IOish, GhcModT, withErrorHandler
-                                     , overrideGhcUserOptions)
+import Language.Haskell.GhcMod.Monad (IOish, GhcModT, overrideGhcUserOptions)
 import Language.Haskell.GhcMod.Target (setTargetFiles)
+import Language.Haskell.GhcMod.Utils (liftExceptions)
 
 ----------------------------------------------------------------
 
@@ -22,7 +22,7 @@ checkSyntax :: IOish m
             => [FilePath]  -- ^ The target files.
             -> GhcModT m String
 checkSyntax []    = return ""
-checkSyntax files = withErrorHandler $ either id id <$> check files
+checkSyntax files = liftExceptions $ either id id <$> check files
 
 ----------------------------------------------------------------
 
@@ -47,7 +47,7 @@ expandTemplate :: IOish m
                => [FilePath]  -- ^ The target files.
                -> GhcModT m String
 expandTemplate []    = return ""
-expandTemplate files = withErrorHandler $ either id id <$> expand files
+expandTemplate files = liftExceptions $ either id id <$> expand files
 
 ----------------------------------------------------------------
 

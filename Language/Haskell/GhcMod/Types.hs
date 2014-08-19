@@ -2,18 +2,21 @@ module Language.Haskell.GhcMod.Types where
 
 import Data.List (intercalate)
 import qualified Data.Map as M
+import Control.Exception (SomeException)
 import Control.Monad.Error (Error(..))
 
 import PackageConfig (PackageConfig)
 
 data GhcModError = GMENoMsg
                  -- ^ Unknown error
+                 | GMEException SomeException
+                 -- ^ Regular exception lifted by 'liftExceptions'
                  | GMEString { gmeMsg :: String }
                  -- ^ Some Error with a message. These are produced mostly by
                  -- 'fail' calls on GhcModT.
                  | GMECabalConfigure { gmeMsg :: String }
                  -- ^ Configuring a cabal project failed.
-                   deriving (Eq,Show,Read)
+                   deriving (Show)
 
 instance Error GhcModError where
     noMsg = GMENoMsg

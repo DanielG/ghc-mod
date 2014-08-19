@@ -18,7 +18,6 @@ module Language.Haskell.GhcMod.Monad (
   -- * Monad utilities
   , runGhcModT
   , runGhcModT'
-  , withErrorHandler
   -- ** Accessing 'GhcModEnv' and 'GhcModState'
   , gmsGet
   , gmsPut
@@ -100,8 +99,6 @@ import Control.Monad.Journal.Class
 
 import Data.Maybe (fromJust, isJust)
 import Data.IORef (IORef, readIORef, writeIORef, newIORef)
-import System.Exit (exitSuccess)
-import System.IO (hPutStr, hPrint, stderr)
 import System.Directory (getCurrentDirectory)
 
 ----------------------------------------------------------------
@@ -272,16 +269,6 @@ runGhcModT' r s a = do
         runStateT (unGhcModT $ initGhcMonad (Just libdir) >> a) s
   return (res, w')
 ----------------------------------------------------------------
-
-withErrorHandler :: IOish m => GhcModT m a -> GhcModT m a
-withErrorHandler = ghandle ignore
-  where
-    ignore :: IOish m => SomeException -> GhcModT m a
-    ignore e = liftIO $ do
-        hPrint stderr e
-        -- FIXME: should print NG
-        exitSuccess
-
 -- | Make a copy of the 'gmGhcSession' IORef, run the action and restore the
 -- original 'HscEnv'.
 withTempSession :: IOish m => GhcModT m a -> GhcModT m a
