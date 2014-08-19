@@ -31,7 +31,7 @@ check :: IOish m
       => [FilePath]  -- ^ The target files.
       -> GhcModT m (Either String String)
 check fileNames = overrideGhcUserOptions $ \ghcOpts -> do
-  withLogger (setAllWaringFlags . setNoMaxRelevantBindings . Gap.setWarnTypedHoles . Gap.setDeferTypeErrors) $ do
+  withLogger (setAllWarningFlags . setNoMaxRelevantBindings . Gap.setWarnTypedHoles . Gap.setDeferTypeErrors) $ do
     _ <- G.setSessionDynFlags =<< addCmdOpts ghcOpts =<< G.getSessionDynFlags
     setTargetFiles fileNames
 
@@ -50,5 +50,5 @@ expandTemplate files = either id id <$> expand files
 expand :: IOish m
        => [FilePath]  -- ^ The target files.
        -> GhcModT m (Either String String)
-expand fileNames = withLogger (Gap.setDumpSplices . setNoWaringFlags) $
+expand fileNames = withLogger (Gap.setDumpSplices . setNoWarningFlags) $
     setTargetFiles fileNames

@@ -87,7 +87,7 @@ pretty dflag style = showOneLine dflag style . Gap.typeForUser
 
 inModuleContext :: IOish m => FilePath -> (DynFlags -> PprStyle -> GhcModT m a) -> GhcModT m a
 inModuleContext file action =
-    withDynFlags (setWarnTypedHoles . setDeferTypeErrors . setNoWaringFlags) $ do
+    withDynFlags (setWarnTypedHoles . setDeferTypeErrors . setNoWarningFlags) $ do
     setTargetFiles [file]
     Gap.withContext $ do
         dflag <- G.getSessionDynFlags

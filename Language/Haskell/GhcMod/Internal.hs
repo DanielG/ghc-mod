@@ -24,8 +24,8 @@ module Language.Haskell.GhcMod.Internal (
   , setTargetFiles
   -- * Logging
   , withLogger
-  , setNoWaringFlags
-  , setAllWaringFlags
+  , setNoWarningFlags
+  , setAllWarningFlags
   -- * Environment, state and logging
   , GhcModEnv(..)
   , newGhcModEnv

@@ -96,12 +96,12 @@ withCmdFlags flags body = G.gbracket setup teardown (\_ -> body)
 ----------------------------------------------------------------
 
 -- | Set 'DynFlags' equivalent to "-w:".
-setNoWaringFlags :: DynFlags -> DynFlags
-setNoWaringFlags df = df { warningFlags = Gap.emptyWarnFlags}
+setNoWarningFlags :: DynFlags -> DynFlags
+setNoWarningFlags df = df { warningFlags = Gap.emptyWarnFlags}
 
 -- | Set 'DynFlags' equivalent to "-Wall".
-setAllWaringFlags :: DynFlags -> DynFlags
-setAllWaringFlags df = df { warningFlags = allWarningFlags }
+setAllWarningFlags :: DynFlags -> DynFlags
+setAllWarningFlags df = df { warningFlags = allWarningFlags }
 
 allWarningFlags :: Gap.WarnFlags
 allWarningFlags = unsafePerformIO $
