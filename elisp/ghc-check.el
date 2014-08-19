@@ -110,7 +110,7 @@ nil            does not display errors/warnings.
 	      (setq mode-line-process (format " %d:%d" elen wlen)))))
 	(force-mode-line-update))))
    (t
-    (let* ((err (buffer-substring-no-properties (point-min) (point)))
+    (let* ((err (ghc-unescape-string (buffer-substring-no-properties (+ (point) 3) (point-max))))
 	   (info (ghc-make-hilit-info
 		  :file "Fail errors:"
 		  :line 0

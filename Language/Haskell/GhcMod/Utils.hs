@@ -1,14 +1,13 @@
 module Language.Haskell.GhcMod.Utils where
 
 
-import MonadUtils (MonadIO, liftIO)
 import Control.Exception
 import Control.Monad.Error (MonadError(..), Error(..))
+import MonadUtils (MonadIO, liftIO)
 import System.Directory (getCurrentDirectory, setCurrentDirectory)
-import System.Process (readProcessWithExitCode)
 import System.Exit (ExitCode(..))
-import System.IO (hPutStrLn, stderr)
 import System.IO.Error (tryIOError)
+import System.Process (readProcessWithExitCode)
 
 -- dropWhileEnd is not provided prior to base 4.5.0.0.
 dropWhileEnd :: (a -> Bool) -> [a] -> [a]
@@ -34,9 +33,9 @@ readProcess' cmd opts = do
   (rv,output,err) <- liftIO $ readProcessWithExitCode cmd opts ""
   case rv of
     ExitFailure val -> do
-        liftIO $ hPutStrLn stderr err
         throwError $ strMsg $
           cmd ++ " " ++ unwords opts ++ " (exit " ++ show val ++ ")"
+              ++ "\n" ++ err
     ExitSuccess ->
         return output
 

@@ -32,6 +32,17 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+(defun ghc-unescape-string (str)
+  (with-temp-buffer
+    (insert str)
+    (goto-char (point-min))
+    (while (search-forward "\\n" nil t) (replace-match "\n" nil t))
+    (goto-char (point-min))
+    (while (search-forward "\\\\" nil t) (replace-match "\\" nil t))
+    (buffer-substring-no-properties (point-min) (point-max))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
 (defmacro ghc-add (sym val)
   `(setq ,sym (cons ,val ,sym)))
 
