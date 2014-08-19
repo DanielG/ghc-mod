@@ -2,7 +2,6 @@ module Language.Haskell.GhcMod.Utils where
 
 
 import MonadUtils (MonadIO, liftIO)
-import Exception (ExceptionMonad, gtry)
 import Control.Exception
 import Control.Monad.Error (MonadError(..), Error(..))
 import System.Directory (getCurrentDirectory, setCurrentDirectory)
@@ -10,7 +9,6 @@ import System.Process (readProcessWithExitCode)
 import System.Exit (ExitCode(..))
 import System.IO (hPutStrLn, stderr)
 import System.IO.Error (tryIOError)
-import Language.Haskell.GhcMod.Types
 
 -- dropWhileEnd is not provided prior to base 4.5.0.0.
 dropWhileEnd :: (a -> Bool) -> [a] -> [a]
@@ -64,14 +62,3 @@ liftIOExceptions action = do
     Left e -> case show e of
                 ""  -> throwError $ noMsg
                 msg -> throwError $ strMsg msg
-
--- | Exceptions thrown in the computation passed to this function will be
--- converted to 'MonadError' failures using 'throwError'.
-liftExceptions :: (MonadIO m, ExceptionMonad m, MonadError GhcModError m)
-               => m a
-               -> m a
-liftExceptions action = do
-  res <- gtry action
-  case res of
-    Right a -> return a
-    Left e -> throwError $ GMEException e

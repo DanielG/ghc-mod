@@ -141,8 +141,6 @@ main = flip E.catches handlers $ do
       cmd       -> E.throw (NoSuchCommand cmd)
     case res of
       Right s -> putStr s
-      Left (GMEException e) ->
-          hPutStrLn stderr $ "Exception: " ++ show e
       Left (GMENoMsg) ->
           hPutStrLn stderr "Unknown error"
       Left (GMEString msg) ->
