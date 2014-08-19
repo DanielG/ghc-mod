@@ -1,6 +1,7 @@
 Name:                   ghc-mod
 Version:                5.0.0
 Author:                 Kazu Yamamoto <kazu@iij.ad.jp>
+                        Daniel Gröber <dxld@darkboxed.org>
 Maintainer:             Kazu Yamamoto <kazu@iij.ad.jp>
 License:                BSD3
 License-File:           LICENSE
