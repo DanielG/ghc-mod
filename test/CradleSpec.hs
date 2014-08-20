@@ -21,7 +21,7 @@ spec = do
                     cradleCurrentDir = curDir
                   , cradleRootDir    = curDir
                   , cradleCabalFile  = Nothing
-                  , cradlePkgDbStack = [GlobalDb]
+                  , cradlePkgDbStack = [GlobalDb,UserDb]
                   }
         it "finds a cabal file and a sandbox" $ do
             cwd <- getCurrentDirectory
