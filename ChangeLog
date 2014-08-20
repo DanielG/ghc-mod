@@ -1,4 +1,4 @@
-2014-08-12 v5.0.0
+2014-08-20 v5.0.0
 	* ghc-mod consumes much less memory than ghc-mod-4.1.
 	* @serras brought the results of Google Summer code
 	  including case splitting and better type hole
