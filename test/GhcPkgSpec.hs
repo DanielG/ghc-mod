@@ -2,7 +2,6 @@
 module GhcPkgSpec where
 
 import Language.Haskell.GhcMod.GhcPkg
-import Language.Haskell.GhcMod.Types
 
 import System.Directory
 import System.FilePath ((</>))

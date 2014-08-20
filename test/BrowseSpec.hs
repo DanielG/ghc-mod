@@ -2,7 +2,6 @@ module BrowseSpec where
 
 import Control.Applicative
 import Language.Haskell.GhcMod
-import Language.Haskell.GhcMod.Cradle
 import Test.Hspec
 
 import TestUtils
@@ -22,7 +21,6 @@ spec = do
             syms `shouldContain` ["either :: (a -> c) -> (b -> c) -> Either a b -> c"]
 
         it "contains type constructors (e.g. `Left') including their type signature" $ do
-            cradle <- findCradle
             syms <- run defaultOptions { detailed = True}
                     $ lines <$> browse "Data.Either"
             syms `shouldContain` ["Left :: a -> Either a b"]

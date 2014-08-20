@@ -9,5 +9,5 @@ spec :: Spec
 spec = do
     describe "modules" $ do
         it "contains at least `Data.Map'" $ do
-            modules <- runD $ lines <$> modules
-            modules `shouldContain` ["Data.Map"]
+            mdls <- runD $ lines <$> modules
+            mdls `shouldContain` ["Data.Map"]

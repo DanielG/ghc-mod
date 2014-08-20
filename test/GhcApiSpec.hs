@@ -1,12 +1,10 @@
 module GhcApiSpec where
 
 import Control.Applicative
-import Control.Monad
 import Data.List (sort)
 import Language.Haskell.GhcMod.GHCApi
 import Test.Hspec
 import TestUtils
-import CoreMonad (liftIO)
 
 import Dir
 

@@ -3,7 +3,6 @@
 module CabalApiSpec where
 
 import Control.Applicative
-import Control.Exception
 import Data.Maybe
 import Language.Haskell.GhcMod.CabalApi
 import Language.Haskell.GhcMod.Cradle
@@ -32,9 +31,9 @@ spec = do
         it "gets necessary CompilerOptions" $ do
             cwd <- getCurrentDirectory
             withDirectory "test/data/subdir1/subdir2" $ \dir -> do
-                cradle <- findCradle
-                pkgDesc <- runD $ parseCabalFile $ fromJust $ cradleCabalFile cradle
-                res <- runD $ getCompilerOptions [] cradle pkgDesc
+                crdl <- findCradle
+                pkgDesc <- runD $ parseCabalFile $ fromJust $ cradleCabalFile crdl
+                res <- runD $ getCompilerOptions [] crdl pkgDesc
                 let res' = res {
                         ghcOptions  = ghcOptions res
                       , includeDirs = map (toRelativeDir dir) (includeDirs res)
