@@ -2,6 +2,7 @@ Name:                   ghc-mod
 Version:                5.0.0
 Author:                 Kazu Yamamoto <kazu@iij.ad.jp>
                         Daniel Gröber <dxld@darkboxed.org>
+                        Alejandro Serrano <trupill@gmail.com>
 Maintainer:             Kazu Yamamoto <kazu@iij.ad.jp>
 License:                BSD3
 License-File:           LICENSE
@@ -109,7 +110,7 @@ Library
                       , split
                       , haskell-src-exts
                       , text
-                      , djinn-ghc >= 0.0.2.1
+                      , djinn-ghc >= 0.0.2.2
   if impl(ghc >= 7.8)
     Build-Depends:      Cabal >= 1.18
   else
@@ -198,7 +199,7 @@ Test-Suite spec
                       , split
                       , haskell-src-exts
                       , text
-                      , djinn-ghc >= 0.0.2.1
+                      , djinn-ghc >= 0.0.2.2
   if impl(ghc >= 7.8)
     Build-Depends:      Cabal >= 1.18
   else
