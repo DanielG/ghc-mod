@@ -54,14 +54,14 @@ plainCradle wdir = return Cradle {
         cradleCurrentDir = wdir
       , cradleRootDir    = wdir
       , cradleCabalFile  = Nothing
-      , cradlePkgDbStack = [GlobalDb]
+      , cradlePkgDbStack = [GlobalDb, UserDb]
       }
 
 -- Just for testing
 findCradleWithoutSandbox :: IO Cradle
 findCradleWithoutSandbox = do
     cradle <- findCradle
-    return cradle { cradlePkgDbStack = [GlobalDb]}
+    return cradle { cradlePkgDbStack = [GlobalDb]} -- FIXME
 
 ----------------------------------------------------------------
 
