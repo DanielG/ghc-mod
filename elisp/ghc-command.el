@@ -17,10 +17,11 @@
    ((bobp)
     (ghc-insert-module-template))
    ((ghc-check-overlay-at (point))
-    (ghc-check-insert-from-warning))
+    (or (ghc-check-insert-from-warning)
+	(ghc-try-case-split)))
    (t
-    (when (null (ghc-try-case-split))
-          (message "Nothing to be done")))))
+    (unless (ghc-try-case-split)
+      (message "Nothing to be done")))))
 
 (defun ghc-insert-module-template ()
   (let* ((fullname (file-name-sans-extension (buffer-file-name)))
