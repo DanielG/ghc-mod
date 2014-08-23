@@ -316,5 +316,11 @@ browseIt :: IOish m
          -> ModuleString
          -> GhcModT m (String, Bool, Set FilePath)
 browseIt set mdl = do
-    ret <- browse mdl
+    let (det,rest') = break (== ' ') mdl
+        rest = dropWhile (== ' ') rest'
+    ret <- if det == "-d"
+               then withOptions setDetailed (browse rest)
+               else browse mdl
     return (ret, True, set)
+  where
+    setDetailed opt = opt { detailed = True } 
