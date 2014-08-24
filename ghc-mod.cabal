@@ -117,6 +117,9 @@ Library
   else
     Build-Depends:      convertible
                       , Cabal >= 1.10 && < 1.17
+  if impl(ghc <= 7.4.2)
+    -- Only used to constrain random to a version that still works with GHC 7.4
+    Build-Depends:      random <= 1.0.1.1
 
 Executable ghc-mod
   Default-Language:     Haskell2010
