@@ -367,7 +367,7 @@ nil            does not display errors/warnings.
 (defun ghc-check-insert-from-warning ()
   (interactive)
   (let ((ret t))
-    (dolist (data (mapcar (lambda (ovl) (overlay-get ovl 'ghc-msg)) (ghc-check-overlay-at (point))) ret)
+    (dolist (data (delete-dups (mapcar (lambda (ovl) (overlay-get ovl 'ghc-msg)) (ghc-check-overlay-at (point)))) ret)
       (save-excursion
 	(cond
 	 ((string-match "Inferred type: \\|no type signature:" data)
