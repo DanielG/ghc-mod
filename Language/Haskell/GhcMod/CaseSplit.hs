@@ -69,10 +69,10 @@ getSrcSpanTypeForSplit modSum lineNo colNo = do
 -- Information for a function case split
 getSrcSpanTypeForFnSplit :: GhcMonad m => G.ModSummary -> Int -> Int -> m (Maybe SplitInfo)
 getSrcSpanTypeForFnSplit modSum lineNo colNo = do
-    p@ParsedModule{pm_parsed_source = pms} <- G.parseModule modSum
+    p@ParsedModule{pm_parsed_source = _pms} <- G.parseModule modSum
     tcm@TypecheckedModule{tm_typechecked_source = tcs} <- G.typecheckModule p
     let varPat  = find isPatternVar $ listifySpans tcs (lineNo, colNo) :: Maybe (LPat Id)
-        match:_ = listifyParsedSpans pms (lineNo, colNo) :: [Gap.GLMatch]
+        match:_ = listifySpans tcs (lineNo, colNo) :: [Gap.GLMatchI]
     case varPat of
       Nothing  -> return Nothing
       Just varPat' -> do

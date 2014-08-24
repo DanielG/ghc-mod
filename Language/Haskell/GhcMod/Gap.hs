@@ -37,6 +37,7 @@ module Language.Haskell.GhcMod.Gap (
   , benchmarkTargets
   , toModuleString
   , GLMatch
+  , GLMatchI
   , getClass
   , occName
   , setFlags
@@ -437,8 +438,10 @@ toModuleString mn = fromFilePath $ M.toFilePath mn
 
 #if __GLASGOW_HASKELL__ >= 708
 type GLMatch = LMatch RdrName (LHsExpr RdrName)
+type GLMatchI = LMatch Id (LHsExpr Id)
 #else
 type GLMatch = LMatch RdrName
+type GLMatchI = LMatch Id
 #endif
 
 getClass :: [LInstDecl Name] -> Maybe (Name, SrcSpan)

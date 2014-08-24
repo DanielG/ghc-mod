@@ -15,10 +15,10 @@ module Language.Haskell.GhcMod (
   , GhcPkgDb
   , Symbol
   , SymbolDb
+  , GhcModError(..)
   -- * Monad Types
   , GhcModT
   , IOish
-  , GhcModError(..)
   -- * Monad utilities
   , runGhcModT
   , withOptions

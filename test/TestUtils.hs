@@ -22,10 +22,12 @@ isolateCradle action =
  where
     modifyEnv e = e { gmCradle = (gmCradle e) { cradlePkgDbStack = [GlobalDb] } }
 
-extract :: IO (Either e a, w) -> IO a
+extract :: Show e => IO (Either e a, w) -> IO a
 extract action = do
-  (Right a, _) <- action
-  return a
+  (r,_) <- action
+  case r of
+    Right a ->  return a
+    Left e -> error $ show e
 
 runIsolatedGhcMod :: Options -> GhcModT IO a -> IO a
 runIsolatedGhcMod opt action = do
