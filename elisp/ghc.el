@@ -73,7 +73,6 @@
 (defvar ghc-shallower-key   "\C-c<")
 (defvar ghc-deeper-key      "\C-c>")
 ;(defvar ghc-case-split-key  "\C-c\C-s")
-(defvar ghc-initial-sig-key "\C-u\et")
 (defvar ghc-refine-key      "\C-c\C-f")
 (defvar ghc-auto-key        "\C-c\C-a")
 (defvar ghc-prev-hole-key   "\C-c\ep")
@@ -100,7 +99,7 @@
     (define-key haskell-mode-map ghc-previous-key    'ghc-goto-prev-error)
     (define-key haskell-mode-map ghc-next-key        'ghc-goto-next-error)
     (define-key haskell-mode-map ghc-help-key        'ghc-display-errors)
-    (define-key haskell-mode-map ghc-insert-key      'ghc-insert-template)
+    (define-key haskell-mode-map ghc-insert-key      'ghc-insert-template-or-signature)
     (define-key haskell-mode-map ghc-sort-key        'ghc-sort-lines)
     (define-key haskell-mode-map ghc-toggle-key      'ghc-toggle-check-command)
     (define-key haskell-mode-map ghc-jump-key        'ghc-jump-file)
@@ -110,7 +109,6 @@
     (define-key haskell-mode-map ghc-shallower-key   'ghc-make-indent-shallower)
     (define-key haskell-mode-map ghc-deeper-key      'ghc-make-indent-deeper)
     ;(define-key haskell-mode-map ghc-case-split-key  'ghc-case-split)
-    (define-key haskell-mode-map ghc-initial-sig-key 'ghc-initial-code-from-signature)
     (define-key haskell-mode-map ghc-refine-key      'ghc-refine)
     (define-key haskell-mode-map ghc-auto-key        'ghc-auto)
     (define-key haskell-mode-map ghc-prev-hole-key   'ghc-goto-prev-hole)
@@ -152,5 +150,11 @@
     (insert (format "\t%s\n" ghc-ver))
     (insert "\nEnvironment variables:\n")
     (insert (format "\tPATH=%s\n" path))))
+
+(defun ghc-insert-template-or-signature (&optional flag)
+  (interactive "P")
+  (if flag
+      (ghc-initial-code-from-signature)
+    (ghc-insert-template)))
 
 (provide 'ghc)
