@@ -1,4 +1,4 @@
-module Language.Haskell.GhcMod.List (modules) where
+module Language.Haskell.GhcMod.Modules (modules) where
 
 import Control.Applicative ((<$>))
 import Control.Exception (SomeException(..))

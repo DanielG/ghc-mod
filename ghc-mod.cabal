@@ -80,9 +80,9 @@ Library
                         Language.Haskell.GhcMod.Info
                         Language.Haskell.GhcMod.Lang
                         Language.Haskell.GhcMod.Lint
-                        Language.Haskell.GhcMod.List
                         Language.Haskell.GhcMod.Logger
                         Language.Haskell.GhcMod.Monad
+                        Language.Haskell.GhcMod.Modules
                         Language.Haskell.GhcMod.PkgDoc
                         Language.Haskell.GhcMod.Read
                         Language.Haskell.GhcMod.SrcUtils
