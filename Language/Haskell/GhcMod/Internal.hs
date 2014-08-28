@@ -35,6 +35,7 @@ module Language.Haskell.GhcMod.Internal (
   , GhcModLog
   -- * Monad utilities
   , runGhcModT'
+  , hoistGhcModT
   -- ** Accessing 'GhcModEnv' and 'GhcModState'
   , options
   , cradle

@@ -11,7 +11,7 @@ module Language.Haskell.GhcMod.GHCApi (
   ) where
 
 import Language.Haskell.GhcMod.GhcPkg
-import Language.Haskell.GhcMod.Monad (IOish, GhcModT)
+import Language.Haskell.GhcMod.Monad (GhcModT)
 import Language.Haskell.GhcMod.Target (setTargetFiles)
 import Language.Haskell.GhcMod.Types
 

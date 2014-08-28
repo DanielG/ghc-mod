@@ -1,7 +1,7 @@
 module UtilsSpec where
 
+import Language.Haskell.GhcMod.Error
 import Language.Haskell.GhcMod.Utils
-import Control.Exception
 import TestUtils
 import Test.Hspec
 
@@ -15,7 +15,9 @@ spec = do
     describe "liftMonadError" $ do
         it "converts IOErrors to GhcModError" $ do
             shouldReturnError $
-                runD' $ liftIOExceptions $ throw (userError "hello") >> return ""
+                runD' $ liftIO $ throw (userError "hello") >> return ""
 
             shouldReturnError $
-                runD' $ liftIOExceptions $ readFile "/DOES_NOT_EXIST" >> return ""
+                runD' $ liftIO $ readFile "/DOES_NOT_EXIST" >> return ""
+
+-- readProcessWithExitCode cmd opts ""

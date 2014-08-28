@@ -11,6 +11,7 @@ module Language.Haskell.GhcMod.CabalApi (
   ) where
 
 import Language.Haskell.GhcMod.CabalConfig
+import Language.Haskell.GhcMod.Error
 import Language.Haskell.GhcMod.Gap (benchmarkBuildInfo, benchmarkTargets,
                                     toModuleString)
 import Language.Haskell.GhcMod.GhcPkg
@@ -20,7 +21,6 @@ import MonadUtils (MonadIO, liftIO)
 import Control.Applicative ((<$>))
 import qualified Control.Exception as E
 import Control.Monad (filterM)
-import Control.Monad.Error.Class (Error, MonadError(..))
 import Data.Maybe (maybeToList)
 import Data.Set (fromList, toList)
 import Distribution.Package (Dependency(Dependency)
@@ -42,7 +42,7 @@ import System.FilePath ((</>))
 ----------------------------------------------------------------
 
 -- | Getting necessary 'CompilerOptions' from three information sources.
-getCompilerOptions :: (MonadIO m, MonadError GhcModError m, Functor m)
+getCompilerOptions :: (IOish m, MonadError GhcModError m)
                    => [GHCOption]
                    -> Cradle
                    -> PackageDescription

@@ -14,7 +14,7 @@ import qualified GHC as G
 import Language.Haskell.GhcMod.Convert
 import Language.Haskell.GhcMod.Doc (showPage, styleUnqualified)
 import Language.Haskell.GhcMod.Gap
-import Language.Haskell.GhcMod.Monad (IOish, GhcModT, options)
+import Language.Haskell.GhcMod.Monad (GhcModT, options)
 import Language.Haskell.GhcMod.Target (setTargetFiles)
 import Language.Haskell.GhcMod.Types
 import Name (getOccString)

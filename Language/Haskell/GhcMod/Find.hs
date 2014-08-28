@@ -16,7 +16,6 @@ module Language.Haskell.GhcMod.Find
 
 import Config (cProjectVersion,cTargetPlatformString)
 import Control.Applicative ((<$>))
-import Control.Exception (handle, SomeException(..))
 import Control.Monad (when, void)
 import Control.Monad.Error.Class
 import Data.Function (on)
@@ -78,7 +77,7 @@ packageConfDir = "package.conf.d"
 -- | Looking up 'SymbolDb' with 'Symbol' to \['ModuleString'\]
 --   which will be concatenated. 'loadSymbolDb' is called internally.
 findSymbol :: IOish m => Symbol -> GhcModT m String
-findSymbol sym = liftIO loadSymbolDb >>= lookupSymbol sym
+findSymbol sym = loadSymbolDb >>= lookupSymbol sym
 
 -- | Looking up 'SymbolDb' with 'Symbol' to \['ModuleString'\]
 --   which will be concatenated.
@@ -91,7 +90,7 @@ lookupSym sym (SymbolDb db) = fromMaybe [] $ M.lookup sym db
 ---------------------------------------------------------------
 
 -- | Loading a file and creates 'SymbolDb'.
-loadSymbolDb :: IO SymbolDb
+loadSymbolDb :: (IOish m, MonadError GhcModError m) => m SymbolDb
 loadSymbolDb = SymbolDb <$> readSymbolDb
 
 -- | Returns the path to the currently running ghc-mod executable. With ghc<7.6
@@ -102,7 +101,9 @@ ghcModExecutable = do
     dir <- getExecutablePath'
     return $ dir </> "ghc-mod"
 #else
-ghcModExecutable = return "dist/build/ghc-mod/ghc-mod"
+ghcModExecutable = do _ <- getExecutablePath' -- get rid of unused warning when
+                                              -- compiling spec
+                      return "dist/build/ghc-mod/ghc-mod"
 #endif
  where
     getExecutablePath' :: IO FilePath
@@ -112,11 +113,11 @@ ghcModExecutable = return "dist/build/ghc-mod/ghc-mod"
     getExecutablePath' = return ""
 # endif
 
-readSymbolDb :: IO (Map Symbol [ModuleString])
-readSymbolDb = handle (\(SomeException _) -> return M.empty) $ do
-    ghcMod <- ghcModExecutable
+readSymbolDb :: (IOish m, MonadError GhcModError m) => m (Map Symbol [ModuleString])
+readSymbolDb = do
+    ghcMod <- liftIO ghcModExecutable
     file <- chop <$> readProcess' ghcMod ["dumpsym"]
-    M.fromAscList . map conv . lines <$> readFile file
+    M.fromAscList . map conv . lines <$> liftIO (readFile file)
   where
     conv :: String -> (Symbol,[ModuleString])
     conv = read

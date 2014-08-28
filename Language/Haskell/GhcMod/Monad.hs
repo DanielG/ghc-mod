@@ -18,6 +18,7 @@ module Language.Haskell.GhcMod.Monad (
   -- * Monad utilities
   , runGhcModT
   , runGhcModT'
+  , hoistGhcModT
   -- ** Accessing 'GhcModEnv' and 'GhcModState'
   , gmsGet
   , gmsPut
@@ -45,6 +46,7 @@ module Language.Haskell.GhcMod.Monad (
 
 
 import Language.Haskell.GhcMod.Types
+import Language.Haskell.GhcMod.Error
 import Language.Haskell.GhcMod.Cradle
 import Language.Haskell.GhcMod.DynFlags
 import Language.Haskell.GhcMod.GhcPkg
@@ -52,7 +54,6 @@ import Language.Haskell.GhcMod.CabalApi
 import qualified Language.Haskell.GhcMod.Gap as Gap
 
 import DynFlags
-import Exception
 import GHC
 import qualified GHC as G
 import GHC.Paths (libdir)
@@ -87,7 +88,7 @@ import Control.Monad.Reader.Class
 import Control.Monad.Writer.Class (MonadWriter)
 import Control.Monad.State.Class (MonadState(..))
 
-import Control.Monad.Error (MonadError, ErrorT, runErrorT)
+import Control.Monad.Error (ErrorT, runErrorT)
 import Control.Monad.Reader (ReaderT, runReaderT)
 import Control.Monad.State.Strict (StateT, runStateT)
 import Control.Monad.Trans.Journal (JournalT, runJournalT)
@@ -100,6 +101,7 @@ import Control.Monad.Journal.Class
 import Data.Maybe (fromJust, isJust)
 import Data.IORef (IORef, readIORef, writeIORef, newIORef)
 import System.Directory (getCurrentDirectory)
+import System.IO.Error (tryIOError)
 
 ----------------------------------------------------------------
 
@@ -122,14 +124,6 @@ defaultState = GhcModState Simple
 
 ----------------------------------------------------------------
 
--- | A constraint alias (-XConstraintKinds) to make functions dealing with
--- 'GhcModT' somewhat cleaner.
---
--- Basicially an @IOish m => m@ is a 'Monad' supporting arbitrary 'IO' and
--- exception handling. Usually this will simply be 'IO' but we parametrise it in
--- the exported API so users have the option to use a custom inner monad.
-type IOish m = (Functor m, MonadIO m, MonadBaseControl IO m)
-
 -- | The GhcMod monad transformer data type. This is basically a newtype wrapper
 -- around 'StateT', 'ErrorT', 'JournalT' and 'ReaderT' with custom instances for
 -- 'GhcMonad' and it's constraints.
@@ -147,7 +141,6 @@ newtype GhcModT m a = GhcModT {
                , Alternative
                , Monad
                , MonadPlus
-               , MonadIO
 #if DIFFERENT_MONADIO
                , Control.Monad.IO.Class.MonadIO
 #endif
@@ -157,7 +150,16 @@ newtype GhcModT m a = GhcModT {
                , MonadError GhcModError
                )
 
-instance MonadTrans GhcModT where
+instance MonadIO m => MonadIO (GhcModT m) where
+    liftIO action = do
+      res <- GhcModT . liftIO . liftIO . liftIO . liftIO $ tryIOError action
+      case res of
+        Right a -> return a
+        Left e -> case show e of
+          ""  -> throwError $ noMsg
+          msg -> throwError $ strMsg msg
+
+instance MonadTrans (GhcModT) where
     lift = GhcModT . lift . lift . lift . lift
 
 instance MonadState s m => MonadState s (GhcModT m) where
@@ -188,7 +190,7 @@ instance MonadIO m => MonadIO (MaybeT m) where
 -- | Initialize the 'DynFlags' relating to the compilation of a single
 -- file or GHC session according to the 'Cradle' and 'Options'
 -- provided.
-initializeFlagsWithCradle :: (GhcMonad m, MonadError GhcModError m)
+initializeFlagsWithCradle :: (IOish m, GhcMonad m, MonadError GhcModError m)
         => Options
         -> Cradle
         -> m ()
@@ -253,6 +255,17 @@ runGhcModT opt action = do
             initializeFlagsWithCradle opt (gmCradle env)
             action)
 
+-- | @hoistGhcModT result@. Embed a GhcModT computation's result into a GhcModT
+-- computation. Note that if the computation that returned @result@ modified the
+-- state part of GhcModT this cannot be restored.
+hoistGhcModT :: IOish m
+             => (Either GhcModError a, GhcModLog)
+             -> GhcModT m a
+hoistGhcModT (r,l) = do
+  GhcModT (lift $ lift $ journal l) >> case r of
+    Left e -> throwError e
+    Right a -> return a
+
 -- | Run a computation inside @GhcModT@ providing the RWST environment and
 -- initial state. This is a low level function, use it only if you know what to
 -- do with 'GhcModEnv' and 'GhcModState'.
@@ -293,6 +306,9 @@ overrideGhcUserOptions action = withTempSession $ do
 
 ----------------------------------------------------------------
 
+gmeAsk :: IOish m => GhcModT m GhcModEnv
+gmeAsk = ask
+
 gmsGet :: IOish m => GhcModT m GhcModState
 gmsGet = GhcModT get
 
@@ -300,10 +316,10 @@ gmsPut :: IOish m => GhcModState -> GhcModT m ()
 gmsPut = GhcModT . put
 
 options :: IOish m => GhcModT m Options
-options = gmOptions <$> ask
+options = gmOptions <$> gmeAsk
 
 cradle :: IOish m => GhcModT m Cradle
-cradle = gmCradle <$> ask
+cradle = gmCradle <$> gmeAsk
 
 getCompilerMode :: IOish m => GhcModT m CompilerMode
 getCompilerMode = gmCompilerMode <$> gmsGet
