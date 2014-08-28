@@ -113,6 +113,7 @@ main = flip E.catches handlers $ do
         cmdArg4 = cmdArg !. 4
         cmdArg5 = cmdArg !. 5
         remainingArgs = tail cmdArg
+        nArgs :: Int -> a -> a
         nArgs n f = if length remainingArgs == n
                         then f
                         else E.throw (ArgumentsMismatch cmdArg0)
@@ -139,6 +140,7 @@ main = flip E.catches handlers $ do
       "version" -> return progVersion
       "help"    -> return $ O.usageInfo usage argspec
       cmd       -> E.throw (NoSuchCommand cmd)
+
     case res of
       Right s -> putStr s
       Left (GMENoMsg) ->
@@ -146,7 +148,12 @@ main = flip E.catches handlers $ do
       Left (GMEString msg) ->
           hPutStrLn stderr msg
       Left (GMECabalConfigure msg) ->
-          hPutStrLn stderr $ "cabal configure failed: " ++ msg
+          hPutStrLn stderr $ "cabal configure failed: " ++ show msg
+      Left (GMEProcess cmd msg) ->
+          hPutStrLn stderr $
+            "launching operating system process `"++c++"` failed: " ++ show msg
+          where c = unwords cmd
+
   where
     handlers = [Handler (handleThenExit handler1), Handler (handleThenExit handler2)]
     handleThenExit handler e = handler e >> exitFailure

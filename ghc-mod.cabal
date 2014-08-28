@@ -70,6 +70,7 @@ Library
                         Language.Haskell.GhcMod.Debug
                         Language.Haskell.GhcMod.Doc
                         Language.Haskell.GhcMod.DynFlags
+                        Language.Haskell.GhcMod.Error
                         Language.Haskell.GhcMod.FillSig
                         Language.Haskell.GhcMod.Find
                         Language.Haskell.GhcMod.Flag
@@ -80,9 +81,9 @@ Library
                         Language.Haskell.GhcMod.Info
                         Language.Haskell.GhcMod.Lang
                         Language.Haskell.GhcMod.Lint
-                        Language.Haskell.GhcMod.List
                         Language.Haskell.GhcMod.Logger
                         Language.Haskell.GhcMod.Monad
+                        Language.Haskell.GhcMod.Modules
                         Language.Haskell.GhcMod.PkgDoc
                         Language.Haskell.GhcMod.Read
                         Language.Haskell.GhcMod.SrcUtils
@@ -144,6 +145,7 @@ Executable ghc-modi
   Default-Extensions:   ConstraintKinds, FlexibleContexts
   HS-Source-Dirs:       src
   Build-Depends:        base >= 4.0 && < 5
+                      , async
                       , containers
                       , directory
                       , filepath

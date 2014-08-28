@@ -85,7 +85,10 @@ pretty dflag style = showOneLine dflag style . Gap.typeForUser
 
 ----------------------------------------------------------------
 
-inModuleContext :: IOish m => FilePath -> (DynFlags -> PprStyle -> GhcModT m a) -> GhcModT m a
+inModuleContext :: IOish m
+                => FilePath
+                -> (DynFlags -> PprStyle -> GhcModT m a)
+                -> GhcModT m a
 inModuleContext file action =
     withDynFlags (setWarnTypedHoles . setDeferTypeErrors . setNoWarningFlags) $ do
     setTargetFiles [file]

@@ -60,7 +60,7 @@ import Language.Haskell.GhcMod.Flag
 import Language.Haskell.GhcMod.Info
 import Language.Haskell.GhcMod.Lang
 import Language.Haskell.GhcMod.Lint
-import Language.Haskell.GhcMod.List
 import Language.Haskell.GhcMod.Monad
+import Language.Haskell.GhcMod.Modules
 import Language.Haskell.GhcMod.PkgDoc
 import Language.Haskell.GhcMod.Types

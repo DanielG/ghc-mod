@@ -1,23 +1,20 @@
 module Language.Haskell.GhcMod.Types where
 
+import Control.Monad.Trans.Control (MonadBaseControl)
 import Data.List (intercalate)
 import qualified Data.Map as M
-import Control.Monad.Error (Error(..))
+import Exception (ExceptionMonad)
+import MonadUtils (MonadIO)
 
 import PackageConfig (PackageConfig)
 
-data GhcModError = GMENoMsg
-                 -- ^ Unknown error
-                 | GMEString { gmeMsg :: String }
-                 -- ^ Some Error with a message. These are produced mostly by
-                 -- 'fail' calls on GhcModT.
-                 | GMECabalConfigure { gmeMsg :: String }
-                 -- ^ Configuring a cabal project failed.
-                   deriving (Eq,Show)
-
-instance Error GhcModError where
-    noMsg = GMENoMsg
-    strMsg = GMEString
+-- | A constraint alias (-XConstraintKinds) to make functions dealing with
+-- 'GhcModT' somewhat cleaner.
+--
+-- Basicially an @IOish m => m@ is a 'Monad' supporting arbitrary 'IO' and
+-- exception handling. Usually this will simply be 'IO' but we parametrise it in
+-- the exported API so users have the option to use a custom inner monad.
+type IOish m = (Functor m, MonadIO m, MonadBaseControl IO m, ExceptionMonad m)
 
 -- | Output style.
 data OutputStyle = LispStyle  -- ^ S expression style.

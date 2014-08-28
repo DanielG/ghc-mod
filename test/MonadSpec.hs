@@ -5,6 +5,7 @@ import Test.Hspec
 import Dir
 import TestUtils
 import Control.Applicative
+import Control.Exception
 import Control.Monad.Error.Class
 
 spec :: Spec
@@ -27,3 +28,12 @@ spec = do
         it "work" $ do
           (runD $ gmsPut (GhcModState Intelligent) >> gmsGet)
             `shouldReturn` (GhcModState Intelligent)
+
+    describe "liftIO" $ do
+        it "converts user errors to GhcModError" $ do
+            shouldReturnError $
+                runD' $ liftIO $ throw (userError "hello") >> return ""
+
+        it "converts a file not found exception to GhcModError" $ do
+            shouldReturnError $
+                runD' $ liftIO $ readFile "/DOES_NOT_EXIST" >> return ""

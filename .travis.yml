@@ -17,7 +17,8 @@ script:
   - rm -rf /tmp/test && mkdir -p /tmp/test
   - cd /tmp/test
   - tar -xf $SRC_TGZ && cd ghc-mod*/
-  - cabal configure --enable-tests
+  - if [ -n "$(ghc --version | awk '{ print $8 }' | sed -n '/^7.8/p')" ]; then export WERROR="--ghc-option=-Werror"; fi
+  - cabal configure --enable-tests $WERROR
   - cabal build
   - cabal test
 
