@@ -64,7 +64,6 @@
 (defvar ghc-sort-key        "\es")
 (defvar ghc-type-key        "\C-c\C-t")
 (defvar ghc-info-key        "\C-c\C-i")
-(defvar ghc-check-key       "\C-x\C-s")
 (defvar ghc-toggle-key      "\C-c\C-c")
 (defvar ghc-jump-key        "\C-c\C-j")
 (defvar ghc-module-key      "\C-c\C-m")
@@ -103,7 +102,6 @@
     (define-key haskell-mode-map ghc-help-key        'ghc-display-errors)
     (define-key haskell-mode-map ghc-insert-key      'ghc-insert-template)
     (define-key haskell-mode-map ghc-sort-key        'ghc-sort-lines)
-    (define-key haskell-mode-map ghc-check-key       'ghc-save-buffer)
     (define-key haskell-mode-map ghc-toggle-key      'ghc-toggle-check-command)
     (define-key haskell-mode-map ghc-jump-key        'ghc-jump-file)
     (define-key haskell-mode-map ghc-module-key      'ghc-insert-module)
@@ -118,7 +116,10 @@
     (define-key haskell-mode-map ghc-prev-hole-key   'ghc-goto-prev-hole)
     (define-key haskell-mode-map ghc-next-hole-key   'ghc-goto-next-hole)
     (ghc-comp-init)
-    (setq ghc-initialized t))
+    (setq ghc-initialized t)
+    (defadvice save-buffer (after ghc-check-syntax-on-save activate)
+      "Check syntax with GHC when a haskell-mode buffer is saved."
+      (when (eq 'haskell-mode major-mode) (ghc-check-syntax))))
   (ghc-import-module)
   (ghc-check-syntax))
 
