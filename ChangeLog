@@ -1,3 +1,18 @@
+UNRELEASED v5.1.0.0
+        * GhcModError is now a recursive data type (`GMECabalConfigure`'s
+          type changed)
+        * GhcModT's MonadIO instance now converts IOError's to failures in
+          the ErrorT part of GhcModT on `liftIO`.
+        * Make `loadSymbolDb` polimorphic in the return types's monad.
+        * Add `hoistGhcModT` to Language.Haskell.GhcMod.Internal
+
+2014-08-29 v5.0.1.2
+        * Merge #345, Try fixing duplicate errors
+        * Merge #344, elisp: Use advice to check syntax on save-buffer
+        * Merge #341, support `browse -d` in ghc-modi
+        * Merge #352, elisp: Fix C-u accidentally getting turned into a
+          prefix command
+
 2014-08-24 v5.0.1.1
         * Fix CaseSplitting faliure when using "fancy types" (see #336)
         * Print error information in "spec" test suite when using `extract`
