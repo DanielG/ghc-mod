@@ -17,10 +17,10 @@ data Build = CabalPkg | SingleFile deriving Eq
 setEmptyLogger :: DynFlags -> DynFlags
 setEmptyLogger df = Gap.setLogAction df $ \_ _ _ _ _ -> return ()
 
--- Fast
--- Friendly to foreign export
--- Not friendly to Template Haskell
--- Uses small memory
+-- * Fast
+-- * Friendly to foreign export
+-- * Not friendly to -XTemplateHaskell and -XPatternSynonyms
+-- * Uses little memory
 setModeSimple :: DynFlags -> DynFlags
 setModeSimple df = df {
     ghcMode   = CompManager
@@ -29,10 +29,10 @@ setModeSimple df = df {
   , optLevel  = 0
   }
 
--- Slow
--- Not friendly to foreign export
--- Friendly to Template Haskell
--- Uses large memory
+-- * Slow
+-- * Not friendly to foreign export
+-- * Friendly to -XTemplateHaskell and -XPatternSynonyms
+-- * Uses lots of memory
 setModeIntelligent :: DynFlags -> DynFlags
 setModeIntelligent df = df {
     ghcMode   = CompManager
@@ -47,9 +47,9 @@ setIncludeDirs idirs df = df { importPaths = idirs }
 setBuildEnv :: Build -> DynFlags -> DynFlags
 setBuildEnv build = setHideAllPackages build . setCabalPackage build
 
--- At the moment with this option set ghc only prints different error messages,
--- suggesting the user to add a hidden package to the build-depends in his cabal
--- file for example
+-- | With ghc-7.8 this option simply makes GHC print a message suggesting users
+-- add hiddend packages to the build-depends field in their cabal file when the
+-- user tries to import a module form a hidden package.
 setCabalPackage :: Build -> DynFlags -> DynFlags
 setCabalPackage CabalPkg df = Gap.setCabalPkg df
 setCabalPackage _ df = df

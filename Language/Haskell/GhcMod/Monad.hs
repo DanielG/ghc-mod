@@ -124,13 +124,15 @@ defaultState = GhcModState Simple
 
 ----------------------------------------------------------------
 
--- | The GhcMod monad transformer data type. This is basically a newtype wrapper
--- around 'StateT', 'ErrorT', 'JournalT' and 'ReaderT' with custom instances for
--- 'GhcMonad' and it's constraints.
+-- | This is basically a newtype wrapper around 'StateT', 'ErrorT', 'JournalT'
+-- and 'ReaderT' with custom instances for 'GhcMonad' and it's constraints that
+-- means you can run (almost) all functions from the GHC API on top of 'GhcModT'
+-- transparently.
 --
--- The inner monad should have instances for 'MonadIO' and 'MonadBaseControl'
--- 'IO'. Most @mtl@ monads already have 'MonadBaseControl' 'IO' instances, see
--- the @monad-control@ package.
+-- The inner monad @m@ should have instances for 'MonadIO' and
+-- 'MonadBaseControl' 'IO', in the common case this is simply 'IO'. Most @mtl@
+-- monads already have 'MonadBaseControl' 'IO' instances, see the
+-- @monad-control@ package.
 newtype GhcModT m a = GhcModT {
       unGhcModT :: StateT GhcModState
                      (ErrorT GhcModError
