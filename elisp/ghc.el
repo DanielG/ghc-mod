@@ -149,7 +149,7 @@
   (ghc-type-deinit)
   (ghc-comp-deinit) )
 
-(defvar ghc-mod-default-lighter " GhcMod")
+(defvar ghc-mod-default-lighter " Gᷟ")
 (defvar-local ghc-mod-lighter ghc-mod-default-lighter)
 
 ;; TODO: globalized::
