@@ -39,11 +39,14 @@
   "Face used for marking hole lines."
   :group 'ghc)
 
-(defvar ghc-check-error-fringe (propertize "!" 'display '(left-fringe exclamation-mark)))
+(defvar ghc-check-error-fringe
+  (propertize "!" 'display '(left-fringe exclamation-mark)))
 
-(defvar ghc-check-warning-fringe (propertize "?" 'display '(left-fringe question-mark)))
+(defvar ghc-check-warning-fringe
+  (propertize "?" 'display '(left-fringe question-mark)))
 
-(defvar ghc-check-hole-fringe (propertize "_" 'display '(left-fringe horizontal-bar)))
+(defvar ghc-check-hole-fringe
+  (propertize "_" 'display '(left-fringe horizontal-bar)))
 
 (defvar ghc-display-error nil
   "*An action to display errors/warnings for 'M-n' and 'M-p:
