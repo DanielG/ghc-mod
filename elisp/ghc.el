@@ -197,7 +197,10 @@ ghc-mod mode is enabled in all `haskell-mode' buffers."
 
 ;;;###autoload
 (define-minor-mode ghc-mod-mode
-  nil ;; TODO: docs
+  "Toggle ghc-mod mode on or off.
+With a prefix argument ARG, enable ghc-mod mode if ARG is
+positive, and disable it otherwise.  If called from Lisp, enable
+the mode if ARG is omitted or nil, and toggle it if ARG is `toggle'."
   :init-value nil
   :lighter ghc-mod-lighter
   :keymap ghc-mod-mode-map
