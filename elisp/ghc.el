@@ -107,6 +107,32 @@ deprecated. Use `define-key' in `ghc-mode-hook' instead.")
 ;;  (ghc-mod-depricated-key-values)
 ;;  ghc-mod-initial-key-values )
 
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;
+;;; global ghc-mod Minor mode
+;;;
+
+(define-globalized-minor-mode global-ghc-mod-mode
+"Toggle ghc-mod mode in all buffers.
+With prefix ARG, enable global-ghc-mod mode if ARG is positive;
+otherwise, disable it.  If called from Lisp, enable the mode if
+ARG is omitted or nil.
+
+ghc-mod mode is enabled in all `haskell-mode' buffers."
+
+  ghc-mod-mode
+  (lambda () (when (eq major-mode 'haskell-mode) (ghc-mod-mode 1)))
+  turn-on-ghc-mod-mode
+  )
+
+;; (defmacro with-all-haskell-mode-buffers (&rest body)
+;;   `(loop for b in (buffer-list) do
+;;          (with-current-buffer b
+;;            (when (eq major-mode 'haskell-mode)
+;;              ,@body)
+;;            )))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
 ;;; ghc-mod Minor mode
@@ -162,10 +188,6 @@ deprecated. Use `define-key' in `ghc-mode-hook' instead.")
 
 (defvar ghc-mod-default-lighter " Gᷟ")
 (defvar-local ghc-mod-lighter ghc-mod-default-lighter)
-
-;; TODO: globalized::
-;;     (add-hook 'haskell-mode-hook 'ghc-mod-mode-init)
-;;     (remove-hook 'haskell-mode-hook 'ghc-mod-mode-init)
 
 (defun ghc-abbrev-init ()
   (set (make-local-variable 'dabbrev-case-fold-search) nil))
