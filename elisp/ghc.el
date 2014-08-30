@@ -48,7 +48,7 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; Customize Variables
+;;; Deprecated customization variables
 ;;;
 
 (defun ghc-find-C-h ()
@@ -58,31 +58,36 @@
    ?\C-h))
 
 (defvar ghc-mod-key-varaibles-depricated-notice
-  "Using ghc-*-key variables to change keybindings is deprecated. Use TODO TODO instead. ")
+  "Using ghc-*-key variables to change keybindings is
+deprecated. Use `define-key' in `ghc-mode-hook' instead.")
 
-(defvar ghc-completion-key  "\e\t")
-(defvar ghc-document-key    "\e\C-d")
-(defvar ghc-import-key      "\e\C-m")
-(defvar ghc-previous-key    "\ep")
-(defvar ghc-next-key        "\en")
-(defvar ghc-help-key        "\e?")
-(defvar ghc-insert-key      "\et")
-(defvar ghc-sort-key        "\es")
-(defvar ghc-type-key        "\C-c\C-t")
-(defvar ghc-info-key        "\C-c\C-i")
-(defvar ghc-toggle-key      "\C-c\C-c")
-(defvar ghc-jump-key        "\C-c\C-j")
-(defvar ghc-module-key      "\C-c\C-m")
-(defvar ghc-expand-key      "\C-c\C-e")
-(defvar ghc-kill-key        "\C-c\C-k")
-(defvar ghc-hoogle-key      (format "\C-c%c" (ghc-find-C-h)))
-(defvar ghc-shallower-key   "\C-c<")
-(defvar ghc-deeper-key      "\C-c>")
-;(defvar ghc-case-split-key  "\C-c\C-s")
-(defvar ghc-refine-key      "\C-c\C-f")
-(defvar ghc-auto-key        "\C-c\C-a")
-(defvar ghc-prev-hole-key   "\C-c\ep")
-(defvar ghc-next-hole-key   "\C-c\en")
+(eval
+ (let ((msg-var 'ghc-mod-key-varaibles-depricated-notice))
+   `(progn
+      (defvar ghc-completion-key  "\e\t" ,msg-var)
+      (defvar ghc-document-key    "\e\C-d" ,msg-var)
+      (defvar ghc-import-key      "\e\C-m" ,msg-var)
+      (defvar ghc-previous-key    "\ep" ,msg-var)
+      (defvar ghc-next-key        "\en" ,msg-var)
+      (defvar ghc-help-key        "\e?" ,msg-var)
+      (defvar ghc-insert-key      "\et" ,msg-var)
+      (defvar ghc-sort-key        "\es" ,msg-var)
+      (defvar ghc-type-key        "\C-c\C-t" ,msg-var)
+      (defvar ghc-info-key        "\C-c\C-i" ,msg-var)
+      (defvar ghc-toggle-key      "\C-c\C-c" ,msg-var)
+      (defvar ghc-jump-key        "\C-c\C-j" ,msg-var)
+      (defvar ghc-module-key      "\C-c\C-m" ,msg-var)
+      (defvar ghc-expand-key      "\C-c\C-e" ,msg-var)
+      (defvar ghc-kill-key        "\C-c\C-k" ,msg-var)
+      (defvar ghc-hoogle-key      (format "\C-c%c" (ghc-find-C-h)) ,msg-var)
+      (defvar ghc-shallower-key   "\C-c<" ,msg-var)
+      (defvar ghc-deeper-key      "\C-c>" ,msg-var)
+      ;;(defvar ghc-case-split-key  "\C-c\C-s"  ,msg-var)
+      (defvar ghc-refine-key      "\C-c\C-f" ,msg-var)
+      (defvar ghc-auto-key        "\C-c\C-a" ,msg-var)
+      (defvar ghc-prev-hole-key   "\C-c\ep" ,msg-var)
+      (defvar ghc-next-hole-key   "\C-c\en" ,msg-var)
+      )))
 
 (defvar ghc-mod-depricated-key-vars
   (let ((vs '(completion document import previous next help insert sort type
