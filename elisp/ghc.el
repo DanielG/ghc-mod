@@ -176,11 +176,11 @@ ghc-mod mode is enabled in all `haskell-mode' buffers."
   (ghc-type-init)
   (ghc-comp-init)
   (ghc-check-syntax)
-  (ad-enable-advice save-buffer after ghc-mod-check-syntax-on-save)
+  (ad-enable-advice 'save-buffer 'after 'ghc-mod-check-syntax-on-save)
   )
 
 (defun ghc-mod-deinit ()
-  (ad-disable-advice save-buffer after ghc-mod-check-syntax-on-save)
+  (ad-disable-advice 'save-buffer 'after 'ghc-mod-check-syntax-on-save)
   (ghc-comp-deinit)
   (ghc-type-deinit)
   (ghc-abbrev-deinit)
