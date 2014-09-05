@@ -155,6 +155,7 @@ getGHC :: IO Version
 getGHC = do
     mv <- programFindVersion ghcProgram silent (programName ghcProgram)
     case mv of
+      -- TODO: MonadError it up
         Nothing -> E.throwIO $ userError "ghc not found"
         Just v  -> return v
 
