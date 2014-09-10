@@ -31,7 +31,7 @@ debugInfo = cradle >>= \c -> convert' =<< do
     simpleCompilerOption = options >>= \op ->
         return $ CompilerOptions (ghcUserOptions op) [] []
     fromCabalFile c = options >>= \opts -> do
-        pkgDesc <- parseCabalFile $ fromJust $ cradleCabalFile c
+        pkgDesc <- parseCabalFile c $ fromJust $ cradleCabalFile c
         getCompilerOptions (ghcUserOptions opts) c pkgDesc
 
 ----------------------------------------------------------------

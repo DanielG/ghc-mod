@@ -17,7 +17,7 @@ import Language.Haskell.GhcMod.Gap (benchmarkBuildInfo, benchmarkTargets,
 import Language.Haskell.GhcMod.GhcPkg
 import Language.Haskell.GhcMod.Types
 
-import MonadUtils (MonadIO, liftIO)
+import MonadUtils (liftIO)
 import Control.Applicative ((<$>))
 import qualified Control.Exception as E
 import Control.Monad (filterM)
@@ -73,20 +73,22 @@ includeDirectories cdir wdir dirs = uniqueAndSort (extdirs ++ [cdir,wdir])
 ----------------------------------------------------------------
 
 -- | Parse a cabal file and return a 'PackageDescription'.
-parseCabalFile :: (MonadIO m, Error e,  MonadError e m)
-               => FilePath
+parseCabalFile :: (IOish m, MonadError GhcModError m)
+               => Cradle
+               -> FilePath
                -> m PackageDescription
-parseCabalFile file = do
+parseCabalFile cradle file = do
     cid <- liftIO getGHCId
     epgd <- liftIO $ readPackageDescription silent file
-    case toPkgDesc cid epgd of
+    flags <- cabalConfigFlags cradle
+    case toPkgDesc cid flags epgd of
         Left deps    -> fail $ show deps ++ " are not installed"
         Right (pd,_) -> if nullPkg pd
                         then fail $ file ++ " is broken"
                         else return pd
   where
-    toPkgDesc cid =
-        finalizePackageDescription [] (const True) buildPlatform cid []
+    toPkgDesc cid flags =
+        finalizePackageDescription flags (const True) buildPlatform cid []
     nullPkg pd = name == ""
       where
         PackageName name = C.pkgName (P.package pd)

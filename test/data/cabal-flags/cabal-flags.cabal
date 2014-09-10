@@ -1,0 +1,14 @@
+name: cabal-flags
+version: 0.1.0
+build-type: Simple
+cabal-version: >= 1.8
+
+flag test-flag
+  default: False
+
+library
+  build-depends: base == 4.*
+
+  if flag(test-flag)
+    build-depends: Cabal >= 1.10
+

@@ -10,6 +10,7 @@ import Language.Haskell.GhcMod.Types
 import Test.Hspec
 import System.Directory
 import System.FilePath
+import System.Process (readProcess)
 
 import Dir
 import TestUtils
@@ -23,8 +24,10 @@ spec :: Spec
 spec = do
     describe "parseCabalFile" $ do
         it "throws an exception if the cabal file is broken" $ do
-            shouldReturnError $
-              runD' $ parseCabalFile "test/data/broken-cabal/broken.cabal"
+            shouldReturnError $ do
+              withDirectory_ "test/data/broken-cabal" $ do
+                  crdl <- findCradle
+                  runD' $ parseCabalFile crdl "broken.cabal"
 
 
     describe "getCompilerOptions" $ do
@@ -32,7 +35,7 @@ spec = do
             cwd <- getCurrentDirectory
             withDirectory "test/data/subdir1/subdir2" $ \dir -> do
                 crdl <- findCradle
-                pkgDesc <- runD $ parseCabalFile $ fromJust $ cradleCabalFile crdl
+                pkgDesc <- runD $ parseCabalFile crdl $ fromJust $ cradleCabalFile crdl
                 res <- runD $ getCompilerOptions [] crdl pkgDesc
                 let res' = res {
                         ghcOptions  = ghcOptions res
@@ -47,18 +50,28 @@ spec = do
 
     describe "cabalDependPackages" $ do
         it "extracts dependent packages" $ do
-            pkgs <- cabalDependPackages . cabalAllBuildInfo <$> runD (parseCabalFile "test/data/cabalapi.cabal")
+            crdl <- findCradle' "test/data/"
+            pkgs <- cabalDependPackages . cabalAllBuildInfo <$> runD (parseCabalFile crdl "test/data/cabalapi.cabal")
             pkgs `shouldBe` ["Cabal","base","template-haskell"]
+        it "uses non default flags" $ do
+            withDirectory_ "test/data/cabal-flags" $ do
+                crdl <- findCradle
+                _ <- readProcess "cabal" ["configure", "-ftest-flag"] ""
+                pkgs <- cabalDependPackages . cabalAllBuildInfo <$> runD (parseCabalFile crdl "cabal-flags.cabal")
+                pkgs `shouldBe` ["Cabal","base"]
 
     describe "cabalSourceDirs" $ do
         it "extracts all hs-source-dirs" $ do
-            dirs <- cabalSourceDirs . cabalAllBuildInfo <$> runD (parseCabalFile "test/data/check-test-subdir/check-test-subdir.cabal")
+            crdl <- findCradle' "test/data/check-test-subdir"
+            dirs <- cabalSourceDirs . cabalAllBuildInfo <$> runD (parseCabalFile crdl "test/data/check-test-subdir/check-test-subdir.cabal")
             dirs `shouldBe` ["src", "test"]
         it "extracts all hs-source-dirs including \".\"" $ do
-            dirs <- cabalSourceDirs . cabalAllBuildInfo <$> runD (parseCabalFile "test/data/cabalapi.cabal")
+            crdl <- findCradle' "test/data/"
+            dirs <- cabalSourceDirs . cabalAllBuildInfo <$> runD (parseCabalFile crdl "test/data/cabalapi.cabal")
             dirs `shouldBe` [".", "test"]
 
     describe "cabalAllBuildInfo" $ do
         it "extracts build info" $ do
-            info <- cabalAllBuildInfo <$> runD (parseCabalFile "test/data/cabalapi.cabal")
+            crdl <- findCradle' "test/data/"
+            info <- cabalAllBuildInfo <$> runD (parseCabalFile crdl "test/data/cabalapi.cabal")
             show info `shouldBe` "[BuildInfo {buildable = True, buildTools = [], cppOptions = [], ccOptions = [], ldOptions = [], pkgconfigDepends = [], frameworks = [], cSources = [], hsSourceDirs = [\".\"], otherModules = [ModuleName [\"Browse\"],ModuleName [\"CabalApi\"],ModuleName [\"Cabal\"],ModuleName [\"CabalDev\"],ModuleName [\"Check\"],ModuleName [\"ErrMsg\"],ModuleName [\"Flag\"],ModuleName [\"GHCApi\"],ModuleName [\"GHCChoice\"],ModuleName [\"Gap\"],ModuleName [\"Info\"],ModuleName [\"Lang\"],ModuleName [\"Lint\"],ModuleName [\"List\"],ModuleName [\"Paths_ghc_mod\"],ModuleName [\"Types\"]], defaultLanguage = Nothing, otherLanguages = [], defaultExtensions = [], otherExtensions = [], oldExtensions = [], extraLibs = [], extraLibDirs = [], includeDirs = [], includes = [], installIncludes = [], options = [(GHC,[\"-Wall\"])], ghcProfOptions = [], ghcSharedOptions = [], customFieldsBI = [], targetBuildDepends = [Dependency (PackageName \"Cabal\") (UnionVersionRanges (ThisVersion (Version {versionBranch = [1,10], versionTags = []})) (LaterVersion (Version {versionBranch = [1,10], versionTags = []}))),Dependency (PackageName \"base\") (IntersectVersionRanges (UnionVersionRanges (ThisVersion (Version {versionBranch = [4,0], versionTags = []})) (LaterVersion (Version {versionBranch = [4,0], versionTags = []}))) (EarlierVersion (Version {versionBranch = [5], versionTags = []}))),Dependency (PackageName \"template-haskell\") AnyVersion]},BuildInfo {buildable = True, buildTools = [], cppOptions = [], ccOptions = [], ldOptions = [], pkgconfigDepends = [], frameworks = [], cSources = [], hsSourceDirs = [\"test\",\".\"], otherModules = [ModuleName [\"Expectation\"],ModuleName [\"BrowseSpec\"],ModuleName [\"CabalApiSpec\"],ModuleName [\"FlagSpec\"],ModuleName [\"LangSpec\"],ModuleName [\"LintSpec\"],ModuleName [\"ListSpec\"]], defaultLanguage = Nothing, otherLanguages = [], defaultExtensions = [], otherExtensions = [], oldExtensions = [], extraLibs = [], extraLibDirs = [], includeDirs = [], includes = [], installIncludes = [], options = [], ghcProfOptions = [], ghcSharedOptions = [], customFieldsBI = [], targetBuildDepends = [Dependency (PackageName \"Cabal\") (UnionVersionRanges (ThisVersion (Version {versionBranch = [1,10], versionTags = []})) (LaterVersion (Version {versionBranch = [1,10], versionTags = []}))),Dependency (PackageName \"base\") (IntersectVersionRanges (UnionVersionRanges (ThisVersion (Version {versionBranch = [4,0], versionTags = []})) (LaterVersion (Version {versionBranch = [4,0], versionTags = []}))) (EarlierVersion (Version {versionBranch = [5], versionTags = []})))]}]"
