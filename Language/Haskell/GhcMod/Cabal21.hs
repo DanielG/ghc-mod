@@ -60,8 +60,7 @@ type PackageId = PackageIdentifier
 data ComponentLocalBuildInfo
   = LibComponentLocalBuildInfo {
     componentPackageDeps :: [(InstalledPackageId, PackageId)],
-    componentLibraries :: [LibraryName],
-    componentModuleReexports :: [ModuleReexport]
+    componentLibraries :: [LibraryName]
   }
   | ExeComponentLocalBuildInfo {
     componentPackageDeps :: [(InstalledPackageId, PackageId)]
@@ -73,13 +72,3 @@ data ComponentLocalBuildInfo
     componentPackageDeps :: [(InstalledPackageId, PackageId)]
   }
   deriving (Read, Show)
-
-data ModuleReexport = ModuleReexport {
-    moduleReexportDefiningPackage :: InstalledPackageId,
-    moduleReexportDefiningName    :: ModuleName,
-    moduleReexportName            :: ModuleName
-  }
-  deriving (Read, Show)
-
-newtype ModuleName = ModuleName [String]
-  deriving (Eq, Ord, Read, Show)
