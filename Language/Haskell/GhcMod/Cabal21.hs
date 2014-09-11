@@ -39,7 +39,6 @@ module Language.Haskell.GhcMod.Cabal21 (
   ) where
 
 import Distribution.Package (InstalledPackageId)
-import qualified Distribution.Package as Package
 import Data.Version (Version)
 
 data LibraryName = LibraryName String
