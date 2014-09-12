@@ -46,6 +46,7 @@ Extra-Source-Files:     ChangeLog
                         test/data/duplicate-pkgver/.cabal-sandbox/i386-osx-ghc-7.6.3-packages.conf.d/template-haskell-1.0-7c59d13f32294d1ef6dc6233c24df961.conf
                         test/data/duplicate-pkgver/.cabal-sandbox/i386-osx-ghc-7.6.3-packages.conf.d/template-haskell-2.8.0.0-14e543bdae2da4d2aeff5386892c9112.conf
                         test/data/duplicate-pkgver/.cabal-sandbox/i386-osx-ghc-7.6.3-packages.conf.d/template-haskell-2.8.0.0-32d4f24abdbb6bf41272b183b2e23e9c.conf
+                        test/data/pattern-synonyms/*
                         test/data/ghc-mod-check/*.cabal
                         test/data/ghc-mod-check/*.hs
                         test/data/ghc-mod-check/Data/*.hs
