@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 module CheckSpec where
 
 import Data.List (isSuffixOf, isInfixOf, isPrefixOf)
@@ -31,10 +32,12 @@ spec = do
                 res <- runID $ checkSyntax ["Baz.hs"]
                 res `shouldSatisfy` ("Baz.hs:5:1:Warning:" `isPrefixOf`)
 
+#if __GLASGOW_HASKELL__ >= 708
         it "works with modules using PatternSynonyms" $ do
             withDirectory_ "test/data/pattern-synonyms" $ do
                 res <- runID $ checkSyntax ["B.hs"]
                 res `shouldSatisfy` ("B.hs:6:9:Warning:" `isPrefixOf`)
+#endif
 
         it "works with foreign exports" $ do
             withDirectory_ "test/data" $ do
