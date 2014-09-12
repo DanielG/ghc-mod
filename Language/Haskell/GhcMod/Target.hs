@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 module Language.Haskell.GhcMod.Target (
     setTargetFiles
   ) where
@@ -5,7 +6,7 @@ module Language.Haskell.GhcMod.Target (
 import Control.Applicative ((<$>))
 import Control.Monad (forM, void, (>=>))
 import DynFlags (ExtensionFlag(..), xopt)
-import GHC (DynFlags(..), LoadHowMuch(..))
+import GHC (LoadHowMuch(..))
 import qualified GHC as G
 import Language.Haskell.GhcMod.DynFlags
 import Language.Haskell.GhcMod.Monad
@@ -50,7 +51,10 @@ setTargetFiles files = do
         setCompilerMode Intelligent
 
 needsFallback :: G.ModuleGraph -> Bool
-needsFallback = any (hasTHorQQ . G.ms_hspp_opts)
-  where
-    hasTHorQQ :: DynFlags -> Bool
-    hasTHorQQ dflags = any (`xopt` dflags) [Opt_TemplateHaskell, Opt_QuasiQuotes]
+needsFallback = any $ \ms ->
+                let df = G.ms_hspp_opts ms in
+                   Opt_TemplateHaskell `xopt` df
+                || Opt_QuasiQuotes     `xopt` df
+#if __GLASGOW_HASKELL__ >= 708
+                || (Opt_PatternSynonyms `xopt` df)
+#endif

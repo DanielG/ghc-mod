@@ -31,6 +31,11 @@ spec = do
                 res <- runID $ checkSyntax ["Baz.hs"]
                 res `shouldSatisfy` ("Baz.hs:5:1:Warning:" `isPrefixOf`)
 
+        it "works with modules using PatternSynonyms" $ do
+            withDirectory_ "test/data/pattern-synonyms" $ do
+                res <- runID $ checkSyntax ["B.hs"]
+                res `shouldSatisfy` ("B.hs:6:9:Warning:" `isPrefixOf`)
+
         it "works with foreign exports" $ do
             withDirectory_ "test/data" $ do
                 res <- runID $ checkSyntax ["ForeignExport.hs"]
