@@ -1,4 +1,4 @@
-UNRELEASED v5.1.0.0
+2014-09-12 v5.1.0.0
         * GhcModError is now a recursive data type (`GMECabalConfigure`'s
           type changed)
         * GhcModT's MonadIO instance now converts IOError's to failures in
