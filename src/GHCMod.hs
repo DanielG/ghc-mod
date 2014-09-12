@@ -29,23 +29,23 @@ ghcOptHelp = " [-g GHC_opt1 -g GHC_opt2 ...] "
 usage :: String
 usage =    progVersion
         ++ "Usage:\n"
-        ++ "\t ghc-mod list" ++ ghcOptHelp ++ "[-l] [-d]\n"
-        ++ "\t ghc-mod lang [-l]\n"
-        ++ "\t ghc-mod flag [-l]\n"
-        ++ "\t ghc-mod browse" ++ ghcOptHelp ++ "[-l] [-o] [-d] [-q] [<package>:]<module> [[<package>:]<module> ...]\n"
-        ++ "\t ghc-mod check" ++ ghcOptHelp ++ "<HaskellFiles...>\n"
-        ++ "\t ghc-mod expand" ++ ghcOptHelp ++ "<HaskellFiles...>\n"
-        ++ "\t ghc-mod debug" ++ ghcOptHelp ++ "\n"
-        ++ "\t ghc-mod info" ++ ghcOptHelp ++ "<HaskellFile> <module> <expression>\n"
-        ++ "\t ghc-mod type" ++ ghcOptHelp ++ "<HaskellFile> <module> <line-no> <column-no>\n"
-        ++ "\t ghc-mod split" ++ ghcOptHelp ++ "<HaskellFile> <module> <line-no> <column-no>\n"
-        ++ "\t ghc-mod sig" ++ ghcOptHelp ++ "<HaskellFile> <module> <line-no> <column-no>\n"
-        ++ "\t ghc-mod refine" ++ ghcOptHelp ++ "<HaskellFile> <module> <line-no> <column-no> <expression>\n"
-        ++ "\t ghc-mod auto" ++ ghcOptHelp ++ "<HaskellFile> <module> <line-no> <column-no>\n"
-        ++ "\t ghc-mod find <symbol>\n"
-        ++ "\t ghc-mod lint [-h opt] <HaskellFile>\n"
+        ++ "\t ghc-mod list   " ++ ghcOptHelp ++ "[-l] [-d]\n"
+        ++ "\t ghc-mod lang    [-l]\n"
+        ++ "\t ghc-mod flag    [-l]\n"
+        ++ "\t ghc-mod browse " ++ ghcOptHelp ++ "[-l] [-o] [-d] [-q] [<package>:]<module> [[<package>:]<module> ...]\n"
+        ++ "\t ghc-mod check  " ++ ghcOptHelp ++ "<HaskellFiles...>\n"
+        ++ "\t ghc-mod expand " ++ ghcOptHelp ++ "<HaskellFiles...>\n"
+        ++ "\t ghc-mod debug  " ++ ghcOptHelp ++ "\n"
+        ++ "\t ghc-mod info   " ++ ghcOptHelp ++ "<HaskellFile> <module> <expression>\n"
+        ++ "\t ghc-mod type   " ++ ghcOptHelp ++ "<HaskellFile> <module> <line-no> <column-no>\n"
+        ++ "\t ghc-mod split  " ++ ghcOptHelp ++ "<HaskellFile> <module> <line-no> <column-no>\n"
+        ++ "\t ghc-mod sig    " ++ ghcOptHelp ++ "<HaskellFile> <module> <line-no> <column-no>\n"
+        ++ "\t ghc-mod refine " ++ ghcOptHelp ++ "<HaskellFile> <module> <line-no> <column-no> <expression>\n"
+        ++ "\t ghc-mod auto   " ++ ghcOptHelp ++ "<HaskellFile> <module> <line-no> <column-no>\n"
+        ++ "\t ghc-mod find    <symbol>\n"
+        ++ "\t ghc-mod lint    [-h opt] <HaskellFile>\n"
         ++ "\t ghc-mod root\n"
-        ++ "\t ghc-mod doc <module>\n"
+        ++ "\t ghc-mod doc     <module>\n"
         ++ "\t ghc-mod boot\n"
         ++ "\t ghc-mod version\n"
         ++ "\t ghc-mod help\n"
@@ -56,31 +56,35 @@ usage =    progVersion
 ----------------------------------------------------------------
 
 argspec :: [OptDescr (Options -> Options)]
-argspec = [ Option "l" ["tolisp"]
-            (NoArg (\opts -> opts { outputStyle = LispStyle }))
-            "print as a list of Lisp"
-          , Option "h" ["hlintOpt"]
-            (ReqArg (\h opts -> opts { hlintOpts = h : hlintOpts opts }) "hlintOpt")
-            "hlint options"
-          , Option "g" ["ghcOpt"]
-            (ReqArg (\g opts -> opts { ghcUserOptions = g : ghcUserOptions opts }) "ghcOpt")
-            "GHC options"
-          , Option "v" ["verbose"]
-            (NoArg (\opts -> opts { ghcUserOptions = "-v" : ghcUserOptions opts }))
-            "verbose"
-          , Option "o" ["operators"]
-            (NoArg (\opts -> opts { operators = True }))
-            "print operators, too"
-          , Option "d" ["detailed"]
-            (NoArg (\opts -> opts { detailed = True }))
-            "print detailed info"
-          , Option "q" ["qualified"]
-            (NoArg (\opts -> opts { qualified = True }))
-            "show qualified names"
-          , Option "b" ["boundary"]
-            (ReqArg (\s opts -> opts { lineSeparator = LineSeparator s }) "sep")
-            "specify line separator (default is Nul string)"
-          ]
+argspec =
+    let option s l udsc dsc = Option s l dsc udsc
+        reqArg udsc dsc = ReqArg dsc udsc
+    in
+      [ option "l" ["tolisp"] "print as a list of Lisp" $
+               NoArg $ \o -> o { outputStyle = LispStyle }
+
+      , option "h" ["hlintOpt"] "hlint options" $
+               reqArg "hlintOpt" $ \h o -> o { hlintOpts = h : hlintOpts o }
+
+      , option "g" ["ghcOpt"] "GHC options" $
+               reqArg "ghcOpt" $ \g o ->
+                   o { ghcUserOptions = g : ghcUserOptions o }
+
+      , option "v" ["verbose"] "verbose" $
+               NoArg $ \o -> o { ghcUserOptions = "-v" : ghcUserOptions o }
+
+      , option "o" ["operators"] "print operators, too" $
+               NoArg $ \o -> o { operators = True }
+
+      , option "d" ["detailed"] "print detailed info" $
+               NoArg $ \o -> o { detailed = True }
+
+      , option "q" ["qualified"] "show qualified names" $
+               NoArg $ \o -> o { qualified = True }
+
+      , option "b" ["boundary"] "specify line separator (default is Nul string)"$
+               reqArg "sep" $ \s o -> o { lineSeparator = LineSeparator s }
+  ]
 
 parseArgs :: [OptDescr (Options -> Options)] -> [String] -> (Options, [String])
 parseArgs spec argv
@@ -102,9 +106,7 @@ instance Exception GHCModError
 
 main :: IO ()
 main = flip E.catches handlers $ do
--- #if __GLASGOW_HASKELL__ >= 611
     hSetEncoding stdout utf8
--- #endif
     args <- getArgs
     let (opt,cmdArg) = parseArgs argspec args
     let cmdArg0 = cmdArg !. 0
