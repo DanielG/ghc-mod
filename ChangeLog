@@ -6,6 +6,9 @@ UNRELEASED v5.1.0.0
         * Make `loadSymbolDb` polimorphic in the return types's monad.
         * Add `hoistGhcModT` to Language.Haskell.GhcMod.Internal
 
+UNRELEASED v5.0.1.3
+        * Fix `check` command for modules using `-XPatternSynonyms`
+
 2014-08-29 v5.0.1.2
         * Merge #345, Try fixing duplicate errors
         * Merge #344, elisp: Use advice to check syntax on save-buffer
