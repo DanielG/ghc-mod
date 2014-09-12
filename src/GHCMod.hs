@@ -149,6 +149,8 @@ main = flip E.catches handlers $ do
           hPutStrLn stderr msg
       Left (GMECabalConfigure msg) ->
           hPutStrLn stderr $ "cabal configure failed: " ++ show msg
+      Left (GMECabalFlags msg) ->
+          hPutStrLn stderr $ "retrieval of the cabal configuration flags failed: " ++ show msg
       Left (GMEProcess cmd msg) ->
           hPutStrLn stderr $
             "launching operating system process `"++c++"` failed: " ++ show msg

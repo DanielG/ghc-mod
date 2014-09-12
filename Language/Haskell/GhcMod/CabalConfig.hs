@@ -5,6 +5,7 @@
 module Language.Haskell.GhcMod.CabalConfig (
     CabalConfig
   , cabalConfigDependencies
+  , cabalConfigFlags
   ) where
 
 import Language.Haskell.GhcMod.Error
@@ -34,6 +35,7 @@ import Data.List (find,tails,isPrefixOf,isInfixOf,nub,stripPrefix)
 import Distribution.Package (InstalledPackageId(..)
                            , PackageIdentifier(..)
                            , PackageName(..))
+import Distribution.PackageDescription (FlagAssignment)
 import Distribution.Simple.BuildPaths (defaultDistPref)
 import Distribution.Simple.Configure (localBuildInfoFile)
 import Distribution.Simple.LocalBuildInfo (ComponentName)
@@ -151,6 +153,20 @@ configDependencies thisPkg config = map fromInstalledPackageId deps
        readConfigs f s = case readEither s of
            Right x -> x
            Left msg -> error $ "reading config " ++ f ++ " failed ("++msg++")"
+
+-- | Get the flag assignment from the local build info of the given cradle
+cabalConfigFlags :: (IOish m, MonadError GhcModError m)
+                 => Cradle
+                 -> m FlagAssignment
+cabalConfigFlags cradle = do
+  config <- getConfig cradle
+  case configFlags config of
+    Right x  -> return x
+    Left msg -> throwError (GMECabalFlags (GMEString msg))
+
+-- | Extract the cabal flags from the 'CabalConfig'
+configFlags :: CabalConfig -> Either String FlagAssignment
+configFlags config = readEither =<< flip extractField "configConfigurationsFlags" =<< extractField config "configFlags"
 
 -- | Find @field@ in 'CabalConfig'. Returns 'Left' containing a user readable
 -- error message with lots of context on failure.

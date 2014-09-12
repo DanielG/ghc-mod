@@ -204,7 +204,7 @@ initializeFlagsWithCradle opt c
     cabal = isJust mCradleFile
     ghcopts = ghcUserOptions opt
     withCabal = do
-        pkgDesc <- parseCabalFile $ fromJust mCradleFile
+        pkgDesc <- parseCabalFile c $ fromJust mCradleFile
         compOpts <- getCompilerOptions ghcopts c pkgDesc
         initSession CabalPkg opt compOpts
     withSandbox = initSession SingleFile opt compOpts

@@ -18,6 +18,8 @@ data GhcModError = GMENoMsg
                  -- 'fail' calls on GhcModT.
                  | GMECabalConfigure GhcModError
                  -- ^ Configuring a cabal project failed.
+                 | GMECabalFlags GhcModError
+                 -- ^ Retrieval of the cabal configuration flags failed.
                  | GMEProcess [String] GhcModError
                  -- ^ Launching an operating system process failed. The first
                  -- field is the command.
