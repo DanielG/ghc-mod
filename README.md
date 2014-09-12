@@ -5,22 +5,38 @@ Please read: [http://www.mew.org/~kazu/proj/ghc-mod/](http://www.mew.org/~kazu/p
 
 ## Using the stable version
 
-Emacs front-end, which is consistent with binaries on Hackage, is available *stable* MELPA whose URL is http://melpa-stable.milkbox.net/packages/. So, your "~/.emacs" should be:
+The Emacs front-end is available from
+[*stable* MELPA](http://melpa-stable.milkbox.net/). This package should
+always be compatible with the latest version of ghc-mod from hackage.
+
+To use stable *stable* MELPA add this to your `.emacs`:
 
 ```elisp
 (require 'package)
-(add-to-list 'package-archives 
+(add-to-list 'package-archives
 	     '("melpa" . "http://melpa-stable.milkbox.net/packages/"))
 (package-initialize)
 ```
 
-With this configuration you can install the stable Emacs front end indicated by "ghc" from MELPA while you can install `ghc-mod`/`ghc-modi` binaries by:
+With this configuration you can install the Emacs front end from MELPA (the
+package is called `ghc` there, not `ghc-mod`) and install the
+`ghc-mod`/`ghc-modi` binaries from hackage by doing:
 
 ```shell
-% cabal update
-% cabal install ghc-mod
+% cabal update && cabal install ghc-mod
 ```
 
-## Using the develop version
+## Using the development version
 
-You should install both Emacs front-end and binaries from this git repo. If you use the snapshot MELPA to install Emacs front-end, you would suffer from inconsistency between Emacs front-end and binaries.
+The easiest way to hack on ghc-mod is compile it, then add `dist/build/ghc-mod`
+and `dist/build/ghc-modi` to your `PATH` and add the `elisp/` directory to your
+Emacs `load-path`.
+
+Make sure you're not using the MELPA version of `ghc.el` otherwise you might get
+all sorts of nasty conflicts.
+
+
+## IRC
+
+If you have any problems, suggestions, comments swing by
+[#ghc-mod](irc://chat.freenode.net/ghc-mod) on Freenode.
