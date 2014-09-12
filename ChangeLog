@@ -8,6 +8,7 @@ UNRELEASED v5.1.0.0
 
 UNRELEASED v5.0.1.3
         * Fix `check` command for modules using `-XPatternSynonyms`
+        * Merge #364, Support cabal configuration flags
 
 2014-08-29 v5.0.1.2
         * Merge #345, Try fixing duplicate errors
