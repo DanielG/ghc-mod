@@ -114,7 +114,7 @@ Library
                       , mtl >= 2.0
                       , monad-control
                       , split
-                      , haskell-src-exts
+                      , haskell-src-exts < 1.16
                       , text
                       , djinn-ghc >= 0.0.2.2
   if impl(ghc >= 7.8)
@@ -208,7 +208,7 @@ Test-Suite spec
                       , monad-control
                       , hspec >= 1.8.2
                       , split
-                      , haskell-src-exts
+                      , haskell-src-exts < 1.16
                       , text
                       , djinn-ghc >= 0.0.2.2
   if impl(ghc >= 7.8)
