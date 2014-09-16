@@ -125,8 +125,8 @@
     (ghc-display nil
       (lambda ()
         (insert "Possible completions:\n")
-        (mapc
-          (lambda (x)
+        (mapc 
+          (lambda (x) 
             (let* (; (ins1      (insert "- "))
                    (pos-begin (point))
                    (ins       (insert x))

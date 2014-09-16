@@ -167,11 +167,11 @@ checkStx :: IOish m
          -> FilePath
          -> GhcModT m (String, Bool, Set FilePath)
 checkStx set file = do
---    set' <- newFileSet set file
---    let files = S.toList set'
-    eret <- check [file]
+    set' <- newFileSet set file
+    let files = S.toList set'
+    eret <- check files
     case eret of
-        Right ret -> return (ret, True, set)
+        Right ret -> return (ret, True, set')
         Left ret  -> return (ret, True, set) -- fxime: set
 
 newFileSet :: IOish m => Set FilePath -> FilePath -> GhcModT m (Set FilePath)
@@ -320,4 +320,4 @@ browseIt set mdl = do
                else browse mdl
     return (ret, True, set)
   where
-    setDetailed opt = opt { detailed = True }
+    setDetailed opt = opt { detailed = True } 
