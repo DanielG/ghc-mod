@@ -151,15 +151,31 @@ getSignatureFromHE file lineNo colNo = do
              HE.ParseOk (HE.Module _ _ _ _ mdecls) -> do
                decl <- find (typeSigInRangeHE lineNo colNo) mdecls
                case decl of
-                 HE.TypeSig (HE.SrcSpanInfo s _) names ty -> return $ HESignature s names ty
-                 HE.TypeFamDecl (HE.SrcSpanInfo s _) (HE.DHead _ name tys) _ ->
+                 HE.TypeSig (HE.SrcSpanInfo s _) names ty ->
+                     return $ HESignature s names ty
+
+                 HE.TypeFamDecl (HE.SrcSpanInfo s _) declHead _ ->
+                   let (name, tys) = dHeadTyVars declHead in
                    return $ HEFamSignature s Open name (map cleanTyVarBind tys)
-                 HE.DataFamDecl (HE.SrcSpanInfo s _) _ (HE.DHead _ name tys) _ ->
+
+                 HE.DataFamDecl (HE.SrcSpanInfo s _) _ declHead _ ->
+                   let (name, tys) = dHeadTyVars declHead in
                    return $ HEFamSignature s Open name (map cleanTyVarBind tys)
                  _ -> fail ""
              _ -> Nothing
   where cleanTyVarBind (HE.KindedVar _ n _) = n
         cleanTyVarBind (HE.UnkindedVar _ n) = n
+
+#if MIN_VERSION_haskell_src_exts(1,16,0)
+        dHeadTyVars :: HE.DeclHead l -> (HE.Name l, [HE.TyVarBind l])
+        dHeadTyVars (HE.DHead _ name) = (name, [])
+        dHeadTyVars (HE.DHApp _ r ty) = (++[ty]) `fmap` (dHeadTyVars r)
+        dHeadTyVars (HE.DHInfix _ ty name) = (name, [ty])
+        dHeadTyVars (HE.DHParen _ r) = dHeadTyVars r
+#else
+        dHeadTyVars :: HE.DeclHead l -> (HE.Name l, [HE.TyVarBind l])
+        dHeadTyVars (DHead _ n tys) = (n, tys)
+#endif
 
 ----------------------------------------------------------------
 -- b. Code for generating initial code
