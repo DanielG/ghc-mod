@@ -1,3 +1,7 @@
+2014-09-16 v5.1.0.1
+        * Fix building with haskell-src-exts-1.16.0
+        * Loosen monad-journal dependency
+
 2014-09-12 v5.1.0.0
         * GhcModError is now a recursive data type (`GMECabalConfigure`'s
           type changed)
