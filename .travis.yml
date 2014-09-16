@@ -11,6 +11,7 @@ install:
   - cabal install -j --only-dependencies --enable-tests
 
 script:
+  - touch ChangeLog # Create ChangeLog if we're not on the release branch
   - cabal check
   - cabal sdist
   - export SRC_TGZ="$PWD/dist/$(cabal info . | awk '{print $2 ".tar.gz";exit}')"

@@ -1,4 +1,5 @@
-{-# LANGUAGE MultiParamTypeClasses, FunctionalDependencies, FlexibleInstances, CPP #-}
+{-# LANGUAGE CPP, MultiParamTypeClasses, FunctionalDependencies #-}
+{-# LANGUAGE FlexibleInstances #-}
 
 module Language.Haskell.GhcMod.FillSig (
     sig
@@ -12,7 +13,8 @@ import Data.List (find, nub, sortBy)
 import qualified Data.Map as M
 import Data.Maybe (isJust, catMaybes)
 import Exception (ghandle, SomeException(..))
-import GHC (GhcMonad, Id, ParsedModule(..), TypecheckedModule(..), DynFlags, SrcSpan, Type, GenLocated(L))
+import GHC (GhcMonad, Id, ParsedModule(..), TypecheckedModule(..), DynFlags,
+            SrcSpan, Type, GenLocated(L))
 import qualified GHC as G
 import qualified Name as G
 import qualified Language.Haskell.GhcMod.Gap as Gap
@@ -34,13 +36,19 @@ import Djinn.GHC
 ----------------------------------------------------------------
 
 -- Possible signatures we can find: function or instance
-data SigInfo = Signature SrcSpan [G.RdrName] (G.HsType G.RdrName)
-             | InstanceDecl SrcSpan G.Class
-             | TyFamDecl SrcSpan G.RdrName TyFamType {- True if closed -} [G.RdrName]
+data SigInfo
+    = Signature SrcSpan [G.RdrName] (G.HsType G.RdrName)
+    | InstanceDecl SrcSpan G.Class
+    | TyFamDecl SrcSpan G.RdrName TyFamType {- True if closed -} [G.RdrName]
 
 -- Signature for fallback operation via haskell-src-exts
-data HESigInfo = HESignature HE.SrcSpan [HE.Name HE.SrcSpanInfo] (HE.Type HE.SrcSpanInfo)
-               | HEFamSignature HE.SrcSpan TyFamType (HE.Name HE.SrcSpanInfo) [HE.Name HE.SrcSpanInfo]
+data HESigInfo
+    = HESignature HE.SrcSpan [HE.Name HE.SrcSpanInfo] (HE.Type HE.SrcSpanInfo)
+    | HEFamSignature
+          HE.SrcSpan
+          TyFamType
+          (HE.Name HE.SrcSpanInfo)
+          [HE.Name HE.SrcSpanInfo]
 
 data TyFamType = Closed | Open | Data
 initialTyFamString :: TyFamType -> (String, String)
@@ -143,34 +151,54 @@ getSignatureFromHE file lineNo colNo = do
              HE.ParseOk (HE.Module _ _ _ _ mdecls) -> do
                decl <- find (typeSigInRangeHE lineNo colNo) mdecls
                case decl of
-                 HE.TypeSig (HE.SrcSpanInfo s _) names ty -> return $ HESignature s names ty
-                 HE.TypeFamDecl (HE.SrcSpanInfo s _) (HE.DHead _ name tys) _ ->
+                 HE.TypeSig (HE.SrcSpanInfo s _) names ty ->
+                     return $ HESignature s names ty
+
+                 HE.TypeFamDecl (HE.SrcSpanInfo s _) declHead _ ->
+                   let (name, tys) = dHeadTyVars declHead in
                    return $ HEFamSignature s Open name (map cleanTyVarBind tys)
-                 HE.DataFamDecl (HE.SrcSpanInfo s _) _ (HE.DHead _ name tys) _ ->
+
+                 HE.DataFamDecl (HE.SrcSpanInfo s _) _ declHead _ ->
+                   let (name, tys) = dHeadTyVars declHead in
                    return $ HEFamSignature s Open name (map cleanTyVarBind tys)
                  _ -> fail ""
              _ -> Nothing
   where cleanTyVarBind (HE.KindedVar _ n _) = n
         cleanTyVarBind (HE.UnkindedVar _ n) = n
 
+#if MIN_VERSION_haskell_src_exts(1,16,0)
+        dHeadTyVars :: HE.DeclHead l -> (HE.Name l, [HE.TyVarBind l])
+        dHeadTyVars (HE.DHead _ name) = (name, [])
+        dHeadTyVars (HE.DHApp _ r ty) = (++[ty]) `fmap` (dHeadTyVars r)
+        dHeadTyVars (HE.DHInfix _ ty name) = (name, [ty])
+        dHeadTyVars (HE.DHParen _ r) = dHeadTyVars r
+#else
+        dHeadTyVars :: HE.DeclHead l -> (HE.Name l, [HE.TyVarBind l])
+        dHeadTyVars (DHead _ n tys) = (n, tys)
+#endif
+
 ----------------------------------------------------------------
 -- b. Code for generating initial code
 
--- A list of function arguments, and whether they are functions or normal arguments
--- is built from either a function signature or an instance signature
+-- A list of function arguments, and whether they are functions or normal
+-- arguments is built from either a function signature or an instance signature
 data FnArg = FnArgFunction | FnArgNormal | FnExplicitName String
 
 initialBody :: FnArgsInfo ty name => DynFlags -> PprStyle -> ty -> name -> String
-initialBody dflag style ty name = initialBody' (getFnName dflag style name) (getFnArgs ty)
+initialBody dflag style ty name =
+    initialBody' (getFnName dflag style name) (getFnArgs ty)
 
 initialBody' :: String -> [FnArg] -> String
-initialBody' fname args = initialHead fname args ++ " = "
-                          ++ (if isSymbolName fname then "" else '_':fname) ++ "_body"
+initialBody' fname args =
+    initialHead fname args ++ " = " ++ n ++ "_body"
+ where n = if isSymbolName fname then "" else '_':fname
 
-initialFamBody :: FnArgsInfo ty name => DynFlags -> PprStyle -> name -> [name] -> String
-initialFamBody dflag style name args = initialHead (getFnName dflag style name)
-                                         (map (FnExplicitName . getFnName dflag style) args)
-                                         ++ " = ()"
+initialFamBody :: FnArgsInfo ty name
+               => DynFlags -> PprStyle -> name -> [name] -> String
+initialFamBody dflag style name args =
+    initialHead fnName fnArgs ++ " = ()"
+ where fnName = getFnName dflag style name
+       fnArgs = map (FnExplicitName . getFnName dflag style) args
 
 initialHead :: String -> [FnArg] -> String
 initialHead fname args =
@@ -185,7 +213,8 @@ initialBodyArgs [] _ _ = []
 initialBodyArgs (FnArgFunction:xs) vs (f:fs) = f : initialBodyArgs xs vs fs
 initialBodyArgs (FnArgNormal:xs)   (v:vs) fs = v : initialBodyArgs xs vs fs
 initialBodyArgs (FnExplicitName n:xs)  vs fs = n : initialBodyArgs xs vs fs
-initialBodyArgs _                  _      _  = error "This should never happen" -- Lists are infinite
+initialBodyArgs _                  _      _  =
+    error "initialBodyArgs: This should never happen" -- Lists are infinite
 
 initialHead1 :: String -> [FnArg] -> [String] -> String
 initialHead1 fname args elts =
@@ -211,7 +240,8 @@ instance FnArgsInfo (G.HsType G.RdrName) (G.RdrName) where
   getFnName dflag style name = showOccName dflag style $ Gap.occName name
   getFnArgs (G.HsForAllTy _ _ _ (L _ iTy))  = getFnArgs iTy
   getFnArgs (G.HsParTy (L _ iTy))           = getFnArgs iTy
-  getFnArgs (G.HsFunTy (L _ lTy) (L _ rTy)) = (if fnarg lTy then FnArgFunction else FnArgNormal):getFnArgs rTy
+  getFnArgs (G.HsFunTy (L _ lTy) (L _ rTy)) =
+      (if fnarg lTy then FnArgFunction else FnArgNormal):getFnArgs rTy
     where fnarg ty = case ty of
               (G.HsForAllTy _ _ _ (L _ iTy)) -> fnarg iTy
               (G.HsParTy (L _ iTy))          -> fnarg iTy
@@ -224,7 +254,8 @@ instance FnArgsInfo (HE.Type HE.SrcSpanInfo) (HE.Name HE.SrcSpanInfo) where
   getFnName _ _ (HE.Symbol _ s) = s
   getFnArgs (HE.TyForall _ _ _ iTy) = getFnArgs iTy
   getFnArgs (HE.TyParen _ iTy)      = getFnArgs iTy
-  getFnArgs (HE.TyFun _ lTy rTy)    = (if fnarg lTy then FnArgFunction else FnArgNormal):getFnArgs rTy
+  getFnArgs (HE.TyFun _ lTy rTy)    =
+      (if fnarg lTy then FnArgFunction else FnArgNormal):getFnArgs rTy
     where fnarg ty = case ty of
               (HE.TyForall _ _ _ iTy) -> fnarg iTy
               (HE.TyParen _ iTy)      -> fnarg iTy
@@ -239,7 +270,10 @@ instance FnArgsInfo Type Id where
             maybe (if Ty.isPredTy lTy then getFnArgs' rTy else FnArgNormal:getFnArgs' rTy)
                   (\_ -> FnArgFunction:getFnArgs' rTy)
                   $ Ty.splitFunTy_maybe lTy
-          getFnArgs' ty | Just (_,iTy) <- Ty.splitForAllTy_maybe ty = getFnArgs' iTy
+
+          getFnArgs' ty | Just (_,iTy) <- Ty.splitForAllTy_maybe ty =
+              getFnArgs' iTy
+
           getFnArgs' _ = []
 
 -- Infinite supply of variable and function variable names
@@ -247,7 +281,9 @@ infiniteVars, infiniteFns :: [String]
 infiniteVars = infiniteSupply ["x","y","z","t","u","v","w"]
 infiniteFns  = infiniteSupply ["f","g","h"]
 infiniteSupply :: [String] -> [String]
-infiniteSupply initialSupply = initialSupply ++ concatMap (\n -> map (\v -> v ++ show n) initialSupply) ([1 .. ] :: [Integer])
+infiniteSupply initialSupply =
+    initialSupply ++ concatMap (\n -> map (\v -> v ++ show n) initialSupply)
+                               ([1 .. ] :: [Integer])
 
 -- Check whether a String is a symbol name
 isSymbolName :: String -> Bool
@@ -273,14 +309,15 @@ refine file lineNo colNo expr = ghandle handler body
         p <- G.parseModule modSum
         tcm@TypecheckedModule{tm_typechecked_source = tcs} <- G.typecheckModule p
         ety <- G.exprType expr
-        whenFound opt (findVar dflag style tcm tcs lineNo colNo) $ \(loc, name, rty, paren) ->
-          let eArgs = getFnArgs ety
-              rArgs = getFnArgs rty
-              diffArgs' = length eArgs - length rArgs
-              diffArgs  = if diffArgs' < 0 then 0 else diffArgs'
-              iArgs = take diffArgs eArgs
-              text = initialHead1 expr iArgs (infinitePrefixSupply name)
-           in (fourInts loc, doParen paren text)
+        whenFound opt (findVar dflag style tcm tcs lineNo colNo) $
+          \(loc, name, rty, paren) ->
+              let eArgs = getFnArgs ety
+                  rArgs = getFnArgs rty
+                  diffArgs' = length eArgs - length rArgs
+                  diffArgs  = if diffArgs' < 0 then 0 else diffArgs'
+                  iArgs = take diffArgs eArgs
+                  text = initialHead1 expr iArgs (infinitePrefixSupply name)
+               in (fourInts loc, doParen paren text)
 
     handler (SomeException _) = emptyResult =<< options
 
@@ -289,14 +326,16 @@ findVar :: GhcMonad m => DynFlags -> PprStyle
                       -> G.TypecheckedModule -> G.TypecheckedSource
                       -> Int -> Int -> m (Maybe (SrcSpan, String, Type, Bool))
 findVar dflag style tcm tcs lineNo colNo =
-  let lst = sortBy (cmp `on` G.getLoc) $ listifySpans tcs (lineNo, colNo) :: [G.LHsExpr Id]
+  let lst = sortBy (cmp `on` G.getLoc) $
+                listifySpans tcs (lineNo, colNo) :: [G.LHsExpr Id]
   in case lst of
       e@(L _ (G.HsVar i)):others ->
         do tyInfo <- Gap.getType tcm e
            let name = getFnName dflag style i
            if (name == "undefined" || head name == '_') && isJust tyInfo
               then let Just (s,t) = tyInfo
-                       b = case others of  -- If inside an App, we need parenthesis
+                       b = case others of  -- If inside an App, we need
+                                           -- parenthesis
                              [] -> False
                              L _ (G.HsApp (L _ a1) (L _ a2)):_ ->
                                isSearchedVar i a1 || isSearchedVar i a2
@@ -333,24 +372,29 @@ auto file lineNo colNo = ghandle handler body
         opt <- options
         modSum <- Gap.fileModSummary file
         p <- G.parseModule modSum
-        tcm@TypecheckedModule{tm_typechecked_source = tcs
-                             ,tm_checked_module_info = minfo} <- G.typecheckModule p
+        tcm@TypecheckedModule {
+                 tm_typechecked_source = tcs
+               , tm_checked_module_info = minfo
+               } <- G.typecheckModule p
         whenFound' opt (findVar dflag style tcm tcs lineNo colNo) $ \(loc, _name, rty, paren) -> do
           topLevel <- getEverythingInTopLevel minfo
           let (f,pats) = getPatsForVariable tcs (lineNo,colNo)
-              -- Remove self function to prevent recursion, and id to trim cases
+              -- Remove self function to prevent recursion, and id to trim
+              -- cases
               filterFn (n,_) = let funName = G.getOccString n
                                    recName = G.getOccString (G.getName f)
                                in funName `notElem` recName:notWantedFuns
               -- Find without using other functions in top-level
-              localBnds = M.unions $ map (\(L _ pat) -> getBindingsForPat pat) pats
+              localBnds = M.unions $
+                  map (\(L _ pat) -> getBindingsForPat pat) pats
               lbn = filter filterFn (M.toList localBnds)
           djinnsEmpty <- djinn True (Just minfo) lbn rty (Max 10) 100000
           let -- Find with the entire top-level
               almostEnv = M.toList $ M.union localBnds topLevel
               env = filter filterFn almostEnv
           djinns <- djinn True (Just minfo) env rty (Max 10) 100000
-          return (fourInts loc, map (doParen paren) $ nub (djinnsEmpty ++ djinns))
+          return ( fourInts loc
+                 , map (doParen paren) $ nub (djinnsEmpty ++ djinns))
 
     handler (SomeException _) = emptyResult =<< options
 
@@ -372,7 +416,8 @@ getEverythingInTopLevel m = do
 
 tyThingsToInfo :: [Ty.TyThing] -> M.Map G.Name Type
 tyThingsToInfo [] = M.empty
-tyThingsToInfo (G.AnId i : xs) = M.insert (G.getName i) (Ty.varType i) (tyThingsToInfo xs)
+tyThingsToInfo (G.AnId i : xs) =
+    M.insert (G.getName i) (Ty.varType i) (tyThingsToInfo xs)
 -- Getting information about constructors is not needed
 -- because they will be added by djinn-ghc when traversing types
 -- #if __GLASGOW_HASKELL__ >= 708
@@ -385,7 +430,8 @@ tyThingsToInfo (_:xs) = tyThingsToInfo xs
 -- Find the Id of the function and the pattern where the hole is located
 getPatsForVariable :: G.TypecheckedSource -> (Int,Int) -> (Id, [Ty.LPat Id])
 getPatsForVariable tcs (lineNo, colNo) =
-  let (L _ bnd:_) = sortBy (cmp `on` G.getLoc) $ listifySpans tcs (lineNo, colNo) :: [G.LHsBind Id]
+  let (L _ bnd:_) = sortBy (cmp `on` G.getLoc) $
+                      listifySpans tcs (lineNo, colNo) :: [G.LHsBind Id]
    in case bnd of
         G.PatBind { Ty.pat_lhs = L ploc pat }  -> case pat of
           Ty.ConPatIn (L _ i) _ -> (i, [L ploc pat])
@@ -405,25 +451,34 @@ getBindingsForPat :: Ty.Pat Id -> M.Map G.Name Type
 getBindingsForPat (Ty.VarPat i) = M.singleton (G.getName i) (Ty.varType i)
 getBindingsForPat (Ty.LazyPat (L _ l)) = getBindingsForPat l
 getBindingsForPat (Ty.BangPat (L _ b)) = getBindingsForPat b
-getBindingsForPat (Ty.AsPat (L _ a) (L _ i)) = M.insert (G.getName a) (Ty.varType a) (getBindingsForPat i)
+getBindingsForPat (Ty.AsPat (L _ a) (L _ i)) =
+    M.insert (G.getName a) (Ty.varType a) (getBindingsForPat i)
 #if __GLASGOW_HASKELL__ >= 708
-getBindingsForPat (Ty.ListPat  l _ _) = M.unions $ map (\(L _ i) -> getBindingsForPat i) l
+getBindingsForPat (Ty.ListPat  l _ _) =
+    M.unions $ map (\(L _ i) -> getBindingsForPat i) l
 #else
-getBindingsForPat (Ty.ListPat  l _)   = M.unions $ map (\(L _ i) -> getBindingsForPat i) l
+getBindingsForPat (Ty.ListPat  l _)   =
+    M.unions $ map (\(L _ i) -> getBindingsForPat i) l
 #endif
-getBindingsForPat (Ty.TuplePat l _ _) = M.unions $ map (\(L _ i) -> getBindingsForPat i) l
-getBindingsForPat (Ty.PArrPat  l _)   = M.unions $ map (\(L _ i) -> getBindingsForPat i) l
+getBindingsForPat (Ty.TuplePat l _ _) =
+    M.unions $ map (\(L _ i) -> getBindingsForPat i) l
+getBindingsForPat (Ty.PArrPat  l _)   =
+    M.unions $ map (\(L _ i) -> getBindingsForPat i) l
 getBindingsForPat (Ty.ViewPat _ (L _ i) _) = getBindingsForPat i
 getBindingsForPat (Ty.SigPatIn  (L _ i) _) = getBindingsForPat i
 getBindingsForPat (Ty.SigPatOut (L _ i) _) = getBindingsForPat i
-getBindingsForPat (Ty.ConPatIn (L _ i) d) = M.insert (G.getName i) (Ty.varType i) (getBindingsForRecPat d)
+getBindingsForPat (Ty.ConPatIn (L _ i) d) =
+    M.insert (G.getName i) (Ty.varType i) (getBindingsForRecPat d)
 getBindingsForPat (Ty.ConPatOut { Ty.pat_args = d }) = getBindingsForRecPat d
 getBindingsForPat _ = M.empty
 
 getBindingsForRecPat :: Ty.HsConPatDetails Id -> M.Map G.Name Type
-getBindingsForRecPat (Ty.PrefixCon args) = M.unions $ map (\(L _ i) -> getBindingsForPat i) args
-getBindingsForRecPat (Ty.InfixCon (L _ a1) (L _ a2)) = M.union (getBindingsForPat a1) (getBindingsForPat a2)
-getBindingsForRecPat (Ty.RecCon (Ty.HsRecFields { Ty.rec_flds = fields })) = getBindingsForRecFields fields
-  where getBindingsForRecFields [] = M.empty
-        getBindingsForRecFields (Ty.HsRecField { Ty.hsRecFieldArg = (L _ a) } : fs) =
-          M.union (getBindingsForPat a) (getBindingsForRecFields fs)
+getBindingsForRecPat (Ty.PrefixCon args) =
+    M.unions $ map (\(L _ i) -> getBindingsForPat i) args
+getBindingsForRecPat (Ty.InfixCon (L _ a1) (L _ a2)) =
+    M.union (getBindingsForPat a1) (getBindingsForPat a2)
+getBindingsForRecPat (Ty.RecCon (Ty.HsRecFields { Ty.rec_flds = fields })) =
+    getBindingsForRecFields fields
+ where getBindingsForRecFields [] = M.empty
+       getBindingsForRecFields (Ty.HsRecField {Ty.hsRecFieldArg = (L _ a)}:fs) =
+         M.union (getBindingsForPat a) (getBindingsForRecFields fs)
