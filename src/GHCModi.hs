@@ -320,4 +320,4 @@ browseIt set mdl = do
                else browse mdl
     return (ret, True, set)
   where
-    setDetailed opt = opt { detailed = True } 
+    setDetailed opt = opt { detailed = True }
