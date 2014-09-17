@@ -174,7 +174,7 @@ getSignatureFromHE file lineNo colNo = do
         dHeadTyVars (HE.DHParen _ r) = dHeadTyVars r
 #else
         dHeadTyVars :: HE.DeclHead l -> (HE.Name l, [HE.TyVarBind l])
-        dHeadTyVars (DHead _ n tys) = (n, tys)
+        dHeadTyVars (HE.DHead _ n tys) = (n, tys)
 #endif
 
 ----------------------------------------------------------------
