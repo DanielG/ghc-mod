@@ -28,7 +28,7 @@
 	       (< emacs-minor-version minor)))
       (error "ghc-mod requires at least Emacs %d.%d" major minor)))
 
-(defconst ghc-version "5.1.0.1")
+(defconst ghc-version "5.1.0.2")
 
 ;; (eval-when-compile
 ;;  (require 'haskell-mode))
