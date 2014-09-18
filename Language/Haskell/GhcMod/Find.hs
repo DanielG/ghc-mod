@@ -31,9 +31,8 @@ import Language.Haskell.GhcMod.Utils
 import Language.Haskell.GhcMod.Types
 import Name (getOccString)
 import System.Directory (doesDirectoryExist, getAppUserDataDirectory, doesFileExist, getModificationTime)
-import System.FilePath ((</>), takeDirectory)
+import System.FilePath ((</>))
 import System.IO
-import System.Environment
 
 #ifndef MIN_VERSION_containers
 #define MIN_VERSION_containers(x,y,z) 1
@@ -92,26 +91,6 @@ lookupSym sym (SymbolDb db) = fromMaybe [] $ M.lookup sym db
 -- | Loading a file and creates 'SymbolDb'.
 loadSymbolDb :: (IOish m, MonadError GhcModError m) => m SymbolDb
 loadSymbolDb = SymbolDb <$> readSymbolDb
-
--- | Returns the path to the currently running ghc-mod executable. With ghc<7.6
--- this is a guess but >=7.6 uses 'getExecutablePath'.
-ghcModExecutable :: IO FilePath
-#ifndef SPEC
-ghcModExecutable = do
-    dir <- getExecutablePath'
-    return $ dir </> "ghc-mod"
-#else
-ghcModExecutable = do _ <- getExecutablePath' -- get rid of unused warning when
-                                              -- compiling spec
-                      return "dist/build/ghc-mod/ghc-mod"
-#endif
- where
-    getExecutablePath' :: IO FilePath
-# if __GLASGOW_HASKELL__ >= 706
-    getExecutablePath' = takeDirectory <$> getExecutablePath
-# else
-    getExecutablePath' = return ""
-# endif
 
 readSymbolDb :: (IOish m, MonadError GhcModError m) => m (Map Symbol [ModuleString])
 readSymbolDb = do

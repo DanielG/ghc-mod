@@ -16,8 +16,9 @@ module Language.Haskell.GhcMod.Internal (
   , cabalDependPackages
   , cabalSourceDirs
   , cabalAllTargets
-  -- * GHC.Paths
+  -- * Various Paths
   , ghcLibDir
+  , ghcModExecutable
   -- * IO
   , getDynamicFlags
   -- * Targets
@@ -42,6 +43,8 @@ module Language.Haskell.GhcMod.Internal (
   , getCompilerMode
   , setCompilerMode
   , withOptions
+  -- * 'GhcModError'
+  , gmeDoc
   -- * 'GhcMonad' Choice
   , (||>)
   , goNext
@@ -52,11 +55,13 @@ import GHC.Paths (libdir)
 
 import Language.Haskell.GhcMod.CabalApi
 import Language.Haskell.GhcMod.DynFlags
+import Language.Haskell.GhcMod.Error
 import Language.Haskell.GhcMod.GHCChoice
 import Language.Haskell.GhcMod.Logger
 import Language.Haskell.GhcMod.Monad
 import Language.Haskell.GhcMod.Target
 import Language.Haskell.GhcMod.Types
+import Language.Haskell.GhcMod.Utils
 
 -- | Obtaining the directory for ghc system libraries.
 ghcLibDir :: FilePath

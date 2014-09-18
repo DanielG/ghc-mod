@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 module Language.Haskell.GhcMod.Utils where
 
 
@@ -6,6 +7,9 @@ import MonadUtils (MonadIO, liftIO)
 import System.Directory (getCurrentDirectory, setCurrentDirectory)
 import System.Exit (ExitCode(..))
 import System.Process (readProcessWithExitCode)
+#ifndef SPEC
+import System.Environment
+#endif
 
 -- dropWhileEnd is not provided prior to base 4.5.0.0.
 dropWhileEnd :: (a -> Bool) -> [a] -> [a]
@@ -42,3 +46,20 @@ withDirectory_ :: (MonadIO m, ExceptionMonad m) => FilePath -> m a -> m a
 withDirectory_ dir action =
     gbracket (liftIO getCurrentDirectory) (liftIO . setCurrentDirectory)
                 (\_ -> liftIO (setCurrentDirectory dir) >> action)
+
+-- | Returns the path to the currently running ghc-mod executable. With ghc<7.6
+-- this is a guess but >=7.6 uses 'getExecutablePath'.
+ghcModExecutable :: IO FilePath
+#ifndef SPEC
+ghcModExecutable = getExecutable'
+ where
+    getExecutable' :: IO FilePath
+# if __GLASGOW_HASKELL__ >= 706
+    getExecutable' = getExecutablePath
+# else
+    getExecutable' = getProgName
+# endif
+
+#else
+ghcModExecutable = return "dist/build/ghc-mod/ghc-mod"
+#endif

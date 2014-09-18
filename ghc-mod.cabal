@@ -106,6 +106,7 @@ Library
                       , io-choice
                       , monad-journal >= 0.4
                       , old-time
+                      , pretty
                       , process
                       , syb
                       , time
@@ -134,8 +135,11 @@ Executable ghc-mod
   Default-Extensions:   ConstraintKinds, FlexibleContexts
   HS-Source-Dirs:       src
   Build-Depends:        base >= 4.0 && < 5
+                      , data-default
                       , directory
                       , filepath
+                      , pretty
+                      , process
                       , mtl >= 2.0
                       , ghc
                       , ghc-mod
@@ -199,6 +203,7 @@ Test-Suite spec
                       , io-choice
                       , monad-journal >= 0.4
                       , old-time
+                      , pretty
                       , process
                       , syb
                       , time
