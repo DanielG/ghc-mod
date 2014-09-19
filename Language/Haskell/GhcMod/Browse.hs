@@ -61,13 +61,23 @@ splitPkgMdl pkgmdl = case break (==':') pkgmdl of
     (mdl,"")    -> (Nothing,mdl)
     (pkg,_:mdl) -> (Just pkg,mdl)
 
+-- Haskell 2010:
+-- small -> ascSmall | uniSmall | _
+-- ascSmall -> a | b | ... | z
+-- uniSmall -> any Unicode lowercase letter
+-- varid -> (small {small | large | digit | ' })
+
+isNotOp :: String -> Bool
+isNotOp (h:_) = isAlpha h || (h == '_')
+isNotOp _ = error "isNotOp"
+
 processExports :: IOish m => ModuleInfo -> GhcModT m [String]
 processExports minfo = do
   opt <- options
   let
     removeOps
       | operators opt = id
-      | otherwise = filter (isAlpha . head . getOccString)
+      | otherwise = filter (isNotOp . getOccString)
   mapM (showExport opt minfo) $ removeOps $ G.modInfoExports minfo
 
 showExport :: IOish m => Options -> ModuleInfo -> Name -> GhcModT m String
@@ -87,10 +97,10 @@ showExport opt minfo e = do
           typeName <- tyResult >>= showThing dflag
           (" :: " ++ typeName) `justIf` detailed opt
       | otherwise = return Nothing
-    formatOp nm@(n:_)
-      | isAlpha n = nm
-      | otherwise = "(" ++ nm ++ ")"
-    formatOp "" = error "formatOp"
+    formatOp nm
+      | null nm    = error "formatOp"
+      | isNotOp nm = nm
+      | otherwise  = "(" ++ nm ++ ")"
     inOtherModule :: IOish m => Name -> GhcModT m (Maybe TyThing)
     inOtherModule nm = G.getModuleInfo (G.nameModule nm) >> G.lookupGlobalName nm
     justIf :: a -> Bool -> Maybe a
