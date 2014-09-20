@@ -1,4 +1,4 @@
-{-# LANGUAGE CPP #-}
+{-# LANGUAGE CPP, BangPatterns #-}
 
 module Language.Haskell.GhcMod.Find
 #ifndef SPEC
@@ -10,6 +10,7 @@ module Language.Haskell.GhcMod.Find
   , dumpSymbol
   , findSymbol
   , lookupSym
+  , isOutdated
   )
 #endif
   where
@@ -52,8 +53,14 @@ import qualified Data.Map as M
 -- | Type of function and operation names.
 type Symbol = String
 -- | Database from 'Symbol' to \['ModuleString'\].
-newtype SymbolDb = SymbolDb (Map Symbol [ModuleString])
-    deriving (Show)
+data SymbolDb = SymbolDb {
+    table :: Map Symbol [ModuleString]
+  , packageCachePath :: FilePath
+  , symbolDbCachePath :: FilePath
+  } deriving (Show)
+
+isOutdated :: SymbolDb -> IO Bool
+isOutdated db = symbolDbCachePath db `isOlderThan` packageCachePath db
 
 ----------------------------------------------------------------
 
@@ -85,13 +92,27 @@ lookupSymbol :: IOish m => Symbol -> SymbolDb -> GhcModT m String
 lookupSymbol sym db = convert' $ lookupSym sym db
 
 lookupSym :: Symbol -> SymbolDb -> [ModuleString]
-lookupSym sym (SymbolDb db) = fromMaybe [] $ M.lookup sym db
+lookupSym sym db = fromMaybe [] $ M.lookup sym $ table db
 
 ---------------------------------------------------------------
 
 -- | Loading a file and creates 'SymbolDb'.
 loadSymbolDb :: (IOish m, MonadError GhcModError m) => m SymbolDb
-loadSymbolDb = SymbolDb <$> readSymbolDb
+loadSymbolDb = do
+    ghcMod <- liftIO ghcModExecutable
+    file <- chop <$> readProcess' ghcMod ["dumpsym"]
+    !db <- M.fromAscList . map conv . lines <$> liftIO (readFile file)
+    return $ SymbolDb {
+        table = db
+      , packageCachePath = takeDirectory file </> packageCache
+      , symbolDbCachePath = file
+      }
+  where
+    conv :: String -> (Symbol,[ModuleString])
+    conv = read
+    chop "" = ""
+    chop xs = init xs
+
 
 -- | Returns the path to the currently running ghc-mod executable. With ghc<7.6
 -- this is a guess but >=7.6 uses 'getExecutablePath'.
@@ -113,17 +134,6 @@ ghcModExecutable = do _ <- getExecutablePath' -- get rid of unused warning when
     getExecutablePath' = return ""
 # endif
 
-readSymbolDb :: (IOish m, MonadError GhcModError m) => m (Map Symbol [ModuleString])
-readSymbolDb = do
-    ghcMod <- liftIO ghcModExecutable
-    file <- chop <$> readProcess' ghcMod ["dumpsym"]
-    M.fromAscList . map conv . lines <$> liftIO (readFile file)
-  where
-    conv :: String -> (Symbol,[ModuleString])
-    conv = read
-    chop "" = ""
-    chop xs = init xs
-
 ----------------------------------------------------------------
 -- used 'ghc-mod dumpsym'
 
@@ -144,7 +154,7 @@ dumpSymbol = do
     let cache = dir </> symbolCache
         pkgdb = dir </> packageCache
 
-    create <- liftIO $ cache `isNewerThan` pkgdb
+    create <- liftIO $ cache `isOlderThan` pkgdb
     when create $ (liftIO . writeSymbolCache cache) =<< getSymbolTable
     return $ unlines [cache]
 
@@ -155,15 +165,15 @@ writeSymbolCache cache sm =
   void . withFile cache WriteMode $ \hdl ->
       mapM (hPrint hdl) sm
 
-isNewerThan :: FilePath -> FilePath -> IO Bool
-isNewerThan ref file = do
-    exist <- doesFileExist ref
+isOlderThan :: FilePath -> FilePath -> IO Bool
+isOlderThan cache file = do
+    exist <- doesFileExist cache
     if not exist then
         return True
       else do
-        tRef <- getModificationTime ref
+        tCache <- getModificationTime cache
         tFile <- getModificationTime file
-        return $ tRef <= tFile -- including equal just in case
+        return $ tCache <= tFile -- including equal just in case
 
 -- | Browsing all functions in all system/user modules.
 getSymbolTable :: IOish m => GhcModT m [(Symbol,[ModuleString])]

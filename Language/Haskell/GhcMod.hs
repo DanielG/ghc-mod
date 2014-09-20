@@ -46,6 +46,7 @@ module Language.Haskell.GhcMod (
   , dumpSymbol
   -- * SymbolDb
   , loadSymbolDb
+  , isOutdated
   ) where
 
 import Language.Haskell.GhcMod.Boot

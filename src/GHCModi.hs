@@ -25,6 +25,7 @@ import Control.Exception (SomeException(..), Exception)
 import qualified Control.Exception as E
 import Control.Monad (when)
 import CoreMonad (liftIO)
+import Data.IORef (IORef, newIORef, readIORef, writeIORef)
 import Data.List (intercalate)
 import Data.List.Split (splitOn)
 import Data.Typeable (Typeable)
@@ -35,8 +36,8 @@ import Paths_ghc_mod
 import System.Console.GetOpt
 import System.Directory (setCurrentDirectory)
 import System.Environment (getArgs)
-import System.IO (hFlush,stdout)
 import System.Exit (ExitCode, exitFailure)
+import System.IO (hFlush,stdout)
 
 import Utils
 
@@ -97,8 +98,9 @@ main = E.handle cmdHandler $
         let rootdir = cradleRootDir cradle0
 --            c = cradle0 { cradleCurrentDir = rootdir } TODO: ?????
         setCurrentDirectory rootdir
-        symDb <- async $ runGhcModT opt loadSymbolDb
-        (res, _) <- runGhcModT opt $ loop symDb
+        -- Asynchronous db loading starts here.
+        symdbreq <- newSymDbReq opt
+        (res, _) <- runGhcModT opt $ loop symdbreq
 
         case res of
           Right () -> return ()
@@ -129,13 +131,13 @@ replace needle replacement = intercalate replacement . splitOn needle
 ----------------------------------------------------------------
 
 loop :: IOish m => SymDbReq -> GhcModT m ()
-loop symDbReq = do
+loop symdbreq = do
     cmdArg <- liftIO getLine
     let (cmd,arg') = break (== ' ') cmdArg
         arg = dropWhile (== ' ') arg'
     (ret,ok) <- case cmd of
         "check"  -> checkStx arg
-        "find"   -> findSym arg symDbReq
+        "find"   -> findSym arg symdbreq
         "lint"   -> lintStx arg
         "info"   -> showInfo arg
         "type"   -> showType arg
@@ -154,7 +156,7 @@ loop symDbReq = do
       else do
         liftIO $ putStrLn $ notGood ret
     liftIO $ hFlush stdout
-    when ok $ loop symDbReq
+    when ok $ loop symdbreq
 
 ----------------------------------------------------------------
 
@@ -167,12 +169,38 @@ checkStx file = do
 
 ----------------------------------------------------------------
 
-type SymDbReq = Async (Either GhcModError SymbolDb, GhcModLog)
+type SymDbReqAction = (Either GhcModError SymbolDb, GhcModLog)
+data SymDbReq = SymDbReq (IORef (Async SymDbReqAction)) (IO SymDbReqAction)
 
-findSym :: IOish m => String -> SymDbReq
-        -> GhcModT m (String, Bool)
-findSym sym dbReq = do
-    db <- hoistGhcModT =<< liftIO (wait dbReq)
+newSymDbReq :: Options -> IO SymDbReq
+newSymDbReq opt = do
+    let act = runGhcModT opt loadSymbolDb
+    req <- async act
+    ref <- newIORef req
+    return $ SymDbReq ref act
+
+getDb :: IOish m => SymDbReq -> GhcModT m SymbolDb
+getDb (SymDbReq ref _) = do
+    req <- liftIO $ readIORef ref
+    -- 'wait' really waits for the asynchronous action at the fist time.
+    -- Then it reads a cached value from the second time.
+    hoistGhcModT =<< liftIO (wait req)
+
+checkDb :: IOish m => SymDbReq -> SymbolDb -> GhcModT m SymbolDb
+checkDb (SymDbReq ref act) db = do
+    outdated <- liftIO $ isOutdated db
+    if outdated then do
+        -- async and wait here is unnecessary because this is essentially
+        -- synchronous. But Async can be used a cache.
+        req <- liftIO $ async act
+        liftIO $ writeIORef ref req
+        hoistGhcModT =<< liftIO (wait req)
+      else
+        return db
+
+findSym :: IOish m => Symbol -> SymDbReq -> GhcModT m (String, Bool)
+findSym sym symdbreq = do
+    db <- getDb symdbreq >>= checkDb symdbreq
     ret <- lookupSymbol sym db
     return (ret, True)
 
