@@ -41,8 +41,9 @@ import System.Directory (setCurrentDirectory)
 import System.Environment (getArgs)
 import System.IO (hFlush,stdout)
 import System.Exit (ExitCode, exitFailure)
-
 import Utils
+import Data.Time.Clock (getCurrentTime)
+import System.Directory (getCurrentDirectory, getDirectoryContents, getModificationTime)
 
 ----------------------------------------------------------------
 
@@ -102,7 +103,7 @@ main = E.handle cmdHandler $
 --            c = cradle0 { cradleCurrentDir = rootdir } TODO: ?????
         setCurrentDirectory rootdir
         symDb <- async $ runGhcModT opt loadSymbolDb
-        (res, _) <- runGhcModT opt $ loop S.empty symDb
+        (res, _) <- runGhcModT opt $ loop S.empty symDb =<< liftIO staleCabal
 
         case res of
           Right () -> return ()
@@ -132,11 +133,29 @@ replace needle replacement = intercalate replacement . splitOn needle
 
 ----------------------------------------------------------------
 
-loop :: IOish m => Set FilePath -> SymDbReq -> GhcModT m ()
-loop set symDbReq = do
+-- huge hack, must be a better way
+
+staleCabal :: IO (IO Bool)
+staleCabal = do
+  startTime <- getCurrentTime
+  return $ do
+    files <- filter ((=="labac.") . take 6 . reverse)
+             <$> (getDirectoryContents =<< getCurrentDirectory)
+    case files of
+      (cab:_) -> (> startTime) <$> getModificationTime cab
+      _ -> error "no cabal file in directory?"
+
+
+----------------------------------------------------------------
+loop :: IOish m => Set FilePath -> SymDbReq -> IO Bool -> GhcModT m ()
+loop set symDbReq stale = do
     cmdArg <- liftIO getLine
-    let (cmd,arg') = break (== ' ') cmdArg
+    let (cmd',arg') = break (== ' ') cmdArg
         arg = dropWhile (== ' ') arg'
+    cmd <- liftIO $ stale
+           >>= \x -> return $ if x
+                              then "quit"
+                              else cmd'
     (ret,ok,set') <- case cmd of
         "check"  -> checkStx set arg
         "find"   -> findSym set arg symDbReq
@@ -158,7 +177,7 @@ loop set symDbReq = do
       else do
         liftIO $ putStrLn $ notGood ret
     liftIO $ hFlush stdout
-    when ok $ loop set' symDbReq
+    when ok $ loop set' symDbReq stale
 
 ----------------------------------------------------------------
 

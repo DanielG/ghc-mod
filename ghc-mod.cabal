@@ -160,6 +160,7 @@ Executable ghc-modi
                       , split
                       , ghc
                       , ghc-mod
+                      , time
 
 Test-Suite doctest
   Type:                 exitcode-stdio-1.0
