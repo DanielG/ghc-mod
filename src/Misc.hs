@@ -135,8 +135,12 @@ build = do
      , std_out = UseHandle nul
      , std_err = UseHandle nul
      , close_fds = False
-     , create_group = True
-     , delegate_ctlc = False
+#if __GLASGOW_HASKELL__ >= 702
+      , create_group = True
+#endif
+#if __GLASGOW_HASKELL__ >= 707
+      , delegate_ctlc = False
+#endif
      }
 
 autogen :: String
