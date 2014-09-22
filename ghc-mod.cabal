@@ -154,6 +154,7 @@ Executable ghc-modi
                       , directory
                       , filepath
                       , split
+                      , time
                       , ghc
                       , ghc-mod
 

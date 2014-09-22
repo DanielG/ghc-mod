@@ -28,13 +28,14 @@ import CoreMonad (liftIO)
 import Data.IORef (IORef, newIORef, readIORef, writeIORef)
 import Data.List (intercalate)
 import Data.List.Split (splitOn)
+import Data.Time (UTCTime)
 import Data.Typeable (Typeable)
 import Data.Version (showVersion)
 import Language.Haskell.GhcMod
 import Language.Haskell.GhcMod.Internal
 import Paths_ghc_mod
 import System.Console.GetOpt
-import System.Directory (setCurrentDirectory)
+import System.Directory (getModificationTime, setCurrentDirectory)
 import System.Environment (getArgs)
 import System.Exit (ExitCode, exitFailure)
 import System.IO (hFlush,stdout)
@@ -44,6 +45,16 @@ import Utils
 ----------------------------------------------------------------
 
 type Logger = IO String
+
+data World = World {
+    worldCabalFileModificationTime :: Maybe UTCTime
+  } deriving (Show, Eq)
+
+type UnGetLine = IORef (Maybe String)
+
+data Restart = Restart deriving (Show, Typeable)
+
+instance Exception Restart
 
 ----------------------------------------------------------------
 
@@ -93,26 +104,37 @@ main = E.handle cmdHandler $
     cmdHandler (CmdArg _) = putStr $ usageInfo usage argspec
     go (_,"help":_) = putStr $ usageInfo usage argspec
     go (_,"version":_) = putStr progVersion
-    go (opt,_) = flip E.catches handlers $ do
-        cradle0 <- findCradle
-        let rootdir = cradleRootDir cradle0
---            c = cradle0 { cradleCurrentDir = rootdir } TODO: ?????
-        setCurrentDirectory rootdir
-        -- Asynchronous db loading starts here.
-        symdbreq <- newSymDbReq opt
-        (res, _) <- runGhcModT opt $ loop symdbreq
+    go (opt,_) = emptyNewUnGetLine >>= run opt
 
-        case res of
-          Right () -> return ()
-          Left (GMECabalConfigure msg) -> do
-              putStrLn $ notGood $ "cabal configure failed: " ++ show msg
-              exitFailure
-          Left e -> bug $ show e
-      where
-        -- this is just in case.
-        -- If an error is caught here, it is a bug of GhcMod library.
-        handlers = [ E.Handler (\(_ :: ExitCode) -> return ())
-                   , E.Handler (\(SomeException e) -> bug $ show e) ]
+run :: Options -> UnGetLine -> IO ()
+run opt ref = flip E.catches handlers $ do
+    cradle0 <- findCradle
+    let rootdir = cradleRootDir cradle0
+--        c = cradle0 { cradleCurrentDir = rootdir } TODO: ?????
+    setCurrentDirectory rootdir
+    -- Asynchronous db loading starts here.
+    symdbreq <- newSymDbReq opt
+    (res, _) <- runGhcModT opt $ getCurrentWorld >>= loop symdbreq ref
+    case res of
+        Right () -> return ()
+        Left (GMECabalConfigure msg) -> do
+            putStrLn $ notGood $ "cabal configure failed: " ++ show msg
+            exitFailure
+        Left e -> bug $ show e
+  where
+    -- this is just in case.
+    -- If an error is caught here, it is a bug of GhcMod library.
+    handlers = [ E.Handler (\(_ :: ExitCode) -> return ())
+               , E.Handler (\(_ :: Restart) -> run opt ref)
+               , E.Handler (\(SomeException e) -> bug $ show e) ]
+
+getCurrentWorld :: IOish m => GhcModT m World
+getCurrentWorld = do
+    crdl <- cradle
+    mmt <- case cradleCabalFile crdl of
+        Just file -> liftIO $ Just <$> getModificationTime file
+        Nothing   -> return Nothing
+    return $ World mmt
 
 bug :: String -> IO ()
 bug msg = do
@@ -130,9 +152,30 @@ replace needle replacement = intercalate replacement . splitOn needle
 
 ----------------------------------------------------------------
 
-loop :: IOish m => SymDbReq -> GhcModT m ()
-loop symdbreq = do
-    cmdArg <- liftIO getLine
+emptyNewUnGetLine :: IO UnGetLine
+emptyNewUnGetLine = newIORef Nothing
+
+ungetCommand :: IORef (Maybe a) -> a -> IO ()
+ungetCommand ref cmd = writeIORef ref (Just cmd)
+
+getCommand :: UnGetLine -> IO String
+getCommand ref = do
+    mcmd <- readIORef ref
+    case mcmd of
+        Nothing -> getLine
+        Just cmd -> do
+            writeIORef ref Nothing
+            return cmd
+
+loop :: IOish m => SymDbReq -> UnGetLine -> World -> GhcModT m ()
+loop symdbreq ref world = do
+    -- blocking
+    cmdArg <- liftIO $ getCommand ref
+    -- after blocking, we need to see if the world has changed.
+    world' <- getCurrentWorld
+    when (world /= world') $ do
+        liftIO $ ungetCommand ref cmdArg
+        E.throw Restart
     let (cmd,arg') = break (== ' ') cmdArg
         arg = dropWhile (== ' ') arg'
     (ret,ok) <- case cmd of
@@ -156,7 +199,7 @@ loop symdbreq = do
       else do
         liftIO $ putStrLn $ notGood ret
     liftIO $ hFlush stdout
-    when ok $ loop symdbreq
+    when ok $ loop symdbreq ref world
 
 ----------------------------------------------------------------
 
