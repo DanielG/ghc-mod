@@ -20,41 +20,23 @@ module Main where
 
 import Config (cProjectVersion)
 import Control.Applicative ((<$>))
-import Control.Concurrent.Async (Async, async, wait)
-import Control.Exception (SomeException(..), Exception)
+import Control.Exception (SomeException(..))
 import qualified Control.Exception as E
 import Control.Monad (when)
 import CoreMonad (liftIO)
-import Data.IORef (IORef, newIORef, readIORef, writeIORef)
 import Data.List (intercalate)
 import Data.List.Split (splitOn)
-import Data.Time (UTCTime)
-import Data.Typeable (Typeable)
 import Data.Version (showVersion)
 import Language.Haskell.GhcMod
-import Language.Haskell.GhcMod.Internal
 import Paths_ghc_mod
 import System.Console.GetOpt
-import System.Directory (getModificationTime, setCurrentDirectory)
+import System.Directory (setCurrentDirectory)
 import System.Environment (getArgs)
 import System.Exit (ExitCode, exitFailure)
 import System.IO (hFlush,stdout)
 
+import Misc
 import Utils
-
-----------------------------------------------------------------
-
-type Logger = IO String
-
-data World = World {
-    worldCabalFileModificationTime :: Maybe UTCTime
-  } deriving (Show, Eq)
-
-type UnGetLine = IORef (Maybe String)
-
-data Restart = Restart deriving (Show, Typeable)
-
-instance Exception Restart
 
 ----------------------------------------------------------------
 
@@ -84,13 +66,6 @@ parseArgs spec argv
     = case getOpt Permute spec argv of
         (o,n,[]  ) -> (foldr id defaultOptions o, n)
         (_,_,errs) -> E.throw (CmdArg errs)
-
-----------------------------------------------------------------
-
-data GHCModiError = CmdArg [String]
-                  deriving (Show, Typeable)
-
-instance Exception GHCModiError
 
 ----------------------------------------------------------------
 
@@ -128,14 +103,6 @@ run opt ref = flip E.catches handlers $ do
                , E.Handler (\(_ :: Restart) -> run opt ref)
                , E.Handler (\(SomeException e) -> bug $ show e) ]
 
-getCurrentWorld :: IOish m => GhcModT m World
-getCurrentWorld = do
-    crdl <- cradle
-    mmt <- case cradleCabalFile crdl of
-        Just file -> liftIO $ Just <$> getModificationTime file
-        Nothing   -> return Nothing
-    return $ World mmt
-
 bug :: String -> IO ()
 bug msg = do
   putStrLn $ notGood $ "BUG: " ++ msg
@@ -152,28 +119,13 @@ replace needle replacement = intercalate replacement . splitOn needle
 
 ----------------------------------------------------------------
 
-emptyNewUnGetLine :: IO UnGetLine
-emptyNewUnGetLine = newIORef Nothing
-
-ungetCommand :: IORef (Maybe a) -> a -> IO ()
-ungetCommand ref cmd = writeIORef ref (Just cmd)
-
-getCommand :: UnGetLine -> IO String
-getCommand ref = do
-    mcmd <- readIORef ref
-    case mcmd of
-        Nothing -> getLine
-        Just cmd -> do
-            writeIORef ref Nothing
-            return cmd
-
 loop :: IOish m => SymDbReq -> UnGetLine -> World -> GhcModT m ()
 loop symdbreq ref world = do
     -- blocking
     cmdArg <- liftIO $ getCommand ref
     -- after blocking, we need to see if the world has changed.
-    world' <- getCurrentWorld
-    when (world /= world') $ do
+    changed <- isWorldChanged world
+    when changed $ do
         liftIO $ ungetCommand ref cmdArg
         E.throw Restart
     let (cmd,arg') = break (== ' ') cmdArg
@@ -211,35 +163,6 @@ checkStx file = do
         Left ret  -> return (ret, True)
 
 ----------------------------------------------------------------
-
-type SymDbReqAction = (Either GhcModError SymbolDb, GhcModLog)
-data SymDbReq = SymDbReq (IORef (Async SymDbReqAction)) (IO SymDbReqAction)
-
-newSymDbReq :: Options -> IO SymDbReq
-newSymDbReq opt = do
-    let act = runGhcModT opt loadSymbolDb
-    req <- async act
-    ref <- newIORef req
-    return $ SymDbReq ref act
-
-getDb :: IOish m => SymDbReq -> GhcModT m SymbolDb
-getDb (SymDbReq ref _) = do
-    req <- liftIO $ readIORef ref
-    -- 'wait' really waits for the asynchronous action at the fist time.
-    -- Then it reads a cached value from the second time.
-    hoistGhcModT =<< liftIO (wait req)
-
-checkDb :: IOish m => SymDbReq -> SymbolDb -> GhcModT m SymbolDb
-checkDb (SymDbReq ref act) db = do
-    outdated <- liftIO $ isOutdated db
-    if outdated then do
-        -- async and wait here is unnecessary because this is essentially
-        -- synchronous. But Async can be used a cache.
-        req <- liftIO $ async act
-        liftIO $ writeIORef ref req
-        hoistGhcModT =<< liftIO (wait req)
-      else
-        return db
 
 findSym :: IOish m => Symbol -> SymDbReq -> GhcModT m (String, Bool)
 findSym sym symdbreq = do
