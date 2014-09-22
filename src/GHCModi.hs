@@ -87,6 +87,7 @@ run opt ref = flip E.catches handlers $ do
     let rootdir = cradleRootDir cradle0
 --        c = cradle0 { cradleCurrentDir = rootdir } TODO: ?????
     setCurrentDirectory rootdir
+    prepareAutogen
     -- Asynchronous db loading starts here.
     symdbreq <- newSymDbReq opt
     (res, _) <- runGhcModT opt $ getCurrentWorld >>= loop symdbreq ref
@@ -128,6 +129,7 @@ loop symdbreq ref world = do
     when changed $ do
         liftIO $ ungetCommand ref cmdArg
         E.throw Restart
+    liftIO $ prepareAutogen
     let (cmd,arg') = break (== ' ') cmdArg
         arg = dropWhile (== ' ') arg'
     (ret,ok) <- case cmd of

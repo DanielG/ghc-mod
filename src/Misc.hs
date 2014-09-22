@@ -1,4 +1,4 @@
-{-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE DeriveDataTypeable, CPP #-}
 
 module Misc (
     GHCModiError(..)
@@ -14,18 +14,25 @@ module Misc (
   , newSymDbReq
   , getDb
   , checkDb
+  , prepareAutogen
   ) where
 
 import Control.Applicative ((<$>))
+import Control.Concurrent (threadDelay)
 import Control.Concurrent.Async (Async, async, wait)
 import Control.Exception (Exception)
+import Control.Monad (unless)
 import CoreMonad (liftIO)
 import Data.IORef (IORef, newIORef, readIORef, writeIORef)
+import Data.List (isPrefixOf)
 import Data.Time (UTCTime)
 import Data.Typeable (Typeable)
+import System.Directory (getModificationTime, doesDirectoryExist, getDirectoryContents)
+import System.Process
+import System.IO (openBinaryFile, IOMode(..))
+
 import Language.Haskell.GhcMod
 import Language.Haskell.GhcMod.Internal
-import System.Directory (getModificationTime)
 
 ----------------------------------------------------------------
 
@@ -107,3 +114,59 @@ checkDb (SymDbReq ref act) db = do
         hoistGhcModT =<< liftIO (wait req)
       else
         return db
+
+----------------------------------------------------------------
+
+build :: IO ProcessHandle
+build = do
+#ifdef WINDOWS
+    nul <- openBinaryFile "NUL" AppendMode
+#else
+    nul <- openBinaryFile "/dev/null" AppendMode
+#endif
+    (_, _, _, hdl) <- createProcess $ pro nul
+    return hdl
+ where
+   pro nul = CreateProcess {
+       cmdspec = RawCommand "cabal" ["build"]
+     , cwd = Nothing
+     , env = Nothing
+     , std_in = Inherit
+     , std_out = UseHandle nul
+     , std_err = UseHandle nul
+     , close_fds = False
+     , create_group = True
+     , delegate_ctlc = False
+     }
+
+autogen :: String
+autogen = "dist/build/autogen"
+
+isAutogenPrepared :: IO Bool
+isAutogenPrepared = do
+    exist <- doesDirectoryExist autogen
+    if exist then do
+        files <- filter ("." `isPrefixOf`) <$> getDirectoryContents autogen
+        if length files >= 2 then
+            return True
+          else
+            return False
+      else
+        return False
+
+watch :: Int -> ProcessHandle -> IO ()
+watch 0 _ = return ()
+watch n hdl = do
+    prepared <- isAutogenPrepared
+    if prepared then
+        interruptProcessGroupOf hdl
+      else do
+        threadDelay 100000
+        watch (n - 1) hdl
+
+prepareAutogen :: IO ()
+prepareAutogen = do
+    prepared <- isAutogenPrepared
+    unless prepared $ do
+        hdl <- build
+        watch 30 hdl
