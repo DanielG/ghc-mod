@@ -30,9 +30,14 @@ checkSyntax files = either id id <$> check files
 check :: IOish m
       => [FilePath]  -- ^ The target files.
       -> GhcModT m (Either String String)
+{-
 check fileNames = overrideGhcUserOptions $ \ghcOpts -> do
   withLogger (setAllWarningFlags . setNoMaxRelevantBindings . Gap.setWarnTypedHoles . Gap.setDeferTypeErrors) $ do
     _ <- G.setSessionDynFlags =<< addCmdOpts ghcOpts =<< G.getSessionDynFlags
+    setTargetFiles fileNames
+-}
+check fileNames =
+  withLogger (setAllWarningFlags . setNoMaxRelevantBindings) $
     setTargetFiles fileNames
 
 ----------------------------------------------------------------
