@@ -28,6 +28,7 @@ import Data.List (intercalate)
 import Data.List.Split (splitOn)
 import Data.Version (showVersion)
 import Language.Haskell.GhcMod
+import Language.Haskell.GhcMod.Internal (cradle)
 import Paths_ghc_mod
 import System.Console.GetOpt
 import System.Directory (setCurrentDirectory)
@@ -87,7 +88,7 @@ run opt ref = flip E.catches handlers $ do
     let rootdir = cradleRootDir cradle0
 --        c = cradle0 { cradleCurrentDir = rootdir } TODO: ?????
     setCurrentDirectory rootdir
-    prepareAutogen
+    prepareAutogen cradle0
     -- Asynchronous db loading starts here.
     symdbreq <- newSymDbReq opt
     (res, _) <- runGhcModT opt $ getCurrentWorld >>= loop symdbreq ref
@@ -129,7 +130,7 @@ loop symdbreq ref world = do
     when changed $ do
         liftIO $ ungetCommand ref cmdArg
         E.throw Restart
-    liftIO $ prepareAutogen
+    cradle >>= liftIO . prepareAutogen
     let (cmd,arg') = break (== ' ') cmdArg
         arg = dropWhile (== ' ') arg'
     (ret,ok) <- case cmd of

@@ -21,15 +21,16 @@ import Control.Applicative ((<$>))
 import Control.Concurrent (threadDelay)
 import Control.Concurrent.Async (Async, async, wait)
 import Control.Exception (Exception)
-import Control.Monad (unless)
+import Control.Monad (unless, when)
 import CoreMonad (liftIO)
 import Data.IORef (IORef, newIORef, readIORef, writeIORef)
 import Data.List (isPrefixOf)
+import Data.Maybe (isJust)
 import Data.Time (UTCTime)
 import Data.Typeable (Typeable)
 import System.Directory (getModificationTime, doesDirectoryExist, getDirectoryContents)
-import System.Process
 import System.IO (openBinaryFile, IOMode(..))
+import System.Process
 
 import Language.Haskell.GhcMod
 import Language.Haskell.GhcMod.Internal
@@ -168,8 +169,8 @@ watch n hdl = do
         threadDelay 100000
         watch (n - 1) hdl
 
-prepareAutogen :: IO ()
-prepareAutogen = do
+prepareAutogen :: Cradle -> IO ()
+prepareAutogen crdl = when (isJust $ cradleCabalFile crdl) $ do
     prepared <- isAutogenPrepared
     unless prepared $ do
         hdl <- build
