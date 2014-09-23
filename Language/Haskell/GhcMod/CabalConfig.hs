@@ -24,7 +24,7 @@ import qualified Language.Haskell.GhcMod.Cabal21 as C21
 #endif
 
 import Control.Applicative ((<$>))
-import Control.Monad (mplus)
+import Control.Monad (void, mplus)
 #if MIN_VERSION_mtl(2,2,1)
 import Control.Monad.Except ()
 #else
@@ -61,8 +61,7 @@ getConfig cradle = liftIO (readFile file) `tryFix` \_ ->
    prjDir = cradleRootDir cradle
 
    configure :: (IOish m, MonadError GhcModError m) => m ()
-   configure =
-       withDirectory_ prjDir $ readProcess' "cabal" ["configure"] >> return ()
+   configure = withDirectory_ prjDir $ void $ readProcess' "cabal" ["configure"]
 
 
 setupConfigFile :: Cradle -> FilePath
