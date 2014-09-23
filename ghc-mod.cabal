@@ -156,6 +156,7 @@ Executable ghc-modi
                       , containers
                       , directory
                       , filepath
+                      , old-time
                       , process
                       , split
                       , time
