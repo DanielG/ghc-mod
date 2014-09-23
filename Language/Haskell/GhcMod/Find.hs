@@ -15,23 +15,20 @@ module Language.Haskell.GhcMod.Find
 #endif
   where
 
-import Config (cProjectVersion,cTargetPlatformString)
 import Control.Applicative ((<$>))
 import Control.Monad (when, void)
 import Control.Monad.Error.Class
 import Data.Function (on)
 import Data.List (groupBy, sort)
-import Data.List.Split (splitOn)
 import Data.Maybe (fromMaybe)
-import DynFlags (DynFlags(..), systemPackageConfig)
-import Exception (handleIO)
 import qualified GHC as G
 import Language.Haskell.GhcMod.Convert
+import Language.Haskell.GhcMod.GhcPkg
 import Language.Haskell.GhcMod.Monad
-import Language.Haskell.GhcMod.Utils
 import Language.Haskell.GhcMod.Types
+import Language.Haskell.GhcMod.Utils
 import Name (getOccString)
-import System.Directory (doesDirectoryExist, getAppUserDataDirectory, doesFileExist, getModificationTime)
+import System.Directory (doesFileExist, getModificationTime)
 import System.FilePath ((</>), takeDirectory)
 import System.IO
 import System.Environment
@@ -72,12 +69,6 @@ symbolCacheVersion = 0
 -- | Filename of the symbol table cache file.
 symbolCache :: String
 symbolCache = "ghc-mod-"++ show symbolCacheVersion ++".cache"
-
-packageCache :: String
-packageCache = "package.cache"
-
-packageConfDir :: String
-packageConfDir = "package.conf.d"
 
 ----------------------------------------------------------------
 
@@ -137,20 +128,15 @@ ghcModExecutable = do _ <- getExecutablePath' -- get rid of unused warning when
 ----------------------------------------------------------------
 -- used 'ghc-mod dumpsym'
 
-getSymbolCachePath :: IOish m => GhcModT m FilePath
-getSymbolCachePath = do
-    u:_ <- filter (/= GlobalDb) . cradlePkgDbStack <$> cradle
-    Just db <- (liftIO . flip resolvePackageDb u) =<< G.getSessionDynFlags
-    return db
-  `catchError` const (fail "Couldn't find non-global package database for symbol cache")
-
 -- | Dumping a set of ('Symbol',\['ModuleString'\]) to a file
 --   if the file does not exist or is invalid.
 --   The file name is printed.
 
 dumpSymbol :: IOish m => GhcModT m String
 dumpSymbol = do
-    dir <- getSymbolCachePath
+    crdl <- cradle
+    dflags <- G.getSessionDynFlags
+    dir <- liftIO $ getPackageCachePath crdl dflags
     let cache = dir </> symbolCache
         pkgdb = dir </> packageCache
 
@@ -202,16 +188,3 @@ collectModules :: [(Symbol,ModuleString)]
 collectModules = map tieup . groupBy ((==) `on` fst) . sort
   where
     tieup x = (head (map fst x), map snd x)
-
---- Copied from ghc module `Packages' unfortunately it's not exported :/
-resolvePackageDb :: DynFlags -> GhcPkgDb -> IO (Maybe FilePath)
-resolvePackageDb df GlobalDb         = return $ Just (systemPackageConfig df)
-resolvePackageDb _  (PackageDb name) = return $ Just name
-resolvePackageDb _  UserDb           = handleIO (\_ -> return Nothing) $ do
-    appdir <- getAppUserDataDirectory "ghc"
-    let dir = appdir </> (target_arch ++ '-':target_os ++ '-':cProjectVersion)
-        pkgconf = dir </> packageConfDir
-    exist <- doesDirectoryExist pkgconf
-    return $ if exist then Just pkgconf else Nothing
-  where
-    [target_arch,_,target_os] = splitOn "-" cTargetPlatformString

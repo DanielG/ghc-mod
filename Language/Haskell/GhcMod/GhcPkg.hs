@@ -8,9 +8,12 @@ module Language.Haskell.GhcMod.GhcPkg (
   , fromInstalledPackageId'
   , getSandboxDb
   , getPackageDbStack
+  , getPackageCachePath
+  , packageCache
+  , packageConfDir
   ) where
 
-import Config (cProjectVersionInt)
+import Config (cProjectVersion, cTargetPlatformString, cProjectVersionInt)
 import Control.Applicative ((<$>))
 import Control.Exception (SomeException(..))
 import qualified Control.Exception as E
@@ -18,8 +21,11 @@ import Data.Char (isSpace)
 import Data.List (isPrefixOf, intercalate)
 import Data.List.Split (splitOn)
 import Distribution.Package (InstalledPackageId(..))
+import DynFlags (DynFlags(..), systemPackageConfig)
+import Exception (handleIO)
 import Language.Haskell.GhcMod.Types
 import Language.Haskell.GhcMod.Utils
+import System.Directory (doesDirectoryExist, getAppUserDataDirectory)
 import System.FilePath ((</>))
 
 ghcVersion :: Int
@@ -46,6 +52,8 @@ getSandboxDbDir sconf = do
     parse = head . filter (key `isPrefixOf`) . lines
     extractValue = dropWhileEnd isSpace . dropWhile isSpace . drop keyLen
 
+----------------------------------------------------------------
+
 getPackageDbStack :: FilePath -- ^ Project Directory (where the
                                  -- cabal.sandbox.config file would be if it
                                  -- exists)
@@ -53,6 +61,8 @@ getPackageDbStack :: FilePath -- ^ Project Directory (where the
 getPackageDbStack cdir =
     (getSandboxDb cdir >>= \db -> return [GlobalDb, PackageDb db])
       `E.catch` \(_ :: SomeException) -> return [GlobalDb, UserDb]
+
+----------------------------------------------------------------
 
 fromInstalledPackageId' :: InstalledPackageId -> Maybe Package
 fromInstalledPackageId' pid = let
@@ -68,6 +78,8 @@ fromInstalledPackageId pid =
       Nothing -> error $
         "fromInstalledPackageId: `"++show pid++"' is not a valid package-id"
 
+----------------------------------------------------------------
+
 -- | Get options needed to add a list of package dbs to ghc-pkg's db stack
 ghcPkgDbStackOpts :: [GhcPkgDb] -- ^ Package db stack
                   -> [String]
@@ -77,6 +89,8 @@ ghcPkgDbStackOpts dbs = ghcPkgDbOpt `concatMap` dbs
 ghcDbStackOpts :: [GhcPkgDb] -- ^ Package db stack
                -> [String]
 ghcDbStackOpts dbs = ghcDbOpt `concatMap` dbs
+
+----------------------------------------------------------------
 
 ghcPkgDbOpt :: GhcPkgDb -> [String]
 ghcPkgDbOpt GlobalDb = ["--global"]
@@ -95,3 +109,31 @@ ghcDbOpt UserDb
 ghcDbOpt (PackageDb pkgDb)
   | ghcVersion < 706 = ["-no-user-package-conf", "-package-conf", pkgDb]
   | otherwise        = ["-no-user-package-db",   "-package-db",   pkgDb]
+
+----------------------------------------------------------------
+
+packageCache :: String
+packageCache = "package.cache"
+
+packageConfDir :: String
+packageConfDir = "package.conf.d"
+
+-- fixme: error handling
+getPackageCachePath :: Cradle -> DynFlags -> IO FilePath
+getPackageCachePath crdl df = do
+    let u:_ = filter (/= GlobalDb) $ cradlePkgDbStack crdl
+    Just db <- resolvePath df u
+    return db
+
+--- Copied from ghc module `Packages' unfortunately it's not exported :/
+resolvePath :: DynFlags -> GhcPkgDb -> IO (Maybe FilePath)
+resolvePath df GlobalDb         = return $ Just (systemPackageConfig df)
+resolvePath _  (PackageDb name) = return $ Just name
+resolvePath _  UserDb           = handleIO (\_ -> return Nothing) $ do
+    appdir <- getAppUserDataDirectory "ghc"
+    let dir = appdir </> (target_arch ++ '-':target_os ++ '-':cProjectVersion)
+        pkgconf = dir </> packageConfDir
+    exist <- doesDirectoryExist pkgconf
+    return $ if exist then Just pkgconf else Nothing
+  where
+    [target_arch,_,target_os] = splitOn "-" cTargetPlatformString
