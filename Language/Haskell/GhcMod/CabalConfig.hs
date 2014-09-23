@@ -6,6 +6,7 @@ module Language.Haskell.GhcMod.CabalConfig (
     CabalConfig
   , cabalConfigDependencies
   , cabalConfigFlags
+  , setupConfigFile
   ) where
 
 import Language.Haskell.GhcMod.Error
@@ -53,20 +54,23 @@ type CabalConfig = String
 getConfig :: (IOish m, MonadError GhcModError m)
           => Cradle
           -> m CabalConfig
-getConfig cradle = liftIO (readFile path) `tryFix` \_ ->
+getConfig cradle = liftIO (readFile file) `tryFix` \_ ->
      configure `modifyError'` GMECabalConfigure
  where
+   file = setupConfigFile cradle
    prjDir = cradleRootDir cradle
-   path = prjDir </> configPath
 
    configure :: (IOish m, MonadError GhcModError m) => m ()
    configure =
        withDirectory_ prjDir $ readProcess' "cabal" ["configure"] >> return ()
 
 
+setupConfigFile :: Cradle -> FilePath
+setupConfigFile crdl = cradleRootDir crdl </> setupConfigPath
+
 -- | Path to 'LocalBuildInfo' file, usually @dist/setup-config@
-configPath :: FilePath
-configPath = localBuildInfoFile defaultDistPref
+setupConfigPath :: FilePath
+setupConfigPath = localBuildInfoFile defaultDistPref
 
 -- | Get list of 'Package's needed by all components of the current package
 cabalConfigDependencies :: (IOish m, MonadError GhcModError m)
