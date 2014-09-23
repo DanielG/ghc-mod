@@ -46,9 +46,14 @@ module Language.Haskell.GhcMod.Internal (
   , (||>)
   , goNext
   , runAnyOne
+  -- * World
+  , World
+  , getWorld
+  , isChanged
   ) where
 
 import GHC.Paths (libdir)
+import GHC (getSessionDynFlags)
 
 import Language.Haskell.GhcMod.CabalApi
 import Language.Haskell.GhcMod.DynFlags
@@ -57,7 +62,20 @@ import Language.Haskell.GhcMod.Logger
 import Language.Haskell.GhcMod.Monad
 import Language.Haskell.GhcMod.Target
 import Language.Haskell.GhcMod.Types
+import Language.Haskell.GhcMod.World
 
 -- | Obtaining the directory for ghc system libraries.
 ghcLibDir :: FilePath
 ghcLibDir = libdir
+
+getWorld :: IOish m => GhcModT m World
+getWorld = do
+    crdl <- cradle
+    dflags <- getSessionDynFlags
+    liftIO $ getCurrentWorld crdl dflags
+
+isChanged :: IOish m => World -> GhcModT m Bool
+isChanged world = do
+    crdl <- cradle
+    dflags <- getSessionDynFlags
+    liftIO $ isWorldChanged world crdl dflags

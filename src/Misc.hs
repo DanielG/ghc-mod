@@ -3,9 +3,6 @@
 module Misc (
     GHCModiError(..)
   , Restart(..)
-  , World
-  , getCurrentWorld
-  , isWorldChanged
   , UnGetLine
   , emptyNewUnGetLine
   , ungetCommand
@@ -26,13 +23,8 @@ import CoreMonad (liftIO)
 import Data.IORef (IORef, newIORef, readIORef, writeIORef)
 import Data.List (isPrefixOf)
 import Data.Maybe (isJust)
-#if __GLASGOW_HASKELL__ <= 704
-import System.Time (ClockTime)
-#else
-import Data.Time (UTCTime)
-#endif
 import Data.Typeable (Typeable)
-import System.Directory (getModificationTime, doesDirectoryExist, getDirectoryContents)
+import System.Directory (doesDirectoryExist, getDirectoryContents)
 import System.IO (openBinaryFile, IOMode(..))
 import System.Process
 
@@ -50,29 +42,6 @@ instance Exception GHCModiError
 data Restart = Restart deriving (Show, Typeable)
 
 instance Exception Restart
-
-----------------------------------------------------------------
-
-data World = World {
-#if __GLASGOW_HASKELL__ <= 704
-    worldCabalFileModificationTime :: Maybe ClockTime
-#else
-    worldCabalFileModificationTime :: Maybe UTCTime
-#endif
-  } deriving (Show, Eq)
-
-getCurrentWorld :: IOish m => GhcModT m World
-getCurrentWorld = do
-    crdl <- cradle
-    mmt <- case cradleCabalFile crdl of
-        Just file -> liftIO $ Just <$> getModificationTime file
-        Nothing   -> return Nothing
-    return $ World { worldCabalFileModificationTime = mmt }
-
-isWorldChanged :: IOish m => World -> GhcModT m Bool
-isWorldChanged world = do
-    world' <- getCurrentWorld
-    return (world /= world')
 
 ----------------------------------------------------------------
 

@@ -28,7 +28,7 @@ import Data.List (intercalate)
 import Data.List.Split (splitOn)
 import Data.Version (showVersion)
 import Language.Haskell.GhcMod
-import Language.Haskell.GhcMod.Internal (cradle)
+import Language.Haskell.GhcMod.Internal
 import Paths_ghc_mod
 import System.Console.GetOpt
 import System.Directory (setCurrentDirectory)
@@ -91,7 +91,7 @@ run opt ref = flip E.catches handlers $ do
     prepareAutogen cradle0
     -- Asynchronous db loading starts here.
     symdbreq <- newSymDbReq opt
-    (res, _) <- runGhcModT opt $ getCurrentWorld >>= loop symdbreq ref
+    (res, _) <- runGhcModT opt $ getWorld >>= loop symdbreq ref
     case res of
         Right () -> return ()
         Left (GMECabalConfigure msg) -> do
@@ -126,7 +126,7 @@ loop symdbreq ref world = do
     -- blocking
     cmdArg <- liftIO $ getCommand ref
     -- after blocking, we need to see if the world has changed.
-    changed <- isWorldChanged world
+    changed <- isChanged world
     when changed $ do
         liftIO $ ungetCommand ref cmdArg
         E.throw Restart

@@ -86,14 +86,15 @@ Library
                         Language.Haskell.GhcMod.Lang
                         Language.Haskell.GhcMod.Lint
                         Language.Haskell.GhcMod.Logger
-                        Language.Haskell.GhcMod.Monad
                         Language.Haskell.GhcMod.Modules
+                        Language.Haskell.GhcMod.Monad
                         Language.Haskell.GhcMod.PkgDoc
                         Language.Haskell.GhcMod.Read
                         Language.Haskell.GhcMod.SrcUtils
                         Language.Haskell.GhcMod.Target
                         Language.Haskell.GhcMod.Types
                         Language.Haskell.GhcMod.Utils
+                        Language.Haskell.GhcMod.World
   Build-Depends:        base >= 4.0 && < 5
                       , containers
                       , deepseq
