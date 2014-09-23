@@ -94,7 +94,6 @@ Library
                         Language.Haskell.GhcMod.Target
                         Language.Haskell.GhcMod.Types
                         Language.Haskell.GhcMod.Utils
-                        Language.Haskell.GhcMod.World
   Build-Depends:        base >= 4.0 && < 5
                       , containers
                       , deepseq

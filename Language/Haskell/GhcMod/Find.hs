@@ -135,8 +135,7 @@ ghcModExecutable = do _ <- getExecutablePath' -- get rid of unused warning when
 dumpSymbol :: IOish m => GhcModT m String
 dumpSymbol = do
     crdl <- cradle
-    dflags <- G.getSessionDynFlags
-    dir <- liftIO $ getPackageCachePath crdl dflags
+    dir <- liftIO $ getPackageCachePath crdl
     let cache = dir </> symbolCache
         pkgdb = dir </> packageCache
 

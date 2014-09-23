@@ -91,7 +91,10 @@ run opt ref = flip E.catches handlers $ do
     prepareAutogen cradle0
     -- Asynchronous db loading starts here.
     symdbreq <- newSymDbReq opt
-    (res, _) <- runGhcModT opt $ getWorld >>= loop symdbreq ref
+    (res, _) <- runGhcModT opt $ do
+        crdl <- cradle
+        world <- liftIO $ getCurrentWorld crdl
+        loop symdbreq ref world
     case res of
         Right () -> return ()
         Left (GMECabalConfigure msg) -> do
@@ -126,7 +129,8 @@ loop symdbreq ref world = do
     -- blocking
     cmdArg <- liftIO $ getCommand ref
     -- after blocking, we need to see if the world has changed.
-    changed <- isChanged world
+    crdl <- cradle
+    changed <- liftIO $ isWorldChanged world crdl
     when changed $ do
         liftIO $ ungetCommand ref cmdArg
         E.throw Restart

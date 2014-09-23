@@ -21,7 +21,6 @@ import Data.Char (isSpace)
 import Data.List (isPrefixOf, intercalate)
 import Data.List.Split (splitOn)
 import Distribution.Package (InstalledPackageId(..))
-import DynFlags (DynFlags(..), systemPackageConfig)
 import Exception (handleIO)
 import Language.Haskell.GhcMod.Types
 import Language.Haskell.GhcMod.Utils
@@ -119,17 +118,16 @@ packageConfDir :: String
 packageConfDir = "package.conf.d"
 
 -- fixme: error handling
-getPackageCachePath :: Cradle -> DynFlags -> IO FilePath
-getPackageCachePath crdl df = do
+getPackageCachePath :: Cradle -> IO FilePath
+getPackageCachePath crdl = do
     let u:_ = filter (/= GlobalDb) $ cradlePkgDbStack crdl
-    Just db <- resolvePath df u
+    Just db <- resolvePath u
     return db
 
 --- Copied from ghc module `Packages' unfortunately it's not exported :/
-resolvePath :: DynFlags -> GhcPkgDb -> IO (Maybe FilePath)
-resolvePath df GlobalDb         = return $ Just (systemPackageConfig df)
-resolvePath _  (PackageDb name) = return $ Just name
-resolvePath _  UserDb           = handleIO (\_ -> return Nothing) $ do
+resolvePath :: GhcPkgDb -> IO (Maybe FilePath)
+resolvePath (PackageDb name) = return $ Just name
+resolvePath UserDb           = handleIO (\_ -> return Nothing) $ do
     appdir <- getAppUserDataDirectory "ghc"
     let dir = appdir </> (target_arch ++ '-':target_os ++ '-':cProjectVersion)
         pkgconf = dir </> packageConfDir
@@ -137,3 +135,4 @@ resolvePath _  UserDb           = handleIO (\_ -> return Nothing) $ do
     return $ if exist then Just pkgconf else Nothing
   where
     [target_arch,_,target_os] = splitOn "-" cTargetPlatformString
+resolvePath _ = error "GlobalDb cannot be used in resolvePath"
