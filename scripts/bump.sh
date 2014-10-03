@@ -7,6 +7,11 @@ fi
 
 VERSION=$1
 
+if ! echo $VERSION | grep "^v"; then
+    echo "invalid version";
+    exit 1
+fi
+
 cd $(dirname $0)/..
 
 sed -i 's/(defconst ghc-version ".*")/(defconst ghc-version "'"$VERSION"'")/' \
