@@ -31,7 +31,7 @@ import qualified Distribution.PackageDescription as P
 import Distribution.PackageDescription.Configuration (finalizePackageDescription)
 import Distribution.PackageDescription.Parse (readPackageDescription)
 import Distribution.Simple.Compiler (CompilerId(..), CompilerFlavor(..))
-import Distribution.Simple.Program (ghcProgram)
+import Distribution.Simple.Program as C (ghcProgram)
 import Distribution.Simple.Program.Types (programName, programFindVersion)
 import Distribution.System (buildPlatform)
 import Distribution.Text (display)
@@ -155,7 +155,7 @@ getGHCId = CompilerId GHC <$> getGHC
 
 getGHC :: IO Version
 getGHC = do
-    mv <- programFindVersion ghcProgram silent (programName ghcProgram)
+    mv <- programFindVersion C.ghcProgram silent (programName C.ghcProgram)
     case mv of
       -- TODO: MonadError it up
         Nothing -> E.throwIO $ userError "ghc not found"

@@ -86,8 +86,8 @@ Library
                         Language.Haskell.GhcMod.Lang
                         Language.Haskell.GhcMod.Lint
                         Language.Haskell.GhcMod.Logger
-                        Language.Haskell.GhcMod.Monad
                         Language.Haskell.GhcMod.Modules
+                        Language.Haskell.GhcMod.Monad
                         Language.Haskell.GhcMod.PkgDoc
                         Language.Haskell.GhcMod.Read
                         Language.Haskell.GhcMod.SrcUtils
@@ -106,6 +106,7 @@ Library
                       , io-choice
                       , monad-journal >= 0.4
                       , old-time
+                      , pretty
                       , process
                       , syb
                       , time
@@ -134,8 +135,11 @@ Executable ghc-mod
   Default-Extensions:   ConstraintKinds, FlexibleContexts
   HS-Source-Dirs:       src
   Build-Depends:        base >= 4.0 && < 5
+                      , data-default
                       , directory
                       , filepath
+                      , pretty
+                      , process
                       , mtl >= 2.0
                       , ghc
                       , ghc-mod
@@ -144,8 +148,11 @@ Executable ghc-modi
   Default-Language:     Haskell2010
   Main-Is:              GHCModi.hs
   Other-Modules:        Paths_ghc_mod
+                        Misc
                         Utils
   GHC-Options:          -Wall -threaded
+  if os(windows)
+      Cpp-Options:      -DWINDOWS
   Default-Extensions:   ConstraintKinds, FlexibleContexts
   HS-Source-Dirs:       src
   Build-Depends:        base >= 4.0 && < 5
@@ -153,7 +160,10 @@ Executable ghc-modi
                       , containers
                       , directory
                       , filepath
+                      , old-time
+                      , process
                       , split
+                      , time
                       , ghc
                       , ghc-mod
 
@@ -199,6 +209,7 @@ Test-Suite spec
                       , io-choice
                       , monad-journal >= 0.4
                       , old-time
+                      , pretty
                       , process
                       , syb
                       , time

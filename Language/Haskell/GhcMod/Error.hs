@@ -1,6 +1,7 @@
 {-# LANGUAGE TypeFamilies, ScopedTypeVariables #-}
 module Language.Haskell.GhcMod.Error (
     GhcModError(..)
+  , gmeDoc
   , modifyError
   , modifyError'
   , tryFix
@@ -10,6 +11,7 @@ module Language.Haskell.GhcMod.Error (
 
 import Control.Monad.Error (MonadError(..), Error(..))
 import Exception
+import Text.PrettyPrint
 
 data GhcModError = GMENoMsg
                  -- ^ Unknown error
@@ -28,6 +30,20 @@ data GhcModError = GMENoMsg
 instance Error GhcModError where
     noMsg = GMENoMsg
     strMsg = GMEString
+
+gmeDoc :: GhcModError -> Doc
+gmeDoc e = case e of
+    GMENoMsg ->
+        text "Unknown error"
+    GMEString msg ->
+        text msg
+    GMECabalConfigure msg ->
+        text "cabal configure failed: " <> gmeDoc msg
+    GMECabalFlags msg ->
+        text "retrieval of the cabal configuration flags failed: " <> gmeDoc msg
+    GMEProcess cmd msg ->
+        text ("launching operating system process `"++unwords cmd++"` failed: ")
+          <> gmeDoc msg
 
 modifyError :: MonadError e m => (e -> e) -> m a -> m a
 modifyError f action = action `catchError` \e -> throwError $ f e

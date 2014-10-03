@@ -25,7 +25,12 @@ newtype LineSeparator = LineSeparator String
 
 data Options = Options {
     outputStyle   :: OutputStyle
-  , hlintOpts     :: [String]
+  -- | Line separator string.
+  , lineSeparator :: LineSeparator
+  -- | @ghc@ program name.
+  , ghcProgram    :: FilePath
+  -- | @cabal@ program name.
+  , cabalProgram  :: FilePath
     -- | GHC command line options set on the @ghc-mod@ command line
   , ghcUserOptions:: [GHCOption]
   -- | If 'True', 'browse' also returns operators.
@@ -34,15 +39,17 @@ data Options = Options {
   , detailed      :: Bool
   -- | If 'True', 'browse' will return fully qualified name
   , qualified     :: Bool
-  -- | Line separator string.
-  , lineSeparator :: LineSeparator
+  , hlintOpts     :: [String]
   }
+
 
 -- | A default 'Options'.
 defaultOptions :: Options
 defaultOptions = Options {
     outputStyle   = PlainStyle
   , hlintOpts     = []
+  , ghcProgram    = "ghc"
+  , cabalProgram  = "cabal"
   , ghcUserOptions= []
   , operators     = False
   , detailed      = False
