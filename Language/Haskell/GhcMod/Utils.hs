@@ -1,7 +1,7 @@
 {-# LANGUAGE CPP #-}
 module Language.Haskell.GhcMod.Utils where
 
-
+import Control.Applicative ((<$>))
 import Language.Haskell.GhcMod.Error
 import MonadUtils (MonadIO, liftIO)
 import System.Directory (getCurrentDirectory, setCurrentDirectory)
@@ -9,6 +9,7 @@ import System.Exit (ExitCode(..))
 import System.Process (readProcessWithExitCode)
 #ifndef SPEC
 import System.Environment
+import System.FilePath ((</>), takeDirectory)
 #endif
 
 -- dropWhileEnd is not provided prior to base 4.5.0.0.
@@ -51,15 +52,18 @@ withDirectory_ dir action =
 -- this is a guess but >=7.6 uses 'getExecutablePath'.
 ghcModExecutable :: IO FilePath
 #ifndef SPEC
-ghcModExecutable = getExecutable'
- where
-    getExecutable' :: IO FilePath
-# if __GLASGOW_HASKELL__ >= 706
-    getExecutable' = getExecutablePath
-# else
-    getExecutable' = getProgName
-# endif
-
+ghcModExecutable = do
+    dir <- getExecutablePath'
+    return $ dir </> "ghc-mod"
 #else
-ghcModExecutable = return "dist/build/ghc-mod/ghc-mod"
+ghcModExecutable = do _ <- getExecutablePath' -- get rid of unused warning when
+                                              -- compiling spec
+                      return "dist/build/ghc-mod/ghc-mod"
 #endif
+ where
+    getExecutablePath' :: IO FilePath
+# if __GLASGOW_HASKELL__ >= 706
+    getExecutablePath' = takeDirectory <$> getExecutablePath
+# else
+    getExecutablePath' = return ""
+# endif

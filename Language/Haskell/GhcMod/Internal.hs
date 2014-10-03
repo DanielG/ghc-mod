@@ -49,11 +49,16 @@ module Language.Haskell.GhcMod.Internal (
   , (||>)
   , goNext
   , runAnyOne
+  -- * World
+  , World
+  , getCurrentWorld
+  , isWorldChanged
   ) where
 
 import GHC.Paths (libdir)
 
 import Language.Haskell.GhcMod.CabalApi
+import Language.Haskell.GhcMod.CabalConfig
 import Language.Haskell.GhcMod.DynFlags
 import Language.Haskell.GhcMod.Error
 import Language.Haskell.GhcMod.GHCChoice

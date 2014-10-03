@@ -8,9 +8,8 @@ module Language.Haskell.GhcMod.Check (
 import Control.Applicative ((<$>))
 import Language.Haskell.GhcMod.DynFlags
 import qualified Language.Haskell.GhcMod.Gap as Gap
-import qualified GHC as G
 import Language.Haskell.GhcMod.Logger
-import Language.Haskell.GhcMod.Monad (IOish, GhcModT, overrideGhcUserOptions)
+import Language.Haskell.GhcMod.Monad (IOish, GhcModT)
 import Language.Haskell.GhcMod.Target (setTargetFiles)
 
 ----------------------------------------------------------------
@@ -30,9 +29,14 @@ checkSyntax files = either id id <$> check files
 check :: IOish m
       => [FilePath]  -- ^ The target files.
       -> GhcModT m (Either String String)
+{-
 check fileNames = overrideGhcUserOptions $ \ghcOpts -> do
   withLogger (setAllWarningFlags . setNoMaxRelevantBindings . Gap.setWarnTypedHoles . Gap.setDeferTypeErrors) $ do
     _ <- G.setSessionDynFlags =<< addCmdOpts ghcOpts =<< G.getSessionDynFlags
+    setTargetFiles fileNames
+-}
+check fileNames =
+  withLogger (setAllWarningFlags . setNoMaxRelevantBindings) $
     setTargetFiles fileNames
 
 ----------------------------------------------------------------

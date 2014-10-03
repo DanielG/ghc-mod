@@ -20,33 +20,24 @@ module Main where
 
 import Config (cProjectVersion)
 import Control.Applicative ((<$>))
-import Control.Concurrent.Async (Async, async, wait)
-import Control.Exception (SomeException(..), Exception)
+import Control.Exception (SomeException(..))
 import qualified Control.Exception as E
 import Control.Monad (when)
 import CoreMonad (liftIO)
-import Data.List (find, intercalate)
+import Data.List (intercalate)
 import Data.List.Split (splitOn)
-import Data.Maybe (fromMaybe)
-import Data.Set (Set)
-import qualified Data.Set as S
-import Data.Typeable (Typeable)
 import Data.Version (showVersion)
-import qualified GHC as G
 import Language.Haskell.GhcMod
 import Language.Haskell.GhcMod.Internal
 import Paths_ghc_mod
 import System.Console.GetOpt
 import System.Directory (setCurrentDirectory)
 import System.Environment (getArgs)
-import System.IO (hFlush,stdout)
 import System.Exit (ExitCode, exitFailure)
+import System.IO (hFlush,stdout)
 
+import Misc
 import Utils
-
-----------------------------------------------------------------
-
-type Logger = IO String
 
 ----------------------------------------------------------------
 
@@ -79,13 +70,6 @@ parseArgs spec argv
 
 ----------------------------------------------------------------
 
-data GHCModiError = CmdArg [String]
-                  deriving (Show, Typeable)
-
-instance Exception GHCModiError
-
-----------------------------------------------------------------
-
 -- Running two GHC monad threads disables the handling of
 -- C-c since installSignalHandlers is called twice, sigh.
 
@@ -96,25 +80,33 @@ main = E.handle cmdHandler $
     cmdHandler (CmdArg _) = putStr $ usageInfo usage argspec
     go (_,"help":_) = putStr $ usageInfo usage argspec
     go (_,"version":_) = putStr progVersion
-    go (opt,_) = flip E.catches handlers $ do
-        cradle0 <- findCradle
-        let rootdir = cradleRootDir cradle0
---            c = cradle0 { cradleCurrentDir = rootdir } TODO: ?????
-        setCurrentDirectory rootdir
-        symDb <- async $ runGhcModT opt loadSymbolDb
-        (res, _) <- runGhcModT opt $ loop S.empty symDb
+    go (opt,_) = emptyNewUnGetLine >>= run opt
 
-        case res of
-          Right () -> return ()
-          Left (GMECabalConfigure msg) -> do
-              putStrLn $ notGood $ "cabal configure failed: " ++ show msg
-              exitFailure
-          Left e -> bug $ show e
-      where
-        -- this is just in case.
-        -- If an error is caught here, it is a bug of GhcMod library.
-        handlers = [ E.Handler (\(_ :: ExitCode) -> return ())
-                   , E.Handler (\(SomeException e) -> bug $ show e) ]
+run :: Options -> UnGetLine -> IO ()
+run opt ref = flip E.catches handlers $ do
+    cradle0 <- findCradle
+    let rootdir = cradleRootDir cradle0
+--        c = cradle0 { cradleCurrentDir = rootdir } TODO: ?????
+    setCurrentDirectory rootdir
+    prepareAutogen cradle0
+    -- Asynchronous db loading starts here.
+    symdbreq <- newSymDbReq opt
+    (res, _) <- runGhcModT opt $ do
+        crdl <- cradle
+        world <- liftIO $ getCurrentWorld crdl
+        loop symdbreq ref world
+    case res of
+        Right () -> return ()
+        Left (GMECabalConfigure msg) -> do
+            putStrLn $ notGood $ "cabal configure failed: " ++ show msg
+            exitFailure
+        Left e -> bug $ show e
+  where
+    -- this is just in case.
+    -- If an error is caught here, it is a bug of GhcMod library.
+    handlers = [ E.Handler (\(_ :: ExitCode) -> return ())
+               , E.Handler (\(_ :: Restart) -> run opt ref)
+               , E.Handler (\(SomeException e) -> bug $ show e) ]
 
 bug :: String -> IO ()
 bug msg = do
@@ -132,91 +124,63 @@ replace needle replacement = intercalate replacement . splitOn needle
 
 ----------------------------------------------------------------
 
-loop :: IOish m => Set FilePath -> SymDbReq -> GhcModT m ()
-loop set symDbReq = do
-    cmdArg <- liftIO getLine
+loop :: IOish m => SymDbReq -> UnGetLine -> World -> GhcModT m ()
+loop symdbreq ref world = do
+    -- blocking
+    cmdArg <- liftIO $ getCommand ref
+    -- after blocking, we need to see if the world has changed.
+    crdl <- cradle
+    changed <- liftIO $ isWorldChanged world crdl
+    when changed $ do
+        liftIO $ ungetCommand ref cmdArg
+        E.throw Restart
+    cradle >>= liftIO . prepareAutogen
     let (cmd,arg') = break (== ' ') cmdArg
         arg = dropWhile (== ' ') arg'
-    (ret,ok,set') <- case cmd of
-        "check"  -> checkStx set arg
-        "find"   -> findSym set arg symDbReq
-        "lint"   -> lintStx set arg
-        "info"   -> showInfo set arg
-        "type"   -> showType set arg
-        "split"  -> doSplit set arg
-        "sig"    -> doSig set arg
-        "refine" -> doRefine set arg
-        "auto"   -> doAuto set arg
-        "boot"   -> bootIt set
-        "browse" -> browseIt set arg
-        "quit"   -> return ("quit", False, set)
-        ""       -> return ("quit", False, set)
-        _        -> return ([], True, set)
+    (ret,ok) <- case cmd of
+        "check"  -> checkStx arg
+        "find"   -> findSym arg symdbreq
+        "lint"   -> lintStx arg
+        "info"   -> showInfo arg
+        "type"   -> showType arg
+        "split"  -> doSplit arg
+        "sig"    -> doSig arg
+        "refine" -> doRefine arg
+        "auto"   -> doAuto arg
+        "boot"   -> bootIt
+        "browse" -> browseIt arg
+        "quit"   -> return ("quit", False)
+        ""       -> return ("quit", False)
+        _        -> return ([], True)
     if ok then do
         liftIO $ putStr ret
         liftIO $ putStrLn "OK"
       else do
         liftIO $ putStrLn $ notGood ret
     liftIO $ hFlush stdout
-    when ok $ loop set' symDbReq
+    when ok $ loop symdbreq ref world
 
 ----------------------------------------------------------------
 
-checkStx :: IOish m
-         => Set FilePath
-         -> FilePath
-         -> GhcModT m (String, Bool, Set FilePath)
-checkStx set file = do
-    set' <- newFileSet set file
-    let files = S.toList set'
-    eret <- check files
+checkStx :: IOish m => FilePath -> GhcModT m (String, Bool)
+checkStx file = do
+    eret <- check [file]
     case eret of
-        Right ret -> return (ret, True, set')
-        Left ret  -> return (ret, True, set) -- fxime: set
-
-newFileSet :: IOish m => Set FilePath -> FilePath -> GhcModT m (Set FilePath)
-newFileSet set file = do
-    let set1
-         | S.member file set = set
-         | otherwise         = S.insert file set
-    mx <- isSameMainFile file <$> getModSummaryForMain
-    return $ case mx of
-        Nothing       -> set1
-        Just mainfile -> S.delete mainfile set1
-
-getModSummaryForMain :: IOish m => GhcModT m (Maybe G.ModSummary)
-getModSummaryForMain = find isMain <$> G.getModuleGraph
-  where
-    isMain m = G.moduleNameString (G.moduleName (G.ms_mod m)) == "Main"
-
-isSameMainFile :: FilePath -> (Maybe G.ModSummary) -> Maybe FilePath
-isSameMainFile _    Nothing  = Nothing
-isSameMainFile file (Just x)
-    | mainfile == file = Nothing
-    | otherwise        = Just mainfile
-  where
-    mmainfile = G.ml_hs_file (G.ms_location x)
-    -- G.ms_hspp_file x is a temporary file with CPP.
-    -- this is a just fake.
-    mainfile = fromMaybe (G.ms_hspp_file x) mmainfile
+        Right ret -> return (ret, True)
+        Left ret  -> return (ret, True)
 
 ----------------------------------------------------------------
 
-type SymDbReq = Async (Either GhcModError SymbolDb, GhcModLog)
-
-findSym :: IOish m => Set FilePath -> String -> SymDbReq
-        -> GhcModT m (String, Bool, Set FilePath)
-findSym set sym dbReq = do
-    db <- hoistGhcModT =<< liftIO (wait dbReq)
+findSym :: IOish m => Symbol -> SymDbReq -> GhcModT m (String, Bool)
+findSym sym symdbreq = do
+    db <- getDb symdbreq >>= checkDb symdbreq
     ret <- lookupSymbol sym db
-    return (ret, True, set)
+    return (ret, True)
 
-lintStx :: IOish m => Set FilePath
-        -> FilePath
-        -> GhcModT m (String, Bool, Set FilePath)
-lintStx set optFile = do
+lintStx :: IOish m => FilePath -> GhcModT m (String, Bool)
+lintStx optFile = do
     ret <- withOptions changeOpt $ lint file
-    return (ret, True, set)
+    return (ret, True)
   where
     (opts,file) = parseLintOptions optFile
     hopts = if opts == "" then [] else read opts
@@ -239,85 +203,56 @@ parseLintOptions optFile = case brk (== ']') (dropWhile (/= '[') optFile) of
 
 ----------------------------------------------------------------
 
-showInfo :: IOish m
-         => Set FilePath
-         -> FilePath
-         -> GhcModT m (String, Bool, Set FilePath)
-showInfo set fileArg = do
+showInfo :: IOish m => FilePath -> GhcModT m (String, Bool)
+showInfo fileArg = do
     let [file, expr] = splitN 2 fileArg
-    set' <- newFileSet set file
     ret <- info file expr
-    return (ret, True, set')
+    return (ret, True)
 
-showType :: IOish m
-         => Set FilePath
-         -> FilePath
-         -> GhcModT m (String, Bool, Set FilePath)
-showType set fileArg  = do
+showType :: IOish m => FilePath -> GhcModT m (String, Bool)
+showType fileArg  = do
     let [file, line, column] = splitN 3 fileArg
-    set' <- newFileSet set file
     ret <- types file (read line) (read column)
-    return (ret, True, set')
+    return (ret, True)
 
-doSplit :: IOish m
-        => Set FilePath
-        -> FilePath
-        -> GhcModT m (String, Bool, Set FilePath)
-doSplit set fileArg  = do
+doSplit :: IOish m => FilePath -> GhcModT m (String, Bool)
+doSplit fileArg  = do
     let [file, line, column] = splitN 3 fileArg
-    set' <- newFileSet set file
     ret <- splits file (read line) (read column)
-    return (ret, True, set')
+    return (ret, True)
 
-doSig :: IOish m
-      => Set FilePath
-      -> FilePath
-      -> GhcModT m (String, Bool, Set FilePath)
-doSig set fileArg  = do
+doSig :: IOish m => FilePath -> GhcModT m (String, Bool)
+doSig fileArg  = do
     let [file, line, column] = splitN 3 fileArg
-    set' <- newFileSet set file
     ret <- sig file (read line) (read column)
-    return (ret, True, set')
+    return (ret, True)
 
-doRefine :: IOish m
-         => Set FilePath
-         -> FilePath
-         -> GhcModT m (String, Bool, Set FilePath)
-doRefine set fileArg  = do
+doRefine :: IOish m => FilePath -> GhcModT m (String, Bool)
+doRefine fileArg  = do
     let [file, line, column, expr] = splitN 4 fileArg
-    set' <- newFileSet set file
     ret <- refine file (read line) (read column) expr
-    return (ret, True, set')
+    return (ret, True)
 
-doAuto :: IOish m
-       => Set FilePath
-       -> FilePath
-       -> GhcModT m (String, Bool, Set FilePath)
-doAuto set fileArg  = do
+doAuto :: IOish m => FilePath -> GhcModT m (String, Bool)
+doAuto fileArg  = do
     let [file, line, column] = splitN 3 fileArg
-    set' <- newFileSet set file
     ret <- auto file (read line) (read column)
-    return (ret, True, set')
+    return (ret, True)
 
 ----------------------------------------------------------------
 
-bootIt :: IOish m
-       => Set FilePath
-       -> GhcModT m (String, Bool, Set FilePath)
-bootIt set = do
+bootIt :: IOish m => GhcModT m (String, Bool)
+bootIt = do
     ret <- boot
-    return (ret, True, set)
+    return (ret, True)
 
-browseIt :: IOish m
-         => Set FilePath
-         -> ModuleString
-         -> GhcModT m (String, Bool, Set FilePath)
-browseIt set mdl = do
+browseIt :: IOish m => ModuleString -> GhcModT m (String, Bool)
+browseIt mdl = do
     let (det,rest') = break (== ' ') mdl
         rest = dropWhile (== ' ') rest'
     ret <- if det == "-d"
                then withOptions setDetailed (browse rest)
                else browse mdl
-    return (ret, True, set)
+    return (ret, True)
   where
-    setDetailed opt = opt { detailed = True } 
+    setDetailed opt = opt { detailed = True }
