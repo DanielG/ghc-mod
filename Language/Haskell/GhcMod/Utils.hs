@@ -7,10 +7,8 @@ import MonadUtils (MonadIO, liftIO)
 import System.Directory (getCurrentDirectory, setCurrentDirectory)
 import System.Exit (ExitCode(..))
 import System.Process (readProcessWithExitCode)
-#ifndef SPEC
 import System.Environment
 import System.FilePath ((</>), takeDirectory)
-#endif
 
 -- dropWhileEnd is not provided prior to base 4.5.0.0.
 dropWhileEnd :: (a -> Bool) -> [a] -> [a]
