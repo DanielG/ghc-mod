@@ -1,13 +1,13 @@
 {-# LANGUAGE CPP #-}
 module Language.Haskell.GhcMod.Utils where
 
-import Control.Applicative ((<$>))
 import Language.Haskell.GhcMod.Error
 import MonadUtils (MonadIO, liftIO)
 import System.Directory (getCurrentDirectory, setCurrentDirectory)
 import System.Exit (ExitCode(..))
 import System.Process (readProcessWithExitCode)
 #ifndef SPEC
+import Control.Applicative ((<$>))
 import System.Environment
 import System.FilePath ((</>), takeDirectory)
 #endif
