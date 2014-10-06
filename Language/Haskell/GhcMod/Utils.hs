@@ -55,11 +55,6 @@ ghcModExecutable :: IO FilePath
 ghcModExecutable = do
     dir <- getExecutablePath'
     return $ dir </> "ghc-mod"
-#else
-ghcModExecutable = do _ <- getExecutablePath' -- get rid of unused warning when
-                                              -- compiling spec
-                      return "dist/build/ghc-mod/ghc-mod"
-#endif
  where
     getExecutablePath' :: IO FilePath
 # if __GLASGOW_HASKELL__ >= 706
@@ -67,3 +62,6 @@ ghcModExecutable = do _ <- getExecutablePath' -- get rid of unused warning when
 # else
     getExecutablePath' = return ""
 # endif
+#else
+ghcModExecutable = return "dist/build/ghc-mod/ghc-mod"
+#endif
