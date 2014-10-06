@@ -4,22 +4,22 @@
 \status{open source, actively developed}
 \makeheader
 
-For a long time, Kazu Yamamoto is the only active developer of ghc-mod.
-Now two new developers joined:
+For a long time, Kazu Yamamoto was the only active developer of ghc-mod, now two
+new developers have joined:
 
-Alejandro Serrano merged his results of Google Summer of Code. He
-implements case splitting and sophisticated type hole handling.
-Daniel Gröber brushed up the internal code by bringing the GhcMod
-monad. So, the API of \texttt{ghc-mod} drastically changed.
-The result was released \texttt{ghc-mod} version 5.0
+Alejandro Serrano merged the results of his Google Summer of Code project. He
+implemented case splitting and sophisticated typed hole handling.  Daniel Gröber
+brushed up the internal code and introduced the GhcModT monad now used
+throughout the exported API. As a result the API of \texttt{ghc-mod} drastically
+changed with version 5.0.0.
 
-\texttt{ghc-modi} used to suffer from inconsistency if an environment
-changes.  For instance, file names of modules change, new dependencies
-are added to its cabal file, new libraries are installed, and so on.
-\texttt{ghc-modi} v5.1.1 or later captures this kind of changes and
-restarts a new session.
+\texttt{ghc-modi} used to suffer from various consistency related issues
+triggered by changes in the environment, for instance: changing file names of
+modules, adding dependencies to the cabal file and installing new libraries.
+\texttt{ghc-modi} v5.1.1 or later handles changes in the environment by
+restarting the GHC session when this is detected.
 
-Kazu stepped down from the release manager and Daniel took it over.
+Kazu stepped down as release manager and Daniel took over.
 
 \FurtherReading
   \url{http://www.mew.org/~kazu/proj/ghc-mod/en/}
