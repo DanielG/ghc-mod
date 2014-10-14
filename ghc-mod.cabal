@@ -109,6 +109,7 @@ Library
                       , pretty
                       , process
                       , syb
+                      , temporary
                       , time
                       , transformers
                       , transformers-base
@@ -212,6 +213,7 @@ Test-Suite spec
                       , pretty
                       , process
                       , syb
+                      , temporary
                       , time
                       , transformers
                       , transformers-base

@@ -65,6 +65,8 @@ data Cradle = Cradle {
     cradleCurrentDir :: FilePath
   -- | The project root directory.
   , cradleRootDir    :: FilePath
+  -- | Per-Project temporary directory
+  , cradleTempDir    :: FilePath
   -- | The file name of the found cabal file.
   , cradleCabalFile  :: Maybe FilePath
   -- | Package database stack

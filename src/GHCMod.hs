@@ -409,9 +409,9 @@ flagsCmd      = withParseCmd [] $ \[] -> flags
 debugInfoCmd  = withParseCmd [] $ \[] -> debugInfo
 rootInfoCmd   = withParseCmd [] $ \[] -> rootInfo
 -- internal
-dumpSymbolCmd = withParseCmd [] $ \[] -> dumpSymbol
 bootCmd       = withParseCmd [] $ \[] -> boot
 
+dumpSymbolCmd     = withParseCmd [] $ \[tmpdir] -> dumpSymbol tmpdir
 findSymbolCmd     = withParseCmd [] $ \[sym]  -> findSymbol sym
 pkgDocCmd         = withParseCmd [] $ \[mdl]  -> pkgDoc mdl
 lintCmd           = withParseCmd s  $ \[file] -> lint file

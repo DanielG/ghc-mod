@@ -17,7 +17,6 @@ module Language.Haskell.GhcMod.Find
 
 import Control.Applicative ((<$>))
 import Control.Monad (when, void)
-import Control.Monad.Error.Class
 import Data.Function (on)
 import Data.List (groupBy, sort)
 import Data.Maybe (fromMaybe)
@@ -87,10 +86,11 @@ lookupSym sym db = fromMaybe [] $ M.lookup sym $ table db
 ---------------------------------------------------------------
 
 -- | Loading a file and creates 'SymbolDb'.
-loadSymbolDb :: (IOish m, MonadError GhcModError m) => m SymbolDb
+loadSymbolDb :: IOish m => GhcModT m SymbolDb
 loadSymbolDb = do
     ghcMod <- liftIO ghcModExecutable
-    file <- chop <$> readProcess' ghcMod ["dumpsym"]
+    tmpdir <- liftIO . getPackageCachePath =<< cradle
+    file <- chop <$> readProcess' ghcMod ["dumpsym", tmpdir]
     !db <- M.fromAscList . map conv . lines <$> liftIO (readFile file)
     return $ SymbolDb {
         table = db
@@ -110,10 +110,8 @@ loadSymbolDb = do
 --   if the file does not exist or is invalid.
 --   The file name is printed.
 
-dumpSymbol :: IOish m => GhcModT m String
-dumpSymbol = do
-    crdl <- cradle
-    dir <- liftIO $ getPackageCachePath crdl
+dumpSymbol :: IOish m => FilePath -> GhcModT m String
+dumpSymbol dir = do
     let cache = dir </> symbolCache
         pkgdb = dir </> packageCache
 
