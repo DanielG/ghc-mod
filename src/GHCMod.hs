@@ -3,7 +3,6 @@
 module Main where
 
 import Config (cProjectVersion)
-import Control.Arrow
 import Control.Applicative
 import Control.Exception (Exception, Handler(..), catches, throw)
 import Data.Typeable (Typeable)
@@ -295,13 +294,13 @@ main = handler $ do
     hSetEncoding stdout utf8
     args <- getArgs
 
-    let (ghcArgs, modArgs) = second stripSeperator $ span (/="--") args
-        _realGhcArgs = filter (/="--ghc-mod") ghcArgs
+    -- let (ghcArgs, modArgs) = second stripSeperator $ span (/="--") args
+    --     _realGhcArgs = filter (/="--ghc-mod") ghcArgs
 
-        (globalOptions,_cmdArgs) = parseGlobalArgs modArgs
+    --     (globalOptions,_cmdArgs) = parseGlobalArgs modArgs
 
-        stripSeperator ("--":rest) = rest
-        stripSeperator l = l
+    --     stripSeperator ("--":rest) = rest
+    --     stripSeperator l = l
 
     case args of
       _
@@ -323,7 +322,8 @@ main = handler $ do
 
 
           | otherwise -> do
-              (res, _) <- runGhcModT globalOptions $ commands args
+              let (globalOptions,cmdArgs) = parseGlobalArgs args
+              (res, _) <- runGhcModT globalOptions $ commands cmdArgs
               case res of
                 Right s -> putStr s
                 Left e -> exitError $ render (gmeDoc e)
