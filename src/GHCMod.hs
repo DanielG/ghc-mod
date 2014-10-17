@@ -58,7 +58,7 @@ usage :: String
 usage =
  "Usage: ghc-mod [OPTIONS...] COMMAND [OPTIONS...] \n\
  \*Global Options (OPTIONS)*\n\
- \    Global options can be specified before and after the command and\n\
+ \    Global options must be specified after the command or\n\
  \    interspersed with command specific options\n\
  \\n"
    ++ (unlines $ indent <$> optionUsage indent globalArgSpec) ++
