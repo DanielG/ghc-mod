@@ -323,10 +323,14 @@ main = handler $ do
 
           | otherwise -> do
               let (globalOptions,cmdArgs) = parseGlobalArgs args
-              (res, _) <- runGhcModT globalOptions $ commands cmdArgs
-              case res of
-                Right s -> putStr s
-                Left e -> exitError $ render (gmeDoc e)
+              res      <- simpleCommands cmdArgs
+              putStr =<< case res of
+                Just s -> return s
+                Nothing -> do
+                  (res',_) <- runGhcModT globalOptions $ ghcCommands cmdArgs
+                  case res' of
+                    Right s -> return s
+                    Left e -> exitError $ render (gmeDoc e)
 
               -- Obtain ghc options by letting ourselfs be executed by
               -- @cabal repl@
@@ -339,14 +343,19 @@ main = handler $ do
 
               -- rawSystem "cabal" cabalArgs >>= exitWith
 
-commands :: IOish m => [String] -> GhcModT m String
-commands []         = fatalError "No command given (try --help)\n"
-commands (cmd:args) = fn args
+simpleCommands :: [String] -> IO (Maybe String)
+simpleCommands []      = return Nothing
+simpleCommands (cmd:_) = return $ case cmd of
+    _ | cmd == "help" || cmd == "--help"  -> Just usage
+    "version" -> Just progVersion
+    _         -> Nothing
+
+ghcCommands :: IOish m => [String] -> GhcModT m String
+ghcCommands []         = fatalError "No command given (try --help)\n"
+ghcCommands (cmd:args) = fn args
  where
    fn = case cmd of
      _ | cmd == "list" || cmd == "modules" -> modulesCmd
-     _ | cmd == "help" || cmd == "--help"  -> const $ return usage
-     "version" -> const $ return progVersion
      "lang"    -> languagesCmd
      "flag"    -> flagsCmd
      "browse"  -> browseCmd
