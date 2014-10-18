@@ -7,7 +7,7 @@ fi
 
 VERSION=$1
 
-if echo $VERSION | grep "^[0-9.]"; then
+if ! echo $VERSION | grep "^[0-9.]"; then
     echo "invalid version";
     exit 1
 fi
