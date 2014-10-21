@@ -24,7 +24,7 @@ import Control.Exception (SomeException(..))
 import qualified Control.Exception as E
 import Control.Monad (when)
 import CoreMonad (liftIO)
-import Data.List (intercalate)
+import Data.List (intercalate, partition)
 import Data.List.Split (splitOn)
 import Data.Version (showVersion)
 import Language.Haskell.GhcMod
@@ -248,11 +248,14 @@ bootIt = do
 
 browseIt :: IOish m => ModuleString -> GhcModT m (String, Bool)
 browseIt mdl = do
-    let (det,rest') = break (== ' ') mdl
-        rest = dropWhile (== ' ') rest'
-    ret <- if det == "-d"
-               then withOptions setDetailed (browse rest)
-               else browse mdl
+    let (myFlagsSplit, myModulesSplit) = partition (\s -> take 1 s == "-") $ words mdl
+    let myFlags = unwords myFlagsSplit
+    let myModules = unwords myModulesSplit
+    let setOptions o = o { detailed = 'd' `elem` myFlags
+                         , operators = 'o' `elem` myFlags
+                         , qualified = 'q' `elem` myFlags
+                         }
+    ret <- if null myFlags
+                then browse mdl
+                else withOptions setOptions (browse myModules)
     return (ret, True)
-  where
-    setDetailed opt = opt { detailed = True }
