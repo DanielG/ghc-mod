@@ -1,5 +1,9 @@
 {-# LANGUAGE ScopedTypeVariables, DeriveDataTypeable #-}
 
+-- | WARNING
+-- This program in the process of being deprecated, use `ghc-mod --interactive`
+-- instead.
+
 -- Commands:
 --  check <file>
 --  find <symbol>
