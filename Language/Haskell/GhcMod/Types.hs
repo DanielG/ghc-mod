@@ -19,9 +19,10 @@ type IOish m = (Functor m, MonadIO m, MonadBaseControl IO m, ExceptionMonad m)
 -- | Output style.
 data OutputStyle = LispStyle  -- ^ S expression style.
                  | PlainStyle -- ^ Plain textstyle.
+                   deriving (Show)
 
 -- | The type for line separator. Historically, a Null string is used.
-newtype LineSeparator = LineSeparator String
+newtype LineSeparator = LineSeparator String deriving (Show)
 
 data Options = Options {
     outputStyle   :: OutputStyle
@@ -40,7 +41,7 @@ data Options = Options {
   -- | If 'True', 'browse' will return fully qualified name
   , qualified     :: Bool
   , hlintOpts     :: [String]
-  }
+  } deriving (Show)
 
 
 -- | A default 'Options'.
