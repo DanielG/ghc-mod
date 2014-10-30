@@ -3,7 +3,6 @@
 module Main where
 
 import Config (cProjectVersion)
-import Control.Arrow
 import Control.Applicative
 import Control.Exception (Exception, Handler(..), catches, throw)
 import Data.Typeable (Typeable)
@@ -295,13 +294,13 @@ main = handler $ do
     hSetEncoding stdout utf8
     args <- getArgs
 
-    let (ghcArgs, modArgs) = second stripSeperator $ span (/="--") args
-        _realGhcArgs = filter (/="--ghc-mod") ghcArgs
+    -- let (ghcArgs, modArgs) = second stripSeperator $ span (/="--") args
+    --     _realGhcArgs = filter (/="--ghc-mod") ghcArgs
 
-        (globalOptions,_cmdArgs) = parseGlobalArgs modArgs
+    --     (globalOptions,_cmdArgs) = parseGlobalArgs modArgs
 
-        stripSeperator ("--":rest) = rest
-        stripSeperator l = l
+    --     stripSeperator ("--":rest) = rest
+    --     stripSeperator l = l
 
     case args of
       _
@@ -323,10 +322,15 @@ main = handler $ do
 
 
           | otherwise -> do
-              (res, _) <- runGhcModT globalOptions $ commands args
-              case res of
-                Right s -> putStr s
-                Left e -> exitError $ render (gmeDoc e)
+              let (globalOptions,cmdArgs) = parseGlobalArgs args
+              res      <- simpleCommands cmdArgs
+              putStr =<< case res of
+                Just s -> return s
+                Nothing -> do
+                  (res',_) <- runGhcModT globalOptions $ ghcCommands cmdArgs
+                  case res' of
+                    Right s -> return s
+                    Left e -> exitError $ render (gmeDoc e)
 
               -- Obtain ghc options by letting ourselfs be executed by
               -- @cabal repl@
@@ -339,14 +343,19 @@ main = handler $ do
 
               -- rawSystem "cabal" cabalArgs >>= exitWith
 
-commands :: IOish m => [String] -> GhcModT m String
-commands []         = fatalError "No command given (try --help)\n"
-commands (cmd:args) = fn args
+simpleCommands :: [String] -> IO (Maybe String)
+simpleCommands []      = return Nothing
+simpleCommands (cmd:_) = return $ case cmd of
+    _ | cmd == "help" || cmd == "--help"  -> Just usage
+    "version" -> Just progVersion
+    _         -> Nothing
+
+ghcCommands :: IOish m => [String] -> GhcModT m String
+ghcCommands []         = fatalError "No command given (try --help)\n"
+ghcCommands (cmd:args) = fn args
  where
    fn = case cmd of
      _ | cmd == "list" || cmd == "modules" -> modulesCmd
-     _ | cmd == "help" || cmd == "--help"  -> const $ return usage
-     "version" -> const $ return progVersion
      "lang"    -> languagesCmd
      "flag"    -> flagsCmd
      "browse"  -> browseCmd
@@ -400,9 +409,9 @@ flagsCmd      = withParseCmd [] $ \[] -> flags
 debugInfoCmd  = withParseCmd [] $ \[] -> debugInfo
 rootInfoCmd   = withParseCmd [] $ \[] -> rootInfo
 -- internal
-dumpSymbolCmd = withParseCmd [] $ \[] -> dumpSymbol
 bootCmd       = withParseCmd [] $ \[] -> boot
 
+dumpSymbolCmd     = withParseCmd [] $ \[tmpdir] -> dumpSymbol tmpdir
 findSymbolCmd     = withParseCmd [] $ \[sym]  -> findSymbol sym
 pkgDocCmd         = withParseCmd [] $ \[mdl]  -> pkgDoc mdl
 lintCmd           = withParseCmd s  $ \[file] -> lint file

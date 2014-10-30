@@ -16,16 +16,19 @@ module Language.Haskell.GhcMod.GhcPkg (
 import Config (cProjectVersion, cTargetPlatformString, cProjectVersionInt)
 import Control.Applicative ((<$>))
 import Control.Exception (SomeException(..))
+import Control.Monad
 import qualified Control.Exception as E
 import Data.Char (isSpace)
 import Data.List (isPrefixOf, intercalate)
 import Data.List.Split (splitOn)
+import Data.Maybe
 import Distribution.Package (InstalledPackageId(..))
 import Exception (handleIO)
 import Language.Haskell.GhcMod.Types
 import Language.Haskell.GhcMod.Utils
 import System.Directory (doesDirectoryExist, getAppUserDataDirectory)
 import System.FilePath ((</>))
+import qualified Data.Traversable as T
 
 ghcVersion :: Int
 ghcVersion = read cProjectVersionInt
@@ -117,12 +120,14 @@ packageCache = "package.cache"
 packageConfDir :: String
 packageConfDir = "package.conf.d"
 
--- fixme: error handling
 getPackageCachePath :: Cradle -> IO FilePath
 getPackageCachePath crdl = do
-    let u:_ = filter (/= GlobalDb) $ cradlePkgDbStack crdl
-    Just db <- resolvePath u
-    return db
+    let mu = listToMaybe $ filter (/= GlobalDb) $ cradlePkgDbStack crdl
+    mdb <- join <$> resolvePath `T.traverse` mu
+    let dir = case mdb of
+               Just db -> db
+               Nothing -> cradleTempDir crdl
+    return dir
 
 --- Copied from ghc module `Packages' unfortunately it's not exported :/
 resolvePath :: GhcPkgDb -> IO (Maybe FilePath)

@@ -2,6 +2,7 @@ module Language.Haskell.GhcMod.Cradle (
     findCradle
   , findCradle'
   , findCradleWithoutSandbox
+  , cleanupCradle
   ) where
 
 import Language.Haskell.GhcMod.Types
@@ -12,8 +13,10 @@ import qualified Control.Exception as E
 import Control.Exception.IOChoice ((||>))
 import Control.Monad (filterM)
 import Data.List (isSuffixOf)
-import System.Directory (getCurrentDirectory, getDirectoryContents, doesFileExist)
+import System.Directory (getCurrentDirectory, getDirectoryContents, doesFileExist, getTemporaryDirectory, removeDirectoryRecursive)
 import System.FilePath ((</>), takeDirectory)
+import System.IO.Temp
+
 
 ----------------------------------------------------------------
 
@@ -27,13 +30,26 @@ findCradle = findCradle' =<< getCurrentDirectory
 findCradle' :: FilePath -> IO Cradle
 findCradle' dir = cabalCradle dir ||> sandboxCradle dir ||> plainCradle dir
 
+newTempDir :: FilePath -> IO FilePath
+newTempDir dir =
+    flip createTempDirectory uniqPathName =<< getTemporaryDirectory
+ where
+   uniqPathName = "ghc-mod" ++ map escapeSlash dir
+   escapeSlash '/' = '-'
+   escapeSlash c = c
+
+cleanupCradle :: Cradle -> IO ()
+cleanupCradle crdl = removeDirectoryRecursive $ cradleTempDir crdl
+
 cabalCradle :: FilePath -> IO Cradle
 cabalCradle wdir = do
     (rdir,cfile) <- cabalDir wdir
     pkgDbStack <- getPackageDbStack rdir
+    tmpDir <- newTempDir rdir
     return Cradle {
         cradleCurrentDir = wdir
       , cradleRootDir    = rdir
+      , cradleTempDir    = tmpDir
       , cradleCabalFile  = Just cfile
       , cradlePkgDbStack = pkgDbStack
       }
@@ -42,17 +58,22 @@ sandboxCradle :: FilePath -> IO Cradle
 sandboxCradle wdir = do
     rdir <- getSandboxDir wdir
     pkgDbStack <- getPackageDbStack rdir
+    tmpDir <- newTempDir rdir
     return Cradle {
         cradleCurrentDir = wdir
       , cradleRootDir    = rdir
+      , cradleTempDir    = tmpDir
       , cradleCabalFile  = Nothing
       , cradlePkgDbStack = pkgDbStack
       }
 
 plainCradle :: FilePath -> IO Cradle
-plainCradle wdir = return Cradle {
+plainCradle wdir = do
+    tmpDir <- newTempDir wdir
+    return Cradle {
         cradleCurrentDir = wdir
       , cradleRootDir    = wdir
+      , cradleTempDir    = tmpDir
       , cradleCabalFile  = Nothing
       , cradlePkgDbStack = [GlobalDb, UserDb]
       }

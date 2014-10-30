@@ -17,31 +17,27 @@ spec = do
             withDirectory_ "/" $ do
                 curDir <- stripLastDot <$> canonicalizePath "/"
                 res <- findCradle
-                res `shouldBe` Cradle {
-                    cradleCurrentDir = curDir
-                  , cradleRootDir    = curDir
-                  , cradleCabalFile  = Nothing
-                  , cradlePkgDbStack = [GlobalDb,UserDb]
-                  }
+                cradleCurrentDir res `shouldBe` curDir
+                cradleRootDir    res `shouldBe` curDir
+                cradleCabalFile  res `shouldBe` Nothing
+                cradlePkgDbStack res `shouldBe` [GlobalDb,UserDb]
+
         it "finds a cabal file and a sandbox" $ do
             cwd <- getCurrentDirectory
             withDirectory "test/data/subdir1/subdir2" $ \dir -> do
                 res <- relativeCradle dir <$> findCradle
-                res `shouldBe` Cradle {
-                    cradleCurrentDir = "test" </> "data" </> "subdir1" </> "subdir2"
-                  , cradleRootDir    = "test" </> "data"
-                  , cradleCabalFile  = Just ("test" </> "data" </> "cabalapi.cabal")
-                  , cradlePkgDbStack = [GlobalDb, PackageDb (cwd </> "test/data/.cabal-sandbox/i386-osx-ghc-7.6.3-packages.conf.d")]
-                  }
+                cradleCurrentDir res `shouldBe` "test" </> "data" </> "subdir1" </> "subdir2"
+                cradleRootDir    res `shouldBe` "test" </> "data"
+                cradleCabalFile  res `shouldBe` Just ("test" </> "data" </> "cabalapi.cabal")
+                cradlePkgDbStack res `shouldBe` [GlobalDb, PackageDb (cwd </> "test/data/.cabal-sandbox/i386-osx-ghc-7.6.3-packages.conf.d")]
+
         it "works even if a sandbox config file is broken" $ do
             withDirectory "test/data/broken-sandbox" $ \dir -> do
                 res <- relativeCradle dir <$> findCradle
-                res `shouldBe` Cradle {
-                    cradleCurrentDir = "test" </> "data" </> "broken-sandbox"
-                  , cradleRootDir    = "test" </> "data" </> "broken-sandbox"
-                  , cradleCabalFile  = Just ("test" </> "data" </> "broken-sandbox" </> "dummy.cabal")
-                  , cradlePkgDbStack = [GlobalDb, UserDb]
-                  }
+                cradleCurrentDir res `shouldBe` "test" </> "data" </> "broken-sandbox"
+                cradleRootDir    res `shouldBe` "test" </> "data" </> "broken-sandbox"
+                cradleCabalFile  res `shouldBe` Just ("test" </> "data" </> "broken-sandbox" </> "dummy.cabal")
+                cradlePkgDbStack res `shouldBe` [GlobalDb, UserDb]
 
 relativeCradle :: FilePath -> Cradle -> Cradle
 relativeCradle dir cradle = cradle {
