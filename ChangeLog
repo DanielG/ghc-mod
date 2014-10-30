@@ -1,3 +1,13 @@
+2014-10-30 v5.2.0.0
+        * Return type of `loadSymbolDb` is now in GhcModT
+        * Function `dumpSymbol` now takes the path of the target directory
+        * Fix #387, Pattern match failure in GhcPkg
+        * Fix #386, `ghc-mod version` should not check `cabal configure`
+        * Fix #391, Error on command `-g` when used before command despite
+          --help output saying this is valid
+        * Fix formatting of `ghc-version` constant in the elisp code.  in
+          version 5.1.1.0 the string was "v5.1.1.0" instead of "5.1.1.0".
+
 2014-10-04 v5.1.1.0
         * Handle various consistency related issues: #222, #224, #326, #332
         * Add `isOutdated` to Language.Haskell.GhcMod
