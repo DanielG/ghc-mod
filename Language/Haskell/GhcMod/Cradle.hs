@@ -14,7 +14,7 @@ import Control.Exception.IOChoice ((||>))
 import Control.Monad (filterM)
 import Data.List (isSuffixOf)
 import System.Directory (getCurrentDirectory, getDirectoryContents, doesFileExist, getTemporaryDirectory, removeDirectoryRecursive)
-import System.FilePath ((</>), takeDirectory)
+import System.FilePath ((</>),takeDirectory,pathSeparators,splitDrive)
 import System.IO.Temp
 
 
@@ -34,8 +34,9 @@ newTempDir :: FilePath -> IO FilePath
 newTempDir dir =
     flip createTempDirectory uniqPathName =<< getTemporaryDirectory
  where
-   uniqPathName = "ghc-mod" ++ map escapeSlash dir
-   escapeSlash '/' = '-'
+   uniqPathName = "ghc-mod" ++ map escapeSlash (snd $ splitDrive dir)
+
+   escapeSlash c | c `elem` pathSeparators = '-'
    escapeSlash c = c
 
 cleanupCradle :: Cradle -> IO ()
