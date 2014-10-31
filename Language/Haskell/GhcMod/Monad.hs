@@ -1,6 +1,7 @@
 {-# LANGUAGE CPP, GeneralizedNewtypeDeriving, FlexibleInstances #-}
 {-# LANGUAGE FlexibleContexts, MultiParamTypeClasses, RankNTypes #-}
 {-# LANGUAGE TypeFamilies, UndecidableInstances, RecordWildCards #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
 module Language.Haskell.GhcMod.Monad (
@@ -101,7 +102,6 @@ import Control.Monad.Journal.Class
 import Data.Maybe (fromJust, isJust)
 import Data.IORef (IORef, readIORef, writeIORef, newIORef)
 import System.Directory (getCurrentDirectory)
-import System.IO.Error (tryIOError)
 
 ----------------------------------------------------------------
 
@@ -154,12 +154,29 @@ newtype GhcModT m a = GhcModT {
 
 instance MonadIO m => MonadIO (GhcModT m) where
     liftIO action = do
-      res <- GhcModT . liftIO . liftIO . liftIO . liftIO $ tryIOError action
+      res <- GhcModT . liftIO . liftIO . liftIO . liftIO $ try action
       case res of
         Right a -> return a
-        Left e -> case show e of
-          ""  -> throwError $ noMsg
-          msg -> throwError $ strMsg msg
+
+        Left e | isIOError e ->
+                   throwError $ GMEIOException (fromEx e :: IOError)
+        Left e | isGhcModError e ->
+                   throwError $ (fromEx e :: GhcModError)
+        Left e -> throw e
+
+     where
+       fromEx :: Exception e => SomeException -> e
+       fromEx = fromJust . fromException
+       isIOError se =
+           case fromException se of
+             Just (_ :: IOError) -> True
+             Nothing -> False
+
+       isGhcModError se =
+           case fromException se of
+             Just (_ :: GhcModError) -> True
+             Nothing -> False
+
 
 instance MonadTrans (GhcModT) where
     lift = GhcModT . lift . lift . lift . lift

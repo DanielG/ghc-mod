@@ -1,4 +1,4 @@
-{-# LANGUAGE TypeFamilies, ScopedTypeVariables #-}
+{-# LANGUAGE TypeFamilies, ScopedTypeVariables, DeriveDataTypeable #-}
 module Language.Haskell.GhcMod.Error (
     GhcModError(..)
   , gmeDoc
@@ -10,6 +10,8 @@ module Language.Haskell.GhcMod.Error (
   ) where
 
 import Control.Monad.Error (MonadError(..), Error(..))
+import Data.List
+import Data.Typeable
 import Exception
 import Text.PrettyPrint
 
@@ -18,6 +20,8 @@ data GhcModError = GMENoMsg
                  | GMEString String
                  -- ^ Some Error with a message. These are produced mostly by
                  -- 'fail' calls on GhcModT.
+                 | GMEIOException IOException
+                 -- ^ IOExceptions captured by GhcModT's MonadIO instance
                  | GMECabalConfigure GhcModError
                  -- ^ Configuring a cabal project failed.
                  | GMECabalFlags GhcModError
@@ -25,7 +29,9 @@ data GhcModError = GMENoMsg
                  | GMEProcess [String] GhcModError
                  -- ^ Launching an operating system process failed. The first
                  -- field is the command.
-                   deriving (Eq,Show)
+                   deriving (Eq,Show,Typeable)
+
+instance Exception GhcModError
 
 instance Error GhcModError where
     noMsg = GMENoMsg
@@ -37,6 +43,8 @@ gmeDoc e = case e of
         text "Unknown error"
     GMEString msg ->
         text msg
+    GMEIOException ioe ->
+        text $ show ioe
     GMECabalConfigure msg ->
         text "cabal configure failed: " <> gmeDoc msg
     GMECabalFlags msg ->
