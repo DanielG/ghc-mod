@@ -3,7 +3,7 @@ module Language.Haskell.GhcMod.Utils where
 
 import Language.Haskell.GhcMod.Error
 import MonadUtils (MonadIO, liftIO)
-import System.Directory (getCurrentDirectory, setCurrentDirectory)
+import System.Directory (getCurrentDirectory, setCurrentDirectory, doesFileExist)
 import System.Exit (ExitCode(..))
 import System.Process (readProcessWithExitCode)
 #ifndef SPEC
@@ -47,6 +47,11 @@ withDirectory_ :: (MonadIO m, ExceptionMonad m) => FilePath -> m a -> m a
 withDirectory_ dir action =
     gbracket (liftIO getCurrentDirectory) (liftIO . setCurrentDirectory)
                 (\_ -> liftIO (setCurrentDirectory dir) >> action)
+
+mightExist :: FilePath -> IO (Maybe FilePath)
+mightExist f = do
+  exists <- doesFileExist f
+  return $ if exists then (Just f) else (Nothing)
 
 -- | Returns the path to the currently running ghc-mod executable. With ghc<7.6
 -- this is a guess but >=7.6 uses 'getExecutablePath'.

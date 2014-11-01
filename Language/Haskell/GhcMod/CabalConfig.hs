@@ -6,17 +6,15 @@ module Language.Haskell.GhcMod.CabalConfig (
     CabalConfig
   , cabalConfigDependencies
   , cabalConfigFlags
-  , setupConfigFile
-  , World
-  , getCurrentWorld
-  , isWorldChanged
   ) where
 
 import Language.Haskell.GhcMod.Error
 import Language.Haskell.GhcMod.GhcPkg
+import Language.Haskell.GhcMod.PathsAndFiles
 import Language.Haskell.GhcMod.Read
 import Language.Haskell.GhcMod.Types
 import Language.Haskell.GhcMod.Utils
+import Language.Haskell.GhcMod.World
 
 import qualified Language.Haskell.GhcMod.Cabal16 as C16
 import qualified Language.Haskell.GhcMod.Cabal18 as C18
@@ -27,32 +25,19 @@ import qualified Language.Haskell.GhcMod.Cabal21 as C21
 #endif
 
 import Control.Applicative ((<$>))
-import Control.Monad (unless, void, mplus)
+import Control.Monad (void, mplus, when)
 #if MIN_VERSION_mtl(2,2,1)
 import Control.Monad.Except ()
 #else
 import Control.Monad.Error ()
 #endif
-import Data.Maybe ()
-import Data.Set ()
 import Data.List (find,tails,isPrefixOf,isInfixOf,nub,stripPrefix)
 import Distribution.Package (InstalledPackageId(..)
                            , PackageIdentifier(..)
                            , PackageName(..))
 import Distribution.PackageDescription (FlagAssignment)
-import Distribution.Simple.BuildPaths (defaultDistPref)
-import Distribution.Simple.Configure (localBuildInfoFile)
 import Distribution.Simple.LocalBuildInfo (ComponentName)
-import Data.Traversable (traverse)
 import MonadUtils (liftIO)
-import System.Directory (doesFileExist, getModificationTime)
-import System.FilePath ((</>))
-
-#if __GLASGOW_HASKELL__ <= 704
-import System.Time (ClockTime)
-#else
-import Data.Time (UTCTime)
-#endif
 
 ----------------------------------------------------------------
 
@@ -66,9 +51,8 @@ getConfig :: (IOish m, MonadError GhcModError m)
           => Cradle
           -> m CabalConfig
 getConfig cradle = do
-    world <- liftIO $ getCurrentWorld cradle
-    let valid = isSetupConfigValid world
-    unless valid configure
+    outOfDate <- liftIO $ isSetupConfigOutOfDate cradle
+    when outOfDate configure
     liftIO (readFile file) `tryFix` \_ ->
         configure `modifyError'` GMECabalConfigure
  where
@@ -77,14 +61,6 @@ getConfig cradle = do
 
    configure :: (IOish m, MonadError GhcModError m) => m ()
    configure = withDirectory_ prjDir $ void $ readProcess' "cabal" ["configure"]
-
-
-setupConfigFile :: Cradle -> FilePath
-setupConfigFile crdl = cradleRootDir crdl </> setupConfigPath
-
--- | Path to 'LocalBuildInfo' file, usually @dist/setup-config@
-setupConfigPath :: FilePath
-setupConfigPath = localBuildInfoFile defaultDistPref
 
 -- | Get list of 'Package's needed by all components of the current package
 cabalConfigDependencies :: (IOish m, MonadError GhcModError m)
@@ -193,57 +169,3 @@ extractField config field =
     case extractParens <$> find (field `isPrefixOf`) (tails config) of
         Just f -> Right f
         Nothing -> Left $ "extractField: failed extracting "++field++" from input, input contained `"++field++"'? " ++ show (field `isInfixOf` config)
-
-----------------------------------------------------------------
-
-#if __GLASGOW_HASKELL__ <= 704
-type ModTime = ClockTime
-#else
-type ModTime = UTCTime
-#endif
-
-data World = World {
-    worldCabalFile :: Maybe FilePath
-  , worldCabalFileModificationTime :: Maybe ModTime
-  , worldPackageCache :: FilePath
-  , worldPackageCacheModificationTime :: ModTime
-  , worldSetupConfig :: FilePath
-  , worldSetupConfigModificationTime :: Maybe ModTime
-  } deriving (Show, Eq)
-
-getCurrentWorld :: Cradle -> IO World
-getCurrentWorld crdl = do
-    cachePath <- getPackageCachePath crdl
-    let mCabalFile = cradleCabalFile crdl
-        pkgCache = cachePath </> packageCache
-        setupFile = setupConfigFile crdl
-    mCabalFileMTime <- getModificationTime `traverse` mCabalFile
-    pkgCacheMTime <- getModificationTime pkgCache
-    exist <- doesFileExist setupFile
-    mSeetupMTime <- if exist then
-                        Just <$> getModificationTime setupFile
-                      else
-                        return Nothing
-    return $ World {
-        worldCabalFile = mCabalFile
-      , worldCabalFileModificationTime = mCabalFileMTime
-      , worldPackageCache = pkgCache
-      , worldPackageCacheModificationTime = pkgCacheMTime
-      , worldSetupConfig = setupFile
-      , worldSetupConfigModificationTime = mSeetupMTime
-      }
-
-isWorldChanged :: World -> Cradle -> IO Bool
-isWorldChanged world crdl = do
-    world' <- getCurrentWorld crdl
-    return (world /= world')
-
-isSetupConfigValid :: World -> Bool
-isSetupConfigValid World{ worldSetupConfigModificationTime = Nothing, ..} = False
-isSetupConfigValid World{ worldSetupConfigModificationTime = Just mt, ..} =
-    cond1 && cond2
-  where
-    cond1 = case worldCabalFileModificationTime of
-        Nothing -> True
-        Just mtime -> mtime <= mt
-    cond2 = worldPackageCacheModificationTime <= mt

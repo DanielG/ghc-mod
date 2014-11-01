@@ -134,7 +134,7 @@ loop symdbreq ref world = do
     cmdArg <- liftIO $ getCommand ref
     -- after blocking, we need to see if the world has changed.
     crdl <- cradle
-    changed <- liftIO $ isWorldChanged world crdl
+    changed <- liftIO $ didWorldChange world crdl
     when changed $ do
         liftIO $ ungetCommand ref cmdArg
         E.throw Restart

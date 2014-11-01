@@ -29,6 +29,9 @@ data GhcModError = GMENoMsg
                  | GMEProcess [String] GhcModError
                  -- ^ Launching an operating system process failed. The first
                  -- field is the command.
+                 | GMENoCabalFile
+                 | GMETooManyCabalFiles [FilePath]
+                 -- ^ No or too many cabal files found.
                    deriving (Eq,Show,Typeable)
 
 instance Exception GhcModError
@@ -52,6 +55,11 @@ gmeDoc e = case e of
     GMEProcess cmd msg ->
         text ("launching operating system process `"++unwords cmd++"` failed: ")
           <> gmeDoc msg
+    GMENoCabalFile ->
+        text "No cabal file found."
+    GMETooManyCabalFiles cfs ->
+        text $ "Multiple cabal files found. Possible cabal files: \""
+               ++ intercalate "\", \"" cfs ++"\"."
 
 modifyError :: MonadError e m => (e -> e) -> m a -> m a
 modifyError f action = action `catchError` \e -> throwError $ f e

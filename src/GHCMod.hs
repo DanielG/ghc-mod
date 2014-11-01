@@ -442,7 +442,7 @@ legacyInteractiveLoop symdbreq ref world = do
 
     -- after blocking, we need to see if the world has changed.
 
-    changed <- liftIO . isWorldChanged world =<< cradle
+    changed <- liftIO . didWorldChange world =<< cradle
     when changed $ do
         liftIO $ ungetCommand ref cmdArg
         throw Restart

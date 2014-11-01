@@ -1,9 +1,10 @@
 {-# LANGUAGE CPP #-}
-module GhcPkgSpec where
+module PathsAndFilesSpec where
 
-import Language.Haskell.GhcMod.GhcPkg
+import Language.Haskell.GhcMod.PathsAndFiles
 #if __GLASGOW_HASKELL__ <= 706
 import Language.Haskell.GhcMod.Types
+import Language.Haskell.GhcMod.GhcPkg
 #endif
 
 import System.Directory
@@ -23,7 +24,7 @@ spec = do
         it "can parse a config file and extract the sandbox package-db" $ do
             cwd <- getCurrentDirectory
             pkgDb <- getSandboxDb "test/data/"
-            pkgDb `shouldBe` (cwd </> "test/data/.cabal-sandbox/i386-osx-ghc-7.6.3-packages.conf.d")
+            pkgDb `shouldBe` Just (cwd </> "test/data/.cabal-sandbox/i386-osx-ghc-7.6.3-packages.conf.d")
 
-        it "throws an error if the sandbox config file is broken" $ do
-            getSandboxDb "test/data/broken-sandbox" `shouldThrow` anyException
+        it "returns Nothing if the sandbox config file is broken" $ do
+            getSandboxDb "test/data/broken-sandbox" `shouldReturn` Nothing
