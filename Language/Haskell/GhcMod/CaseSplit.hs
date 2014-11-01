@@ -71,8 +71,8 @@ getSrcSpanTypeForFnSplit :: GhcMonad m => G.ModSummary -> Int -> Int -> m (Maybe
 getSrcSpanTypeForFnSplit modSum lineNo colNo = do
     p@ParsedModule{pm_parsed_source = _pms} <- G.parseModule modSum
     tcm@TypecheckedModule{tm_typechecked_source = tcs} <- G.typecheckModule p
-    let varPat  = find isPatternVar $ listifySpans tcs (lineNo, colNo) :: Maybe (LPat Id)
-        match:_ = listifySpans tcs (lineNo, colNo) :: [Gap.GLMatchI]
+    let varPat = find isPatternVar $ listifySpans tcs (lineNo, colNo) :: Maybe (LPat Id)
+        match  = last $ listifySpans tcs (lineNo, colNo) :: Gap.GLMatchI
     case varPat of
       Nothing  -> return Nothing
       Just varPat' -> do
@@ -188,8 +188,11 @@ getCaseSplitText text (SplitToTextInfo { sVarName = sVN, sBindingSpan = sBS
                                        , sVarSpan = sVS, sTycons = sT })  =
   let bindingText = getBindingText text sBS
       difference  = srcSpanDifference sBS sVS
-      replaced    = concatMap (replaceVarWithTyCon bindingText difference sVN) sT
-   in T.unpack $ T.intercalate (T.pack "\n") replaced
+      replaced    = map (replaceVarWithTyCon bindingText difference sVN) sT
+      -- The newly generated bindings need to be indented to align with the
+      -- original binding.
+      replaced'   = head replaced : map (indentBindingTo sBS) (tail replaced)
+   in T.unpack $ T.intercalate (T.pack "\n") (concat replaced')
 
 getBindingText :: [T.Text] -> SrcSpan -> [T.Text]
 getBindingText text srcSpan =
@@ -220,3 +223,9 @@ replaceVarWithTyCon text (vsl,vsc,_,vec) varname tycon =
                                then T.take vsc line `T.append` tycon'' `T.append` T.drop vec line
                                else T.replicate spacesToAdd (T.pack " ") `T.append` line)
               [0 ..] text
+
+indentBindingTo :: SrcSpan -> [T.Text] -> [T.Text]
+indentBindingTo bndLoc binds =
+  let Just (_,sl,_,_) = Gap.getSrcSpan bndLoc
+      indent      = (T.replicate (sl - 1) (T.pack " ") `T.append`)
+   in indent (head binds) : tail binds
