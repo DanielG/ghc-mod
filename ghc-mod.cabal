@@ -34,6 +34,7 @@ Extra-Source-Files:     ChangeLog
                         test/data/broken-cabal/cabal.sandbox.config.in
                         test/data/broken-sandbox/*.cabal
                         test/data/broken-sandbox/cabal.sandbox.config
+                        test/data/case-split/*.hs
                         test/data/cabal-flags/*.cabal
                         test/data/check-test-subdir/*.cabal
                         test/data/check-test-subdir/src/Check/Test/*.hs
