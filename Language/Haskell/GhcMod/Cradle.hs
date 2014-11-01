@@ -12,9 +12,9 @@ import Control.Applicative ((<$>))
 import qualified Control.Exception as E
 import Control.Exception.IOChoice ((||>))
 import Control.Monad (filterM)
-import Data.List (isSuffixOf)
+import Data.List (intercalate, isSuffixOf)
 import System.Directory (getCurrentDirectory, getDirectoryContents, doesFileExist, getTemporaryDirectory, removeDirectoryRecursive)
-import System.FilePath ((</>), takeDirectory)
+import System.FilePath ((</>), dropDrive, splitDirectories, takeDirectory)
 import System.IO.Temp
 
 
@@ -34,9 +34,7 @@ newTempDir :: FilePath -> IO FilePath
 newTempDir dir =
     flip createTempDirectory uniqPathName =<< getTemporaryDirectory
  where
-   uniqPathName = "ghc-mod" ++ map escapeSlash dir
-   escapeSlash '/' = '-'
-   escapeSlash c = c
+   uniqPathName = "ghc-mod-" ++ intercalate "-" (splitDirectories $ dropDrive dir)
 
 cleanupCradle :: Cradle -> IO ()
 cleanupCradle crdl = removeDirectoryRecursive $ cradleTempDir crdl
