@@ -28,16 +28,19 @@ type FileName = String
 -- is assumed to be the project directory. If only one cabal file exists in this
 -- directory it is returned otherwise @findCabalFiles@ throws 'GMENoCabalFile'
 -- or 'GMETooManyCabalFiles'
-findCabalFiles :: FilePath -> IO (Maybe FilePath)
-findCabalFiles directory = do
+findCabalFile :: FilePath -> IO (Maybe FilePath)
+findCabalFile directory = do
     -- Look for cabal files in @dir@ and all it's parent directories
     dcs <- getCabalFiles `zipMapM` parents directory
     -- Extract first non-empty list, which represents a directory with cabal
     -- files.
-    case find (not . null) $ uncurry makeAbsolute `map` dcs of
+    case find (not . null) $ uncurry appendDir `map` dcs of
       Just []          -> throw $ GMENoCabalFile
       Just cfs@(_:_:_) -> throw $ GMETooManyCabalFiles cfs
       a  -> return $ head <$> a
+ where
+   appendDir :: DirPath -> [FileName] -> [FilePath]
+   appendDir dir fs = (dir </>) `map` fs
 
 -- | @getCabalFiles dir@. Find all files ending in @.cabal@ in @dir@.
 getCabalFiles :: DirPath -> IO [FileName]
@@ -45,16 +48,12 @@ getCabalFiles dir =
     filterM isCabalFile =<< getDirectoryContents dir
  where
    isCabalFile f = do
-     exists <- doesFileExist f
+     exists <- doesFileExist $ dir </> f
      return (exists && takeExtension' f == ".cabal")
 
    takeExtension' p = if takeFileName p == takeExtension p
                         then ""
                         else takeExtension p
-
-
-makeAbsolute :: DirPath -> [FileName] -> [FilePath]
-makeAbsolute dir fs = (dir </>) `map` fs
 
 zipMapM :: Monad m => (a -> m c) -> [a] -> m [(a,c)]
 zipMapM f as = mapM (\a -> liftM (a,) $ f a) as

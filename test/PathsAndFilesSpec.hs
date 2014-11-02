@@ -33,3 +33,10 @@ spec = do
     describe "getCabalFiles" $ do
         it "doesn't think $HOME/.cabal is a cabal file" $ do
             (getCabalFiles =<< getEnv "HOME") `shouldReturn` []
+
+    describe "findCabalFile" $ do
+        it "works" $ do
+            findCabalFile "test/data" `shouldReturn` Just "test/data/cabalapi.cabal"
+
+        it "finds cabal files in parent directories" $ do
+            findCabalFile "test/data/subdir1/subdir2" `shouldReturn` Just "test/data/cabalapi.cabal"

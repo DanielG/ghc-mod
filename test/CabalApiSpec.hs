@@ -3,7 +3,6 @@
 module CabalApiSpec where
 
 import Control.Applicative
-import Data.Maybe
 import Language.Haskell.GhcMod.CabalApi
 import Language.Haskell.GhcMod.Cradle
 import Language.Haskell.GhcMod.Types
@@ -35,7 +34,7 @@ spec = do
             cwd <- getCurrentDirectory
             withDirectory "test/data/subdir1/subdir2" $ \dir -> do
                 crdl <- findCradle
-                let cabalFile = cradleCabalFile crdl
+                let Just cabalFile = cradleCabalFile crdl
                 pkgDesc <- runD $ parseCabalFile crdl cabalFile
                 res <- runD $ getCompilerOptions [] crdl pkgDesc
                 let res' = res {
