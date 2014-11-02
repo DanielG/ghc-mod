@@ -30,8 +30,9 @@ data GhcModError = GMENoMsg
                  -- ^ Launching an operating system process failed. The first
                  -- field is the command.
                  | GMENoCabalFile
+                 -- ^ No cabal file found.
                  | GMETooManyCabalFiles [FilePath]
-                 -- ^ No or too many cabal files found.
+                 -- ^ Too many cabal files found.
                    deriving (Eq,Show,Typeable)
 
 instance Exception GhcModError
