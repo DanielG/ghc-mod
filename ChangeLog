@@ -1,3 +1,8 @@
+2014-11-02 v5.2.1.0
+        * Fix `newTempDir` on Windows
+        * GhcModT's liftIO instance now converts GhcMOdError exceptions
+          into monadic failures
+
 2014-10-30 v5.2.0.0
         * Return type of `loadSymbolDb` is now in GhcModT
         * Function `dumpSymbol` now takes the path of the target directory
