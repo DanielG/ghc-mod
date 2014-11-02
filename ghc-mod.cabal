@@ -88,12 +88,14 @@ Library
                         Language.Haskell.GhcMod.Logger
                         Language.Haskell.GhcMod.Modules
                         Language.Haskell.GhcMod.Monad
+                        Language.Haskell.GhcMod.PathsAndFiles
                         Language.Haskell.GhcMod.PkgDoc
                         Language.Haskell.GhcMod.Read
                         Language.Haskell.GhcMod.SrcUtils
                         Language.Haskell.GhcMod.Target
                         Language.Haskell.GhcMod.Types
                         Language.Haskell.GhcMod.Utils
+                        Language.Haskell.GhcMod.World
   Build-Depends:        base >= 4.0 && < 5
                       , containers
                       , deepseq
@@ -136,11 +138,13 @@ Executable ghc-mod
   Default-Extensions:   ConstraintKinds, FlexibleContexts
   HS-Source-Dirs:       src
   Build-Depends:        base >= 4.0 && < 5
+                      , async
                       , data-default
                       , directory
                       , filepath
                       , pretty
                       , process
+                      , split
                       , mtl >= 2.0
                       , ghc
                       , ghc-mod
@@ -185,18 +189,18 @@ Test-Suite spec
   Hs-Source-Dirs:       test, .
   Ghc-Options:          -Wall
   Type:                 exitcode-stdio-1.0
-  Other-Modules:        Dir
-                        Spec
-                        BrowseSpec
+  Other-Modules:        BrowseSpec
                         CabalApiSpec
                         CheckSpec
+                        Dir
                         FlagSpec
                         InfoSpec
                         LangSpec
                         LintSpec
                         ListSpec
                         MonadSpec
-                        GhcPkgSpec
+                        PathsAndFilesSpec
+                        Spec
                         TestUtils
   Build-Depends:        base >= 4.0 && < 5
                       , containers

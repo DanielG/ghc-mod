@@ -6,63 +6,34 @@ module Language.Haskell.GhcMod.GhcPkg (
   , ghcDbOpt
   , fromInstalledPackageId
   , fromInstalledPackageId'
-  , getSandboxDb
   , getPackageDbStack
-  , getPackageCachePath
-  , packageCache
-  , packageConfDir
+  , getPackageCachePaths
   ) where
 
 import Config (cProjectVersion, cTargetPlatformString, cProjectVersionInt)
 import Control.Applicative ((<$>))
-import Control.Exception (SomeException(..))
-import Control.Monad
-import qualified Control.Exception as E
-import Data.Char (isSpace)
-import Data.List (isPrefixOf, intercalate)
+import Data.List (intercalate)
 import Data.List.Split (splitOn)
 import Data.Maybe
 import Distribution.Package (InstalledPackageId(..))
 import Exception (handleIO)
+import Language.Haskell.GhcMod.PathsAndFiles
 import Language.Haskell.GhcMod.Types
-import Language.Haskell.GhcMod.Utils
 import System.Directory (doesDirectoryExist, getAppUserDataDirectory)
 import System.FilePath ((</>))
-import qualified Data.Traversable as T
 
 ghcVersion :: Int
 ghcVersion = read cProjectVersionInt
-
--- | Get path to sandbox package db
-getSandboxDb :: FilePath -- ^ Path to the cabal package root directory
-                         -- (containing the @cabal.sandbox.config@ file)
-             -> IO FilePath
-getSandboxDb cdir = getSandboxDbDir (cdir </> "cabal.sandbox.config")
-
--- | Extract the sandbox package db directory from the cabal.sandbox.config file.
---   Exception is thrown if the sandbox config file is broken.
-getSandboxDbDir :: FilePath -- ^ Path to the @cabal.sandbox.config@ file
-                -> IO FilePath
-getSandboxDbDir sconf = do
-    -- Be strict to ensure that an error can be caught.
-    !path <- extractValue . parse <$> readFile sconf
-    return path
-  where
-    key = "package-db:"
-    keyLen = length key
-
-    parse = head . filter (key `isPrefixOf`) . lines
-    extractValue = dropWhileEnd isSpace . dropWhile isSpace . drop keyLen
-
-----------------------------------------------------------------
 
 getPackageDbStack :: FilePath -- ^ Project Directory (where the
                                  -- cabal.sandbox.config file would be if it
                                  -- exists)
                   -> IO [GhcPkgDb]
-getPackageDbStack cdir =
-    (getSandboxDb cdir >>= \db -> return [GlobalDb, PackageDb db])
-      `E.catch` \(_ :: SomeException) -> return [GlobalDb, UserDb]
+getPackageDbStack cdir = do
+    mSDir <- getSandboxDb cdir
+    return $ [GlobalDb] ++ case mSDir of
+                             Nothing -> [UserDb]
+                             Just db -> [PackageDb db]
 
 ----------------------------------------------------------------
 
@@ -114,30 +85,22 @@ ghcDbOpt (PackageDb pkgDb)
 
 ----------------------------------------------------------------
 
-packageCache :: String
-packageCache = "package.cache"
 
-packageConfDir :: String
-packageConfDir = "package.conf.d"
+getPackageCachePaths :: FilePath -> Cradle -> IO [FilePath]
+getPackageCachePaths sysPkgCfg crdl =
+    catMaybes <$> resolvePackageConfig sysPkgCfg `mapM` cradlePkgDbStack crdl
 
-getPackageCachePath :: Cradle -> IO FilePath
-getPackageCachePath crdl = do
-    let mu = listToMaybe $ filter (/= GlobalDb) $ cradlePkgDbStack crdl
-    mdb <- join <$> resolvePath `T.traverse` mu
-    let dir = case mdb of
-               Just db -> db
-               Nothing -> cradleTempDir crdl
-    return dir
 
+-- TODO: use PkgConfRef
 --- Copied from ghc module `Packages' unfortunately it's not exported :/
-resolvePath :: GhcPkgDb -> IO (Maybe FilePath)
-resolvePath (PackageDb name) = return $ Just name
-resolvePath UserDb           = handleIO (\_ -> return Nothing) $ do
-    appdir <- getAppUserDataDirectory "ghc"
-    let dir = appdir </> (target_arch ++ '-':target_os ++ '-':cProjectVersion)
-        pkgconf = dir </> packageConfDir
-    exist <- doesDirectoryExist pkgconf
-    return $ if exist then Just pkgconf else Nothing
-  where
+resolvePackageConfig :: FilePath -> GhcPkgDb -> IO (Maybe FilePath)
+resolvePackageConfig sysPkgCfg GlobalDb = return $ Just sysPkgCfg
+resolvePackageConfig _ UserDb = handleIO (\_ -> return Nothing) $ do
+  appdir <- getAppUserDataDirectory "ghc"
+  let dir = appdir </> (target_arch ++ '-':target_os ++ '-':cProjectVersion)
+      pkgconf = dir </> "package.conf.d"
+  exist <- doesDirectoryExist pkgconf
+  return $ if exist then Just pkgconf else Nothing
+ where
     [target_arch,_,target_os] = splitOn "-" cTargetPlatformString
-resolvePath _ = error "GlobalDb cannot be used in resolvePath"
+resolvePackageConfig _ (PackageDb name) = return $ Just name

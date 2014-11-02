@@ -1,5 +1,9 @@
 {-# LANGUAGE ScopedTypeVariables, DeriveDataTypeable #-}
 
+-- | WARNING
+-- This program in the process of being deprecated, use `ghc-mod --interactive`
+-- instead.
+
 -- Commands:
 --  check <file>
 --  find <symbol>
@@ -130,7 +134,7 @@ loop symdbreq ref world = do
     cmdArg <- liftIO $ getCommand ref
     -- after blocking, we need to see if the world has changed.
     crdl <- cradle
-    changed <- liftIO $ isWorldChanged world crdl
+    changed <- liftIO $ didWorldChange world crdl
     when changed $ do
         liftIO $ ungetCommand ref cmdArg
         E.throw Restart

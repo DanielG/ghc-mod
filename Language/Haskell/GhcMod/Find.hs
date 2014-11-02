@@ -22,10 +22,10 @@ import Data.List (groupBy, sort)
 import Data.Maybe (fromMaybe)
 import qualified GHC as G
 import Language.Haskell.GhcMod.Convert
-import Language.Haskell.GhcMod.GhcPkg
 import Language.Haskell.GhcMod.Monad
 import Language.Haskell.GhcMod.Types
 import Language.Haskell.GhcMod.Utils
+import Language.Haskell.GhcMod.PathsAndFiles
 import Name (getOccString)
 import System.Directory (doesFileExist, getModificationTime)
 import System.FilePath ((</>), takeDirectory)
@@ -89,7 +89,7 @@ lookupSym sym db = fromMaybe [] $ M.lookup sym $ table db
 loadSymbolDb :: IOish m => GhcModT m SymbolDb
 loadSymbolDb = do
     ghcMod <- liftIO ghcModExecutable
-    tmpdir <- liftIO . getPackageCachePath =<< cradle
+    tmpdir <- cradleTempDir <$> cradle
     file <- chop <$> readProcess' ghcMod ["dumpsym", tmpdir]
     !db <- M.fromAscList . map conv . lines <$> liftIO (readFile file)
     return $ SymbolDb {
