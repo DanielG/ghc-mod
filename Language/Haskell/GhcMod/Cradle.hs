@@ -8,12 +8,11 @@ module Language.Haskell.GhcMod.Cradle (
 import Language.Haskell.GhcMod.GhcPkg
 import Language.Haskell.GhcMod.PathsAndFiles
 import Language.Haskell.GhcMod.Types
+import Language.Haskell.GhcMod.Utils
 
 import Control.Exception.IOChoice ((||>))
-import System.Directory (getCurrentDirectory, removeDirectoryRecursive,
-                         getTemporaryDirectory)
-import System.FilePath (takeDirectory,pathSeparators,splitDrive)
-import System.IO.Temp
+import System.Directory (getCurrentDirectory, removeDirectoryRecursive)
+import System.FilePath (takeDirectory)
 
 
 ----------------------------------------------------------------
@@ -27,15 +26,6 @@ findCradle = findCradle' =<< getCurrentDirectory
 
 findCradle' :: FilePath -> IO Cradle
 findCradle' dir = cabalCradle dir ||> sandboxCradle dir ||> plainCradle dir
-
-newTempDir :: FilePath -> IO FilePath
-newTempDir dir =
-    flip createTempDirectory uniqPathName =<< getTemporaryDirectory
- where
-   uniqPathName = "ghc-mod" ++ map escapeSlash (snd $ splitDrive dir)
-
-   escapeSlash c | c `elem` pathSeparators = '-'
-   escapeSlash c = c
 
 cleanupCradle :: Cradle -> IO ()
 cleanupCradle crdl = removeDirectoryRecursive $ cradleTempDir crdl

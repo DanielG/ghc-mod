@@ -1,11 +1,16 @@
 {-# LANGUAGE CPP #-}
 module Language.Haskell.GhcMod.Utils where
 
+import Control.Arrow
+import Data.Char
 import Language.Haskell.GhcMod.Error
 import MonadUtils (MonadIO, liftIO)
 import System.Directory (getCurrentDirectory, setCurrentDirectory, doesFileExist)
 import System.Exit (ExitCode(..))
 import System.Process (readProcessWithExitCode)
+import System.Directory (getTemporaryDirectory)
+import System.FilePath (splitDrive, joinDrive, pathSeparators)
+import System.IO.Temp (createTempDirectory)
 #ifndef SPEC
 import Control.Applicative ((<$>))
 import System.Environment
@@ -47,6 +52,24 @@ withDirectory_ :: (MonadIO m, ExceptionMonad m) => FilePath -> m a -> m a
 withDirectory_ dir action =
     gbracket (liftIO getCurrentDirectory) (liftIO . setCurrentDirectory)
                 (\_ -> liftIO (setCurrentDirectory dir) >> action)
+
+uniqTempDirName :: FilePath -> FilePath
+uniqTempDirName dir =
+    uncurry (++)
+        $ map escapeDriveChar *** map escapePathChar
+        $ splitDrive dir
+ where
+    escapeDriveChar c
+        | isAlphaNum c = c
+        | otherwise = '-'
+
+    escapePathChar c
+        | c `elem` pathSeparators = '-'
+        | otherwise = c
+
+newTempDir :: FilePath -> IO FilePath
+newTempDir dir =
+    flip createTempDirectory (uniqTempDirName dir) =<< getTemporaryDirectory
 
 mightExist :: FilePath -> IO (Maybe FilePath)
 mightExist f = do
