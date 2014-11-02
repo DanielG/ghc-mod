@@ -99,7 +99,7 @@ import Control.Monad.Error (Error(..))
 #endif
 import Control.Monad.Journal.Class
 
-import Data.Maybe (fromJust, isJust)
+import Data.Maybe (isJust)
 import Data.IORef (IORef, readIORef, writeIORef, newIORef)
 import System.Directory (getCurrentDirectory)
 
@@ -166,7 +166,7 @@ instance MonadIO m => MonadIO (GhcModT m) where
 
      where
        fromEx :: Exception e => SomeException -> e
-       fromEx = fromJust . fromException
+       fromEx se = let Just e = fromException se in e
        isIOError se =
            case fromException se of
              Just (_ :: IOError) -> True
@@ -221,7 +221,8 @@ initializeFlagsWithCradle opt c
     cabal = isJust mCabalFile
     ghcopts = ghcUserOptions opt
     withCabal = do
-        pkgDesc <- parseCabalFile c $ fromJust mCabalFile
+        let Just cabalFile = mCabalFile
+        pkgDesc <- parseCabalFile c cabalFile
         compOpts <- getCompilerOptions ghcopts c pkgDesc
         initSession CabalPkg opt compOpts
     withSandbox = initSession SingleFile opt compOpts

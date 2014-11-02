@@ -35,7 +35,8 @@ spec = do
             cwd <- getCurrentDirectory
             withDirectory "test/data/subdir1/subdir2" $ \dir -> do
                 crdl <- findCradle
-                pkgDesc <- runD $ parseCabalFile crdl $ fromJust $ cradleCabalFile crdl
+                let cabalFile = cradleCabalFile crdl
+                pkgDesc <- runD $ parseCabalFile crdl cabalFile
                 res <- runD $ getCompilerOptions [] crdl pkgDesc
                 let res' = res {
                         ghcOptions  = ghcOptions res
