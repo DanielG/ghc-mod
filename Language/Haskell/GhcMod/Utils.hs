@@ -9,7 +9,7 @@ import System.Directory (getCurrentDirectory, setCurrentDirectory, doesFileExist
 import System.Exit (ExitCode(..))
 import System.Process (readProcessWithExitCode)
 import System.Directory (getTemporaryDirectory)
-import System.FilePath (splitDrive, joinDrive, pathSeparators)
+import System.FilePath (splitDrive, pathSeparators)
 import System.IO.Temp (createTempDirectory)
 #ifndef SPEC
 import Control.Applicative ((<$>))
