@@ -1,3 +1,6 @@
+2014-11-03 v5.2.1.1
+        * Fix `findCabalFiles` thinking `$HOME/.cabal` is a cabal file.
+
 2014-11-02 v5.2.1.0
         * Fix `newTempDir` on Windows
         * GhcModT's liftIO instance now converts GhcMOdError exceptions
