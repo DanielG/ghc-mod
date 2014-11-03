@@ -32,7 +32,7 @@ cleanupCradle crdl = removeDirectoryRecursive $ cradleTempDir crdl
 
 cabalCradle :: FilePath -> IO Cradle
 cabalCradle wdir = do
-    Just cabalFile <- findCabalFiles wdir
+    Just cabalFile <- findCabalFile wdir
     let cabalDir = takeDirectory cabalFile
     pkgDbStack <- getPackageDbStack cabalDir
     tmpDir <- newTempDir cabalDir

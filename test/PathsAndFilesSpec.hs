@@ -8,6 +8,7 @@ import Language.Haskell.GhcMod.GhcPkg
 #endif
 
 import System.Directory
+import System.Environment
 import System.FilePath ((</>))
 import Test.Hspec
 
@@ -28,3 +29,14 @@ spec = do
 
         it "returns Nothing if the sandbox config file is broken" $ do
             getSandboxDb "test/data/broken-sandbox" `shouldReturn` Nothing
+
+    describe "getCabalFiles" $ do
+        it "doesn't think $HOME/.cabal is a cabal file" $ do
+            (getCabalFiles =<< getEnv "HOME") `shouldReturn` []
+
+    describe "findCabalFile" $ do
+        it "works" $ do
+            findCabalFile "test/data" `shouldReturn` Just "test/data/cabalapi.cabal"
+
+        it "finds cabal files in parent directories" $ do
+            findCabalFile "test/data/subdir1/subdir2" `shouldReturn` Just "test/data/cabalapi.cabal"
