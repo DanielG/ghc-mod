@@ -1,11 +1,34 @@
-;;; ghc.el --- ghc-mod front-end for haskell-mode
+;;; ghc.el --- ghc-mod front-end for haskell-mode   -*- coding: utf-8-emacs; -*-
 
 ;; Copyright (C) 2009-2014  Kazu Yamamoto, Daniel Gröber
-;; Author:  Kazu Yamamoto <Kazu@Mew.org>, Daniel Gröber <dxld@darkboxed.org>
+
+;; Author:  Kazu Yamamoto <Kazu@Mew.org>
+;;          Daniel Gröber <dxld@darkboxed.org>
+;; URL: https://github.com/kazu-yamamoto/
 ;; Created: Sep 25, 2009
 ;; Revised: Aug 13, 2014
+;; Package-Requires: ((emacs "24.3") (cl-lib "0.5"))
 
-;; Put the following code to your "~/.emacs".
+
+;;; Commentary:
+
+;; Installation:
+;;
+;; To install ghc-mod-mode put the elisp/ directory of the ghc-mod source
+;; distribution somewhere on your `load-path'. If you installed ghc-mod through
+;; ELPA/package.el or a distribution package this will already be taken care
+;; of. Please note that installation through ELPA/package.el is discouraged
+;; since `ghc-mod-mode' depends on the "ghc-mod" executable which is not
+;; distributed as part of the ELPA package and installing if from another source
+;; could lead to version incompatibilities between `ghc-mod-mode' and the
+;; executable.
+
+
+;; Initialization:
+;;
+;; To initialize `ghc-mod-mode' you should either call `global-ghc-mod-mode' to
+;; have `ghc-mod-mode' enabled in all `haskell-mode' buffers automatically or
+;; type `M-x ghc-mod-mode RET' whenever you want to enable it manually.
 ;;
 ;; (autoload 'ghc-mod-mode "ghc" nil t)
 ;; (autoload 'ghc-mod-debug "ghc" nil t)
@@ -46,6 +69,7 @@
 (require 'ghc-rewrite)
 (require 'dabbrev)
 
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
 ;;; Deprecated customization variables
@@ -58,8 +82,10 @@
    ?\C-h))
 
 (defvar ghc-mod-key-varaibles-depricated-notice
-  "Using ghc-*-key variables to change keybindings is
-deprecated. Use `define-key' in `ghc-mode-hook' instead.")
+  "Since ghc-mod 5.1.0.0 using ghc-*-key variables to change
+keybindings is deprecated, setting them will be ignored. Use the
+`define-key' function to change `ghc-mod-mode-map' in a
+`ghc-mod-mode-hook' instead.")
 
 (eval
  (let ((msg-var 'ghc-mod-key-varaibles-depricated-notice))
@@ -99,14 +125,37 @@ deprecated. Use `define-key' in `ghc-mode-hook' instead.")
   (mapcar (lambda (s) (symbol-value s)) ghc-mod-depricated-key-vars) )
 
 (defvar ghc-mod-initial-key-values (ghc-mod-depricated-key-values) )
+(defvar ghc-mod-key-vars-depricated-warning-was-displayed nil)
 
-;; TODO: Check if user tried to change keybindings using the depricated key-vars
-;; and present a big warning message.
+(defun ghc-mod-display-key-vars-deprecated-warning-if-appropriate ()
+  (when (not (equal
+              (ghc-mod-depricated-key-values)
+              ghc-mod-initial-key-values))
+    (unless ghc-mod-key-vars-depricated-warning-was-displayed
+      (let ((buf (get-buffer-create "*ghc-mod warnings*")))
+        (with-current-buffer buf
+          (insert "Warning: ")
+          (insert ghc-mod-key-varaibles-depricated-notice)
+          (insert "\n\nYou are getting this warning because:\n\n")
+          (insert (ghc-mod-key-vars-explain) "\n")
+          (setq buffer-read-only t))
+        (display-buffer buf)
+        (setq ghc-mod-key-vars-depricated-warning-was-displayed t)))))
 
-;; (equal
-;;  (ghc-mod-depricated-key-values)
-;;  ghc-mod-initial-key-values )
 
+(defun ghc-mod-key-vars-explain ()
+  "Explain which variable is triggering the deprecation warning
+  for the user."
+  (mapconcat 'identity
+             (loop
+              for key     in ghc-mod-depricated-key-vars
+              for initial in ghc-mod-initial-key-values
+              for current in (ghc-mod-depricated-key-values)
+              when (not (equal initial current))
+              collect
+              (format " - %s is set to \"%s\" instead of its default value"
+                      (symbol-name key) current))
+             "\n"))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -114,17 +163,9 @@ deprecated. Use `define-key' in `ghc-mode-hook' instead.")
 ;;;
 
 (define-globalized-minor-mode global-ghc-mod-mode
-"Toggle ghc-mod mode in all buffers.
-With prefix ARG, enable global-ghc-mod mode if ARG is positive;
-otherwise, disable it.  If called from Lisp, enable the mode if
-ARG is omitted or nil.
-
-ghc-mod mode is enabled in all `haskell-mode' buffers."
-
   ghc-mod-mode
   (lambda () (when (eq major-mode 'haskell-mode) (ghc-mod-mode 1)))
-  turn-on-ghc-mod-mode
-  )
+  turn-on-ghc-mod-mode)
 
 ;; (defmacro with-all-haskell-mode-buffers (&rest body)
 ;;   `(loop for b in (buffer-list) do
@@ -172,6 +213,7 @@ ghc-mod mode is enabled in all `haskell-mode' buffers."
       (ghc-check-syntax)))
 
 (defun ghc-mod-init ()
+  (ghc-mod-display-key-vars-deprecated-warning-if-appropriate)
   (ghc-abbrev-init)
   (ghc-type-init)
   (ghc-comp-init)
@@ -249,3 +291,4 @@ the mode if ARG is omitted or nil, and toggle it if ARG is `toggle'."
     (ghc-insert-template)))
 
 (provide 'ghc)
+;;; ghc.el ends here
