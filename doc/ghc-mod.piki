@@ -1,0 +1,38 @@
+*The ghc-mod command
+
+?ghc-mod list
+!Displays a list of modules
+?ghc-mod lang
+!Displays a list of language extensions
+?ghc-mod flag
+!Displays a list of GHC flags
+?ghc-mod browse \[<package>:\]<module>
+!Displays symbols of <module>
+?ghc-mod check <HaskellFile>
+!Checks syntax with GHC
+?ghc-mod expand <HaskellFile>
+!Expands Template Haskell
+?ghc-mod debug <HaskellFile>
+!Displays debug information
+?ghc-mod info <HaskellFile> <module> <expression>
+!Displays information about the expression
+?ghc-mod type <HaskellFile> <module> <line-no> <column-no>
+!Displays the types of all expressions including the expression
+?ghc-mod find <symbol>
+!Finds all module names exporting <symbol>
+?ghc-mod lint <HaskellFile>
+!Checks synstax with Hlint
+?ghc-mod root <HaskellFile>
+!Finds the root directory for the Haskell file
+?ghc-mod doc <module>
+!Finds the html document for the module
+?ghc-mod boot
+!Displays boot information for Emacs front-end
+?ghc-mod version
+!Displays the version of ghc-mod
+?ghc-mod help
+!Displays help messages
+
+<module> for "info" and "type" is not used, anything is OK.
+It is necessary to maintain backward compatibility.
+

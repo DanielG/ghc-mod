@@ -1,0 +1,48 @@
+*The ghc-modi command
+
+** Example
+
+>|
+% ghc-modi
+check Foo.hs
+Foo.hs:7:15:Not in scope: `B.append'
+OK
+bye
+NG quit
+%
+|<
+
+** Commands
+
+? check <HaskellFile>
+! Checks syntax with GHC
+? find <symbol>
+! Finds all module names exporting <symbol>
+? info <HaskellFile> <expr>
+! Displays information about the expression
+? type <HaskellFile> <line> <column>
+! Displays the types of all expressions including the expression
+? lint \[hlint options\] <HaskellFile>
+! Checks synstax with Hlint
+? boot
+! Displays boot information for Emacs front-end
+? browse \[<package>:\]<module>
+! Displays symbols of <module>
+? quit (or empty string)
+! Terminate ghc-modi
+
+** Options
+
+Option should be the form of Haskell's list of String (\[String\]).
+Here is an example:
+
+>|
+lint ["--ignore=Use camelCase", "--ignore=Eta reduce"] Foo.hs
+|<
+
+** Session separators
+
+?OK
+! The session succeeded.
+?NG <error message>
+! The session fails. ghc-modi gets finished.
