@@ -112,8 +112,9 @@
     (setq ghc-process-num-of-results (or n 1))
     (let ((pro (ghc-with-process cmd 'ghc-process-callback nil hook)))
       (condition-case nil
-	  (while (and (null ghc-process-rendezvous)
-		      (accept-process-output pro 2)))
+	  (let ((inhibit-quit nil))
+	    (while (null ghc-process-rendezvous)
+	      (accept-process-output pro)))
 	(quit
 	 (setq ghc-process-running nil))))
     ghc-process-results))
