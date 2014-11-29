@@ -22,8 +22,8 @@
       (setq expr (ghc-read-expression expr0))
       (setq info (ghc-get-info expr0))
       (setq mod (ghc-extact-module-from-info info)))
-    (setq pkg-ver-path (ghc-resolve-document-path mod))
-    (if (and pkg-ver-path mod)
+    (setq pkg-ver-path (and mod (ghc-resolve-document-path mod)))
+    (if pkg-ver-path
 	(ghc-display-document pkg-ver-path mod haskell-org expr)
       (message "No document found"))))
 
@@ -75,7 +75,7 @@
     (apply 'concat (nreverse acc))))
 
 (defun ghc-extact-module-from-info (info)
-  (when (string-match "\`\\([^']+\\)'" info)
+  (when (string-match "[`\u2018]\\([^'\u2019]+\\)['\u2019]" info)
     (match-string 1 info)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
