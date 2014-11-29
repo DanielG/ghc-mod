@@ -114,7 +114,7 @@
       (condition-case nil
 	  (let ((inhibit-quit nil))
 	    (while (null ghc-process-rendezvous)
-	      (accept-process-output pro)))
+	      (accept-process-output pro 0.1 nil t)))
 	(quit
 	 (setq ghc-process-running nil))))
     ghc-process-results))
