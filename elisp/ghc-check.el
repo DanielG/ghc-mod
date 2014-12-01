@@ -177,10 +177,10 @@ nil            does not display errors/warnings.
                 (setq end (point)))
               (progn
                 (forward-line (1- line))
-                (skip-chars-forward " ")
+                (forward-char (1- coln))
                 (setq beg (point))
-                (forward-line)
-                (setq end (1- (point))))))
+                (skip-chars-forward "^[:space:]" (line-end-position))
+                (setq end (point)))))
 	   (t
 	    (setq beg (point))
 	    (forward-line)
