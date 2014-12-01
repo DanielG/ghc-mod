@@ -175,10 +175,10 @@ nil            does not display errors/warnings.
             (setq end (point)))
 	   ((string= ofile file)
 	    (forward-line (1- line))
-	    (while (eq (char-after) 32) (forward-char))
+            (forward-char (1- coln))
 	    (setq beg (point))
-	    (forward-line)
-	    (setq end (1- (point))))
+            (skip-chars-forward "^[:space:]" (line-end-position))
+	    (setq end (point)))
 	   (t
 	    (setq beg (point))
 	    (forward-line)
