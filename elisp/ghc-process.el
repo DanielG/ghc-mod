@@ -111,9 +111,11 @@
     (setq ghc-process-results nil)
     (setq ghc-process-num-of-results (or n 1))
     (let ((pro (ghc-with-process cmd 'ghc-process-callback nil hook)))
+      ;; ghc-process-running is now t.
+      ;; But if the process exits abnormally, it is set to nil.
       (condition-case nil
 	  (let ((inhibit-quit nil))
-	    (while (null ghc-process-rendezvous)
+	    (while (and (null ghc-process-rendezvous) ghc-process-running)
 	      (accept-process-output pro 0.1 nil t)))
 	(quit
 	 (setq ghc-process-running nil))))
