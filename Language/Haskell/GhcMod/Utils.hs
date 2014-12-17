@@ -21,12 +21,12 @@ import System.Exit (ExitCode(..))
 import System.Posix.Files (fileOwner, getFileStatus)
 import System.Posix.User (getRealUserID)
 import System.Process (readProcessWithExitCode)
-import System.FilePath (splitDrive, pathSeparators)
+import System.FilePath (splitDrive, pathSeparators, (</>))
 import System.IO.Temp (createTempDirectory)
 #ifndef SPEC
 import Control.Applicative ((<$>))
 import System.Environment
-import System.FilePath ((</>), takeDirectory)
+import System.FilePath (takeDirectory)
 #endif
 
 -- dropWhileEnd is not provided prior to base 4.5.0.0.
