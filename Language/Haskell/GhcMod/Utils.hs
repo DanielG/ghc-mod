@@ -69,7 +69,7 @@ uniqTempDirName dir =
 
 newTempDir :: FilePath -> IO FilePath
 newTempDir dir =
-    flip createTempDirectory (uniqTempDirName dir) =<< getTemporaryDirectory
+    flip createTempDirectory ("ghc-mod/" ++ uniqTempDirName dir) =<< getTemporaryDirectory
 
 mightExist :: FilePath -> IO (Maybe FilePath)
 mightExist f = do
