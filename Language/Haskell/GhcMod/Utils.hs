@@ -2,13 +2,23 @@
 module Language.Haskell.GhcMod.Utils where
 
 import Control.Arrow
+import Control.Monad    (filterM)
 import Data.Char
+import Data.List (isPrefixOf)
 import Language.Haskell.GhcMod.Error
 import MonadUtils (MonadIO, liftIO)
-import System.Directory (getCurrentDirectory, setCurrentDirectory, doesFileExist)
+import System.Directory (getCurrentDirectory,
+                         setCurrentDirectory,
+                         doesFileExist,
+                         getPermissions,
+                         getTemporaryDirectory,
+                         readable,
+                         searchable,
+                         writable,
+                         doesDirectoryExist,
+                         getDirectoryContents)
 import System.Exit (ExitCode(..))
 import System.Process (readProcessWithExitCode)
-import System.Directory (getTemporaryDirectory)
 import System.FilePath (splitDrive, pathSeparators)
 import System.IO.Temp (createTempDirectory)
 #ifndef SPEC
@@ -69,7 +79,28 @@ uniqTempDirName dir =
 
 newTempDir :: FilePath -> IO FilePath
 newTempDir dir =
-    flip createTempDirectory (uniqTempDirName dir) =<< getTemporaryDirectory
+    flip createTempDirectory (uniqTempDirName dir)
+    =<< getGhcModTempDir
+    =<< getTemporaryDirectory
+
+getGhcModTempDir :: FilePath -> IO FilePath
+getGhcModTempDir tmpdir = do
+  ex <- checkExistingGhcModTempDirs tmpdir
+  if null ex then createTempDirectory tmpdir "ghc-mod" else return ex
+
+checkExistingGhcModTempDirs :: FilePath -> IO FilePath
+checkExistingGhcModTempDirs tmpdir = do
+  names <- getDirectoryContents tmpdir
+  dirs <- filterM doesDirectoryExist
+                    . map (tmpdir </>)
+                    . filter (isPrefixOf "ghc-mod")
+                    $ names
+  fmap (\ds -> head $ ds ++ [tmpdir]) . filterM checkPerms $ dirs
+
+checkPerms :: FilePath -> IO Bool
+checkPerms =
+  fmap (\perms -> all (\f -> f perms) [readable, writable, searchable])
+       . getPermissions
 
 mightExist :: FilePath -> IO (Maybe FilePath)
 mightExist f = do
