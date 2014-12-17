@@ -270,15 +270,17 @@ runGhcModT :: IOish m
            => Options
            -> GhcModT m a
            -> m (Either GhcModError a, GhcModLog)
-runGhcModT opt action = do
-    env <- liftBase $ newGhcModEnv opt =<< getCurrentDirectory
+runGhcModT opt action = gbracket newEnv delEnv $ \env -> do
     r <- first (fst <$>) <$> (runGhcModT' env defaultState $ do
         dflags <- getSessionDynFlags
         defaultCleanupHandler dflags $ do
             initializeFlagsWithCradle opt (gmCradle env)
             action)
-    liftBase $ cleanupGhcModEnv env
     return r
+
+ where
+   newEnv = liftBase $ newGhcModEnv opt =<< getCurrentDirectory
+   delEnv = liftBase . cleanupGhcModEnv
 
 -- | @hoistGhcModT result@. Embed a GhcModT computation's result into a GhcModT
 -- computation. Note that if the computation that returned @result@ modified the
