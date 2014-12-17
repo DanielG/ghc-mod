@@ -18,6 +18,8 @@ import System.Directory (getCurrentDirectory,
                          doesDirectoryExist,
                          getDirectoryContents)
 import System.Exit (ExitCode(..))
+import System.Posix.Files (fileOwner, getFileStatus)
+import System.Posix.User (getRealUserID)
 import System.Process (readProcessWithExitCode)
 import System.FilePath (splitDrive, pathSeparators)
 import System.IO.Temp (createTempDirectory)
@@ -86,16 +88,25 @@ newTempDir dir =
 getGhcModTempDir :: FilePath -> IO FilePath
 getGhcModTempDir tmpdir = do
   ex <- checkExistingGhcModTempDirs tmpdir
-  if null ex then createTempDirectory tmpdir "ghc-mod" else return ex
+  if null ex
+    then createTempDirectory tmpdir "ghc-mod"
+    else return $ head ex
 
-checkExistingGhcModTempDirs :: FilePath -> IO FilePath
-checkExistingGhcModTempDirs tmpdir = do
-  names <- getDirectoryContents tmpdir
-  dirs <- filterM doesDirectoryExist
+checkExistingGhcModTempDirs :: FilePath -> IO [FilePath]
+checkExistingGhcModTempDirs tmpdir =
+  filterM checkPerms
+  =<< filterM checkOwner
+  =<< filterM doesDirectoryExist
                     . map (tmpdir </>)
                     . filter (isPrefixOf "ghc-mod")
-                    $ names
-  fmap (\ds -> head $ ds ++ [tmpdir]) . filterM checkPerms $ dirs
+  =<< getDirectoryContents tmpdir
+
+checkOwner :: FilePath -> IO Bool
+checkOwner fp =
+  (\fileStatus ->
+    fmap (\processUserID -> fileOwner fileStatus == processUserID)
+         getRealUserID)
+  =<< getFileStatus fp
 
 checkPerms :: FilePath -> IO Bool
 checkPerms =
