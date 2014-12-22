@@ -77,7 +77,10 @@ import Data.Monoid (Monoid)
 
 import Control.Applicative (Alternative)
 import Control.Arrow (first)
-import Control.Monad (MonadPlus, void, liftM)
+import Control.Monad (MonadPlus, void)
+#if !MIN_VERSION_monad_control(1,0,0)
+import Control.Monad (liftM)
+#endif
 import Control.Monad.Base (MonadBase, liftBase)
 
 -- Monad transformer stuff
@@ -368,6 +371,23 @@ withOptions changeOpt action = local changeEnv action
 instance (MonadBaseControl IO m) => MonadBase IO (GhcModT m) where
     liftBase = GhcModT . liftBase
 
+#if MIN_VERSION_monad_control(1,0,0)
+
+instance (MonadBaseControl IO m) => MonadBaseControl IO (GhcModT m) where
+    type StM (GhcModT m) a =
+          StM (StateT GhcModState
+                (ErrorT GhcModError
+                  (JournalT GhcModLog
+                    (ReaderT GhcModEnv m) ) ) ) a
+    liftBaseWith f = GhcModT . liftBaseWith $ \runInBase ->
+        f $ runInBase . unGhcModT
+
+    restoreM = GhcModT . restoreM
+    {-# INLINE liftBaseWith #-}
+    {-# INLINE restoreM #-}
+
+#else
+
 instance (MonadBaseControl IO m) => MonadBaseControl IO (GhcModT m) where
     newtype StM (GhcModT m) a = StGhcMod {
           unStGhcMod :: StM (StateT GhcModState
@@ -380,6 +400,8 @@ instance (MonadBaseControl IO m) => MonadBaseControl IO (GhcModT m) where
     restoreM = GhcModT . restoreM . unStGhcMod
     {-# INLINE liftBaseWith #-}
     {-# INLINE restoreM #-}
+
+#endif
 
 -- GHC cannot prove the following instances to be decidable automatically using
 -- the FlexibleContexts extension as they violate the second Paterson Condition,
