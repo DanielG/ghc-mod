@@ -87,7 +87,7 @@ ghcModUsage =
  \    - help | --help\n\
  \       Print this help message.\n\
  \\n\
- \    - list [FLAGS...]\n\
+ \    - list [FLAGS...] | modules [FLAGS...]\n\
  \        List all visible modules.\n\
  \      Flags:\n\
  \        -d\n\
