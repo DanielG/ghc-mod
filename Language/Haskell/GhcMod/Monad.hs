@@ -77,7 +77,11 @@ import Data.Monoid (Monoid)
 
 import Control.Applicative (Alternative)
 import Control.Arrow (first)
+#if __GLASGOW_HASKELL__ >= 708
+import Control.Monad (MonadPlus, void)
+#else
 import Control.Monad (MonadPlus, void, liftM)
+#endif
 import Control.Monad.Base (MonadBase, liftBase)
 
 -- Monad transformer stuff
