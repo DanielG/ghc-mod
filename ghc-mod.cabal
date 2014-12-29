@@ -117,7 +117,7 @@ Library
                       , transformers
                       , transformers-base
                       , mtl >= 2.0
-                      , monad-control
+                      , monad-control == 1.0.*
                       , split
                       , haskell-src-exts
                       , text
