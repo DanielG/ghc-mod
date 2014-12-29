@@ -367,15 +367,14 @@ instance (MonadBaseControl IO m) => MonadBase IO (GhcModT m) where
     liftBase = GhcModT . liftBase
 
 instance (MonadBaseControl IO m) => MonadBaseControl IO (GhcModT m) where
-    newtype StM (GhcModT m) a = StGhcMod {
-          unStGhcMod :: StM (StateT GhcModState
+    type StM (GhcModT m) a = StM (StateT GhcModState
                               (ErrorT GhcModError
                                 (JournalT GhcModLog
-                                  (ReaderT GhcModEnv m) ) ) ) a }
+                                  (ReaderT GhcModEnv m) ) ) ) a 
     liftBaseWith f = GhcModT . liftBaseWith $ \runInBase ->
-        f $ liftM StGhcMod . runInBase . unGhcModT
+        f $ runInBase . unGhcModT
 
-    restoreM = GhcModT . restoreM . unStGhcMod
+    restoreM = GhcModT . restoreM 
     {-# INLINE liftBaseWith #-}
     {-# INLINE restoreM #-}
 
