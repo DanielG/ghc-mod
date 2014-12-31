@@ -1,3 +1,11 @@
+2014-12-31 v5.2.1.2
+	* Merge #377, Fix `browse` erroneously thinking haskell2010 identifiers
+	  are operators
+        * Fix incompatibility with monad-control >= 1.0.0
+        * Fix temporary directories not being removed properly
+        * Merge #405, #408, a race condition in the Emacs frontend
+        * Merge #403, Support unicode quotes in module regexp
+
 2014-11-03 v5.2.1.1
         * Fix `findCabalFiles` thinking `$HOME/.cabal` is a cabal file.
         * Support `where` clauses, `let` bindings and `case` expressions
