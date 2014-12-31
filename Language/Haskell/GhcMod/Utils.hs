@@ -54,8 +54,7 @@ withDirectory_ dir action =
                 (\_ -> liftIO (setCurrentDirectory dir) >> action)
 
 uniqTempDirName :: FilePath -> FilePath
-uniqTempDirName dir =
-    uncurry (++)
+uniqTempDirName dir = ("ghc-mod"++) $ uncurry (++)
         $ map escapeDriveChar *** map escapePathChar
         $ splitDrive dir
  where

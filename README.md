@@ -26,6 +26,14 @@ package is called `ghc` there, not `ghc-mod`) and install the
 % cabal update && cabal install ghc-mod
 ```
 
+### Nix & NixOS
+
+The installation is a little more involved in this environment as Nix needs some
+ugly hacks to get packages using the GHC API to work, please refer to this
+stackoverflow answer:
+
+http://stackoverflow.com/a/24228830
+
 ## Using the development version
 
 The easiest way to hack on ghc-mod is compile it, then add `dist/build/ghc-mod`

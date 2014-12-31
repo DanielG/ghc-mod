@@ -1,0 +1,28 @@
+*Installing "ghc-mod"
+
+This page assumes that you are a Haskell programmer and you know the "cabal" command well.
+
+**Installing the ghc-mod package
+
+First of all, update Cabal's database:
+
+>|
+% cabal update
+|<
+
+Now install "ghc-mod":
+
+>|
+% cabal install ghc-mod
+|<
+
+This command installs the followings:
+
+?~/.cabal/bin/ghc-mod
+!The ghc-mod commnad
+?~/.cabal/bin/ghc-modi
+!The ghc-modi commnad
+?~/.cabal/lib/ghc-mod-x.y.z/*
+!The ghc-mod library
+?~/.cabal/share/ghc-mod-x.y.z/ghc*.el
+!Elisp files to extend Haskell mode

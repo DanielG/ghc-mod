@@ -1,0 +1,67 @@
+* Preparing Emacs front-end
+
+**Downloading
+
+Please use *stable* [MELPA http://melpa-stable.milkbox.net/] to download Emacs front-end. So, your "~/.emacs" should be:
+
+>|
+(require 'package)
+(add-to-list 'package-archives 
+         '("melpa" . "http://melpa-stable.milkbox.net/packages/"))
+(package-initialize)
+|<
+
+The package name is "ghc".
+Please don't forget ["install the latest cabal command" install.html].
+
+**Configuring "~/.emacs.el"
+
+Then, put the followings to your "~/.emacs.el" or "~/.emacs.d/init.el":
+
+>|
+(autoload 'ghc-init "ghc" nil t)
+(autoload 'ghc-debug "ghc" nil t)
+(add-hook 'haskell-mode-hook (lambda () (ghc-init)))
+|<
+
+IMPORTANT: if your haskell-mode-hook includes (flymake-mode), please remove it.
+
+**Testing
+
+Executes Emacs and opens a Haskell file by C-xC-f. And try to complete any keywords by M-C-i.
+
+**Debugging
+
+ghc-mod/ghc-modi must be compiled by GHC which you are actually using from Emacs. The version of Emacs front-end and ghc-mod/ghc-modi must be the same. To confirm this, type M-x ghc-debug.
+
+>|
+Path: check if you are using intended programs.
+	  ghc.el path: /Users/kazu/work/ghc-mod/elisp/ghc.el
+	 ghc-mod path: /Users/kazu/Library/Haskell/bin/ghc-mod
+	ghc-modi path: /Users/kazu/Library/Haskell/bin/ghc-modi
+	     ghc path: /usr/local/ghc-7.8/bin/ghc
+
+Version: all versions must be the same.
+	  ghc.el version 4.1.0
+	 ghc-mod version 4.1.0 compiled by GHC 7.8.2
+	ghc-modi version 4.1.0 compiled by GHC 7.8.2
+	The Glorious Glasgow Haskell Compilation System, version 7.8.2
+|<
+
+If you put (setq ghc-debug t) to your ".emacs", you can watch the communication between Emacs front-end and ghc-modi in the "*GHC Debug*" buffer.
+
+**Customizing
+
+If you want to specify GHC options from Emacs, set "ghc-ghc-options". 
+The following is an example to specify the "-i" options to GHC.
+
+>|
+(setq ghc-ghc-options '("-idir1" "-idir2"))
+|<
+
+An example to specify HLint options:
+
+>|
+(setq ghc-hlint-options '("--ignore=Use camelCase"))
+|<
+

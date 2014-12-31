@@ -111,13 +111,12 @@
     (setq ghc-process-results nil)
     (setq ghc-process-num-of-results (or n 1))
     (let ((pro (ghc-with-process cmd 'ghc-process-callback nil hook)))
+      ;; ghc-process-running is now t.
+      ;; But if the process exits abnormally, it is set to nil.
       (condition-case nil
-	  (while (null ghc-process-rendezvous)
-	    ;; 0.01 is too fast for Emacs 24.4.
-	    ;; (sit-for 0.1 t) may get stuck when tooltip is displayed.
-	    (sit-for 0.1)
-	    ;; (discard-input) avoids getting stuck.
-	    (discard-input))
+	  (let ((inhibit-quit nil))
+	    (while (and (null ghc-process-rendezvous) ghc-process-running)
+	      (accept-process-output pro 0.1 nil t)))
 	(quit
 	 (setq ghc-process-running nil))))
     ghc-process-results))

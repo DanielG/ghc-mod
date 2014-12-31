@@ -1,0 +1,41 @@
+*Bugs
+
+If you found a bug relating the ghc-mod/ghc-modi commands or the ghc-mod library or the haskell-mode sub module, please record a ["issue on github" https://github.com/kazu-yamamoto/ghc-mod/issues].
+
+**ghc-mod
+
+***ghc-mod cannot work if a ".hsc" file exist
+
+Please convert it to ".hs" by "cabal build" or by hand with "hsc2hs".
+
+***ghc-mod cannot work if "Paths_<package>.hs" is missing
+
+Please create "Paths_<package>.hs" by "cabal build". If you want to create it by hand, please install the [cab http://www.mew.org/~kazu/proj/cab/en/] command.
+Typing "cab genpaths" in your package directory would help you.
+
+
+**ghc-modi
+
+***Ctr-c does not terminate ghc-modi
+
+ghc-modi uses multiple threads of Ghc monad.
+Ghc monad installs its own signal handlers
+and multiple threads of Ghc monad make the world messy.
+I cannot find a workaround.
+Just type RET to terminate ghc-modi.
+
+
+
+
+**Emacs front end
+
+***C-xC-s modifies the timestamp of the file even if there is no modification.
+
+In order to reload the file and check the syntax with GHC API (ghc-modi),
+it is necessary to update the timestamp of the file.
+A temporary file cannot maintain consistency of module dependency graph.
+If you know a workaround, please let me know.
+
+***M-C-d on a function or type cannot display it but the top of the page is displayed
+
+For instance, "open" on Mac removes "#anchor" from the "file:///" URL. So, the top of the file is displayed. Please use C-uM-C-d as workaround.
