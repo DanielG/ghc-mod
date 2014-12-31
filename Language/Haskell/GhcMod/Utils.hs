@@ -2,19 +2,31 @@
 module Language.Haskell.GhcMod.Utils where
 
 import Control.Arrow
+import Control.Monad    (filterM)
 import Data.Char
+import Data.List (isPrefixOf)
 import Language.Haskell.GhcMod.Error
 import MonadUtils (MonadIO, liftIO)
-import System.Directory (getCurrentDirectory, setCurrentDirectory, doesFileExist)
+import System.Directory (getCurrentDirectory,
+                         setCurrentDirectory,
+                         doesFileExist,
+                         getPermissions,
+                         getTemporaryDirectory,
+                         readable,
+                         searchable,
+                         writable,
+                         doesDirectoryExist,
+                         getDirectoryContents)
 import System.Exit (ExitCode(..))
+import System.Posix.Files (fileOwner, getFileStatus)
+import System.Posix.User (getRealUserID)
 import System.Process (readProcessWithExitCode)
-import System.Directory (getTemporaryDirectory)
-import System.FilePath (splitDrive, pathSeparators)
+import System.FilePath (splitDrive, pathSeparators, (</>))
 import System.IO.Temp (createTempDirectory)
 #ifndef SPEC
 import Control.Applicative ((<$>))
 import System.Environment
-import System.FilePath ((</>), takeDirectory)
+import System.FilePath (takeDirectory)
 #endif
 
 -- dropWhileEnd is not provided prior to base 4.5.0.0.
@@ -68,7 +80,37 @@ uniqTempDirName dir = ("ghc-mod"++) $ uncurry (++)
 
 newTempDir :: FilePath -> IO FilePath
 newTempDir dir =
-    flip createTempDirectory (uniqTempDirName dir) =<< getTemporaryDirectory
+    flip createTempDirectory (uniqTempDirName dir)
+    =<< getGhcModTempDir
+    =<< getTemporaryDirectory
+
+getGhcModTempDir :: FilePath -> IO FilePath
+getGhcModTempDir tmpdir = do
+  ex <- checkExistingGhcModTempDirs tmpdir
+  if null ex
+    then createTempDirectory tmpdir "ghc-mod"
+    else return $ head ex
+
+checkExistingGhcModTempDirs :: FilePath -> IO [FilePath]
+checkExistingGhcModTempDirs tmpdir =
+  filterM checkPerms
+  =<< filterM checkOwner
+  =<< filterM doesDirectoryExist
+                    . map (tmpdir </>)
+                    . filter (isPrefixOf "ghc-mod")
+  =<< getDirectoryContents tmpdir
+
+checkOwner :: FilePath -> IO Bool
+checkOwner fp =
+  (\fileStatus ->
+    fmap (\processUserID -> fileOwner fileStatus == processUserID)
+         getRealUserID)
+  =<< getFileStatus fp
+
+checkPerms :: FilePath -> IO Bool
+checkPerms =
+  fmap (\perms -> all (\f -> f perms) [readable, writable, searchable])
+       . getPermissions
 
 mightExist :: FilePath -> IO (Maybe FilePath)
 mightExist f = do

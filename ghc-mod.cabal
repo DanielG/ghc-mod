@@ -122,6 +122,7 @@ Library
                       , haskell-src-exts
                       , text
                       , djinn-ghc >= 0.0.2.2
+                      , unix
   if impl(ghc >= 7.8)
     Build-Depends:      Cabal >= 1.18
   else
@@ -149,6 +150,7 @@ Executable ghc-mod
                       , mtl >= 2.0
                       , ghc
                       , ghc-mod
+                      , unix
 
 Executable ghc-modi
   Default-Language:     Haskell2010
@@ -172,6 +174,7 @@ Executable ghc-modi
                       , time
                       , ghc
                       , ghc-mod
+                      , unix
 
 Test-Suite doctest
   Type:                 exitcode-stdio-1.0
@@ -229,6 +232,7 @@ Test-Suite spec
                       , haskell-src-exts
                       , text
                       , djinn-ghc >= 0.0.2.2
+                      , unix
   if impl(ghc >= 7.8)
     Build-Depends:      Cabal >= 1.18
   else
