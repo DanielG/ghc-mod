@@ -26,7 +26,9 @@ import Language.Haskell.GhcMod.Monad
 import Language.Haskell.GhcMod.Types
 import Language.Haskell.GhcMod.Utils
 import Language.Haskell.GhcMod.PathsAndFiles
+import Language.Haskell.GhcMod.Gap (listVisibleModules)
 import Name (getOccString)
+import Module (moduleNameString, moduleName)
 import System.Directory (doesFileExist, getModificationTime)
 import System.FilePath ((</>), takeDirectory)
 import System.IO
@@ -139,22 +141,17 @@ isOlderThan cache file = do
 -- | Browsing all functions in all system/user modules.
 getSymbolTable :: IOish m => GhcModT m [(Symbol,[ModuleString])]
 getSymbolTable = do
-    ghcModules <- G.packageDbModules True
-    moduleInfos <- mapM G.getModuleInfo ghcModules
-    let modules = do
-         m <- ghcModules
-         let moduleName = G.moduleNameString $ G.moduleName m
---             modulePkg = G.packageIdString $ G.modulePackageId m
-         return moduleName
-
+    df  <- G.getSessionDynFlags
+    let mods = listVisibleModules df
+    moduleInfos <- mapM G.getModuleInfo mods
     return $ collectModules
-           $ extractBindings `concatMap` (moduleInfos `zip` modules)
+           $ extractBindings `concatMap` (moduleInfos `zip` mods)
 
-extractBindings :: (Maybe G.ModuleInfo, ModuleString)
+extractBindings :: (Maybe G.ModuleInfo, G.Module)
                 -> [(Symbol, ModuleString)]
 extractBindings (Nothing,_)  = []
-extractBindings (Just inf,mdlname) =
-    map (\name -> (getOccString name, mdlname)) names
+extractBindings (Just inf,mdl) =
+    map (\name -> (getOccString name, moduleNameString $ moduleName mdl)) names
   where
     names = G.modInfoExports inf
 

@@ -29,17 +29,30 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. -}
 
-
--- | ComponentLocalBuildInfo for Cabal <= 1.16
-module Language.Haskell.GhcMod.Cabal16 (
+-- | ComponentLocalBuildInfo for Cabal >= 1.18
+module Language.Haskell.GhcMod.CabalConfig.Cabal18 (
     ComponentLocalBuildInfo
   , componentPackageDeps
+  , componentLibraries
   ) where
 
-import Distribution.Package (InstalledPackageId, PackageIdentifier)
+import Distribution.Package (InstalledPackageId, PackageId)
 
--- From Cabal <= 1.16
-data ComponentLocalBuildInfo = ComponentLocalBuildInfo {
-    componentPackageDeps :: [(InstalledPackageId, PackageIdentifier)]
+data LibraryName = LibraryName String
+    deriving (Read, Show)
+
+data ComponentLocalBuildInfo
+  = LibComponentLocalBuildInfo {
+    componentPackageDeps :: [(InstalledPackageId, PackageId)],
+    componentLibraries :: [LibraryName]
+  }
+  | ExeComponentLocalBuildInfo {
+    componentPackageDeps :: [(InstalledPackageId, PackageId)]
+  }
+  | TestComponentLocalBuildInfo {
+    componentPackageDeps :: [(InstalledPackageId, PackageId)]
+  }
+  | BenchComponentLocalBuildInfo {
+    componentPackageDeps :: [(InstalledPackageId, PackageId)]
   }
   deriving (Read, Show)

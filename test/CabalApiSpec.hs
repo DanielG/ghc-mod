@@ -9,7 +9,6 @@ import Language.Haskell.GhcMod.Types
 import Test.Hspec
 import System.Directory
 import System.FilePath
-import System.Process (readProcess)
 
 import Dir
 import TestUtils
@@ -46,19 +45,6 @@ spec = do
                   else ghcOptions res' `shouldContain` ["-global-package-db", "-no-user-package-db","-package-db",cwd </> "test/data/.cabal-sandbox/i386-osx-ghc-7.6.3-packages.conf.d","-XHaskell98"]
                 includeDirs res' `shouldBe` ["test/data","test/data/dist/build","test/data/dist/build/autogen","test/data/subdir1/subdir2","test/data/test"]
                 (pkgName `map` depPackages res') `shouldContain` ["Cabal"]
-
-
-    describe "cabalDependPackages" $ do
-        it "extracts dependent packages" $ do
-            crdl <- findCradle' "test/data/"
-            pkgs <- cabalDependPackages . cabalAllBuildInfo <$> runD (parseCabalFile crdl "test/data/cabalapi.cabal")
-            pkgs `shouldBe` ["Cabal","base","template-haskell"]
-        it "uses non default flags" $ do
-            withDirectory_ "test/data/cabal-flags" $ do
-                crdl <- findCradle
-                _ <- readProcess "cabal" ["configure", "-ftest-flag"] ""
-                pkgs <- cabalDependPackages . cabalAllBuildInfo <$> runD (parseCabalFile crdl "cabal-flags.cabal")
-                pkgs `shouldBe` ["Cabal","base"]
 
     describe "cabalSourceDirs" $ do
         it "extracts all hs-source-dirs" $ do

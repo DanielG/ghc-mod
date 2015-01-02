@@ -31,6 +31,10 @@ import qualified HsPat as Ty
 import qualified Language.Haskell.Exts.Annotated as HE
 import Djinn.GHC
 
+#if __GLASGOW_HASKELL__ >= 710
+import GHC (unLoc)
+#endif
+
 ----------------------------------------------------------------
 -- INTIAL CODE FROM FUNCTION OR INSTANCE SIGNATURE
 ----------------------------------------------------------------
@@ -97,7 +101,11 @@ getSignature modSum lineNo colNo = do
     p@ParsedModule{pm_parsed_source = ps} <- G.parseModule modSum
     -- Inspect the parse tree to find the signature
     case listifyParsedSpans ps (lineNo, colNo) :: [G.LHsDecl G.RdrName] of
+#if __GLASGOW_HASKELL__ >= 710
+      [L loc (G.SigD (Ty.TypeSig names (L _ ty) _))] ->
+#else
       [L loc (G.SigD (Ty.TypeSig names (L _ ty)))] ->
+#endif
         -- We found a type signature
         return $ Just $ Signature loc (map G.unLoc names) ty
       [L _ (G.InstD _)] -> do
@@ -238,12 +246,24 @@ class FnArgsInfo ty name | ty -> name, name -> ty where
 
 instance FnArgsInfo (G.HsType G.RdrName) (G.RdrName) where
   getFnName dflag style name = showOccName dflag style $ Gap.occName name
-  getFnArgs (G.HsForAllTy _ _ _ (L _ iTy))  = getFnArgs iTy
+#if __GLASGOW_HASKELL__ >= 710
+  getFnArgs (G.HsForAllTy _ _ _ _ (L _ iTy))
+#else
+  getFnArgs (G.HsForAllTy _ _ _ (L _ iTy))
+#endif
+    = getFnArgs iTy
+
   getFnArgs (G.HsParTy (L _ iTy))           = getFnArgs iTy
   getFnArgs (G.HsFunTy (L _ lTy) (L _ rTy)) =
       (if fnarg lTy then FnArgFunction else FnArgNormal):getFnArgs rTy
     where fnarg ty = case ty of
-              (G.HsForAllTy _ _ _ (L _ iTy)) -> fnarg iTy
+#if __GLASGOW_HASKELL__ >= 710
+              (G.HsForAllTy _ _ _ _ (L _ iTy)) ->
+#else
+              (G.HsForAllTy _ _ _ (L _ iTy)) ->
+#endif
+                fnarg iTy
+
               (G.HsParTy (L _ iTy))          -> fnarg iTy
               (G.HsFunTy _ _)                -> True
               _                              -> False
@@ -478,7 +498,13 @@ getBindingsForRecPat (Ty.PrefixCon args) =
 getBindingsForRecPat (Ty.InfixCon (L _ a1) (L _ a2)) =
     M.union (getBindingsForPat a1) (getBindingsForPat a2)
 getBindingsForRecPat (Ty.RecCon (Ty.HsRecFields { Ty.rec_flds = fields })) =
-    getBindingsForRecFields fields
- where getBindingsForRecFields [] = M.empty
-       getBindingsForRecFields (Ty.HsRecField {Ty.hsRecFieldArg = (L _ a)}:fs) =
-         M.union (getBindingsForPat a) (getBindingsForRecFields fs)
+    getBindingsForRecFields (map unLoc' fields)
+ where
+#if __GLASGOW_HASKELL__ >= 710
+   unLoc' = unLoc
+#else
+   unLoc' = id
+#endif
+   getBindingsForRecFields [] = M.empty
+   getBindingsForRecFields (Ty.HsRecField {Ty.hsRecFieldArg = (L _ a)}:fs) =
+       M.union (getBindingsForPat a) (getBindingsForRecFields fs)

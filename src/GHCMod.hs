@@ -89,9 +89,6 @@ ghcModUsage =
  \\n\
  \    - list [FLAGS...] | modules [FLAGS...]\n\
  \        List all visible modules.\n\
- \      Flags:\n\
- \        -d\n\
- \            Also print the modules' package.\n\
  \\n\
  \    - lang\n\
  \        List all known GHC language extensions.\n\
@@ -588,6 +585,7 @@ hlintArgSpec =
     [ option "h" ["hlintOpt"] "Option to be passed to hlint" $
              reqArg "hlintOpt" $ \h o -> o { hlintOpts = h : hlintOpts o }
     ]
+
 browseArgSpec :: [OptDescr (Options -> Options)]
 browseArgSpec =
     [ option "o" ["operators"] "Also print operators." $
