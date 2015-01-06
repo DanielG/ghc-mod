@@ -41,11 +41,17 @@ module Language.Haskell.GhcMod.Gap (
   , getClass
   , occName
   , setFlags
+  , ghcVersion
+  , mkGHCCompilerId
+  , listVisibleModuleNames
+  , listVisibleModules
+  , Language.Haskell.GhcMod.Gap.isSynTyCon
   ) where
 
 import Control.Applicative hiding (empty)
 import Control.Monad (filterM)
 import CoreSyn (CoreExpr)
+import Data.Version (parseVersion)
 import Data.List (intersperse)
 import Data.Maybe (catMaybes)
 import Data.Time.Clock (UTCTime)
@@ -65,6 +71,9 @@ import PprTyThing
 import StringBuffer
 import TcType
 import Var (varType)
+import Config (cProjectVersion)
+
+import Text.ParserCombinators.ReadP (readP_to_S)
 
 import qualified Distribution.PackageDescription as P
 import qualified InstEnv
@@ -86,6 +95,19 @@ import GHC hiding (Instance)
 import Control.Arrow hiding ((<+>))
 import Data.Convertible
 import RdrName (rdrNameOcc)
+#endif
+
+import Distribution.Version
+import Distribution.Simple.Compiler (CompilerId(..), CompilerFlavor(..))
+#if __GLASGOW_HASKELL__ >= 710
+import Distribution.Simple.Compiler (CompilerInfo(..), AbiTag(..))
+import Packages (listVisibleModuleNames, lookupModuleInAllPackages)
+#endif
+
+#if __GLASGOW_HASKELL__ < 710
+import UniqFM (eltsUFM)
+import Packages (exposedModules, exposed, pkgIdMap)
+import PackageConfig (PackageConfig, packageConfigId)
 #endif
 
 #if __GLASGOW_HASKELL__ >= 704
@@ -173,7 +195,11 @@ toStringBuffer = liftIO . stringToStringBuffer . unlines
 ----------------------------------------------------------------
 
 fOptions :: [String]
-#if __GLASGOW_HASKELL__ >= 704
+#if __GLASGOW_HASKELL__ >= 710
+fOptions = [flagSpecName spec | spec <- fFlags]
+        ++ [flagSpecName spec | spec <- fWarningFlags]
+        ++ [flagSpecName spec | spec <- fLangFlags]
+#elif __GLASGOW_HASKELL__ >= 704
 fOptions = [option | (option,_,_) <- fFlags]
         ++ [option | (option,_,_) <- fWarningFlags]
         ++ [option | (option,_,_) <- fLangFlags]
@@ -253,7 +279,12 @@ addPackageFlags :: [Package] -> DynFlags -> DynFlags
 addPackageFlags pkgs df =
     df { packageFlags = packageFlags df ++ expose `map` pkgs }
   where
+#if __GLASGOW_HASKELL__ >= 710
+    expose :: Package -> PackageFlag
+    expose pkg = ExposePackage (PackageIdArg $ showPkgId pkg) (ModRenaming True [])
+#else
     expose pkg = ExposePackageId $ showPkgId pkg
+#endif
 
 ----------------------------------------------------------------
 
@@ -445,7 +476,12 @@ type GLMatchI = LMatch Id
 #endif
 
 getClass :: [LInstDecl Name] -> Maybe (Name, SrcSpan)
-#if __GLASGOW_HASKELL__ >= 708
+#if __GLASGOW_HASKELL__ >= 710
+-- Instance declarations of sort 'instance F (G a)'
+getClass [L loc (ClsInstD (ClsInstDecl {cid_poly_ty = (L _ (HsForAllTy _ _ _ _ (L _ (HsAppTy (L _ (HsTyVar className)) _))))}))] = Just (className, loc)
+-- Instance declarations of sort 'instance F G' (no variables)
+getClass [L loc (ClsInstD (ClsInstDecl {cid_poly_ty = (L _ (HsAppTy (L _ (HsTyVar className)) _))}))] = Just (className, loc)
+#elif __GLASGOW_HASKELL__ >= 708
 -- Instance declarations of sort 'instance F (G a)'
 getClass [L loc (ClsInstD (ClsInstDecl {cid_poly_ty = (L _ (HsForAllTy _ _ _ (L _ (HsAppTy (L _ (HsTyVar className)) _))))}))] = Just (className, loc)
 -- Instance declarations of sort 'instance F G' (no variables)
@@ -465,11 +501,64 @@ occName = rdrNameOcc
 #endif
 
 ----------------------------------------------------------------
-----------------------------------------------------------------
 
 setFlags :: DynFlags -> DynFlags
 #if __GLASGOW_HASKELL__ >= 708
 setFlags df = df `gopt_unset` Opt_SpecConstr -- consume memory if -O2
 #else
 setFlags = id
+#endif
+
+----------------------------------------------------------------
+
+ghcVersion :: Version
+ghcVersion =
+    case readP_to_S parseVersion $ cProjectVersion  of
+      [(ver, "")] -> ver
+      _ -> error "parsing ghc version(cProjectVersion) failed."
+
+
+#if __GLASGOW_HASKELL__ >= 710
+mkGHCCompilerId :: Version -> Distribution.Simple.Compiler.CompilerInfo
+-- TODO we should probably fill this out properly
+mkGHCCompilerId v =
+    CompilerInfo (CompilerId GHC v) NoAbiTag Nothing Nothing Nothing
+#else
+mkGHCCompilerId :: Version -> CompilerId
+mkGHCCompilerId v = CompilerId GHC v
+#endif
+
+----------------------------------------------------------------
+
+
+#if __GLASGOW_HASKELL__ < 710
+-- Copied from ghc/InteractiveUI.hs
+allExposedPackageConfigs :: DynFlags -> [PackageConfig]
+allExposedPackageConfigs df = filter exposed $ eltsUFM $ pkgIdMap $ pkgState df
+
+allExposedModules :: DynFlags -> [ModuleName]
+allExposedModules df = concat $ map exposedModules $ allExposedPackageConfigs df
+
+listVisibleModuleNames :: DynFlags -> [ModuleName]
+listVisibleModuleNames = allExposedModules
+#endif
+
+listVisibleModules :: DynFlags -> [GHC.Module]
+listVisibleModules df = let
+#if __GLASGOW_HASKELL__ >= 710
+    modNames = listVisibleModuleNames df
+    mods = [ m | mn <- modNames, (m, _) <- lookupModuleInAllPackages df mn ]
+#else
+    pkgCfgs = allExposedPackageConfigs df
+    mods = [ mkModule pid modname | p <- pkgCfgs
+           , let pid = packageConfigId p
+           , modname <- exposedModules p ]
+#endif
+    in mods
+
+isSynTyCon :: TyCon -> Bool
+#if __GLASGOW_HASKELL__ >= 710
+isSynTyCon = GHC.isTypeSynonymTyCon
+#else
+isSynTyCon = GHC.isSynTyCon
 #endif

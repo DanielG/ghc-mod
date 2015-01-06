@@ -1,4 +1,4 @@
-{-# LANGUAGE FlexibleInstances, FlexibleContexts, OverlappingInstances #-}
+{-# LANGUAGE CPP, FlexibleInstances, FlexibleContexts #-}
 
 module Language.Haskell.GhcMod.Convert (convert, convert', emptyResult, whenFound, whenFound') where
 

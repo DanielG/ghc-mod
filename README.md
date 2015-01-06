@@ -48,3 +48,6 @@ all sorts of nasty conflicts.
 
 If you have any problems, suggestions, comments swing by
 [#ghc-mod](irc://chat.freenode.net/ghc-mod) on Freenode.
+
+Do hang around for a while if no one answers and repeat your question if you
+still haven't gotten any answer after a day or so.

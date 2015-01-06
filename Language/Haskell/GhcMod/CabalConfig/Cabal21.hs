@@ -30,7 +30,7 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. -}
 
 -- | ComponentLocalBuildInfo for Cabal >= 1.21
-module Language.Haskell.GhcMod.Cabal21 (
+module Language.Haskell.GhcMod.CabalConfig.Cabal21 (
     ComponentLocalBuildInfo
   , PackageIdentifier(..)
   , PackageName(..)

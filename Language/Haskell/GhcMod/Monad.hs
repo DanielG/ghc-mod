@@ -221,22 +221,28 @@ initializeFlagsWithCradle opt c
   | otherwise = withSandbox
   where
     mCabalFile = cradleCabalFile c
+
     cabal = isJust mCabalFile
+
     ghcopts = ghcUserOptions opt
+
     withCabal = do
         let Just cabalFile = mCabalFile
         pkgDesc <- parseCabalFile c cabalFile
         compOpts <- getCompilerOptions ghcopts c pkgDesc
         initSession CabalPkg opt compOpts
+
     withSandbox = initSession SingleFile opt compOpts
       where
         importDirs = [".","..","../..","../../..","../../../..","../../../../.."]
+
         pkgOpts = ghcDbStackOpts $ cradlePkgDbStack c
+
         compOpts
           | null pkgOpts = CompilerOptions ghcopts importDirs []
           | otherwise    = CompilerOptions (ghcopts ++ pkgOpts) [wdir,rdir] []
-        wdir = cradleCurrentDir c
-        rdir = cradleRootDir    c
+
+        (wdir, rdir) = (cradleCurrentDir c, cradleRootDir c)
 
 initSession :: GhcMonad m
             => Build
