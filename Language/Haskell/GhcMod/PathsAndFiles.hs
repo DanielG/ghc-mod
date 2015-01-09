@@ -91,7 +91,9 @@ getSandboxDb :: FilePath -- ^ Path to the cabal package root directory
                          -- (containing the @cabal.sandbox.config@ file)
              -> IO (Maybe FilePath)
 getSandboxDb d = do
-  mConf <- traverse readFile =<< U.mightExist (d </> "cabal.sandbox.config")
+  mConf <- traverse readFile =<< msum <$>
+           sequence [U.mightExist (dir </> "cabal.sandbox.config")
+                    | dir <- parents d]
   return $ extractSandboxDbDir =<< mConf
 
 -- | Extract the sandbox package db directory from the cabal.sandbox.config file.
