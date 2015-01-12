@@ -6,8 +6,6 @@ import Config (cProjectVersion)
 import MonadUtils (liftIO)
 import Control.Applicative
 import Control.Monad
-import Control.Exception ( SomeException(..), fromException, Exception
-                         , Handler(..), catches, throw)
 import Data.Typeable (Typeable)
 import Data.Version (showVersion)
 import Data.Default
@@ -15,6 +13,7 @@ import Data.List
 import Data.List.Split
 import Data.Maybe
 import Data.Char (isSpace)
+import Exception
 import Language.Haskell.GhcMod
 import Language.Haskell.GhcMod.Internal
 import Paths_ghc_mod
@@ -227,27 +226,32 @@ ghcModiUsage =
  where
    indent = ("    "++)
 
-
-
-
 cmdUsage :: String -> String -> String
-cmdUsage cmd s =
+cmdUsage cmd realUsage =
   let
       -- Find command head
-      a = dropWhile (not . (("    - " ++ cmd) `isInfixOf`)) $ lines s
+      a = dropWhile (not . isCmdHead) $ lines realUsage
       -- Take til the end of the current command block
       b = flip takeWhile a $ \l ->
-           all isSpace l || (isIndented l && (isCurrCmdHead l || isNotCmdHead l))
+            all isSpace l || (isIndented l && (isCmdHead l || isNotCmdHead l))
       -- Drop extra newline from the end
       c = dropWhileEnd (all isSpace) b
 
       isIndented    = ("    " `isPrefixOf`)
       isNotCmdHead  = ( not .  ("    - " `isPrefixOf`))
-      isCurrCmdHead = (("    - " ++ cmd) `isPrefixOf`)
+
+      containsAnyCmdHead s = (("    - ") `isInfixOf` s)
+      containsCurrCmdHead s = (("    - " ++ cmd) `isInfixOf` s)
+      isCmdHead s =
+          containsAnyCmdHead s &&
+            or [ containsCurrCmdHead s
+               , any (cmd `isPrefixOf`) (splitOn " | " s)
+               ]
 
       unindent (' ':' ':' ':' ':l) = l
       unindent l = l
   in unlines $ unindent <$> c
+
 ----------------------------------------------------------------
 
 option :: [Char] -> [String] -> String -> ArgDescr a -> OptDescr a
@@ -321,7 +325,8 @@ handler = flip catches $
           , Handler $ \(InvalidCommandLine e) -> do
                 case e of
                   Left cmd ->
-                      exitError $ (cmdUsage cmd ghcModUsage) ++ "\n"
+                      exitError $ "Usage for `"++cmd++"' command:\n\n"
+                                  ++ (cmdUsage cmd ghcModUsage) ++ "\n"
                                   ++ progName ++ ": Invalid command line form."
                   Right msg -> exitError $ progName ++ ": " ++ msg
           ]
@@ -535,23 +540,37 @@ withParseCmd spec action args  = do
   (opts', rest) <- parseCommandArgs spec args <$> options
   withOptions (const opts') $ action rest
 
+withParseCmd' :: (IOish m, ExceptionMonad m)
+              => String
+              -> [OptDescr (Options -> Options)]
+              -> ([String] -> GhcModT m a)
+              -> [String]
+              -> GhcModT m a
+withParseCmd' cmd spec action args =
+    catchArgs cmd $ withParseCmd spec action args
+
+catchArgs :: (Monad m, ExceptionMonad m) => String -> m a -> m a
+catchArgs cmd action =
+    action `gcatch` \(PatternMatchFail _) ->
+        throw $ InvalidCommandLine (Left cmd)
+
 modulesCmd, languagesCmd, flagsCmd, browseCmd, checkSyntaxCmd, expandTemplateCmd,
   debugInfoCmd, infoCmd, typesCmd, splitsCmd, sigCmd, refineCmd, autoCmd,
   findSymbolCmd, lintCmd, rootInfoCmd, pkgDocCmd, dumpSymbolCmd, bootCmd
   :: IOish m => [String] -> GhcModT m String
 
-modulesCmd    = withParseCmd [] $ \[] -> modules
-languagesCmd  = withParseCmd [] $ \[] -> languages
-flagsCmd      = withParseCmd [] $ \[] -> flags
-debugInfoCmd  = withParseCmd [] $ \[] -> debugInfo
-rootInfoCmd   = withParseCmd [] $ \[] -> rootInfo
+modulesCmd    = withParseCmd' "modules" [] $ \[] -> modules
+languagesCmd  = withParseCmd' "lang"    [] $ \[] -> languages
+flagsCmd      = withParseCmd' "flag"    [] $ \[] -> flags
+debugInfoCmd  = withParseCmd' "debug"   [] $ \[] -> debugInfo
+rootInfoCmd   = withParseCmd' "root"    [] $ \[] -> rootInfo
 -- internal
-bootCmd       = withParseCmd [] $ \[] -> boot
+bootCmd       = withParseCmd' "boot" [] $ \[] -> boot
 
-dumpSymbolCmd     = withParseCmd [] $ \[tmpdir] -> dumpSymbol tmpdir
-findSymbolCmd     = withParseCmd [] $ \[sym]  -> findSymbol sym
-pkgDocCmd         = withParseCmd [] $ \[mdl]  -> pkgDoc mdl
-lintCmd           = withParseCmd s  $ \[file] -> lint file
+dumpSymbolCmd     = withParseCmd' "dump" [] $ \[tmpdir] -> dumpSymbol tmpdir
+findSymbolCmd     = withParseCmd' "find" [] $ \[sym]  -> findSymbol sym
+pkgDocCmd         = withParseCmd' "doc"  [] $ \[mdl]  -> pkgDoc mdl
+lintCmd           = withParseCmd' "lint" s  $ \[file] -> lint file
  where s = hlintArgSpec
 browseCmd         = withParseCmd s  $ \mdls   -> concat <$> browse `mapM` mdls
  where s = browseArgSpec
