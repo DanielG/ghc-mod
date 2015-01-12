@@ -182,12 +182,12 @@ ghcModUsage =
  \        -l\n\
  \            Option to be passed to hlint.\n\
  \\n\
- \    - root FILE\n\
- \       Try to find the project directory given FILE. For Cabal\n\
- \       projects this is the directory containing the cabal file, for\n\
- \       projects that use a cabal sandbox but have no cabal file this is the\n\
- \       directory containing the sandbox and otherwise this is the directory\n\
- \       containing FILE.\n\
+ \    - root\n\
+ \        Try to find the project directory. For Cabal projects this is the\n\
+ \        directory containing the cabal file, for projects that use a cabal\n\
+ \        sandbox but have no cabal file this is the directory containing the\n\
+ \        cabal.sandbox.config file and otherwise this is the current\n\
+ \        directory.\n\
  \\n\
  \    - doc MODULE\n\
  \        Try finding the html documentation directory for the given MODULE.\n\
