@@ -13,7 +13,7 @@ import GHC (GhcException(CmdLineError), ModuleInfo, Name, TyThing, DynFlags, Typ
 import qualified GHC as G
 import Language.Haskell.GhcMod.Convert
 import Language.Haskell.GhcMod.Doc (showPage, styleUnqualified)
-import Language.Haskell.GhcMod.Gap
+import Language.Haskell.GhcMod.Gap as Gap
 import Language.Haskell.GhcMod.Monad (GhcModT, options)
 import Language.Haskell.GhcMod.Target (setTargetFiles)
 import Language.Haskell.GhcMod.Types
@@ -127,7 +127,7 @@ tyType typ
       && not (G.isClassTyCon typ) = Just "data"
     | G.isNewTyCon typ            = Just "newtype"
     | G.isClassTyCon typ          = Just "class"
-    | G.isSynTyCon typ            = Just "type"
+    | Gap.isSynTyCon typ          = Just "type"
     | otherwise                   = Nothing
 
 removeForAlls :: Type -> Type

@@ -20,7 +20,7 @@ Description:            The ghc-mod command is a backend command to enrich
 
 Category:               Development
 Cabal-Version:          >= 1.10
-Build-Type:             Simple
+Build-Type:             Custom
 Data-Dir:               elisp
 Data-Files:             Makefile ghc.el ghc-func.el ghc-doc.el ghc-comp.el
                         ghc-check.el ghc-process.el ghc-command.el ghc-info.el
@@ -63,11 +63,11 @@ Library
                         Language.Haskell.GhcMod.Internal
   Other-Modules:        Language.Haskell.GhcMod.Boot
                         Language.Haskell.GhcMod.Browse
-                        Language.Haskell.GhcMod.Cabal16
-                        Language.Haskell.GhcMod.Cabal18
-                        Language.Haskell.GhcMod.Cabal21
-                        Language.Haskell.GhcMod.CabalApi
+                        Language.Haskell.GhcMod.CabalConfig.Cabal16
+                        Language.Haskell.GhcMod.CabalConfig.Cabal18
+                        Language.Haskell.GhcMod.CabalConfig.Cabal21
                         Language.Haskell.GhcMod.CabalConfig
+                        Language.Haskell.GhcMod.CabalApi
                         Language.Haskell.GhcMod.CaseSplit
                         Language.Haskell.GhcMod.Check
                         Language.Haskell.GhcMod.Convert
@@ -79,7 +79,6 @@ Library
                         Language.Haskell.GhcMod.FillSig
                         Language.Haskell.GhcMod.Find
                         Language.Haskell.GhcMod.Flag
-                        Language.Haskell.GhcMod.GHCApi
                         Language.Haskell.GhcMod.GHCChoice
                         Language.Haskell.GhcMod.Gap
                         Language.Haskell.GhcMod.GhcPkg
@@ -97,6 +96,13 @@ Library
                         Language.Haskell.GhcMod.Types
                         Language.Haskell.GhcMod.Utils
                         Language.Haskell.GhcMod.World
+
+  if impl(ghc >= 7.10)
+    Other-Modules:      Language.Haskell.GhcMod.CabalConfig.Ghc710
+  else
+    Other-Modules:      Language.Haskell.GhcMod.CabalConfig.PreGhc710
+
+
   Build-Depends:        base >= 4.0 && < 5
                       , containers
                       , deepseq
@@ -122,11 +128,16 @@ Library
                       , haskell-src-exts
                       , text
                       , djinn-ghc >= 0.0.2.2
-  if impl(ghc >= 7.8)
+  if impl(ghc >= 7.10)
     Build-Depends:      Cabal >= 1.18
-  else
+
+  if impl(ghc == 7.8.*)
+    Build-Depends:      Cabal >= 1.18 && < 1.22
+
+  if impl(ghc < 7.8)
     Build-Depends:      convertible
                       , Cabal >= 1.10 && < 1.17
+
   if impl(ghc <= 7.4.2)
     -- Only used to constrain random to a version that still works with GHC 7.4
     Build-Depends:      random <= 1.0.1.1
@@ -189,6 +200,7 @@ Test-Suite spec
   Main-Is:              Main.hs
   Hs-Source-Dirs:       test, .
   Ghc-Options:          -Wall
+  CPP-Options:          -DSPEC=1
   Type:                 exitcode-stdio-1.0
   Other-Modules:        BrowseSpec
                         CabalApiSpec
@@ -203,6 +215,7 @@ Test-Suite spec
                         PathsAndFilesSpec
                         Spec
                         TestUtils
+
   Build-Depends:        base >= 4.0 && < 5
                       , containers
                       , deepseq
@@ -229,14 +242,20 @@ Test-Suite spec
                       , haskell-src-exts
                       , text
                       , djinn-ghc >= 0.0.2.2
-  if impl(ghc >= 7.8)
+
+  if impl(ghc >= 7.10)
     Build-Depends:      Cabal >= 1.18
-  else
+
+  if impl(ghc == 7.8.*)
+    Build-Depends:      Cabal >= 1.18 && < 1.22
+
+  if impl(ghc < 7.8)
     Build-Depends:      convertible
                       , Cabal >= 1.10 && < 1.17
+
   if impl(ghc < 7.6)
     Build-Depends:      executable-path
-  CPP-Options:        -DSPEC=1
+
 
 Source-Repository head
   Type:                 git

@@ -13,9 +13,7 @@ module Language.Haskell.GhcMod.Internal (
   , parseCabalFile
   , getCompilerOptions
   , cabalAllBuildInfo
-  , cabalDependPackages
   , cabalSourceDirs
-  , cabalAllTargets
   -- * Various Paths
   , ghcLibDir
   , ghcModExecutable

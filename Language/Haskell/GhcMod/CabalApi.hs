@@ -4,33 +4,27 @@ module Language.Haskell.GhcMod.CabalApi (
     getCompilerOptions
   , parseCabalFile
   , cabalAllBuildInfo
-  , cabalDependPackages
   , cabalSourceDirs
-  , cabalAllTargets
   , cabalConfigDependencies
   ) where
 
 import Language.Haskell.GhcMod.CabalConfig
 import Language.Haskell.GhcMod.Error
-import Language.Haskell.GhcMod.Gap (benchmarkBuildInfo, benchmarkTargets,
-                                    toModuleString)
+import Language.Haskell.GhcMod.Gap (benchmarkBuildInfo, mkGHCCompilerId)
 import Language.Haskell.GhcMod.GhcPkg
 import Language.Haskell.GhcMod.Types
 
 import MonadUtils (liftIO)
 import Control.Applicative ((<$>))
 import qualified Control.Exception as E
-import Control.Monad (filterM)
 import Data.Maybe (maybeToList)
 import Data.Set (fromList, toList)
-import Distribution.Package (Dependency(Dependency)
-                           , PackageName(PackageName))
+import Distribution.Package (PackageName(PackageName))
 import qualified Distribution.Package as C
-import Distribution.PackageDescription (PackageDescription, BuildInfo, TestSuite, TestSuiteInterface(..), Executable)
+import Distribution.PackageDescription (PackageDescription, BuildInfo)
 import qualified Distribution.PackageDescription as P
 import Distribution.PackageDescription.Configuration (finalizePackageDescription)
 import Distribution.PackageDescription.Parse (readPackageDescription)
-import Distribution.Simple.Compiler (CompilerId(..), CompilerFlavor(..))
 import Distribution.Simple.Program as C (ghcProgram)
 import Distribution.Simple.Program.Types (programName, programFindVersion)
 import Distribution.System (buildPlatform)
@@ -78,7 +72,7 @@ parseCabalFile :: (IOish m, MonadError GhcModError m)
                -> FilePath
                -> m PackageDescription
 parseCabalFile cradle file = do
-    cid <- liftIO getGHCId
+    cid <- mkGHCCompilerId <$> liftIO getGHCVersion
     epgd <- liftIO $ readPackageDescription silent file
     flags <- cabalConfigFlags cradle
     case toPkgDesc cid flags epgd of
@@ -92,6 +86,14 @@ parseCabalFile cradle file = do
     nullPkg pd = name == ""
       where
         PackageName name = C.pkgName (P.package pd)
+
+getGHCVersion :: IO Version
+getGHCVersion = do
+    mv <- programFindVersion C.ghcProgram silent (programName C.ghcProgram)
+    case mv of
+      -- TODO: MonadError it up
+        Nothing -> E.throwIO $ userError "ghc not found"
+        Just v  -> return v
 
 ----------------------------------------------------------------
 
@@ -130,15 +132,6 @@ cabalAllBuildInfo pd = libBI ++ execBI ++ testBI ++ benchBI
 
 ----------------------------------------------------------------
 
--- | Extracting package names of dependency.
-cabalDependPackages :: [BuildInfo] -> [PackageBaseName]
-cabalDependPackages bis = uniqueAndSort pkgs
-  where
-    pkgs = map getDependencyPackageName $ concatMap P.targetBuildDepends bis
-    getDependencyPackageName (Dependency (PackageName nm) _) = nm
-
-----------------------------------------------------------------
-
 -- | Extracting include directories for modules.
 cabalSourceDirs :: [BuildInfo] -> [IncludeDir]
 cabalSourceDirs bis = uniqueAndSort $ concatMap P.hsSourceDirs bis
@@ -147,47 +140,3 @@ cabalSourceDirs bis = uniqueAndSort $ concatMap P.hsSourceDirs bis
 
 uniqueAndSort :: [String] -> [String]
 uniqueAndSort = toList . fromList
-
-----------------------------------------------------------------
-
-getGHCId :: IO CompilerId
-getGHCId = CompilerId GHC <$> getGHC
-
-getGHC :: IO Version
-getGHC = do
-    mv <- programFindVersion C.ghcProgram silent (programName C.ghcProgram)
-    case mv of
-      -- TODO: MonadError it up
-        Nothing -> E.throwIO $ userError "ghc not found"
-        Just v  -> return v
-
-----------------------------------------------------------------
-
--- | Extracting all 'Module' 'FilePath's for libraries, executables,
--- tests and benchmarks.
-cabalAllTargets :: PackageDescription -> IO ([String],[String],[String],[String])
-cabalAllTargets pd = do
-    exeTargets  <- mapM getExecutableTarget $ P.executables pd
-    testTargets <- mapM getTestTarget $ P.testSuites pd
-    return (libTargets,concat exeTargets,concat testTargets,benchTargets)
-  where
-    lib = case P.library pd of
-            Nothing -> []
-            Just l -> P.libModules l
-
-    libTargets = map toModuleString lib
-    benchTargets = benchmarkTargets pd
-
-    getTestTarget :: TestSuite -> IO [String]
-    getTestTarget ts =
-       case P.testInterface ts of
-        (TestSuiteExeV10 _ filePath) -> do
-          let maybeTests = [p </> e | p <- P.hsSourceDirs $ P.testBuildInfo ts, e <- [filePath]]
-          liftIO $ filterM doesFileExist maybeTests
-        (TestSuiteLibV09 _ moduleName) -> return [toModuleString moduleName]
-        (TestSuiteUnsupported _)       -> return []
-
-    getExecutableTarget :: Executable -> IO [String]
-    getExecutableTarget exe = do
-      let maybeExes = [p </> e | p <- P.hsSourceDirs $ P.buildInfo exe, e <- [P.modulePath exe]]
-      liftIO $ filterM doesFileExist maybeExes
