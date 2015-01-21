@@ -9,6 +9,7 @@ logs-dir: @CWD@/test/data/.cabal-sandbox/logs
 world-file: @CWD@/test/data/.cabal-sandbox/world
 user-install: False
 package-db: @CWD@/test/data/.cabal-sandbox/i386-osx-ghc-7.6.3-packages.conf.d
+package-db: @CWD@/test/another-sandbox/.cabal-sandbox/i386-osx-ghc-7.6.3-packages.conf.d
 build-summary: @CWD@/test/data/.cabal-sandbox/logs/build.log
 
 install-dirs

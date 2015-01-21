@@ -89,21 +89,22 @@ parents dir' =
 -- | Get path to sandbox config file
 getSandboxDb :: FilePath -- ^ Path to the cabal package root directory
                          -- (containing the @cabal.sandbox.config@ file)
-             -> IO (Maybe FilePath)
+             -> IO [FilePath]
 getSandboxDb d = do
   mConf <- traverse readFile =<< U.mightExist (d </> "cabal.sandbox.config")
-  return $ extractSandboxDbDir =<< mConf
+  return $ extractSandboxDbDirs =<< maybeToList mConf
 
 -- | Extract the sandbox package db directory from the cabal.sandbox.config file.
 --   Exception is thrown if the sandbox config file is broken.
-extractSandboxDbDir :: String -> Maybe FilePath
-extractSandboxDbDir conf = extractValue <$> parse conf
+extractSandboxDbDirs :: String -> [FilePath]
+extractSandboxDbDirs conf = extractValue <$> parse conf
   where
     key = "package-db:"
     keyLen = length key
 
-    parse = listToMaybe . filter (key `isPrefixOf`) . lines
-    extractValue = U.dropWhileEnd isSpace . dropWhile isSpace . drop keyLen
+    parse = filter (key `isPrefixOf`) . lines
+    extractValue =
+        U.dropWhileEnd isSpace . dropWhile isSpace . drop keyLen
 
 setupConfigFile :: Cradle -> FilePath
 setupConfigFile crdl = cradleRootDir crdl </> setupConfigPath

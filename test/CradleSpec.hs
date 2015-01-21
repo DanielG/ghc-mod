@@ -29,7 +29,11 @@ spec = do
                 cradleCurrentDir res `shouldBe` "test" </> "data" </> "subdir1" </> "subdir2"
                 cradleRootDir    res `shouldBe` "test" </> "data"
                 cradleCabalFile  res `shouldBe` Just ("test" </> "data" </> "cabalapi.cabal")
-                cradlePkgDbStack res `shouldBe` [GlobalDb, PackageDb (cwd </> "test/data/.cabal-sandbox/i386-osx-ghc-7.6.3-packages.conf.d")]
+                cradlePkgDbStack res `shouldBe` [
+                    GlobalDb
+                  , PackageDb (cwd </> "test/data/.cabal-sandbox/i386-osx-ghc-7.6.3-packages.conf.d")
+                  , PackageDb (cwd </> "test/another-sandbox/.cabal-sandbox/i386-osx-ghc-7.6.3-packages.conf.d")
+                  ]
 
         it "works even if a sandbox config file is broken" $ do
             withDirectory "test/data/broken-sandbox" $ \dir -> do
