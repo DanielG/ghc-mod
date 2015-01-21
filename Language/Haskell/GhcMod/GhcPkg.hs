@@ -31,9 +31,9 @@ getPackageDbStack :: FilePath -- ^ Project Directory (where the
                   -> IO [GhcPkgDb]
 getPackageDbStack cdir = do
     mSDir <- getSandboxDb cdir
-    return $ [GlobalDb] ++ case mSDir of
-                             Nothing -> [UserDb]
-                             Just db -> [PackageDb db]
+    return $ GlobalDb : case mSDir of
+                          [] -> [UserDb]
+                          xs -> PackageDb <$> xs
 
 ----------------------------------------------------------------
 

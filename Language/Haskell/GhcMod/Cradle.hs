@@ -46,7 +46,8 @@ cabalCradle wdir = do
 
 sandboxCradle :: FilePath -> IO Cradle
 sandboxCradle wdir = do
-    Just sbDir <- getSandboxDb wdir
+    -- The first package-db is the root
+    sbDir:_ <- getSandboxDb wdir
     pkgDbStack <- getPackageDbStack sbDir
     tmpDir <- newTempDir sbDir
     return Cradle {
