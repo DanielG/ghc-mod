@@ -3,6 +3,7 @@
 module CabalApiSpec where
 
 import Control.Applicative
+import Control.Monad
 import Language.Haskell.GhcMod.CabalApi
 import Language.Haskell.GhcMod.Cradle
 import Language.Haskell.GhcMod.Types
@@ -41,9 +42,11 @@ spec = do
                         ghcOptions  = ghcOptions res
                       , includeDirs = map (toRelativeDir dir) (includeDirs res)
                       }
-                if ghcVersion < 706
-                  then ghcOptions res' `shouldContain` ["-global-package-conf", "-no-user-package-conf","-package-conf",cwd </> "test/data/.cabal-sandbox/i386-osx-ghc-7.6.3-packages.conf.d","-XHaskell98"]
-                  else ghcOptions res' `shouldContain` ["-global-package-db", "-no-user-package-db","-package-db",cwd </> "test/data/.cabal-sandbox/i386-osx-ghc-7.6.3-packages.conf.d","-XHaskell98"]
+                    packageDb = cwd </> "test/data/.cabal-sandbox/i386-osx-ghc-7.6.3-packages.conf.d"
+                    expectedOptions = if ghcVersion < 706
+                      then ["-global-package-conf", "-no-user-package-conf","-package-conf",packageDb,"-XHaskell98"]
+                      else ["-global-package-db", "-no-user-package-db","-package-db",packageDb,"-XHaskell98"]
+                forM_ expectedOptions $ \opt -> ghcOptions res' `shouldContain` [opt]
                 includeDirs res' `shouldBe` ["test/data","test/data/dist/build","test/data/dist/build/autogen","test/data/subdir1/subdir2","test/data/test"]
                 (pkgName `map` depPackages res') `shouldContain` ["Cabal"]
 

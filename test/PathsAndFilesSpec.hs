@@ -22,7 +22,7 @@ spec = do
             getPackageDbStack "test/data/" `shouldReturn` [
                 GlobalDb
               , PackageDb $ cwd </> "test/data/.cabal-sandbox/i386-osx-ghc-7.6.3-packages.conf.d"
-              , PackageDb $ cwd </> "test/another-sandbox/.cabal-sandbox/i386-osx-ghc-7.6.3-packages.conf.d"
+              , PackageDb $ cwd </> "test/data/another-sandbox/.cabal-sandbox/i386-osx-ghc-7.6.3-packages.conf.d"
               ]
 #endif
 
@@ -31,7 +31,7 @@ spec = do
             pkgDbs <- getSandboxDb "test/data/"
             pkgDbs `shouldBe` [
                 cwd </> "test/data/.cabal-sandbox/i386-osx-ghc-7.6.3-packages.conf.d"
-              , cwd </> "test/another-sandbox/.cabal-sandbox/i386-osx-ghc-7.6.3-packages.conf.d"
+              , cwd </> "test/data/another-sandbox/.cabal-sandbox/i386-osx-ghc-7.6.3-packages.conf.d"
               ]
 
         it "returns an empty list if the sandbox config file is broken" $ do

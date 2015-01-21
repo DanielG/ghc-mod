@@ -32,7 +32,7 @@ spec = do
                 cradlePkgDbStack res `shouldBe` [
                     GlobalDb
                   , PackageDb (cwd </> "test/data/.cabal-sandbox/i386-osx-ghc-7.6.3-packages.conf.d")
-                  , PackageDb (cwd </> "test/another-sandbox/.cabal-sandbox/i386-osx-ghc-7.6.3-packages.conf.d")
+                  , PackageDb (cwd </> "test/data/another-sandbox/.cabal-sandbox/i386-osx-ghc-7.6.3-packages.conf.d")
                   ]
 
         it "works even if a sandbox config file is broken" $ do
