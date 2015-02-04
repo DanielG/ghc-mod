@@ -55,6 +55,10 @@ Extra-Source-Files:     ChangeLog
                         test/data/subdir1/subdir2/dummy
                         test/data/.cabal-sandbox/packages/00-index.tar
 
+Flag cabal-122
+  Default:              True
+  Manual:               False
+
 Library
   Default-Language:     Haskell2010
   GHC-Options:          -Wall
@@ -128,16 +132,13 @@ Library
                       , haskell-src-exts
                       , text
                       , djinn-ghc >= 0.0.2.2
-  if impl(ghc >= 7.10)
-    Build-Depends:      Cabal >= 1.18
-
-  if impl(ghc == 7.8.*)
-    Build-Depends:      Cabal >= 1.18 && < 1.22
-
   if impl(ghc < 7.8)
     Build-Depends:      convertible
                       , Cabal >= 1.10 && < 1.17
-
+  else
+    Build-Depends:      Cabal >= 1.18
+  if flag(cabal-122)
+    Build-Depends:      Cabal >= 1.22
   if impl(ghc <= 7.4.2)
     -- Only used to constrain random to a version that still works with GHC 7.4
     Build-Depends:      random <= 1.0.1.1
@@ -216,45 +217,9 @@ Test-Suite spec
                         Spec
                         TestUtils
 
-  Build-Depends:        base >= 4.0 && < 5
-                      , containers
-                      , deepseq
-                      , directory
-                      , filepath
-                      , ghc
-                      , ghc-paths
-                      , ghc-syb-utils
-                      , hlint >= 1.7.1
-                      , io-choice
-                      , monad-journal >= 0.4
-                      , old-time
-                      , pretty
-                      , process
-                      , syb
-                      , temporary
-                      , time
-                      , transformers
-                      , transformers-base
-                      , mtl >= 2.0
-                      , monad-control
-                      , hspec >= 1.8.2
-                      , split
-                      , haskell-src-exts
-                      , text
-                      , djinn-ghc >= 0.0.2.2
+  Build-Depends:        hspec
+  X-Build-Depends-Like: CLibName
 
-  if impl(ghc >= 7.10)
-    Build-Depends:      Cabal >= 1.18
-
-  if impl(ghc == 7.8.*)
-    Build-Depends:      Cabal >= 1.18 && < 1.22
-
-  if impl(ghc < 7.8)
-    Build-Depends:      convertible
-                      , Cabal >= 1.10 && < 1.17
-
-  if impl(ghc < 7.6)
-    Build-Depends:      executable-path
 
 
 Source-Repository head
