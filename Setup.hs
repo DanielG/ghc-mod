@@ -1,64 +1,179 @@
+#!/usr/bin/env runhaskell
+{-# LANGUAGE RecordWildCards #-}
 import Distribution.Simple
+import Distribution.Simple.Setup
+import Distribution.Simple.Install
+import Distribution.Simple.InstallDirs as ID
 import Distribution.Simple.LocalBuildInfo
+import Distribution.PackageDescription
 
-import Control.Monad
+import Control.Arrow
 import Control.Applicative
+import Control.Monad
+import Data.List
+import Data.Maybe
 import Data.Version
+import Data.Monoid
 import System.Process
 import System.Exit
+import System.FilePath
 import Text.ParserCombinators.ReadP
 
--- import Data.Monoid
--- import Distribution.Simple.Setup
--- import Distribution.Simple.InstallDirs
--- main = defaultMainWithHooks $ simpleUserHooks {
---     confHook = \desc cf -> do
---         print desc
---         print cf
---         (confHook simpleUserHooks) desc cf {
---             configProgSuffix =
---                 configProgSuffix cf `mappend` toFlag (toPathTemplate "$compiler")
---         }
---  }
+import SetupCompat
 
 main :: IO ()
 main = defaultMainWithHooks $ simpleUserHooks {
-    postConf = \args cf desc lbi -> do
-        -- I hope they never change this ;)
-        ["cabal-install", "version", _cabalInstallVer, "using", "version", cabalVer', "of", "the", "Cabal", "library"] <- words <$> readProcess "cabal" ["--version"] ""
+   confHook = \(gpd, hbi) cf ->
+                xBuildDependsLike <$> (confHook simpleUserHooks) (gpd, hbi) cf
 
-        let
-          ghcVer = compilerVersion (compiler lbi)
-          cabalVer = parseVer cabalVer'
+ , copyHook = xInstallTargetHook
 
-          -- ghc >= 7.10?
-          minGhc710 = ghcVer `withinRange` orLaterVersion (parseVer "7.10")
+ , instHook = \pd lbi uh ifl ->
+              (instHook simpleUserHooks) pd lbi uh ifl
 
-          [libCabalVer] = [ ver | (_, PackageIdentifier pkg ver)
-                                    <- externalPackageDeps lbi
-                          , pkg == PackageName "Cabal" ]
+ , postConf = sanityCheckCabalVersions
+ }
 
-        if minGhc710 then
-            -- make sure Cabal versions are consistent
-            when (not $ cabalVer `sameMajorVersionAs` libCabalVer) $ do
-                 putStrLn $ "Error: Cabal seems to have decided ghc-mod should be built using Cabal version "++showVersion libCabalVer++ " while the `cabal' executable in your PATH was built with Cabal version "++showVersion cabalVer++ ". This will lead to conflicts when running ghc-mod in any project where you use this `cabal' executable. Please compile ghc-mod using the same Cabal version as your `cabal' executable or recompile cabal-install using this version of the Cabal library. (See https://github.com/kazu-yamamoto/ghc-mod/wiki/InconsistentCabalVersions )"
-                 exitFailure
+xBuildDependsLike :: LocalBuildInfo -> LocalBuildInfo
+xBuildDependsLike lbi =
+  let
+      cc = componentsConfigs lbi
+      pd = localPkgDescr lbi
+      deps = dependsMap lbi
+  in setComponentsConfigs lbi
+        [ (cn, updateClbi deps comp clbi, cdeps)
+        | (cn, clbi, cdeps) <- cc
+        , let comp = getComponent pd cn
+        ]
 
-        else -- ghc < 7.10
-            -- make sure Cabal version is < 1.22
-            when (not $ cabalVer `earlierVersionThan` (parseVer "1.22")) $ do
-                 putStrLn "Error: when ghc-mod is built with GHC version < 7.10 only Cabal < 1.22 is supported. (See https://github.com/kazu-yamamoto/ghc-mod/wiki/InconsistentCabalVersions )"
-                 exitFailure
-
-        (postConf simpleUserHooks) args cf desc lbi
-   }
  where
-   parseVer str =
-       case filter ((=="") . snd) $ readP_to_S parseVersion str of
-         [(ver, _)] -> ver
-         _ -> error $ "No parse (Ver) :(\n" ++ str ++ "\n"
+   updateClbi deps comp clbi = let
+         cpdeps = componentPackageDeps clbi
+       in clbi {
+                componentPackageDeps = cpdeps `union` otherDeps deps comp
+              }
 
+   dependsMap ::
+    LocalBuildInfo -> [(ComponentName, [(InstalledPackageId, PackageId)])]
+   dependsMap lbi =
+       second componentPackageDeps <$> allComponentsInBuildOrder lbi
+
+   otherDeps deps comp = fromMaybe [] $
+       flip lookup deps =<< read <$> lookup "x-build-depends-like" fields
+      where
+        fields = customFieldsBI (componentBuildInfo comp)
+
+xInstallTargetHook ::
+    PackageDescription -> LocalBuildInfo -> UserHooks -> CopyFlags -> IO ()
+xInstallTargetHook pd lbi uh cf = do
+  let (extended, regular) = partition (isJust . installTarget) (executables pd)
+
+  let pd_regular = pd { executables = regular }
+
+  flip mapM extended $ \exe -> do
+    putStrLn $ "extended "  ++ show (exeName exe)
+
+    let
+        idirtpl          = installDirTemplates lbi
+        env              = installDirsTemplateEnv idirtpl
+        libexecdir'      = fromPathTemplate (libexecdir idirtpl)
+
+        pd_extended      = onlyExePackageDesc [exe] pd
+        install_target   = fromJust $ installTarget exe
+        install_target'  = ID.substPathTemplate env install_target
+        -- $libexec isn't a real thing :/ so we have to simulate it
+        install_target'' = substLibExec' libexecdir' install_target'
+
+    let lbi' = lbi {
+                 installDirTemplates =
+                     (installDirTemplates lbi) {
+                   bindir = install_target''
+                 }
+               }
+
+    install pd_extended lbi' cf
+
+  install pd_regular lbi cf
+
+ where
+   installTarget :: Executable -> Maybe PathTemplate
+   installTarget exe =
+    toPathTemplate <$> lookup "x-install-target" (customFieldsBI $ buildInfo exe)
+
+   substLibExec libexecdir "$libexecdir" = libexecdir
+   substLibExec _ comp = comp
+
+   substLibExec' dir =
+       withPT $
+           withSP $ map (substLibExec dir . dropTrailingPathSeparator)
+
+
+   withPT f pt = toPathTemplate $ f (fromPathTemplate pt)
+   withSP f p  = joinPath $ f (splitPath p)
+
+onlyExePackageDesc exes pd = emptyPackageDescription {
+                     package = package pd
+                   , executables = exes
+                   }
+
+parseVer str =
+    case filter ((=="") . snd) $ readP_to_S parseVersion str of
+      [(ver, _)] -> ver
+      _ -> error $ "No parse (Ver) :(\n" ++ str ++ "\n"
+
+sanityCheckCabalVersions args cf desc lbi = do
+  (cabalInstallVer, cabalVer) <- getCabalExecVer
+
+  let
+        ghcVer = compilerVersion (compiler lbi)
+        -- ghc >= 7.10?
+        minGhc710 = ghcVer `withinRange` orLaterVersion (parseVer "7.10")
+
+  when minGhc710 $ do
+    let cabalHelperCabalVer = compCabalVer CLibName
+
+    when (not $ cabalVer `sameMajorVersionAs` cabalHelperCabalVer) $
+         failCabalVersionDifferent cabalVer cabalHelperCabalVer
+
+  -- carry on as usual
+  (postConf simpleUserHooks) args cf desc lbi
+
+ where
    earlierVersionThan ver ver' =
        ver `withinRange` earlierVersion ver'
    sameMajorVersionAs ver ver' =
        ver `withinRange` withinVersion (Version (take 2 $ versionBranch ver') [])
+
+   compCabalVer comp = let
+       clbi = getComponentLocalBuildInfo lbi comp
+
+       [cabalVer] =
+           [ ver | (_, PackageIdentifier pkg ver) <- componentPackageDeps clbi
+           , pkg == PackageName "Cabal" ]
+     in cabalVer
+
+
+getCabalExecVer = do
+  ["cabal-install", "version", cabalInstallVer, "using", "version", cabalVer, "of", "the", "Cabal", "library"] <- words <$> readProcess "cabal" ["--version"] ""
+  return (parseVer cabalInstallVer, parseVer cabalVer)
+
+failCabalVersionDifferent cabalVer libCabalVer =
+  putStrLn rerr  >> exitFailure
+ where
+   replace :: String -> String -> String -> String
+   replace _ _ [] = []
+   replace n r h@(h':hs)
+       | map snd (n `zip` h ) == n = r ++ replace n r (drop (length n) h)
+       | otherwise = h':replace n r hs
+
+   rerr = replace "X.XX.X.X" (showVersion libCabalVer) $
+          replace "Y.YY.Y.Y" (showVersion cabalVer) err
+   err = "\
+\Error: Cabal seems to have decided ghc-mod should be built using Cabal\n\
+\X.XX.X.X while the `cabal' executable in your PATH was built with Cabal\n\
+\Y.YY.Y.Y. This will lead to conflicts when running ghc-mod in any project\n\
+\where you use this `cabal' executable. Please compile ghc-mod using the same\n\
+\Cabal version as your `cabal' executable or recompile cabal-install using\n\
+\this version of the Cabal library.\n\
+\\n\
+\See: https://github.com/kazu-yamamoto/ghc-mod/wiki/InconsistentCabalVersions\n"
