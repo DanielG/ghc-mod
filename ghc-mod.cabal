@@ -186,6 +186,21 @@ Executable ghc-modi
                       , ghc
                       , ghc-mod
 
+Executable cabal-helper
+  Default-Language:     Haskell2010
+  Main-Is:              GHCModCabal.hs
+  GHC-Options:          -Wall
+  HS-Source-Dirs:       src
+  X-Install-Target:     $libexecdir
+  Build-Depends:        base >= 4.0 && < 5
+                      , bytestring
+                      , binary
+                      , directory
+  if flag(cabal-122)
+    Build-Depends:      Cabal >= 1.22
+  else
+    Buildable:          False
+
 Test-Suite doctest
   Type:                 exitcode-stdio-1.0
   Default-Language:     Haskell2010
