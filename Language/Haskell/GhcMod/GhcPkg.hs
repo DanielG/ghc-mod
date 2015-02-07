@@ -29,11 +29,8 @@ getPackageDbStack :: FilePath -- ^ Project Directory (where the
                                  -- cabal.sandbox.config file would be if it
                                  -- exists)
                   -> IO [GhcPkgDb]
-getPackageDbStack cdir = do
-    mSDir <- getSandboxDb cdir
-    return $ [GlobalDb] ++ case mSDir of
-                             Nothing -> [UserDb]
-                             Just db -> [PackageDb db]
+getPackageDbStack cdir =
+    ([GlobalDb] ++) . maybe [UserDb] return <$> getSandboxDb cdir
 
 ----------------------------------------------------------------
 

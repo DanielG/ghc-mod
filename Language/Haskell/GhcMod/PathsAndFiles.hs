@@ -31,31 +31,66 @@ type FileName = String
 -- directory it is returned otherwise @findCabalFiles@ throws 'GMENoCabalFile'
 -- or 'GMETooManyCabalFiles'
 findCabalFile :: FilePath -> IO (Maybe FilePath)
-findCabalFile directory = do
-    -- Look for cabal files in @dir@ and all it's parent directories
-    dcs <- getCabalFiles `zipMapM` parents directory
+findCabalFile dir = do
+    dcs <- findFileInParentsP  isCabalFile dir
     -- Extract first non-empty list, which represents a directory with cabal
     -- files.
     case find (not . null) $ uncurry appendDir `map` dcs of
       Just []          -> throw $ GMENoCabalFile
       Just cfs@(_:_:_) -> throw $ GMETooManyCabalFiles cfs
       a  -> return $ head <$> a
- where
-   appendDir :: DirPath -> [FileName] -> [FilePath]
-   appendDir dir fs = (dir </>) `map` fs
 
--- | @getCabalFiles dir@. Find all files ending in @.cabal@ in @dir@.
-getCabalFiles :: DirPath -> IO [FileName]
-getCabalFiles dir =
-    filterM isCabalFile =<< getDirectoryContents dir
- where
-   isCabalFile f = do
-     exists <- doesFileExist $ dir </> f
-     return (exists && takeExtension' f == ".cabal")
+-- |
+-- >>> isCabalFile "/home/user/.cabal"
+-- False
+isCabalFile :: FilePath -> Bool
+isCabalFile f = takeExtension' f == ".cabal"
 
-   takeExtension' p = if takeFileName p == takeExtension p
-                        then ""
-                        else takeExtension p
+-- |
+-- >>> takeExtension' "/some/dir/bla.cabal"
+-- ".cabal"
+--
+-- >>> takeExtension' "some/reldir/bla.cabal"
+-- ".cabal"
+--
+-- >>> takeExtension' "bla.cabal"
+-- ".cabal"
+--
+-- >>> takeExtension' ".cabal"
+-- ""
+takeExtension' :: FilePath -> String
+takeExtension' p =
+    if takeFileName p == takeExtension p
+      then "" -- just ".cabal" is not a valid cabal file
+      else takeExtension p
+
+-- | @findFileInParentsP p dir@ Look for files satisfying @p@ in @dir@ and all
+-- it's parent directories.
+findFileInParentsP :: (FilePath -> Bool) -> FilePath
+                   -> IO [(DirPath, [FileName])]
+findFileInParentsP p dir =
+    getFilesP p `zipMapM` parents dir
+
+-- | @getFilesP p dir@. Find all __files__ satisfying @p@ in @.cabal@ in @dir@.
+getFilesP :: (FilePath -> Bool) -> DirPath -> IO [FileName]
+getFilesP p dir = filterM p' =<< getDirectoryContents dir
+ where
+   p' fn = do
+     (p fn && ) <$> doesFileExist (dir </> fn)
+
+findCabalSandboxDir :: FilePath -> IO (Maybe FilePath)
+findCabalSandboxDir dir = do
+  dss <- findFileInParentsP isSandboxConfig dir
+  return $ case find (not . null . snd) $ dss of
+             Just (sbDir, _:_) -> Just sbDir
+             _ -> Nothing
+
+ where
+   isSandboxConfig = (=="cabal.sandbox.config")
+
+
+appendDir :: DirPath -> [FileName] -> [FilePath]
+appendDir d fs = (d </>) `map` fs
 
 zipMapM :: Monad m => (a -> m c) -> [a] -> m [(a,c)]
 zipMapM f as = mapM (\a -> liftM (a,) $ f a) as
@@ -91,10 +126,10 @@ parents dir' =
 -- | Get path to sandbox config file
 getSandboxDb :: FilePath -- ^ Path to the cabal package root directory
                          -- (containing the @cabal.sandbox.config@ file)
-             -> IO (Maybe FilePath)
+             -> IO (Maybe GhcPkgDb)
 getSandboxDb d = do
   mConf <- traverse readFile =<< U.mightExist (d </> "cabal.sandbox.config")
-  return $ fixPkgDbVer <$> (extractSandboxDbDir =<< mConf)
+  return $ PackageDb . fixPkgDbVer <$> (extractSandboxDbDir =<< mConf)
 
  where
    fixPkgDbVer dir =
