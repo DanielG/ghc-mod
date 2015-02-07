@@ -6,6 +6,7 @@ import Data.Maybe (isJust, fromJust)
 import Language.Haskell.GhcMod.Convert
 import Language.Haskell.GhcMod.Monad
 import Language.Haskell.GhcMod.Types
+import Language.Haskell.GhcMod.CabalConfig
 import Language.Haskell.GhcMod.Internal
 
 ----------------------------------------------------------------
@@ -30,9 +31,10 @@ debugInfo = cradle >>= \c -> convert' =<< do
   where
     simpleCompilerOption = options >>= \op ->
         return $ CompilerOptions (ghcUserOptions op) [] []
-    fromCabalFile c = options >>= \opts -> do
-        pkgDesc <- parseCabalFile c $ fromJust $ cradleCabalFile c
-        getCompilerOptions (ghcUserOptions opts) c pkgDesc
+    fromCabalFile crdl = options >>= \opts -> do
+        config <- cabalGetConfig crdl
+        pkgDesc <- parseCabalFile config $ fromJust $ cradleCabalFile crdl
+        getCompilerOptions (ghcUserOptions opts) crdl config pkgDesc
 
 ----------------------------------------------------------------
 

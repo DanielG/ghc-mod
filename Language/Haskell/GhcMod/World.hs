@@ -1,4 +1,4 @@
-{-# LANGUAGE CPP #-}
+{-# LANGUAGE RecordWildCards, CPP #-}
 module Language.Haskell.GhcMod.World where
 {-(
   , World
@@ -12,7 +12,8 @@ import Language.Haskell.GhcMod.PathsAndFiles
 import Language.Haskell.GhcMod.Types
 import Language.Haskell.GhcMod.Utils
 
-import Control.Applicative (pure,(<$>),(<*>))
+import Control.Applicative (pure, (<$>), (<*>))
+import Control.Monad
 import Data.Maybe
 import Data.Traversable (traverse)
 import System.Directory (getModificationTime)
@@ -45,6 +46,8 @@ data World = World {
     worldPackageCaches :: [TimedFile]
   , worldCabalFile     :: Maybe TimedFile
   , worldCabalConfig   :: Maybe TimedFile
+  , worldSymbolCache   :: Maybe TimedFile
+  , worldPrettyCabalConfigCache :: Maybe TimedFile
   } deriving (Eq, Show)
 
 timedPackageCache :: Cradle -> IO [TimedFile]
@@ -57,14 +60,22 @@ getCurrentWorld :: Cradle -> IO World
 getCurrentWorld crdl = do
     pkgCaches    <- timedPackageCache crdl
     mCabalFile   <- timeFile `traverse` cradleCabalFile crdl
-    mSetupConfig <- mightExist (setupConfigFile crdl)
-    mCabalConfig <- timeFile `traverse` mSetupConfig
+    mCabalConfig <- timeMaybe (setupConfigFile crdl)
+    mSymbolCache <- timeMaybe (symbolCache crdl)
+    mPrettyConfigCache <- timeMaybe prettyConfigCache
 
     return World {
         worldPackageCaches = pkgCaches
       , worldCabalFile     = mCabalFile
       , worldCabalConfig   = mCabalConfig
+      , worldSymbolCache   = mSymbolCache
+      , worldPrettyCabalConfigCache = mPrettyConfigCache
       }
+
+ where
+   timeMaybe :: FilePath -> IO (Maybe TimedFile)
+   timeMaybe f = do
+     join $ (timeFile `traverse`) <$> mightExist f
 
 didWorldChange :: World -> Cradle -> IO Bool
 didWorldChange world crdl = do
@@ -83,7 +94,11 @@ didWorldChange world crdl = do
 --
 -- * Both files exist
 --   @Just cc < Just cf = cc < cf = cc `olderThan` cf@
-isSetupConfigOutOfDate :: Cradle -> IO Bool
-isSetupConfigOutOfDate crdl = do
-  world <- getCurrentWorld crdl
-  return $ worldCabalConfig world < worldCabalFile world
+isSetupConfigOutOfDate :: World -> Bool
+isSetupConfigOutOfDate World {..} = do
+  worldCabalConfig < worldCabalFile
+
+isYoungerThanSetupConfig :: FilePath -> World -> IO Bool
+isYoungerThanSetupConfig file World {..} = do
+  tfile <- timeFile file
+  return $ worldCabalConfig < Just tfile

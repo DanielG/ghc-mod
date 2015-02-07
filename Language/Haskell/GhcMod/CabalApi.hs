@@ -13,6 +13,7 @@ import Language.Haskell.GhcMod.Error
 import Language.Haskell.GhcMod.Gap (benchmarkBuildInfo, mkGHCCompilerId)
 import Language.Haskell.GhcMod.GhcPkg
 import Language.Haskell.GhcMod.Types
+import Language.Haskell.GhcMod.Logging
 
 import MonadUtils (liftIO)
 import Control.Applicative ((<$>))
@@ -36,14 +37,15 @@ import System.FilePath ((</>))
 ----------------------------------------------------------------
 
 -- | Getting necessary 'CompilerOptions' from three information sources.
-getCompilerOptions :: (IOish m, MonadError GhcModError m)
+getCompilerOptions :: (IOish m, GmError m, GmLog m)
                    => [GHCOption]
                    -> Cradle
+                   -> CabalConfig
                    -> PackageDescription
                    -> m CompilerOptions
-getCompilerOptions ghcopts cradle pkgDesc = do
+getCompilerOptions ghcopts cradle config pkgDesc = do
     gopts <- liftIO $ getGHCOptions ghcopts cradle rdir $ head buildInfos
-    depPkgs <- cabalConfigDependencies cradle (C.packageId pkgDesc)
+    let depPkgs = cabalConfigDependencies config (C.packageId pkgDesc)
     return $ CompilerOptions gopts idirs depPkgs
   where
     wdir       = cradleCurrentDir cradle
@@ -67,14 +69,14 @@ includeDirectories cdir wdir dirs = uniqueAndSort (extdirs ++ [cdir,wdir])
 ----------------------------------------------------------------
 
 -- | Parse a cabal file and return a 'PackageDescription'.
-parseCabalFile :: (IOish m, MonadError GhcModError m)
-               => Cradle
+parseCabalFile :: (IOish m, GmError m, GmLog m)
+               => CabalConfig
                -> FilePath
                -> m PackageDescription
-parseCabalFile cradle file = do
+parseCabalFile  config file = do
     cid <- mkGHCCompilerId <$> liftIO getGHCVersion
     epgd <- liftIO $ readPackageDescription silent file
-    flags <- cabalConfigFlags cradle
+    flags <- cabalConfigFlags config
     case toPkgDesc cid flags epgd of
         Left deps    -> fail $ show deps ++ " are not installed"
         Right (pd,_) -> if nullPkg pd

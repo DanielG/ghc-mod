@@ -130,7 +130,7 @@ sanityCheckCabalVersions args cf desc lbi = do
         minGhc710 = ghcVer `withinRange` orLaterVersion (parseVer "7.10")
 
   when minGhc710 $ do
-    let cabalHelperCabalVer = compCabalVer CLibName
+    let cabalHelperCabalVer = compCabalVer (CExeName "cabal-helper")
 
     when (not $ cabalVer `sameMajorVersionAs` cabalHelperCabalVer) $
          failCabalVersionDifferent cabalVer cabalHelperCabalVer

@@ -1,14 +1,15 @@
 {-# LANGUAGE BangPatterns, TupleSections #-}
 module Language.Haskell.GhcMod.PathsAndFiles where
 
-import Config (cProjectVersion, cTargetPlatformString)
+import Config (cProjectVersion)
 import Control.Applicative
 import Control.Monad
 import Data.List
-import Data.List.Split (splitOn)
 import Data.Char
 import Data.Maybe
 import Data.Traversable (traverse)
+import Distribution.System (buildPlatform)
+import Distribution.Text (display)
 import Language.Haskell.GhcMod.Types
 import System.Directory
 import System.FilePath
@@ -88,7 +89,6 @@ findCabalSandboxDir dir = do
  where
    isSandboxConfig = (=="cabal.sandbox.config")
 
-
 appendDir :: DirPath -> [FileName] -> [FilePath]
 appendDir d fs = (d </>) `map` fs
 
@@ -163,6 +163,10 @@ ghcSandboxPkgDbDir =
 
 packageCache :: String
 packageCache = "package.cache"
+
+-- | Filename of the show'ed Cabal setup-config cache
+prettyConfigCache :: FilePath
+prettyConfigCache = setupConfigPath <.> "ghc-mod-0.pretty-cabal-cache"
 
 -- | Filename of the symbol table cache file.
 symbolCache :: Cradle -> FilePath
