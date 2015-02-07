@@ -28,5 +28,5 @@ spec = do
     describe "`browse' in a project directory" $ do
         it "lists symbols defined in a a local module (e.g. `Baz.baz)" $ do
             withDirectory_ "test/data" $ do
-                syms <- runID $ lines <$> browse "Baz"
+                syms <- runD $ lines <$> browse "Baz"
                 syms `shouldContain` ["baz"]

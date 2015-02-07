@@ -9,6 +9,7 @@ import System.FilePath ((</>), pathSeparator)
 import Test.Hspec
 
 import Dir
+import TestUtils
 
 spec :: Spec
 spec = do
@@ -26,24 +27,37 @@ spec = do
             cwd <- getCurrentDirectory
             withDirectory "test/data/subdir1/subdir2" $ \dir -> do
                 res <- relativeCradle dir <$> findCradle
-                cradleCurrentDir res `shouldBe` "test" </> "data" </> "subdir1" </> "subdir2"
+
+                cradleCurrentDir res `shouldBe`
+                    "test" </> "data" </> "subdir1" </> "subdir2"
+
                 cradleRootDir    res `shouldBe` "test" </> "data"
-                cradleCabalFile  res `shouldBe` Just ("test" </> "data" </> "cabalapi.cabal")
-                cradlePkgDbStack res `shouldBe` [GlobalDb, PackageDb (cwd </> "test/data/.cabal-sandbox/i386-osx-ghc-7.6.3-packages.conf.d")]
+
+                cradleCabalFile  res `shouldBe`
+                    Just ("test" </> "data" </> "cabalapi.cabal")
+
+                let [GlobalDb, sb] = cradlePkgDbStack res
+                sb `shouldSatisfy` isPkgDbAt (cwd </> "test/data/.cabal-sandbox")
 
         it "works even if a sandbox config file is broken" $ do
             withDirectory "test/data/broken-sandbox" $ \dir -> do
                 res <- relativeCradle dir <$> findCradle
-                cradleCurrentDir res `shouldBe` "test" </> "data" </> "broken-sandbox"
-                cradleRootDir    res `shouldBe` "test" </> "data" </> "broken-sandbox"
-                cradleCabalFile  res `shouldBe` Just ("test" </> "data" </> "broken-sandbox" </> "dummy.cabal")
+                cradleCurrentDir res `shouldBe`
+                    "test" </> "data" </> "broken-sandbox"
+
+                cradleRootDir    res `shouldBe`
+                    "test" </> "data" </> "broken-sandbox"
+
+                cradleCabalFile  res `shouldBe`
+                  Just ("test" </> "data" </> "broken-sandbox" </> "dummy.cabal")
+
                 cradlePkgDbStack res `shouldBe` [GlobalDb, UserDb]
 
 relativeCradle :: FilePath -> Cradle -> Cradle
-relativeCradle dir cradle = cradle {
-    cradleCurrentDir    = toRelativeDir dir  $  cradleCurrentDir cradle
-  , cradleRootDir       = toRelativeDir dir  $  cradleRootDir    cradle
-  , cradleCabalFile     = toRelativeDir dir <$> cradleCabalFile  cradle
+relativeCradle dir crdl = crdl {
+    cradleCurrentDir    = toRelativeDir dir  $  cradleCurrentDir crdl
+  , cradleRootDir       = toRelativeDir dir  $  cradleRootDir    crdl
+  , cradleCabalFile     = toRelativeDir dir <$> cradleCabalFile  crdl
   }
 
 -- Work around GHC 7.2.2 where `canonicalizePath "/"` returns "/.".

@@ -40,20 +40,45 @@ spec = do
                         ghcOptions  = ghcOptions res
                       , includeDirs = map (toRelativeDir dir) (includeDirs res)
                       }
+
+                let [fGlobalPkg, fNoUserPkg, fPkg, sb, _] = ghcOptions res'
+
+                sb `shouldSatisfy`
+                   isPkgConfDAt (cwd </> "test/data/.cabal-sandbox")
+
                 if ghcVersion < 706
-                  then ghcOptions res' `shouldContain` ["-global-package-conf", "-no-user-package-conf","-package-conf",cwd </> "test/data/.cabal-sandbox/i386-osx-ghc-7.6.3-packages.conf.d","-XHaskell98"]
-                  else ghcOptions res' `shouldContain` ["-global-package-db", "-no-user-package-db","-package-db",cwd </> "test/data/.cabal-sandbox/i386-osx-ghc-7.6.3-packages.conf.d","-XHaskell98"]
-                includeDirs res' `shouldBe` ["test/data","test/data/dist/build","test/data/dist/build/autogen","test/data/subdir1/subdir2","test/data/test"]
+                  then do
+                    fGlobalPkg `shouldBe` "-global-package-conf"
+                    fNoUserPkg `shouldBe` "-no-user-package-conf"
+                    fPkg `shouldBe` "-package-conf"
+
+                  else do
+                    fGlobalPkg `shouldBe` "-global-package-db"
+                    fNoUserPkg `shouldBe` "-no-user-package-db"
+                    fPkg `shouldBe` "-package-db"
+
+                includeDirs res' `shouldBe` [
+                                     "test/data",
+                                     "test/data/dist/build",
+                                     "test/data/dist/build/autogen",
+                                     "test/data/subdir1/subdir2",
+                                     "test/data/test"]
+
                 (pkgName `map` depPackages res') `shouldContain` ["Cabal"]
 
     describe "cabalSourceDirs" $ do
         it "extracts all hs-source-dirs" $ do
             crdl <- findCradle' "test/data/check-test-subdir"
-            dirs <- cabalSourceDirs . cabalAllBuildInfo <$> runD (parseCabalFile crdl "test/data/check-test-subdir/check-test-subdir.cabal")
+            let cabalFile = "test/data/check-test-subdir/check-test-subdir.cabal"
+            dirs <- cabalSourceDirs . cabalAllBuildInfo
+                    <$> runD (parseCabalFile crdl cabalFile)
+
             dirs `shouldBe` ["src", "test"]
+
         it "extracts all hs-source-dirs including \".\"" $ do
             crdl <- findCradle' "test/data/"
-            dirs <- cabalSourceDirs . cabalAllBuildInfo <$> runD (parseCabalFile crdl "test/data/cabalapi.cabal")
+            dirs <- cabalSourceDirs . cabalAllBuildInfo
+                    <$> runD (parseCabalFile crdl "test/data/cabalapi.cabal")
             dirs `shouldBe` [".", "test"]
 
     describe "cabalAllBuildInfo" $ do

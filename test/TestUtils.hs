@@ -3,10 +3,12 @@ module TestUtils (
   , runD
   , runD'
   , runI
-  , runID
+--  , runID
   , runIsolatedGhcMod
   , isolateCradle
   , shouldReturnError
+  , isPkgDbAt
+  , isPkgConfDAt
   , module Language.Haskell.GhcMod.Monad
   , module Language.Haskell.GhcMod.Types
   ) where
@@ -14,6 +16,8 @@ module TestUtils (
 import Language.Haskell.GhcMod.Monad
 import Language.Haskell.GhcMod.Types
 
+import Data.List.Split
+import System.FilePath
 import Test.Hspec
 
 isolateCradle :: IOish m => GhcModT m a -> GhcModT m a
@@ -34,8 +38,8 @@ runIsolatedGhcMod opt action = do
   extract $ runGhcModT opt $ isolateCradle action
 
 -- | Run GhcMod in isolated cradle with default options
-runID :: GhcModT IO a -> IO a
-runID = runIsolatedGhcMod defaultOptions
+--runID :: GhcModT IO a -> IO a
+--runID = runIsolatedGhcMod defaultOptions
 
 -- | Run GhcMod in isolated cradle
 runI :: Options -> GhcModT IO a -> IO a
@@ -61,3 +65,18 @@ shouldReturnError action = do
  where
    isLeft (Left _) = True
    isLeft _ = False
+
+isPkgConfD :: FilePath -> Bool
+isPkgConfD d = let
+    (_dir, pkgconfd) = splitFileName d
+    in case splitOn "-" pkgconfd of
+         [_arch, _platform, _compiler, _compver, "packages.conf.d"] -> True
+         _ -> False
+
+isPkgConfDAt :: FilePath -> FilePath -> Bool
+isPkgConfDAt d d' | d == takeDirectory d' && isPkgConfD d' = True
+isPkgConfDAt _ _ = False
+
+isPkgDbAt :: FilePath -> GhcPkgDb -> Bool
+isPkgDbAt d (PackageDb dir) = isPkgConfDAt d dir
+isPkgDbAt _ _ = False

@@ -24,7 +24,7 @@ main = do
       genGhcPkgCache dir = system $ "ghc-pkg recache --force -f" ++ dir
   genSandboxCfg `mapM_` sandboxes
   genGhcPkgCache `mapM_` pkgDirs
-  void $ system "find test -name setup-config -name ghc-mod.cache -exec rm {} \\;"
+  void $ system "find test \\( -name setup-config -o -name ghc-mod.cache \\) -exec rm {} \\;"
   void $ system "cabal --version"
   putStrLn $ "ghc-mod was built with Cabal version " ++ VERSION_Cabal
   void $ system "ghc --version"
