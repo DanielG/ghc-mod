@@ -2,6 +2,7 @@
 module Language.Haskell.GhcMod.Utils where
 
 import Control.Arrow
+import Control.Applicative ((<$>))
 import Data.Char
 import Language.Haskell.GhcMod.Error
 import MonadUtils (MonadIO, liftIO)
@@ -9,12 +10,16 @@ import System.Directory (getCurrentDirectory, setCurrentDirectory, doesFileExist
 import System.Exit (ExitCode(..))
 import System.Process (readProcessWithExitCode)
 import System.Directory (getTemporaryDirectory)
-import System.FilePath (splitDrive, pathSeparators)
+import System.FilePath (splitDrive, pathSeparators, (</>))
 import System.IO.Temp (createTempDirectory)
 #ifndef SPEC
-import Control.Applicative ((<$>))
+import Paths_ghc_mod (getLibexecDir)
 import System.Environment
-import System.FilePath ((</>), takeDirectory)
+import System.FilePath (takeDirectory)
+#else
+-- When compiling test suite
+import Data.IORef
+import System.IO.Unsafe
 #endif
 
 -- dropWhileEnd is not provided prior to base 4.5.0.0.
@@ -33,7 +38,7 @@ extractParens str = extractParens' str 0
        | s `elem` "}])" = s : extractParens' ss (level-1)
        | otherwise = s : extractParens' ss level
 
-readProcess' :: (MonadIO m, MonadError GhcModError m)
+readProcess' :: (MonadIO m, GmError m)
              => String
              -> [String]
              -> m String
@@ -90,5 +95,22 @@ ghcModExecutable = do
     getExecutablePath' = return ""
 # endif
 #else
-ghcModExecutable = return "dist/build/ghc-mod/ghc-mod"
+ghcModExecutable = fmap (</> "dist/build/ghc-mod/ghc-mod") getCurrentDirectory
 #endif
+
+#ifdef SPEC
+-- Ugly workaround :'( but I can't think of any other way of doing this
+-- the test suite changes the cwd often so I can't use relative paths :/
+specRootDir :: IORef FilePath
+specRootDir = unsafePerformIO $ newIORef undefined
+{-# NOINLINE specRootDir #-}
+#endif
+
+findLibexecExe :: String -> IO FilePath
+#ifndef SPEC
+findLibexecExe "cabal-helper" = (fmap (</> "cabal-helper")) getLibexecDir
+#else
+findLibexecExe "cabal-helper" =
+    (</> "dist/build/cabal-helper/cabal-helper") <$> (readIORef specRootDir)
+#endif
+findLibexecExe exe = error $ "findLibexecExe: Unknown executable: " ++ exe
