@@ -102,3 +102,12 @@ setComponentsConfigs
 setComponentsConfigs lbi cs = lbi { componentsConfigs = cs }
 
 #endif
+
+
+#if __GLASGOW_HASKELL__ <= 704
+
+componentBuildInfo :: Component -> BuildInfo
+componentBuildInfo =
+  foldComponent libBuildInfo buildInfo testBuildInfo benchmarkBuildInfo
+
+#endif
