@@ -1,9 +1,11 @@
 {-# LANGUAGE BangPatterns, TupleSections #-}
 module Language.Haskell.GhcMod.PathsAndFiles where
 
+import Config (cProjectVersion, cTargetPlatformString)
 import Control.Applicative
 import Control.Monad
 import Data.List
+import Data.List.Split (splitOn)
 import Data.Char
 import Data.Maybe
 import Data.Traversable (traverse)
@@ -92,7 +94,13 @@ getSandboxDb :: FilePath -- ^ Path to the cabal package root directory
              -> IO (Maybe FilePath)
 getSandboxDb d = do
   mConf <- traverse readFile =<< U.mightExist (d </> "cabal.sandbox.config")
-  return $ extractSandboxDbDir =<< mConf
+  return $ fixPkgDbVer <$> (extractSandboxDbDir =<< mConf)
+
+ where
+   fixPkgDbVer dir =
+       case takeFileName dir == ghcSandboxPkgDbDir of
+         True -> dir
+         False -> takeDirectory dir </> ghcSandboxPkgDbDir
 
 -- | Extract the sandbox package db directory from the cabal.sandbox.config file.
 --   Exception is thrown if the sandbox config file is broken.
@@ -112,5 +120,12 @@ setupConfigFile crdl = cradleRootDir crdl </> setupConfigPath
 setupConfigPath :: FilePath
 setupConfigPath = localBuildInfoFile defaultDistPref
 
+ghcSandboxPkgDbDir :: String
+ghcSandboxPkgDbDir =
+   targetPlatform ++ "-ghc-" ++ cProjectVersion ++ "-packages.conf.d"
+  where
+    targetPlatform = display buildPlatform
+
 packageCache :: String
 packageCache = "package.cache"
+
