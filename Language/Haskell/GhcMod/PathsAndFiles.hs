@@ -164,3 +164,9 @@ ghcSandboxPkgDbDir =
 packageCache :: String
 packageCache = "package.cache"
 
+-- | Filename of the symbol table cache file.
+symbolCache :: Cradle -> FilePath
+symbolCache crdl = cradleTempDir crdl </> symbolCacheFile
+
+symbolCacheFile :: String
+symbolCacheFile = "ghc-mod-0.symbol-cache"

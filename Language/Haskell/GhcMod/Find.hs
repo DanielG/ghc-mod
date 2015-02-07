@@ -61,17 +61,6 @@ isOutdated db = symbolDbCachePath db `isOlderThan` packageCachePath db
 
 ----------------------------------------------------------------
 
--- | When introducing incompatible changes to the 'symbolCache' file format
--- increment this version number.
-symbolCacheVersion :: Integer
-symbolCacheVersion = 0
-
--- | Filename of the symbol table cache file.
-symbolCache :: String
-symbolCache = "ghc-mod-"++ show symbolCacheVersion ++".cache"
-
-----------------------------------------------------------------
-
 -- | Looking up 'SymbolDb' with 'Symbol' to \['ModuleString'\]
 --   which will be concatenated. 'loadSymbolDb' is called internally.
 findSymbol :: IOish m => Symbol -> GhcModT m String
@@ -114,7 +103,7 @@ loadSymbolDb = do
 
 dumpSymbol :: IOish m => FilePath -> GhcModT m String
 dumpSymbol dir = do
-    let cache = dir </> symbolCache
+    let cache = dir </> symbolCacheFile
         pkgdb = dir </> packageCache
 
     create <- liftIO $ cache `isOlderThan` pkgdb
