@@ -1,6 +1,7 @@
-{-# LANGUAGE CPP, RecordWildCards, StandaloneDeriving #-}
+{-# LANGUAGE TemplateHaskell, RecordWildCards, StandaloneDeriving #-}
 module SetupCompat where
 
+import Control.Arrow
 import Control.Monad.State.Strict
 import Data.List
 import Data.Maybe
@@ -9,61 +10,34 @@ import Data.Function
 import Distribution.Simple.LocalBuildInfo
 import Distribution.PackageDescription
 
-#if __GLASGOW_HASKELL__ <= 706
-componentsConfigs ::
-    LocalBuildInfo -> [(ComponentName, ComponentLocalBuildInfo, [ComponentName])]
-componentsConfigs LocalBuildInfo {..} =
-    (maybe [] (\c -> [(CLibName, c, [])]) libraryConfig)
-    ++ ((\(n, clbi) -> (CExeName n, clbi, [])) <$> executableConfigs)
-    ++ ((\(n, clbi) -> (CTestName n, clbi, [])) <$> testSuiteConfigs)
-    ++ ((\(n, clbi) -> (CBenchName n, clbi, [])) <$> benchmarkConfigs)
+import Distribution.Simple
+import Distribution.Simple.Setup
+import Distribution.Simple.Install
 
-getComponent :: PackageDescription -> ComponentName -> Component
-getComponent pkg cname =
-    case lookupComponent pkg cname of
-      Just cpnt -> cpnt
-      Nothing   -> missingComponent
-  where
-    missingComponent =
-      error $ "internal error: the package description contains no "
-           ++ "component corresponding to " ++ show cname
+import qualified Data.Map as M
 
-lookupComponent :: PackageDescription -> ComponentName -> Maybe Component
-lookupComponent pkg CLibName =
-    fmap CLib $ library pkg
-lookupComponent pkg (CExeName name) =
-    fmap CExe $ find ((name ==) . exeName) (executables pkg)
-lookupComponent pkg (CTestName name) =
-    fmap CTest $ find ((name ==) . testName) (testSuites pkg)
-lookupComponent pkg (CBenchName name) =
-    fmap CBench $ find ((name ==) . benchmarkName) (benchmarks pkg)
 
--- We're lying here can't be bothered to order these
-allComponentsInBuildOrder :: LocalBuildInfo
-                          -> [(ComponentName, ComponentLocalBuildInfo)]
-allComponentsInBuildOrder lbi =
-      [ (cname, clbi) | (cname, clbi, _) <- componentsConfigs lbi ]
+import NotCPP.Declarations
+import Language.Haskell.TH
 
-getComponentLocalBuildInfo :: LocalBuildInfo -> ComponentName -> ComponentLocalBuildInfo
-getComponentLocalBuildInfo lbi cname =
-    case [ clbi
-         | (cname', clbi, _) <- componentsConfigs lbi
-         , cname == cname' ] of
-      [clbi] -> clbi
-      _      -> missingComponent
-  where
-    missingComponent =
-      error $ "internal error: there is no configuration data "
-           ++ "for component " ++ show cname
+$(ifndefD "componentsConfigs" [d| deriving instance (Ord ComponentName) |] )
 
-deriving instance (Ord ComponentName)
+$(ifelsedefD "componentsConfigs" [d|
 
-setComponentsConfigs
+ setComponentsConfigs
+    :: LocalBuildInfo
+    -> [(ComponentName, ComponentLocalBuildInfo, [ComponentName])]
+    -> LocalBuildInfo
+ setComponentsConfigs lbi cs = $(recUpdE' (nE "lbi") (mkName "componentsConfigs") (VarE $ mkName "cs"))
+
+ |] [d|
+
+ setComponentsConfigs
     :: LocalBuildInfo
     -> [(ComponentName, ComponentLocalBuildInfo, a)]
     -> LocalBuildInfo
-setComponentsConfigs lbi cs = flip execState lbi $ mapM setClbis gcs
- where
+ setComponentsConfigs lbi cs = flip execState lbi $ mapM setClbis gcs
+  where
 --   gcs :: [ [(ComponentLocalBuildInfo, ComponentName, a)] ]
    gcs = groupBy (sameKind `on` fst3) $ sortBy (compare `on` fst3) cs
 
@@ -79,35 +53,135 @@ setComponentsConfigs lbi cs = flip execState lbi $ mapM setClbis gcs
    sameKind (CBenchName _) _ = False
 
    setClbis [(CLibName, clbi, _)] =
-       get >>= \lbi -> put $ lbi {libraryConfig = Just clbi}
+       get >>= \lbi ->
+           put $ $(recUpdE' (nE "lbi") (mkName "libraryConfig") (AppE (ConE (mkName "Just")) (VarE (mkName "clbi"))))
 
    setClbis cs@((CExeName _, _, _):_) =
        let cfg = (\((CExeName n), clbi, _) -> (n, clbi)) <$> cs in
-       get >>= \lbi -> put $ lbi {executableConfigs = cfg }
+       get >>= \lbi ->
+           put $ $(recUpdE' (nE "lbi") (mkName "executableConfigs") (VarE $ mkName "cfg"))
 
    setClbis cs@((CTestName _, _, _):_) =
        let cfg = (\((CTestName n), clbi, _) -> (n, clbi)) <$> cs in
-       get >>= \lbi -> put $ lbi {testSuiteConfigs = cfg }
+       get >>= \lbi ->
+           put $ $(recUpdE' (nE "lbi") (mkName "testSuiteConfigs") (VarE $ mkName "cfg"))
 
    setClbis cs@((CBenchName _, _, _):_) =
        let cfg = (\((CBenchName n), clbi, _) -> (n, clbi)) <$> cs in
-       get >>= \lbi -> put $ lbi {benchmarkConfigs = cfg }
+       get >>= \lbi ->
+           put $ $(recUpdE' (nE "lbi") (mkName "benchmarkConfigs") (VarE $ mkName "cfg"))
 
-#else
-
-setComponentsConfigs
-    :: LocalBuildInfo
-    -> [(ComponentName, ComponentLocalBuildInfo, [ComponentName])]
-    -> LocalBuildInfo
-setComponentsConfigs lbi cs = lbi { componentsConfigs = cs }
-
-#endif
+ |])
 
 
-#if __GLASGOW_HASKELL__ <= 704
+$(ifD [d|
 
-componentBuildInfo :: Component -> BuildInfo
-componentBuildInfo =
-  foldComponent libBuildInfo buildInfo testBuildInfo benchmarkBuildInfo
+ componentsConfigs ::
+    LocalBuildInfo -> [(ComponentName, ComponentLocalBuildInfo, [ComponentName])]
+ componentsConfigs LocalBuildInfo {..} =
+    (maybe [] (\c -> [(CLibName, c, [])]) $(nE "libraryConfig"))
+    ++ ((\(n, clbi) -> (CExeName n, clbi, [])) <$> $(nE "executableConfigs"))
+    ++ ((\(n, clbi) -> (CTestName n, clbi, [])) <$> $(nE "testSuiteConfigs"))
+    ++ ((\(n, clbi) -> (CBenchName n, clbi, [])) <$> $(nE "benchmarkConfigs"))
 
-#endif
+ getComponent :: PackageDescription -> ComponentName -> Component
+ getComponent pkg cname =
+    case lookupComponent pkg cname of
+      Just cpnt -> cpnt
+      Nothing   -> missingComponent
+  where
+    missingComponent =
+      error $ "internal error: the package description contains no "
+           ++ "component corresponding to " ++ show cname
+
+ lookupComponent :: PackageDescription -> ComponentName -> Maybe Component
+ lookupComponent pkg CLibName =
+    fmap CLib $ library pkg
+ lookupComponent pkg (CExeName name) =
+    fmap CExe $ find ((name ==) . exeName) (executables pkg)
+ lookupComponent pkg (CTestName name) =
+    fmap CTest $ find ((name ==) . testName) (testSuites pkg)
+ lookupComponent pkg (CBenchName name) =
+    fmap CBench $ find ((name ==) . benchmarkName) (benchmarks pkg)
+
+-- We're lying here can't be bothered to order these
+ allComponentsInBuildOrder :: LocalBuildInfo
+                          -> [(ComponentName, ComponentLocalBuildInfo)]
+ allComponentsInBuildOrder lbi =
+      [ (cname, clbi) | (cname, clbi, _) <- componentsConfigs lbi ]
+
+ getComponentLocalBuildInfo :: LocalBuildInfo -> ComponentName -> ComponentLocalBuildInfo
+ getComponentLocalBuildInfo lbi cname =
+    case [ clbi
+         | (cname', clbi, _) <- componentsConfigs lbi
+         , cname == cname' ] of
+      [clbi] -> clbi
+      _      -> missingComponent
+  where
+    missingComponent =
+      error $ "internal error: there is no configuration data "
+           ++ "for component " ++ show cname
+
+ componentBuildInfo :: Component -> BuildInfo
+ componentBuildInfo =
+   foldComponent libBuildInfo buildInfo testBuildInfo benchmarkBuildInfo
+
+ |])
+
+
+$(ifelsedefD "componentPackageRenaming" [d|
+
+ type Deps = ([(InstalledPackageId, PackageId)], M.Map PackageName $(cT "ModuleRenaming"))
+
+ noDeps = ([], M.empty)
+
+ getDeps :: ComponentLocalBuildInfo -> Deps
+ getDeps = componentPackageDeps &&& $(nE "componentPackageRenaming")
+
+ setUnionDeps :: Deps -> ComponentLocalBuildInfo -> ComponentLocalBuildInfo
+ setUnionDeps (deps, rns) clbi = let
+         clbi' = setComponentPackageRenaming clbi rns
+         cpdeps = componentPackageDeps clbi
+       in
+         clbi' {
+           componentPackageDeps = cpdeps `union` deps
+         }
+
+ setComponentPackageRenaming clbi cprn =
+     -- [| clbi { componentPackageRenaming = componentPackageRenaming clbi `M.union` cprn } |]
+     $(recUpdE'
+       (nE "clbi")
+       (mkName "componentPackageRenaming")
+       (InfixE
+        (Just
+         (AppE
+          (VarE
+           (mkName "componentPackageRenaming"))
+          (VarE (mkName "clbi"))
+         ))
+        (VarE (mkName "M.union"))
+        (Just (VarE (mkName "cprn")))
+       )
+      )
+
+ |] [d|
+
+ type Deps = [(InstalledPackageId, PackageId)]
+
+ noDeps = []
+
+ getDeps :: ComponentLocalBuildInfo -> Deps
+ getDeps lbi = componentPackageDeps lbi
+
+ setUnionDeps :: Deps -> ComponentLocalBuildInfo -> ComponentLocalBuildInfo
+ setUnionDeps deps clbi = let
+         cpdeps = componentPackageDeps clbi
+       in
+         clbi {
+           componentPackageDeps = cpdeps `union` deps
+         }
+
+
+-- setComponentPackageRenaming clbi _cprn = clbi
+
+ |])

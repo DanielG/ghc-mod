@@ -24,7 +24,7 @@ import SetupCompat
 main :: IO ()
 main = defaultMainWithHooks $ simpleUserHooks {
    confHook = \(gpd, hbi) cf ->
-                xBuildDependsLike <$> (confHook simpleUserHooks) (gpd, hbi) cf
+              xBuildDependsLike <$> (confHook simpleUserHooks) (gpd, hbi) cf
 
  , copyHook = xInstallTargetHook
 
@@ -47,18 +47,15 @@ xBuildDependsLike lbi =
         ]
 
  where
-   updateClbi deps comp clbi = let
-         cpdeps = componentPackageDeps clbi
-       in clbi {
-                componentPackageDeps = cpdeps `union` otherDeps deps comp
-              }
+   updateClbi deps comp clbi = setUnionDeps (otherDeps deps comp) clbi
 
    dependsMap ::
-    LocalBuildInfo -> [(ComponentName, [(InstalledPackageId, PackageId)])]
+    LocalBuildInfo -> [(ComponentName, Deps)]
    dependsMap lbi =
-       second componentPackageDeps <$> allComponentsInBuildOrder lbi
+       second getDeps <$> allComponentsInBuildOrder lbi
 
-   otherDeps deps comp = fromMaybe [] $
+   otherDeps :: [(ComponentName, Deps)] -> Component -> Deps
+   otherDeps deps comp = fromMaybe noDeps $
        flip lookup deps =<< read <$> lookup "x-build-depends-like" fields
       where
         fields = customFieldsBI (componentBuildInfo comp)
