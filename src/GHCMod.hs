@@ -377,7 +377,7 @@ progMain (globalOptions,cmdArgs) = do
 
 
           | otherwise -> do
-                  (res,_) <- runGhcModT globalOptions $ ghcCommands cmdArgs
+                  (res,_) <- runGhcCommand cmdArgs globalOptions
                   case res of
                     Right s -> putStr s
                     Left e -> exitError $ render (gmeDoc e)
@@ -455,22 +455,22 @@ legacyInteractiveLoop symdbreq ref world = do
         args = dropWhileEnd isSpace `map` args'
 
     res <- case dropWhileEnd isSpace cmd of
-        "check"  -> checkSyntaxCmd [arg]
-        "lint"   -> lintCmd [arg]
+        "check"  -> withParseCmd checkSyntaxCmd [arg]
+        "lint"   -> withParseCmd lintCmd [arg]
         "find"    -> do
             db <- getDb symdbreq >>= checkDb symdbreq
             lookupSymbol arg db
 
-        "info"   -> infoCmd [head args, concat $ tail args']
-        "type"   -> typesCmd args
-        "split"  -> splitsCmd args
+        "info"   -> withParseCmd infoCmd [head args, concat $ tail args']
+        "type"   -> withParseCmd typesCmd args
+        "split"  -> withParseCmd splitsCmd args
 
-        "sig"    -> sigCmd args
-        "auto"   -> autoCmd args
-        "refine" -> refineCmd args
+        "sig"    -> withParseCmd sigCmd args
+        "auto"   -> withParseCmd autoCmd args
+        "refine" -> withParseCmd refineCmd args
 
-        "boot"   -> bootCmd []
-        "browse" -> browseCmd args
+        "boot"   -> withParseCmd bootCmd []
+        "browse" -> withParseCmd browseCmd args
 
         "quit"   -> liftIO $ exitSuccess
         ""       -> liftIO $ exitSuccess
@@ -487,9 +487,9 @@ globalCommands (cmd:_) = case cmd of
     _ | cmd == "version" || cmd == "--version" -> Just progVersion
     _                                          -> Nothing
 
-ghcCommands :: IOish m => [String] -> GhcModT m String
+ghcCommands :: IOish m => [String] -> (Cmd m, [String])
 ghcCommands []         = fatalError "No command given (try --help)"
-ghcCommands (cmd:args) = fn args
+ghcCommands (cmd:args) = (fn,args)
  where
    fn = case cmd of
      _ | cmd == "list" || cmd == "modules" -> modulesCmd
@@ -526,45 +526,59 @@ exitError msg = hPutStrLn stderr msg >> exitFailure
 fatalError :: String -> a
 fatalError s = throw $ FatalError $ progName ++ ": " ++ s
 
+-- A reified command consists of a description of which options it accepts as
+-- well as the action, a function taking the list of non-option arguments and
+-- returning a GhcModT action.
+data Cmd m = Cmd [OptDescr (Options -> Options)] ([String] -> GhcModT m String)
+
+-- Parse arguments and run a command in an already established GhcModT context
 withParseCmd :: IOish m
-             => [OptDescr (Options -> Options)]
-             -> ([String] -> GhcModT m a)
+             => Cmd m
              -> [String]
-             -> GhcModT m a
-withParseCmd spec action args  = do
+             -> GhcModT m String
+withParseCmd (Cmd spec action) args  = do
   (opts', rest) <- parseCommandArgs spec args <$> options
   withOptions (const opts') $ action rest
+
+runGhcCommand :: IOish m => [String] -> Options -> m (Either GhcModError String, GhcModLog)
+runGhcCommand args globalOpts = runCmd cmd args' globalOpts
+  where (cmd, args') = ghcCommands args
+
+-- Parse arguments and run a command in a fresh GhcModT context
+runCmd :: IOish m => Cmd m -> [String] -> Options -> m (Either GhcModError String, GhcModLog)
+runCmd (Cmd spec action) args opts = runGhcModT opts' (action rest)
+  where (opts', rest) = parseCommandArgs spec args opts
 
 modulesCmd, languagesCmd, flagsCmd, browseCmd, checkSyntaxCmd, expandTemplateCmd,
   debugInfoCmd, infoCmd, typesCmd, splitsCmd, sigCmd, refineCmd, autoCmd,
   findSymbolCmd, lintCmd, rootInfoCmd, pkgDocCmd, dumpSymbolCmd, bootCmd
-  :: IOish m => [String] -> GhcModT m String
+  :: IOish m => Cmd m
 
-modulesCmd    = withParseCmd [] $ \[] -> modules
-languagesCmd  = withParseCmd [] $ \[] -> languages
-flagsCmd      = withParseCmd [] $ \[] -> flags
-debugInfoCmd  = withParseCmd [] $ \[] -> debugInfo
-rootInfoCmd   = withParseCmd [] $ \[] -> rootInfo
+modulesCmd    = Cmd [] $ \[] -> modules
+languagesCmd  = Cmd [] $ \[] -> languages
+flagsCmd      = Cmd [] $ \[] -> flags
+debugInfoCmd  = Cmd [] $ \[] -> debugInfo
+rootInfoCmd   = Cmd [] $ \[] -> rootInfo
 -- internal
-bootCmd       = withParseCmd [] $ \[] -> boot
+bootCmd       = Cmd [] $ \[] -> boot
 
-dumpSymbolCmd     = withParseCmd [] $ \[tmpdir] -> dumpSymbol tmpdir
-findSymbolCmd     = withParseCmd [] $ \[sym]  -> findSymbol sym
-pkgDocCmd         = withParseCmd [] $ \[mdl]  -> pkgDoc mdl
-lintCmd           = withParseCmd s  $ \[file] -> lint file
+dumpSymbolCmd     = Cmd [] $ \[tmpdir] -> dumpSymbol tmpdir
+findSymbolCmd     = Cmd [] $ \[sym]  -> findSymbol sym
+pkgDocCmd         = Cmd [] $ \[mdl]  -> pkgDoc mdl
+lintCmd           = Cmd s  $ \[file] -> lint file
  where s = hlintArgSpec
-browseCmd         = withParseCmd s  $ \mdls   -> concat <$> browse `mapM` mdls
+browseCmd         = Cmd s  $ \mdls   -> concat <$> browse `mapM` mdls
  where s = browseArgSpec
-checkSyntaxCmd    = withParseCmd [] $ checkAction checkSyntax
-expandTemplateCmd = withParseCmd [] $ checkAction expandTemplate
+checkSyntaxCmd    = Cmd [] $ checkAction checkSyntax
+expandTemplateCmd = Cmd [] $ checkAction expandTemplate
 
-typesCmd      = withParseCmd [] $ locAction  "type"  types
-splitsCmd     = withParseCmd [] $ locAction  "split" splits
-sigCmd        = withParseCmd [] $ locAction  "sig"    sig
-autoCmd       = withParseCmd [] $ locAction  "auto"   auto
-refineCmd     = withParseCmd [] $ locAction' "refine" refine
+typesCmd      = Cmd [] $ locAction  "type"  types
+splitsCmd     = Cmd [] $ locAction  "split" splits
+sigCmd        = Cmd [] $ locAction  "sig"    sig
+autoCmd       = Cmd [] $ locAction  "auto"   auto
+refineCmd     = Cmd [] $ locAction' "refine" refine
 
-infoCmd       = withParseCmd [] $ action
+infoCmd       = Cmd [] action
   where action [file,_,expr] = info file expr
         action [file,expr]   = info file expr
         action _ = throw $ InvalidCommandLine (Left "info")
