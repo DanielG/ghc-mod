@@ -186,20 +186,25 @@ Executable ghc-modi
                       , ghc
                       , ghc-mod
 
-Executable cabal-helper
+Executable cabal-helper-wrapper
   Default-Language:     Haskell2010
-  Main-Is:              GHCModCabal.hs
+  Other-Extensions:     TemplateHaskell
+  Main-Is:              Wrapper.hs
+  Other-Modules:        Paths_ghc_mod
   GHC-Options:          -Wall
-  HS-Source-Dirs:       src
+  HS-Source-Dirs:       cabal-helper, .
   X-Install-Target:     $libexecdir
   Build-Depends:        base >= 4.0 && < 5
                       , bytestring
                       , binary
+                      , containers
+                      , Cabal >= 1.16
                       , directory
-  if flag(cabal-122)
-    Build-Depends:      Cabal >= 1.22
-  else
-    Buildable:          False
+                      , filepath
+                      , process
+                      , transformers
+                      , template-haskell
+                      , time
 
 Test-Suite doctest
   Type:                 exitcode-stdio-1.0
