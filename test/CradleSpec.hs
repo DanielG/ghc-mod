@@ -71,4 +71,11 @@ spec = do
                 cradleCabalFile  res `shouldBe`
                   Just ("test" </> "data" </> "broken-sandbox" </> "dummy.cabal")
 
+        it "uses the custom cradle file if present" $ do
+            withDirectory "test/data/custom-cradle" $ \dir -> do
+                res <- relativeCradle dir <$> findCradle
+                cradleCurrentDir res `shouldBe` "test" </> "data" </> "custom-cradle"
+                cradleRootDir res    `shouldBe` "test" </> "data" </> "custom-cradle"
+                cradleCabalFile res  `shouldBe` Just ("test" </> "data" </> "custom-cradle" </> "dummy.cabal")
+                cradlePkgDbStack res `shouldBe` [PackageDb "a/packages", GlobalDb, PackageDb "b/packages", UserDb, PackageDb "c/packages"]
                 cradlePkgDbStack res `shouldBe` [GlobalDb, UserDb]

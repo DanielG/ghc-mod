@@ -95,20 +95,26 @@ cabalHelperCache = Cached {
                 , a == a'
                 ]
 
-
 withCabal :: (MonadIO m, GmEnv m) => m a -> m a
 withCabal action = do
     crdl <- cradle
     opts <- options
     liftIO $ whenM (isSetupConfigOutOfDate <$> getCurrentWorld crdl) $
         withDirectory_ (cradleRootDir crdl) $ do
-            let progOpts =
+            let pkgDbArgs = "--package-db=clear" : map pkgDbArg (cradlePkgDbStack crdl)
+                progOpts =
                     [ "--with-ghc=" ++ T.ghcProgram opts ]
                     -- Only pass ghc-pkg if it was actually set otherwise we
                     -- might break cabal's guessing logic
                     ++ if T.ghcPkgProgram opts /= T.ghcPkgProgram defaultOptions
                          then [ "--with-ghc-pkg=" ++ T.ghcPkgProgram opts ]
                          else []
+                    ++ pkgDbArgs
             void $ readProcess (T.cabalProgram opts) ("configure":progOpts) ""
             writeAutogenFiles $ cradleRootDir crdl </> "dist"
     action
+
+pkgDbArg :: GhcPkgDb -> String
+pkgDbArg GlobalDb      = "--package-db=global"
+pkgDbArg UserDb        = "--package-db=user"
+pkgDbArg (PackageDb p) = "--package-db=" ++ p

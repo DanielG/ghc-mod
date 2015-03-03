@@ -28,7 +28,7 @@ findCradle = findCradle' =<< getCurrentDirectory
 
 findCradle' :: FilePath -> IO Cradle
 findCradle' dir = run $ do
-    (cabalCradle dir `mplus`  sandboxCradle dir `mplus` plainCradle dir)
+    (customCradle dir `mplus` cabalCradle dir `mplus`  sandboxCradle dir `mplus` plainCradle dir)
  where run a = fillTempDir =<< (fromJust <$> runMaybeT a)
 
 findSpecCradle :: FilePath -> IO Cradle
@@ -51,6 +51,21 @@ fillTempDir :: MonadIO m => Cradle -> m Cradle
 fillTempDir crdl = do
   tmpDir <- liftIO $ newTempDir (cradleRootDir crdl)
   return crdl { cradleTempDir = tmpDir }
+
+customCradle :: FilePath -> MaybeT IO Cradle
+customCradle wdir = do
+    cabalFile <- MaybeT $ findCabalFile wdir
+    let cabalDir = takeDirectory cabalFile
+    cradleFile <- MaybeT $ findCradleFile cabalDir
+    tmpDir <- liftIO $ newTempDir cabalDir
+    pkgDbStack <- liftIO $ parseCradle cradleFile
+    return Cradle {
+        cradleCurrentDir = wdir
+      , cradleRootDir    = cabalDir
+      , cradleTempDir    = tmpDir
+      , cradleCabalFile  = Just cabalFile
+      , cradlePkgDbStack = pkgDbStack
+      }
 
 cabalCradle :: FilePath -> MaybeT IO Cradle
 cabalCradle wdir = do
@@ -95,3 +110,21 @@ getPackageDbStack :: FilePath -- ^ Project Directory (where the
                   -> IO [GhcPkgDb]
 getPackageDbStack cdir =
     ([GlobalDb] ++) . maybe [UserDb] return <$> getSandboxDb cdir
+
+-- Just for testing
+findCradleWithoutSandbox :: IO Cradle
+findCradleWithoutSandbox = do
+    cradle <- findCradle
+    return cradle { cradlePkgDbStack = [GlobalDb]} -- FIXME
+
+
+parseCradle :: FilePath -> IO [GhcPkgDb]
+parseCradle path = do
+    source <- readFile path
+    return $ parseCradle' source
+  where
+    parseCradle' source = map parsePkgDb $ filter (not . null) $ lines source
+
+    parsePkgDb "global" = GlobalDb
+    parsePkgDb "user" = UserDb
+    parsePkgDb s = PackageDb s

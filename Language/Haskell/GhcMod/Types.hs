@@ -272,7 +272,7 @@ data GhcModError
 
     | GMECabalStateFile GMConfigStateFileError
       -- ^ Reading Cabal's state configuration file falied somehow.
-      deriving (Eq,Show,Typeable)
+    deriving (Eq,Show,Typeable)
 
 instance Error GhcModError where
     noMsg = GMENoMsg
