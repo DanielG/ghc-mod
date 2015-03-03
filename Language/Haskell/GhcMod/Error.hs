@@ -33,8 +33,6 @@ data GhcModError = GMENoMsg
                  -- ^ No cabal file found.
                  | GMETooManyCabalFiles [FilePath]
                  -- ^ Too many cabal files found.
-                 | GMENoCradleFile
-                 -- ^ No cradle file found
                  | GMEInvalidCradleFile
                  -- ^ Could not parse the cradle file
                    deriving (Eq,Show,Typeable)
@@ -65,8 +63,6 @@ gmeDoc e = case e of
     GMETooManyCabalFiles cfs ->
         text $ "Multiple cabal files found. Possible cabal files: \""
                ++ intercalate "\", \"" cfs ++"\"."
-    GMENoCradleFile ->
-        text "No cradle file found."
     GMEInvalidCradleFile ->
         text "Could not parse the cradle file."
 
