@@ -4,8 +4,8 @@ Author:                 Kazu Yamamoto <kazu@iij.ad.jp>
                         Daniel Gröber <dxld@darkboxed.org>
                         Alejandro Serrano <trupill@gmail.com>
 Maintainer:             Kazu Yamamoto <kazu@iij.ad.jp>
-License:                BSD3
-License-File:           LICENSE
+License:                AGPL-3
+License-Files:          COPYING.BSD3 COPYING.AGPL3
 Homepage:               http://www.mew.org/~kazu/proj/ghc-mod/
 Synopsis:               Happy Haskell Programming
 Description:            The ghc-mod command is a backend command to enrich
