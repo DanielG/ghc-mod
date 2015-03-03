@@ -9,6 +9,11 @@ module Language.Haskell.GhcMod (
   , LineSeparator(..)
   , OutputStyle(..)
   , defaultOptions
+  -- * Logging
+  , GmLogLevel
+  , increaseLogLevel
+  , gmSetLogLevel
+  , gmLog
   -- * Types
   , ModuleString
   , Expression
@@ -61,7 +66,8 @@ import Language.Haskell.GhcMod.Flag
 import Language.Haskell.GhcMod.Info
 import Language.Haskell.GhcMod.Lang
 import Language.Haskell.GhcMod.Lint
-import Language.Haskell.GhcMod.Monad
+import Language.Haskell.GhcMod.Logging
 import Language.Haskell.GhcMod.Modules
+import Language.Haskell.GhcMod.Monad
 import Language.Haskell.GhcMod.PkgDoc
 import Language.Haskell.GhcMod.Types

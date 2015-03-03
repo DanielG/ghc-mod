@@ -11,11 +11,11 @@ import Control.Applicative ((<$>))
 pkgDoc :: IOish m => String -> GhcModT m String
 pkgDoc mdl = do
     c <- cradle
-    pkg <- trim <$> readProcess' "ghc-pkg" (toModuleOpts c)
+    pkg <- liftIO $ trim <$> readProcess "ghc-pkg" (toModuleOpts c) ""
     if pkg == "" then
         return "\n"
       else do
-        htmlpath <- readProcess' "ghc-pkg" (toDocDirOpts pkg c)
+        htmlpath <- liftIO $ readProcess "ghc-pkg" (toDocDirOpts pkg c) ""
         let ret = pkg ++ " " ++ drop 14 htmlpath
         return ret
   where

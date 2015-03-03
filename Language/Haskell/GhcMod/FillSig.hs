@@ -19,8 +19,10 @@ import qualified GHC as G
 import qualified Name as G
 import qualified Language.Haskell.GhcMod.Gap as Gap
 import Language.Haskell.GhcMod.Convert
+import Language.Haskell.GhcMod.DynFlags
 import Language.Haskell.GhcMod.Monad
 import Language.Haskell.GhcMod.SrcUtils
+import Language.Haskell.GhcMod.Doc
 import Language.Haskell.GhcMod.Types
 import Outputable (PprStyle)
 import qualified Type as Ty
@@ -66,21 +68,29 @@ sig :: IOish m
     -> Int          -- ^ Line number.
     -> Int          -- ^ Column number.
     -> GhcModT m String
-sig file lineNo colNo = ghandle handler body
-  where
-    body = inModuleContext file $ \dflag style -> do
-        opt <- options
-        modSum <- Gap.fileModSummary file
-        whenFound opt (getSignature modSum lineNo colNo) $ \s -> case s of
+sig file lineNo colNo =
+    runGmLoadedT' [Left file] deferErrors $ ghandle handler $ do
+      opt <- options
+      style <- getStyle
+      dflag <- G.getSessionDynFlags
+      modSum <- Gap.fileModSummary file
+      whenFound opt (getSignature modSum lineNo colNo) $ \s ->
+        case s of
           Signature loc names ty ->
-            ("function", fourInts loc, map (initialBody dflag style ty) names)
-          InstanceDecl loc cls ->
-             ("instance", fourInts loc, map (\x -> initialBody dflag style (G.idType x) x)
-                                            (Ty.classMethods cls))
+              ("function", fourInts loc, map (initialBody dflag style ty) names)
+
+          InstanceDecl loc cls -> let
+                body x = initialBody dflag style (G.idType x) x
+            in
+              ("instance", fourInts loc, body `map` Ty.classMethods cls)
+
           TyFamDecl loc name flavour vars ->
             let (rTy, initial) = initialTyFamString flavour
-             in (rTy, fourInts loc, [initial ++ initialFamBody dflag style name vars])
+                body = initialFamBody dflag style name vars
+             in (rTy, fourInts loc, [initial ++ body])
 
+
+  where
     handler (SomeException _) = do
       opt <- options
       -- Code cannot be parsed by ghc module
@@ -321,10 +331,11 @@ refine :: IOish m
        -> Int          -- ^ Column number.
        -> Expression   -- ^ A Haskell expression.
        -> GhcModT m String
-refine file lineNo colNo expr = ghandle handler body
-  where
-    body = inModuleContext file $ \dflag style -> do
+refine file lineNo colNo expr =
+  runGmLoadedT' [Left file] deferErrors $ ghandle handler $ do
         opt <- options
+        style <- getStyle
+        dflag <- G.getSessionDynFlags
         modSum <- Gap.fileModSummary file
         p <- G.parseModule modSum
         tcm@TypecheckedModule{tm_typechecked_source = tcs} <- G.typecheckModule p
@@ -339,7 +350,8 @@ refine file lineNo colNo expr = ghandle handler body
                   text = initialHead1 expr iArgs (infinitePrefixSupply name)
                in (fourInts loc, doParen paren text)
 
-    handler (SomeException _) = emptyResult =<< options
+ where
+   handler (SomeException _) = emptyResult =<< options
 
 -- Look for the variable in the specified position
 findVar :: GhcMonad m => DynFlags -> PprStyle
@@ -386,10 +398,11 @@ auto :: IOish m
      -> Int          -- ^ Line number.
      -> Int          -- ^ Column number.
      -> GhcModT m String
-auto file lineNo colNo = ghandle handler body
-  where
-    body = inModuleContext file $ \dflag style -> do
+auto file lineNo colNo =
+  runGmLoadedT' [Left file] deferErrors $ ghandle handler $ do
         opt <- options
+        style <- getStyle
+        dflag <- G.getSessionDynFlags
         modSum <- Gap.fileModSummary file
         p <- G.parseModule modSum
         tcm@TypecheckedModule {
@@ -415,8 +428,8 @@ auto file lineNo colNo = ghandle handler body
           djinns <- djinn True (Just minfo) env rty (Max 10) 100000
           return ( fourInts loc
                  , map (doParen paren) $ nub (djinnsEmpty ++ djinns))
-
-    handler (SomeException _) = emptyResult =<< options
+ where
+   handler (SomeException _) = emptyResult =<< options
 
 -- Functions we do not want in completions
 notWantedFuns :: [String]

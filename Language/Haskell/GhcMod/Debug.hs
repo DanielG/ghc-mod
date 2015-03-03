@@ -1,41 +1,76 @@
 module Language.Haskell.GhcMod.Debug (debugInfo, rootInfo) where
 
+import Control.Arrow (first)
 import Control.Applicative ((<$>))
-import Data.List (intercalate)
-import Data.Maybe (isJust, fromJust)
+import qualified Data.Map as Map
+import qualified Data.Set as Set
+import Text.PrettyPrint
 import Language.Haskell.GhcMod.Convert
 import Language.Haskell.GhcMod.Monad
 import Language.Haskell.GhcMod.Types
-import Language.Haskell.GhcMod.CabalConfig
 import Language.Haskell.GhcMod.Internal
+import Language.Haskell.GhcMod.CabalHelper
+import Language.Haskell.GhcMod.Target
+import Language.Haskell.GhcMod.Pretty
 
 ----------------------------------------------------------------
 
 -- | Obtaining debug information.
 debugInfo :: IOish m => GhcModT m String
-debugInfo = cradle >>= \c -> convert' =<< do
-    CompilerOptions gopts incDir pkgs <-
-        if isJust $ cradleCabalFile c then
-            fromCabalFile c ||> simpleCompilerOption
-          else
-            simpleCompilerOption
-    return [
-        "Root directory:      " ++ cradleRootDir c
-      , "Current directory:   " ++ cradleCurrentDir c
-      , "Cabal file:          " ++ show (cradleCabalFile c)
-      , "GHC options:         " ++ unwords gopts
-      , "Include directories: " ++ unwords incDir
-      , "Dependent packages:  " ++ intercalate ", " (map showPkg pkgs)
-      , "System libraries:    " ++ ghcLibDir
-      ]
-  where
-    simpleCompilerOption = options >>= \op ->
-        return $ CompilerOptions (ghcUserOptions op) [] []
-    fromCabalFile crdl = options >>= \opts -> do
-        config <- cabalGetConfig crdl
-        pkgDesc <- parseCabalFile config $ fromJust $ cradleCabalFile crdl
-        getCompilerOptions (ghcUserOptions opts) crdl config pkgDesc
+debugInfo = do
+    Options {..} <- options
+    Cradle {..} <- cradle
 
+    cabal <-
+        case cradleCabalFile of
+          Just _ -> cabalDebug
+          Nothing -> return []
+
+    return $ unlines $
+      [ "Root directory:       " ++ cradleRootDir
+      , "Current directory:    " ++ cradleCurrentDir
+      , "GHC System libraries: " ++ ghcLibDir
+      , "GHC user options:     " ++ render (fsep $ map text ghcUserOptions)
+      ] ++ cabal
+
+cabalDebug :: IOish m => GhcModT m [String]
+cabalDebug = do
+    Cradle {..} <- cradle
+    mcs <- resolveGmComponents Nothing =<< getComponents
+    let entrypoints = Map.map gmcEntrypoints mcs
+        graphs      = Map.map gmcHomeModuleGraph mcs
+        opts        = Map.map gmcGhcOpts mcs
+        srcOpts     = Map.map gmcGhcSrcOpts mcs
+
+    return $
+         [ "Cabal file:           " ++ show cradleCabalFile
+         , "Cabal entrypoints:\n"       ++ render (nest 4 $
+              mapDoc gmComponentNameDoc smpDoc entrypoints)
+         , "Cabal components:\n"        ++ render (nest 4 $
+              mapDoc gmComponentNameDoc graphDoc graphs)
+         , "GHC Cabal options:\n"       ++ render (nest 4 $
+              mapDoc gmComponentNameDoc (fsep . map text) opts)
+         , "GHC search path options:\n" ++ render (nest 4 $
+              mapDoc gmComponentNameDoc (fsep . map text) srcOpts)
+         ]
+
+graphDoc :: GmModuleGraph -> Doc
+graphDoc GmModuleGraph{..} =
+    mapDoc mpDoc' smpDoc' gmgGraph
+ where
+   smpDoc' smp = vcat $ map mpDoc' $ Set.toList smp
+   mpDoc' = text . moduleNameString . mpModule
+
+smpDoc :: Set.Set ModulePath -> Doc
+smpDoc smp = vcat $ map mpDoc $ Set.toList smp
+
+mpDoc :: ModulePath -> Doc
+mpDoc (ModulePath mn fn) = text (moduleNameString mn) <+> parens (text fn)
+
+
+mapDoc :: (k -> Doc) -> (a -> Doc) -> Map.Map k a -> Doc
+mapDoc kd ad m = vcat $
+    map (uncurry ($+$)) $ map (first kd) $ Map.toList $ Map.map (nest 4 . ad) m
 ----------------------------------------------------------------
 
 -- | Obtaining root information.

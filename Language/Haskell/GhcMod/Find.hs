@@ -28,7 +28,7 @@ import Language.Haskell.GhcMod.Utils
 import Language.Haskell.GhcMod.PathsAndFiles
 import Language.Haskell.GhcMod.Gap (listVisibleModules)
 import Name (getOccString)
-import Module (moduleNameString, moduleName)
+import Module (moduleName)
 import System.Directory (doesFileExist, getModificationTime)
 import System.FilePath ((</>), takeDirectory)
 import System.IO
@@ -81,7 +81,7 @@ loadSymbolDb :: IOish m => GhcModT m SymbolDb
 loadSymbolDb = do
     ghcMod <- liftIO ghcModExecutable
     tmpdir <- cradleTempDir <$> cradle
-    file <- chop <$> readProcess' ghcMod ["dumpsym", tmpdir]
+    file <- liftIO $ chop <$> readProcess ghcMod ["dumpsym", tmpdir] ""
     !db <- M.fromAscList . map conv . lines <$> liftIO (readFile file)
     return $ SymbolDb {
         table = db
@@ -102,12 +102,12 @@ loadSymbolDb = do
 --   The file name is printed.
 
 dumpSymbol :: IOish m => FilePath -> GhcModT m String
-dumpSymbol dir = do
+dumpSymbol dir = runGmPkgGhc $ do
     let cache = dir </> symbolCacheFile
         pkgdb = dir </> packageCache
 
     create <- liftIO $ cache `isOlderThan` pkgdb
-    when create $ (liftIO . writeSymbolCache cache) =<< getSymbolTable
+    when create $ (liftIO . writeSymbolCache cache) =<< getGlobalSymbolTable
     return $ unlines [cache]
 
 writeSymbolCache :: FilePath
@@ -127,9 +127,9 @@ isOlderThan cache file = do
         tFile <- getModificationTime file
         return $ tCache <= tFile -- including equal just in case
 
--- | Browsing all functions in all system/user modules.
-getSymbolTable :: IOish m => GhcModT m [(Symbol,[ModuleString])]
-getSymbolTable = do
+-- | Browsing all functions in all system modules.
+getGlobalSymbolTable :: LightGhc [(Symbol,[ModuleString])]
+getGlobalSymbolTable = do
     df  <- G.getSessionDynFlags
     let mods = listVisibleModules df
     moduleInfos <- mapM G.getModuleInfo mods

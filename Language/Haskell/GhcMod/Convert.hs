@@ -2,7 +2,7 @@
 
 module Language.Haskell.GhcMod.Convert (convert, convert', emptyResult, whenFound, whenFound') where
 
-import Language.Haskell.GhcMod.Monad
+import Language.Haskell.GhcMod.Monad.Types
 import Language.Haskell.GhcMod.Types
 
 import Control.Applicative ((<$>))
@@ -23,7 +23,7 @@ inter :: Char -> [Builder] -> Builder
 inter _ [] = id
 inter c bs = foldr1 (\x y -> x . (c:) . y) bs
 
-convert' :: (ToString a, IOish m) => a -> GhcModT m String
+convert' :: (ToString a, IOish m, GmEnv m) => a -> m String
 convert' x = flip convert x <$> options
 
 convert :: ToString a => Options -> a -> String

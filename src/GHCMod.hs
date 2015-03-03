@@ -259,8 +259,9 @@ reqArg udsc dsc = ReqArg dsc udsc
 
 globalArgSpec :: [OptDescr (Options -> Options)]
 globalArgSpec =
-      [ option "v" ["verbose"] "Be more verbose." $
-               NoArg $ \o -> o { ghcUserOptions = "-v" : ghcUserOptions o }
+      [ option "v" ["verbose"] "Can be given multiple times to be increasingly\
+                               \more verbose." $
+               NoArg $ \o -> o { logLevel = increaseLogLevel (logLevel o) }
 
       , option "l" ["tolisp"] "Format output as an S-Expression" $
                NoArg $ \o -> o { outputStyle = LispStyle }
@@ -272,8 +273,8 @@ globalArgSpec =
                reqArg "OPT" $ \g o ->
                    o { ghcUserOptions = g : ghcUserOptions o }
 
-      , option "" ["with-ghc"] "GHC executable to use" $
-               reqArg "PROG" $ \p o -> o { ghcProgram = p }
+--      , option "" ["with-ghc"] "GHC executable to use" $
+--               reqArg "PROG" $ \p o -> o { ghcProgram = p }
 
       , option "" ["with-cabal"] "cabal-install executable to use" $
                reqArg "PROG" $ \p o -> o { cabalProgram = p }

@@ -19,14 +19,15 @@ Description:            The ghc-mod command is a backend command to enrich
                         For more information, please see its home page.
 
 Category:               Development
-Cabal-Version:          >= 1.10
+Cabal-Version:          >= 1.16
 Build-Type:             Custom
-Data-Dir:               elisp
-Data-Files:             Makefile ghc.el ghc-func.el ghc-doc.el ghc-comp.el
-                        ghc-check.el ghc-process.el ghc-command.el ghc-info.el
-                        ghc-ins-mod.el ghc-indent.el ghc-pkg.el ghc-rewrite.el
+Data-Files:             elisp/Makefile
+                        elisp/*.el
+                        cabal-helper/*.hs
+
 Extra-Source-Files:     ChangeLog
                         SetupCompat.hs
+                        NotCPP/*.hs
 			test/data/*.cabal
                         test/data/*.hs
                         test/data/cabal.sandbox.config.in
@@ -56,29 +57,23 @@ Extra-Source-Files:     ChangeLog
                         test/data/subdir1/subdir2/dummy
                         test/data/.cabal-sandbox/packages/00-index.tar
 
-Flag cabal-122
-  Default:              True
-  Manual:               False
-
 Library
   Default-Language:     Haskell2010
-  GHC-Options:          -Wall
-  Default-Extensions:   ConstraintKinds, FlexibleContexts
+  GHC-Options:          -Wall -fno-warn-deprecations
+  Default-Extensions:   ScopedTypeVariables, RecordWildCards, NamedFieldPuns,
+                        ConstraintKinds, FlexibleContexts
   Exposed-Modules:      Language.Haskell.GhcMod
                         Language.Haskell.GhcMod.Internal
   Other-Modules:        Paths_ghc_mod
+                        Types
+                        Utils
                         Language.Haskell.GhcMod.Boot
                         Language.Haskell.GhcMod.Browse
-                        Language.Haskell.GhcMod.CabalConfig.Cabal16
-                        Language.Haskell.GhcMod.CabalConfig.Cabal18
-                        Language.Haskell.GhcMod.CabalConfig.Cabal22
-                        Language.Haskell.GhcMod.CabalConfig.Extract
-                        Language.Haskell.GhcMod.CabalConfig
-                        Language.Haskell.GhcMod.CabalApi
                         Language.Haskell.GhcMod.CaseSplit
                         Language.Haskell.GhcMod.Check
                         Language.Haskell.GhcMod.Convert
                         Language.Haskell.GhcMod.Cradle
+                        Language.Haskell.GhcMod.CabalHelper
                         Language.Haskell.GhcMod.Debug
                         Language.Haskell.GhcMod.Doc
                         Language.Haskell.GhcMod.DynFlags
@@ -86,9 +81,9 @@ Library
                         Language.Haskell.GhcMod.FillSig
                         Language.Haskell.GhcMod.Find
                         Language.Haskell.GhcMod.Flag
-                        Language.Haskell.GhcMod.GHCChoice
                         Language.Haskell.GhcMod.Gap
                         Language.Haskell.GhcMod.GhcPkg
+                        Language.Haskell.GhcMod.HomeModuleGraph
                         Language.Haskell.GhcMod.Info
                         Language.Haskell.GhcMod.Lang
                         Language.Haskell.GhcMod.Lint
@@ -99,14 +94,13 @@ Library
                         Language.Haskell.GhcMod.Monad.Types
                         Language.Haskell.GhcMod.PathsAndFiles
                         Language.Haskell.GhcMod.PkgDoc
+                        Language.Haskell.GhcMod.Pretty
                         Language.Haskell.GhcMod.Read
                         Language.Haskell.GhcMod.SrcUtils
                         Language.Haskell.GhcMod.Target
                         Language.Haskell.GhcMod.Types
                         Language.Haskell.GhcMod.Utils
                         Language.Haskell.GhcMod.World
-
-
   Build-Depends:        base >= 4.0 && < 5
                       , bytestring
                       , containers
@@ -117,7 +111,6 @@ Library
                       , ghc-paths
                       , ghc-syb-utils
                       , hlint >= 1.8.61
-                      , io-choice
                       , monad-journal >= 0.4
                       , old-time
                       , pretty
@@ -128,18 +121,13 @@ Library
                       , transformers
                       , transformers-base
                       , mtl >= 2.0
-                      , monad-control
+                      , monad-control >= 1
                       , split
                       , haskell-src-exts
                       , text
                       , djinn-ghc >= 0.0.2.2
   if impl(ghc < 7.8)
     Build-Depends:      convertible
-                      , Cabal >= 1.10 && < 1.17
-  else
-    Build-Depends:      Cabal >= 1.18
-  if flag(cabal-122)
-    Build-Depends:      Cabal >= 1.22
   if impl(ghc <= 7.4.2)
     -- Only used to constrain random to a version that still works with GHC 7.4
     Build-Depends:      random <= 1.0.1.1
@@ -148,7 +136,7 @@ Executable ghc-mod
   Default-Language:     Haskell2010
   Main-Is:              GHCMod.hs
   Other-Modules:        Paths_ghc_mod
-  GHC-Options:          -Wall
+  GHC-Options:          -Wall -fno-warn-deprecations
   Default-Extensions:   ConstraintKinds, FlexibleContexts
   HS-Source-Dirs:       src
   Build-Depends:        base >= 4.0 && < 5
@@ -169,7 +157,7 @@ Executable ghc-modi
   Other-Modules:        Paths_ghc_mod
                         Misc
                         Utils
-  GHC-Options:          -Wall -threaded
+  GHC-Options:          -Wall -threaded -fno-warn-deprecations
   if os(windows)
       Cpp-Options:      -DWINDOWS
   Default-Extensions:   ConstraintKinds, FlexibleContexts
@@ -218,16 +206,20 @@ Test-Suite doctest
 
 Test-Suite spec
   Default-Language:     Haskell2010
-  Default-Extensions:   ConstraintKinds, FlexibleContexts
+  Default-Extensions:   ScopedTypeVariables, RecordWildCards, NamedFieldPuns,
+                        ConstraintKinds, FlexibleContexts, OverloadedStrings
   Main-Is:              Main.hs
   Hs-Source-Dirs:       test, .
-  Ghc-Options:          -Wall
+  Ghc-Options:          -Wall -fno-warn-deprecations
   CPP-Options:          -DSPEC=1
   Type:                 exitcode-stdio-1.0
-  Other-Modules:        BrowseSpec
-                        CabalApiSpec
-                        CheckSpec
+  Other-Modules:        Paths_ghc_mod
+                        Types
                         Dir
+                        Spec
+                        TestUtils
+                        BrowseSpec
+                        CheckSpec
                         FlagSpec
                         InfoSpec
                         LangSpec
@@ -235,8 +227,7 @@ Test-Suite spec
                         ListSpec
                         MonadSpec
                         PathsAndFilesSpec
-                        Spec
-                        TestUtils
+                        HomeModuleGraphSpec
 
   Build-Depends:        hspec
   if impl(ghc == 7.4.*)

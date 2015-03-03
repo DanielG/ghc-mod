@@ -1,4 +1,3 @@
-{-# LANGUAGE BangPatterns, TupleSections #-}
 -- ghc-mod: Making Haskell development *more* fun
 -- Copyright (C) 2015  Daniel Gröber <dxld ÄT darkboxed DOT org>
 --
@@ -20,27 +19,78 @@ module Language.Haskell.GhcMod.PathsAndFiles where
 import Config (cProjectVersion)
 import Control.Applicative
 import Control.Monad
+import Control.Monad.Trans.Maybe
 import Data.List
 import Data.Char
 import Data.Maybe
 import Data.Traversable (traverse)
-import Distribution.System (buildPlatform)
-import Distribution.Text (display)
-import Language.Haskell.GhcMod.Types
+import Types
 import System.Directory
 import System.FilePath
+import System.IO.Unsafe
 
+import Language.Haskell.GhcMod.Types
 import Language.Haskell.GhcMod.Error
+import Language.Haskell.GhcMod.Read
+import Language.Haskell.GhcMod.Utils hiding (dropWhileEnd)
 import qualified Language.Haskell.GhcMod.Utils as U
-
-import Distribution.Simple.BuildPaths (defaultDistPref)
-import Distribution.Simple.Configure (localBuildInfoFile)
 
 -- | Guaranteed to be a path to a directory with no trailing slash.
 type DirPath = FilePath
 
 -- | Guaranteed to be the name of a file only (no slashes).
 type FileName = String
+
+data Cached d a = Cached {
+      inputFiles :: [FilePath],
+      inputData  :: d,
+      cacheFile  :: FilePath
+    }
+
+newtype UnString = UnString { unString :: String }
+
+instance Show UnString where
+    show = unString
+
+instance Read UnString where
+    readsPrec _ = \str -> [(UnString str, "")]
+
+-- |
+--
+-- >>> any (Just 3 <) [Just 1, Nothing, Just 2]
+-- False
+--
+-- >>> any (Just 0 <) [Just 1, Nothing, Just 2]
+-- True
+--
+-- >>> any (Just 0 <) [Nothing]
+-- False
+--
+-- >>> any (Just 0 <) []
+-- False
+cached :: forall a d. (Read a, Show a, Eq d, Read d, Show d)
+       => DirPath -> Cached d a -> IO a -> IO a
+cached dir Cached {..} ma = do
+    ins <- (maybeTimeFile . (dir </>)) `mapM` inputFiles
+    c <- maybeTimeFile (dir </> cacheFile)
+    if any (c<) ins || isNothing c
+       then writeCache
+       else maybe ma return =<< readCache
+ where
+   maybeTimeFile :: FilePath -> IO (Maybe TimedFile)
+   maybeTimeFile f = traverse timeFile =<< mightExist f
+
+   writeCache = do
+     a <- ma
+     writeFile (dir </> cacheFile) $ unlines [show inputData, show a]
+     return a
+
+   readCache :: IO (Maybe a)
+   readCache = runMaybeT $ do
+     hdr:c:_ <- lines <$> liftIO (readFile $ dir </> cacheFile)
+     if inputData /= read hdr
+       then liftIO $ writeCache
+       else MaybeT $ return $ readMaybe c
 
 -- | @findCabalFiles dir@. Searches for a @.cabal@ files in @dir@'s parent
 -- directories. The first parent directory containing more than one cabal file
@@ -49,13 +99,17 @@ type FileName = String
 -- or 'GMETooManyCabalFiles'
 findCabalFile :: FilePath -> IO (Maybe FilePath)
 findCabalFile dir = do
-    dcs <- findFileInParentsP  isCabalFile dir
-    -- Extract first non-empty list, which represents a directory with cabal
-    -- files.
-    case find (not . null) $ uncurry appendDir `map` dcs of
-      Just []          -> throw $ GMENoCabalFile
+    -- List of directories and all cabal file candidates
+    dcs <- findFileInParentsP  isCabalFile dir :: IO ([(DirPath, [FileName])])
+    let css = uncurry appendDir `map` dcs :: [[FilePath]]
+    case find (not . null) css of
+      Nothing -> return Nothing
       Just cfs@(_:_:_) -> throw $ GMETooManyCabalFiles cfs
-      a  -> return $ head <$> a
+      Just (a:_)       -> return (Just a)
+      Just []          -> error "findCabalFile"
+ where
+   appendDir :: DirPath -> [FileName] -> [FilePath]
+   appendDir d fs = (d </>) `map` fs
 
 -- |
 -- >>> isCabalFile "/home/user/.cabal"
@@ -105,11 +159,8 @@ findCabalSandboxDir dir = do
  where
    isSandboxConfig = (=="cabal.sandbox.config")
 
-appendDir :: DirPath -> [FileName] -> [FilePath]
-appendDir d fs = (d </>) `map` fs
-
 zipMapM :: Monad m => (a -> m c) -> [a] -> m [(a,c)]
-zipMapM f as = mapM (\a -> liftM (a,) $ f a) as
+zipMapM f as = mapM (\a -> liftM ((,) a) $ f a) as
 
 -- | @parents dir@. Returns all parent directories of @dir@ including @dir@.
 --
@@ -169,24 +220,29 @@ setupConfigFile crdl = cradleRootDir crdl </> setupConfigPath
 
 -- | Path to 'LocalBuildInfo' file, usually @dist/setup-config@
 setupConfigPath :: FilePath
-setupConfigPath = localBuildInfoFile defaultDistPref
+setupConfigPath = "dist/setup-config" -- localBuildInfoFile defaultDistPref
 
 ghcSandboxPkgDbDir :: String
 ghcSandboxPkgDbDir =
-   targetPlatform ++ "-ghc-" ++ cProjectVersion ++ "-packages.conf.d"
-  where
-    targetPlatform = display buildPlatform
+   cabalBuildPlatform ++ "-ghc-" ++ cProjectVersion ++ "-packages.conf.d"
+
+cabalBuildPlatform :: String
+cabalBuildPlatform = dropWhileEnd isSpace $ unsafePerformIO $
+    readLibExecProcess' "cabal-helper-wrapper" ["print-build-platform"]
 
 packageCache :: String
 packageCache = "package.cache"
 
--- | Filename of the show'ed Cabal setup-config cache
-prettyConfigCache :: FilePath
-prettyConfigCache = setupConfigPath <.> "ghc-mod-0.pretty-cabal-cache"
+cabalHelperCache :: [String] -> Cached [String] [Maybe GmCabalHelperResponse]
+cabalHelperCache cmds = Cached {
+    inputFiles = [setupConfigPath],
+    inputData  = cmds,
+    cacheFile  = setupConfigPath <.> "ghc-mod.cabal-helper"
+  }
 
 -- | Filename of the symbol table cache file.
 symbolCache :: Cradle -> FilePath
 symbolCache crdl = cradleTempDir crdl </> symbolCacheFile
 
 symbolCacheFile :: String
-symbolCacheFile = "ghc-mod-0.symbol-cache"
+symbolCacheFile = "ghc-mod.symbol-cache"

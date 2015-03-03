@@ -9,8 +9,7 @@ import Control.Applicative ((<$>))
 import Language.Haskell.GhcMod.DynFlags
 import qualified Language.Haskell.GhcMod.Gap as Gap
 import Language.Haskell.GhcMod.Logger
-import Language.Haskell.GhcMod.Monad (IOish, GhcModT)
-import Language.Haskell.GhcMod.Target (setTargetFiles)
+import Language.Haskell.GhcMod.Monad
 
 ----------------------------------------------------------------
 
@@ -29,15 +28,12 @@ checkSyntax files = either id id <$> check files
 check :: IOish m
       => [FilePath]  -- ^ The target files.
       -> GhcModT m (Either String String)
-{-
-check fileNames = overrideGhcUserOptions $ \ghcOpts -> do
-  withLogger (setAllWarningFlags . setNoMaxRelevantBindings . Gap.setWarnTypedHoles . Gap.setDeferTypeErrors) $ do
-    _ <- G.setSessionDynFlags =<< addCmdOpts ghcOpts =<< G.getSessionDynFlags
-    setTargetFiles fileNames
--}
-check fileNames =
-  withLogger (setAllWarningFlags . setNoMaxRelevantBindings) $
-    setTargetFiles fileNames
+check files =
+    runGmLoadedTWith
+      (map Left files)
+      return
+      ((fmap fst <$>) . withLogger (setAllWarningFlags . setNoMaxRelevantBindings))
+      (return ())
 
 ----------------------------------------------------------------
 
@@ -51,8 +47,10 @@ expandTemplate files = either id id <$> expand files
 ----------------------------------------------------------------
 
 -- | Expanding Haskell Template.
-expand :: IOish m
-       => [FilePath]  -- ^ The target files.
-       -> GhcModT m (Either String String)
-expand fileNames = withLogger (Gap.setDumpSplices . setNoWarningFlags) $
-    setTargetFiles fileNames
+expand :: IOish m => [FilePath] -> GhcModT m (Either String String)
+expand files =
+    runGmLoadedTWith
+      (map Left files)
+      return
+      ((fmap fst <$>) . withLogger (Gap.setDumpSplices . setNoWarningFlags))
+      (return ())

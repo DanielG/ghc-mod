@@ -16,13 +16,45 @@
 
 {-# LANGUAGE CPP, GeneralizedNewtypeDeriving, FlexibleInstances #-}
 {-# LANGUAGE FlexibleContexts, MultiParamTypeClasses, RankNTypes #-}
-{-# LANGUAGE TypeFamilies, UndecidableInstances, RecordWildCards #-}
-{-# LANGUAGE ScopedTypeVariables, BangPatterns #-}
+{-# LANGUAGE TypeFamilies, UndecidableInstances, BangPatterns #-}
+{-# LANGUAGE StandaloneDeriving, InstanceSigs #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
-module Language.Haskell.GhcMod.Monad.Types where
+module Language.Haskell.GhcMod.Monad.Types (
+  -- * Monad Types
+    GhcModT(..)
+  , GmLoadedT(..)
+  , LightGhc(..)
+  , GmGhc
+  , IOish
+  -- ** Environment, state and logging
+  , GhcModEnv(..)
+  , GhcModState(..)
+  , defaultGhcModState
+  , GmGhcSession(..)
+  , GmComponent(..)
+  , CompilerMode(..)
+  -- ** Accessing 'GhcModEnv', 'GhcModState' and 'GhcModLog'
+  , GmLogLevel(..)
+  , GhcModLog(..)
+  , GhcModError(..)
+  , GmEnv(..)
+  , GmState(..)
+  , GmLog(..)
+  , cradle
+  , options
+  , withOptions
+  , getCompilerMode
+  , setCompilerMode
+  -- ** Re-exporting convenient stuff
+  , MonadIO
+  , liftIO
+  ) where
 
-
+-- MonadUtils of GHC 7.6 or earlier defines its own MonadIO.
+-- RWST does not automatically become an instance of MonadIO.
+-- MonadUtils of GHC 7.8 or later imports MonadIO in Monad.Control.IO.Class.
+-- So, RWST automatically becomes an instance of
 #if __GLASGOW_HASKELL__ < 708
 -- 'CoreMonad.MonadIO' and 'Control.Monad.IO.Class.MonadIO' are different
 -- classes before ghc 7.8
@@ -33,37 +65,28 @@ module Language.Haskell.GhcMod.Monad.Types where
 #endif
 
 import Language.Haskell.GhcMod.Types
-import Language.Haskell.GhcMod.Error
 
 import GHC
 import DynFlags
-import GhcMonad hiding (withTempSession)
-#if __GLASGOW_HASKELL__ <= 702
+import Exception
 import HscTypes
-#endif
 
--- MonadUtils of GHC 7.6 or earlier defines its own MonadIO.
--- RWST does not automatically become an instance of MonadIO.
--- MonadUtils of GHC 7.8 or later imports MonadIO in Monad.Control.IO.Class.
--- So, RWST automatically becomes an instance of MonadIO.
-import MonadUtils
+import Control.Applicative (Applicative, Alternative, (<$>))
+import Control.Monad
 
-import Control.Applicative (Alternative)
-import Control.Monad (MonadPlus)
-import Control.Monad.Error (ErrorT)
-import Control.Monad.Reader (ReaderT)
-import Control.Monad.State.Strict (StateT)
+import Control.Monad.Reader (ReaderT(..))
+import Control.Monad.Error (ErrorT(..), MonadError(..))
+import Control.Monad.State.Strict (StateT(..))
 import Control.Monad.Trans.Journal (JournalT)
 
-import Control.Monad.Base (MonadBase, liftBase)
-import Control.Monad.Trans.Control (MonadBaseControl(..), StM, liftBaseWith,
-  control, liftBaseOp, liftBaseOp_)
+import Control.Monad.Base (MonadBase(..), liftBase)
+import Control.Monad.Trans.Control
 
-import Control.Monad.Trans.Class
 import Control.Monad.Reader.Class
-import Control.Monad.Writer.Class (MonadWriter)
+import Control.Monad.Writer.Class
 import Control.Monad.State.Class (MonadState(..))
 import Control.Monad.Journal.Class (MonadJournal(..))
+import Control.Monad.Trans.Class (MonadTrans(..))
 
 #ifdef MONADIO_INSTANCES
 import Control.Monad.Trans.Maybe (MaybeT)
@@ -71,40 +94,48 @@ import Control.Monad.Error (Error(..))
 #endif
 
 #if DIFFERENT_MONADIO
-import Control.Monad.Trans.Class (lift)
 import qualified Control.Monad.IO.Class
 import Data.Monoid (Monoid)
 #endif
 
-#if !MIN_VERSION_monad_control(1,0,0)
-import Control.Monad (liftM)
-#endif
-
+import Data.Set (Set)
+import Data.Map (Map, empty)
+import Data.Maybe
 import Data.Monoid
 import Data.IORef
 
+import MonadUtils (MonadIO(..))
+
 data GhcModEnv = GhcModEnv {
-      gmGhcSession :: !(IORef HscEnv)
-    , gmOptions    :: Options
+      gmOptions    :: Options
     , gmCradle     :: Cradle
     }
 
 data GhcModLog = GhcModLog {
-      gmLogMessages :: [String]
+      gmLogLevel    :: Maybe GmLogLevel,
+      gmLogMessages :: [(GmLogLevel, String, String)]
     } deriving (Eq, Show, Read)
 
 instance Monoid GhcModLog where
-    mempty = GhcModLog mempty
-    GhcModLog a `mappend` GhcModLog b = GhcModLog (a `mappend` b)
+    mempty = GhcModLog (Just GmPanic) mempty
+    GhcModLog ml a `mappend` GhcModLog ml' b =
+        GhcModLog (ml' `mplus` ml) (a `mappend` b)
+
+data GmGhcSession = GmGhcSession {
+      gmgsOptions :: ![GHCOption],
+      gmgsSession :: !(IORef HscEnv)
+    }
 
 data GhcModState = GhcModState {
-      gmCompilerMode :: CompilerMode
-    } deriving (Eq,Show,Read)
+      gmGhcSession   :: !(Maybe GmGhcSession)
+    , gmComponents   :: !(Map GmComponentName (GmComponent (Set ModulePath)))
+    , gmCompilerMode :: !CompilerMode
+    }
+
+defaultGhcModState :: GhcModState
+defaultGhcModState = GhcModState Nothing empty Simple
 
 data CompilerMode = Simple | Intelligent deriving (Eq,Show,Read)
-
-defaultState :: GhcModState
-defaultState = GhcModState Simple
 
 ----------------------------------------------------------------
 
@@ -130,45 +161,129 @@ newtype GhcModT m a = GhcModT {
 #if DIFFERENT_MONADIO
                , Control.Monad.IO.Class.MonadIO
 #endif
-               , MonadReader GhcModEnv -- TODO: make MonadReader instance
-                                       -- pass-through like MonadState
-               , MonadWriter w
                , MonadError GhcModError
                )
 
+newtype GmLoadedT m a = GmLoadedT { unGmLoadedT :: GhcModT m a }
+    deriving ( Functor
+             , Applicative
+             , Alternative
+             , Monad
+             , MonadPlus
+             , MonadTrans
+             , MonadIO
+#if DIFFERENT_MONADIO
+             , Control.Monad.IO.Class.MonadIO
+#endif
+             , MonadError GhcModError
+             , GmEnv
+             , GmState
+             , GmLog
+             )
+
+newtype LightGhc a = LightGhc { unLightGhc :: ReaderT (IORef HscEnv) IO a }
+    deriving ( Functor
+             , Applicative
+             , Monad
+             , MonadIO
+#if DIFFERENT_MONADIO
+             , Control.Monad.IO.Class.MonadIO
+#endif
+             )
+
+
+class Monad m => GmEnv m where
+    gmeAsk :: m GhcModEnv
+    gmeAsk = gmeReader id
+
+    gmeReader :: (GhcModEnv -> a) -> m a
+    gmeReader f = f `liftM` gmeAsk
+
+    gmeLocal :: (GhcModEnv -> GhcModEnv) -> m a -> m a
+    {-# MINIMAL (gmeAsk | gmeReader), gmeLocal #-}
+
+instance Monad m => GmEnv (GhcModT m) where
+    gmeAsk = GhcModT ask
+    gmeReader = GhcModT . reader
+    gmeLocal f a = GhcModT $ local f (unGhcModT a)
+
+instance GmEnv m => GmEnv (StateT s m) where
+    gmeAsk = lift gmeAsk
+    gmeReader = lift . gmeReader
+    gmeLocal f (StateT a) = StateT $ \s -> gmeLocal f (a s)
+
+class Monad m => GmState m where
+    gmsGet :: m GhcModState
+    gmsGet = gmsState (\s -> (s, s))
+
+    gmsPut :: GhcModState -> m ()
+    gmsPut s = gmsState (\_ -> ((), s))
+
+    gmsState :: (GhcModState -> (a, GhcModState)) -> m a
+    gmsState f = do
+      s <- gmsGet
+      let ~(a, s') = f s
+      gmsPut s'
+      return a
+    {-# MINIMAL gmsState | gmsGet, gmsPut #-}
+
+instance Monad m => GmState (StateT GhcModState m) where
+    gmsGet = get
+    gmsPut = put
+    gmsState = state
+
+instance Monad m => GmState (GhcModT m) where
+    gmsGet = GhcModT get
+    gmsPut = GhcModT . put
+    gmsState = GhcModT . state
+
+class Monad m => GmLog m where
+    gmlJournal :: GhcModLog -> m ()
+    gmlHistory :: m GhcModLog
+    gmlClear   :: m ()
+
+instance Monad m => GmLog (JournalT GhcModLog m) where
+    gmlJournal = journal
+    gmlHistory = history
+    gmlClear   = clear
+
+instance Monad m => GmLog (GhcModT m) where
+    gmlJournal = GhcModT . lift . lift . journal
+    gmlHistory = GhcModT $ lift $ lift history
+    gmlClear   = GhcModT $ lift $ lift clear
+
+instance (Monad m, GmLog m) => GmLog (ReaderT r m) where
+    gmlJournal = lift . gmlJournal
+    gmlHistory = lift gmlHistory
+    gmlClear = lift  gmlClear
+
+instance (Monad m, GmLog m) => GmLog (StateT s m) where
+    gmlJournal = lift . gmlJournal
+    gmlHistory = lift gmlHistory
+    gmlClear = lift gmlClear
+
 instance MonadIO m => MonadIO (GhcModT m) where
-    liftIO action = do
-      res <- GhcModT . liftIO . liftIO . liftIO . liftIO $ try action
-      case res of
-        Right a -> return a
+    liftIO action = GhcModT $ liftIO action
 
-        Left e | isIOError e ->
-                   throwError $ GMEIOException (fromEx e :: IOError)
-        Left e | isGhcModError e ->
-                   throwError $ (fromEx e :: GhcModError)
-        Left e -> throw e
-
-     where
-       fromEx :: Exception e => SomeException -> e
-       fromEx se = let Just e = fromException se in e
-
-       isIOError se =
-           case fromException se of
-             Just (_ :: IOError) -> True
-             Nothing -> False
-
-       isGhcModError se =
-           case fromException se of
-             Just (_ :: GhcModError) -> True
-             Nothing -> False
-
-instance (Monad m) => MonadJournal GhcModLog (GhcModT m) where
+instance Monad m => MonadJournal GhcModLog (GhcModT m) where
   journal !w = GhcModT $ lift $ lift $ (journal w)
   history    = GhcModT $ lift $ lift $ history
   clear      = GhcModT $ lift $ lift $ clear
 
 instance MonadTrans GhcModT where
     lift = GhcModT . lift . lift . lift . lift
+
+instance forall r m. MonadReader r m => MonadReader r (GhcModT m) where
+    local f ma = gmLiftWithInner (\run -> local f (run ma))
+    ask = gmLiftInner ask
+
+instance (Monoid w, MonadWriter w m) => MonadWriter w (GhcModT m) where
+    tell = gmLiftInner . tell
+    listen ma =
+      liftWith (\run -> listen (run ma)) >>= \(sta, w) ->
+          flip (,) w `liftM` restoreT (return sta)
+
+    pass maww = maww >>= gmLiftInner . pass . return
 
 instance MonadState s m => MonadState s (GhcModT m) where
     get = GhcModT $ lift $ lift $ lift get
@@ -192,11 +307,23 @@ instance MonadIO m => MonadIO (MaybeT m) where
     liftIO = lift . liftIO
 #endif
 
+instance (MonadBaseControl IO m) => MonadBase IO (GmLoadedT m) where
+    liftBase = GmLoadedT . liftBase
+
+instance (MonadBaseControl IO m) => MonadBaseControl IO (GmLoadedT m) where
+    type StM (GmLoadedT m) a = StM (GhcModT m) a
+    liftBaseWith = defaultLiftBaseWith
+    restoreM = defaultRestoreM
+    {-# INLINE liftBaseWith #-}
+    {-# INLINE restoreM #-}
+
+instance MonadTransControl GmLoadedT where
+    type StT GmLoadedT a = StT GhcModT a
+    liftWith = defaultLiftWith GmLoadedT unGmLoadedT
+    restoreT = defaultRestoreT GmLoadedT
 
 instance (MonadBaseControl IO m) => MonadBase IO (GhcModT m) where
     liftBase = GhcModT . liftBase
-
-#if MIN_VERSION_monad_control(1,0,0)
 
 instance (MonadBaseControl IO m) => MonadBaseControl IO (GhcModT m) where
     type StM (GhcModT m) a =
@@ -211,94 +338,109 @@ instance (MonadBaseControl IO m) => MonadBaseControl IO (GhcModT m) where
     {-# INLINE liftBaseWith #-}
     {-# INLINE restoreM #-}
 
-#else
+instance MonadTransControl GhcModT where
+    type StT GhcModT a = (Either GhcModError (a, GhcModState), GhcModLog)
 
-instance (MonadBaseControl IO m) => MonadBaseControl IO (GhcModT m) where
-    newtype StM (GhcModT m) a = StGhcMod {
-          unStGhcMod :: StM (StateT GhcModState
-                              (ErrorT GhcModError
-                                (JournalT GhcModLog
-                                  (ReaderT GhcModEnv m) ) ) ) a }
-    liftBaseWith f = GhcModT . liftBaseWith $ \runInBase ->
-        f $ liftM StGhcMod . runInBase . unGhcModT
+    liftWith f = GhcModT $
+      liftWith $ \runS ->
+        liftWith $ \runE ->
+          liftWith $ \runJ ->
+            liftWith $ \runR ->
+              f $ \ma -> runR $ runJ $ runE $ runS $ unGhcModT ma
+    restoreT = GhcModT . restoreT . restoreT . restoreT . restoreT
+    {-# INLINE liftWith #-}
+    {-# INLINE restoreT #-}
 
-    restoreM = GhcModT . restoreM . unStGhcMod
-    {-# INLINE liftBaseWith #-}
-    {-# INLINE restoreM #-}
+gmLiftInner :: Monad m => m a -> GhcModT m a
+gmLiftInner = GhcModT . lift . lift . lift . lift
 
-#endif
+gmLiftWithInner :: (MonadTransControl t, Monad m, Monad (t m))
+                => (Run t -> m (StT t a)) -> t m a
+gmLiftWithInner f = liftWith f >>= restoreT . return
 
 -- GHC cannot prove the following instances to be decidable automatically using
 -- the FlexibleContexts extension as they violate the second Paterson Condition,
 -- namely that: The assertion has fewer constructors and variables (taken
 -- together and counting repetitions) than the head. Specifically the
--- @MonadBaseControl IO m@ constraint is causing this violation.
---
--- Proof of termination:
---
--- Assuming all constraints containing the variable `m' exist and are decidable
--- we show termination by manually replacing the current set of constraints with
--- their own set of constraints and show that this, after a finite number of
--- steps, results in the empty set, i.e. not having to check any more
--- constraints.
---
--- We start by setting the constraints to be those immediate constraints of the
--- instance declaration which cannot be proven decidable automatically for the
--- type under consideration.
---
--- @
--- { MonadBaseControl IO m }
--- @
---
--- Classes used:
---
--- * @class MonadBase b m => MonadBaseControl b m@
---
--- @
--- { MonadBase IO m }
--- @
---
--- Classes used:
---
--- * @class (Applicative b, Applicative m, Monad b, Monad m) => MonadBase b m@
---
--- @
--- { Applicative IO, Applicative m, Monad IO, Monad m }
--- @
---
--- Classes used:
---
--- * @class Monad m@
--- * @class Applicative f => Functor f@
---
--- @
--- { Functor m }
--- @
---
--- Classes used:
---
--- * @class Functor f@
---
--- @
--- { }
--- @
--- ∎
+-- @MonadBaseControl IO m@ constraint in 'IOish' is causing this violation.
 
-instance (Functor m, MonadIO m, MonadBaseControl IO m)
-      => GhcMonad (GhcModT m) where
-    getSession = (liftIO . readIORef) . gmGhcSession =<< ask
-    setSession a = (liftIO . flip writeIORef a) . gmGhcSession =<< ask
+type GmGhc m = (IOish m, GhcMonad m)
+
+instance (MonadIO m, MonadBaseControl IO m) => GhcMonad (GmLoadedT m) where
+    getSession = do
+        ref <- gmgsSession . fromJust . gmGhcSession <$> gmsGet
+        liftIO $ readIORef ref
+    setSession a = do
+        ref <- gmgsSession . fromJust . gmGhcSession <$> gmsGet
+        liftIO $ flip writeIORef a ref
+
+instance GhcMonad LightGhc where
+    getSession = (liftIO . readIORef) =<< LightGhc ask
+    setSession a = (liftIO . flip writeIORef a) =<< LightGhc ask
 
 #if __GLASGOW_HASKELL__ >= 706
-instance (Functor m, MonadIO m, MonadBaseControl IO m)
-      => HasDynFlags (GhcModT m) where
-    getDynFlags = getSessionDynFlags
+instance (MonadIO m, MonadBaseControl IO m) => HasDynFlags (GmLoadedT m) where
+    getDynFlags = hsc_dflags <$> getSession
+
+instance HasDynFlags LightGhc where
+    getDynFlags = hsc_dflags <$> getSession
 #endif
 
-instance (MonadIO m, MonadBaseControl IO m)
-      => ExceptionMonad (GhcModT m) where
+instance (MonadIO m, MonadBaseControl IO m) => ExceptionMonad (GhcModT m) where
     gcatch act handler = control $ \run ->
         run act `gcatch` (run . handler)
 
     gmask = liftBaseOp gmask . liftRestore
      where liftRestore f r = f $ liftBaseOp_ r
+
+instance (MonadIO m, MonadBaseControl IO m) => ExceptionMonad (GmLoadedT m) where
+    gcatch act handler = control $ \run ->
+        run act `gcatch` (run . handler)
+
+    gmask = liftBaseOp gmask . liftRestore
+     where liftRestore f r = f $ liftBaseOp_ r
+
+instance ExceptionMonad LightGhc where
+  gcatch act handl =
+      LightGhc $ unLightGhc act `gcatch` \e -> unLightGhc (handl e)
+  gmask f =
+      LightGhc $ gmask $ \io_restore ->let
+          g_restore (LightGhc m) = LightGhc $ io_restore m
+      in
+        unLightGhc (f g_restore)
+
+
+instance (MonadIO m, MonadBaseControl IO m) => ExceptionMonad (StateT s m) where
+    gcatch act handler = control $ \run ->
+        run act `gcatch` (run . handler)
+
+    gmask = liftBaseOp gmask . liftRestore
+     where liftRestore f r = f $ liftBaseOp_ r
+
+instance (MonadIO m, MonadBaseControl IO m) => ExceptionMonad (ReaderT s m) where
+    gcatch act handler = control $ \run ->
+        run act `gcatch` (run . handler)
+
+    gmask = liftBaseOp gmask . liftRestore
+     where liftRestore f r = f $ liftBaseOp_ r
+
+----------------------------------------------------------------
+
+options :: GmEnv m => m Options
+options = gmOptions `liftM` gmeAsk
+
+cradle :: GmEnv m => m Cradle
+cradle = gmCradle `liftM` gmeAsk
+
+getCompilerMode :: GmState m => m CompilerMode
+getCompilerMode = gmCompilerMode `liftM` gmsGet
+
+setCompilerMode :: GmState m => CompilerMode -> m ()
+setCompilerMode mode = (\s -> gmsPut s { gmCompilerMode = mode } ) =<< gmsGet
+
+withOptions :: GmEnv m => (Options -> Options) -> m a -> m a
+withOptions changeOpt action = gmeLocal changeEnv action
+  where
+    changeEnv e = e { gmOptions = changeOpt opt }
+      where
+        opt = gmOptions e

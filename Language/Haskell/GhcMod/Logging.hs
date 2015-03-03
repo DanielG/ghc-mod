@@ -1,4 +1,3 @@
-module Language.Haskell.GhcMod.Logging where
 -- ghc-mod: Making Haskell development *more* fun
 -- Copyright (C) 2015  Daniel Gröber <dxld ÄT darkboxed DOT org>
 --
@@ -15,22 +14,45 @@ module Language.Haskell.GhcMod.Logging where
 -- You should have received a copy of the GNU Affero General Public License
 -- along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-import Language.Haskell.GhcMod.Types
-import Language.Haskell.GhcMod.Monad.Types
+module Language.Haskell.GhcMod.Logging (
+    module Language.Haskell.GhcMod.Logging
+  , module Language.Haskell.GhcMod.Pretty
+  , GmLogLevel(..)
+  , module Text.PrettyPrint
+  , module Data.Monoid
+  ) where
 
-import Control.Monad.Journal.Class
-import Control.Monad.Trans.Class
+import Control.Monad
+import Data.Monoid (mempty, mappend, mconcat, (<>))
 import System.IO
+import Text.PrettyPrint hiding (style, (<>))
 
-import MonadUtils
+import Language.Haskell.GhcMod.Monad.Types
+import Language.Haskell.GhcMod.Pretty
 
---gmSink :: IOish m => (GhcModLog -> IO ()) -> GhcModT m ()
---gmSink = GhcModT . (lift . lift . sink)
+gmSetLogLevel :: GmLog m => GmLogLevel -> m ()
+gmSetLogLevel level =
+    gmlJournal $ GhcModLog (Just level) []
 
-type GmLog m = MonadJournal GhcModLog m
+increaseLogLevel :: GmLogLevel -> GmLogLevel
+increaseLogLevel l | l == maxBound = l
+increaseLogLevel l = succ l
 
-gmJournal :: IOish m => GhcModLog -> GhcModT m ()
-gmJournal = GhcModT . lift . lift . journal
+-- |
+-- >>> Just GmDebug <= Nothing
+-- False
+-- >>> Just GmException <= Just GmDebug
+-- True
+-- >>> Just GmDebug <= Just GmException
+-- False
+gmLog :: (MonadIO m, GmLog m) => GmLogLevel -> String -> Doc -> m ()
+gmLog level loc' doc = do
+  GhcModLog { gmLogLevel = level' } <- gmlHistory
 
-gmLog :: (MonadIO m, MonadJournal GhcModLog m) => String -> m ()
-gmLog str = liftIO (hPutStrLn stderr str) >> (journal $ GhcModLog [str])
+  let loc | loc' == "" = empty
+          | otherwise = text (head $ lines loc') <> colon
+      msg = gmRenderDoc $ gmLogLevelDoc level <+> loc <+> doc
+
+  when (Just level <= level') $
+       liftIO $ hPutStrLn stderr msg
+  gmlJournal (GhcModLog Nothing [(level, render loc, msg)])

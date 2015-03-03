@@ -8,17 +8,24 @@ import Data.List (find, intercalate)
 import Data.Maybe (isJust)
 import qualified Data.Text as T
 import qualified Data.Text.IO as T (readFile)
+import System.FilePath
+
 import qualified DataCon as Ty
-import Exception (ghandle, SomeException(..))
 import GHC (GhcMonad, LPat, Id, ParsedModule(..), TypecheckedModule(..), DynFlags, SrcSpan, Type, GenLocated(L))
 import qualified GHC as G
-import Language.Haskell.GhcMod.Convert
-import qualified Language.Haskell.GhcMod.Gap as Gap
-import Language.Haskell.GhcMod.Monad
-import Language.Haskell.GhcMod.SrcUtils
 import Outputable (PprStyle)
 import qualified TyCon as Ty
 import qualified Type as Ty
+import Exception
+
+import Language.Haskell.GhcMod.Convert
+import Language.Haskell.GhcMod.DynFlags
+import qualified Language.Haskell.GhcMod.Gap as Gap
+import Language.Haskell.GhcMod.Monad
+import Language.Haskell.GhcMod.SrcUtils
+import Language.Haskell.GhcMod.Doc
+import Language.Haskell.GhcMod.Logging
+import Language.Haskell.GhcMod.Types
 
 ----------------------------------------------------------------
 -- CASE SPLITTING
@@ -38,23 +45,29 @@ splits :: IOish m
        -> Int          -- ^ Line number.
        -> Int          -- ^ Column number.
        -> GhcModT m String
-splits file lineNo colNo = ghandle handler body
-  where
-    body = inModuleContext file $ \dflag style -> do
-        opt <- options
-        modSum <- Gap.fileModSummary file
-        whenFound' opt (getSrcSpanTypeForSplit modSum lineNo colNo) $ \x -> case x of
-          (SplitInfo varName bndLoc (varLoc,varT) _matches) -> do
-             let varName' = showName dflag style varName  -- Convert name to string
-             text <- genCaseSplitTextFile file (SplitToTextInfo varName' bndLoc varLoc $
-                                                getTyCons dflag style varName varT)
-             return (fourInts bndLoc, text)
-          (TySplitInfo varName bndLoc (varLoc,varT)) -> do
-             let varName' = showName dflag style varName  -- Convert name to string
-             text <- genCaseSplitTextFile file (SplitToTextInfo varName' bndLoc varLoc $
-                                                getTyCons dflag style varName varT)
-             return (fourInts bndLoc, text)
-    handler (SomeException _) = emptyResult =<< options
+splits file lineNo colNo =
+  runGmLoadedT' [Left file] deferErrors $ ghandle handler $ do
+      opt <- options
+      crdl <- cradle
+      style <- getStyle
+      dflag <- G.getSessionDynFlags
+      modSum <- Gap.fileModSummary (cradleCurrentDir crdl </> file)
+      whenFound' opt (getSrcSpanTypeForSplit modSum lineNo colNo) $ \x -> case x of
+        (SplitInfo varName bndLoc (varLoc,varT) _matches) -> do
+          let varName' = showName dflag style varName  -- Convert name to string
+          t <- genCaseSplitTextFile file (SplitToTextInfo varName' bndLoc varLoc $
+                                             getTyCons dflag style varName varT)
+          return (fourInts bndLoc, t)
+        (TySplitInfo varName bndLoc (varLoc,varT)) -> do
+          let varName' = showName dflag style varName  -- Convert name to string
+          t <- genCaseSplitTextFile file (SplitToTextInfo varName' bndLoc varLoc $
+                                             getTyCons dflag style varName varT)
+          return (fourInts bndLoc, t)
+ where
+   handler (SomeException ex) = do
+     gmLog GmDebug "splits" $
+           text "" $$ nest 4 (showDoc ex)
+     emptyResult =<< options
 
 ----------------------------------------------------------------
 -- a. Code for getting the information of the variable
@@ -180,13 +193,13 @@ showFieldNames dflag style v (x:xs) = let fName = showName dflag style x
 
 genCaseSplitTextFile :: GhcMonad m => FilePath -> SplitToTextInfo -> m String
 genCaseSplitTextFile file info = liftIO $ do
-  text <- T.readFile file
-  return $ getCaseSplitText (T.lines text) info
+  t <- T.readFile file
+  return $ getCaseSplitText (T.lines t) info
 
 getCaseSplitText :: [T.Text] -> SplitToTextInfo -> String
-getCaseSplitText text (SplitToTextInfo { sVarName = sVN, sBindingSpan = sBS
+getCaseSplitText t (SplitToTextInfo { sVarName = sVN, sBindingSpan = sBS
                                        , sVarSpan = sVS, sTycons = sT })  =
-  let bindingText = getBindingText text sBS
+  let bindingText = getBindingText t sBS
       difference  = srcSpanDifference sBS sVS
       replaced    = map (replaceVarWithTyCon bindingText difference sVN) sT
       -- The newly generated bindings need to be indented to align with the
@@ -195,9 +208,9 @@ getCaseSplitText text (SplitToTextInfo { sVarName = sVN, sBindingSpan = sBS
    in T.unpack $ T.intercalate (T.pack "\n") (concat replaced')
 
 getBindingText :: [T.Text] -> SrcSpan -> [T.Text]
-getBindingText text srcSpan =
+getBindingText t srcSpan =
   let Just (sl,sc,el,ec) = Gap.getSrcSpan srcSpan
-      lines_ = drop (sl - 1) $ take el text
+      lines_ = drop (sl - 1) $ take el t
    in if sl == el
       then -- only one line
            [T.drop (sc - 1) $ T.take ec $ head lines_]
@@ -212,7 +225,7 @@ srcSpanDifference b v =
    in (vsl - bsl, vsc - bsc, vel - bsl, vec - bsc) -- assume variable in one line
 
 replaceVarWithTyCon :: [T.Text] -> (Int,Int,Int,Int) -> String -> String -> [T.Text]
-replaceVarWithTyCon text (vsl,vsc,_,vec) varname tycon =
+replaceVarWithTyCon t (vsl,vsc,_,vec) varname tycon =
   let tycon'      = if ' ' `elem` tycon || ':' `elem` tycon then "(" ++ tycon ++ ")" else tycon
       lengthDiff  = length tycon' - length varname
       tycon''     = T.pack $ if lengthDiff < 0 then tycon' ++ replicate (-lengthDiff) ' ' else tycon'
@@ -222,7 +235,7 @@ replaceVarWithTyCon text (vsl,vsc,_,vec) varname tycon =
                           else if n == vsl
                                then T.take vsc line `T.append` tycon'' `T.append` T.drop vec line
                                else T.replicate spacesToAdd (T.pack " ") `T.append` line)
-              [0 ..] text
+              [0 ..] t
 
 indentBindingTo :: SrcSpan -> [T.Text] -> [T.Text]
 indentBindingTo bndLoc binds =

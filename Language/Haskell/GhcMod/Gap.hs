@@ -13,7 +13,6 @@ module Language.Haskell.GhcMod.Gap (
   , showSeverityCaption
   , setCabalPkg
   , setHideAllPackages
-  , addPackageFlags
   , setDeferTypeErrors
   , setWarnTypedHoles
   , setDumpSplices
@@ -33,16 +32,10 @@ module Language.Haskell.GhcMod.Gap (
   , fileModSummary
   , WarnFlags
   , emptyWarnFlags
-  , benchmarkBuildInfo
-  , benchmarkTargets
-  , toModuleString
   , GLMatch
   , GLMatchI
   , getClass
   , occName
-  , setFlags
-  , ghcVersion
-  , mkGHCCompilerId
   , listVisibleModuleNames
   , listVisibleModules
   , Language.Haskell.GhcMod.Gap.isSynTyCon
@@ -51,19 +44,18 @@ module Language.Haskell.GhcMod.Gap (
 import Control.Applicative hiding (empty)
 import Control.Monad (filterM)
 import CoreSyn (CoreExpr)
-import Data.Version (parseVersion)
 import Data.List (intersperse)
 import Data.Maybe (catMaybes)
 import Data.Time.Clock (UTCTime)
+import Data.Traversable (traverse)
 import DataCon (dataConRepType)
 import Desugar (deSugarExpr)
 import DynFlags
 import ErrUtils
+import Exception
 import FastString
 import GhcMonad
 import HscTypes
-import Language.Haskell.GhcMod.GHCChoice
-import Language.Haskell.GhcMod.Types
 import NameSet
 import OccName
 import Outputable
@@ -71,11 +63,8 @@ import PprTyThing
 import StringBuffer
 import TcType
 import Var (varType)
-import Config (cProjectVersion)
+import System.Directory
 
-import Text.ParserCombinators.ReadP (readP_to_S)
-
-import qualified Distribution.PackageDescription as P
 import qualified InstEnv
 import qualified Pretty
 import qualified StringBuffer as SB
@@ -97,13 +86,6 @@ import Data.Convertible
 import RdrName (rdrNameOcc)
 #endif
 
-import Distribution.Version
-import Distribution.Simple.Compiler (CompilerId(..), CompilerFlavor(..))
-#if __GLASGOW_HASKELL__ >= 710
-import Distribution.Simple.Compiler (CompilerInfo(..), AbiTag(..))
-import Packages (listVisibleModuleNames, lookupModuleInAllPackages)
-#endif
-
 #if __GLASGOW_HASKELL__ < 710
 import UniqFM (eltsUFM)
 import Packages (exposedModules, exposed, pkgIdMap)
@@ -112,7 +94,6 @@ import PackageConfig (PackageConfig, packageConfigId)
 
 #if __GLASGOW_HASKELL__ >= 704
 import qualified Data.IntSet as I (IntSet, empty)
-import qualified Distribution.ModuleName as M (ModuleName,toFilePath)
 #endif
 
 ----------------------------------------------------------------
@@ -213,9 +194,11 @@ fOptions = [option | (option,_,_,_) <- fFlags]
 ----------------------------------------------------------------
 
 fileModSummary :: GhcMonad m => FilePath -> m ModSummary
-fileModSummary file = do
+fileModSummary file' = do
     mss <- getModuleGraph
-    let [ms] = filter (\m -> ml_hs_file (ms_location m) == Just file) mss
+    file <- liftIO $ canonicalizePath file'
+    [ms] <- liftIO $ flip filterM mss $ \m ->
+        (Just file==) <$> canonicalizePath `traverse` ml_hs_file (ms_location m)
     return ms
 
 withContext :: GhcMonad m => m a -> m a
@@ -228,25 +211,30 @@ withContext action = gbracket setup teardown body
         action
     topImports = do
         mss <- getModuleGraph
-        ms <- map modName <$> filterM isTop mss
+        mns <- map modName <$> filterM isTop mss
+        let ii = map IIModule mns
 #if __GLASGOW_HASKELL__ >= 704
-        return ms
+        return ii
 #else
-        return (ms,[])
+        return (ii,[])
 #endif
     isTop mos = lookupMod mos ||> returnFalse
     lookupMod mos = lookupModule (ms_mod_name mos) Nothing >> return True
     returnFalse = return False
 #if __GLASGOW_HASKELL__ >= 706
-    modName = IIModule . moduleName . ms_mod
+    modName = moduleName . ms_mod
     setCtx = setContext
 #elif __GLASGOW_HASKELL__ >= 704
-    modName = IIModule . ms_mod
+    modName = ms_mod
     setCtx = setContext
 #else
     modName = ms_mod
     setCtx = uncurry setContext
 #endif
+
+-- | Try the left action, if an IOException occurs try the right action.
+(||>) :: ExceptionMonad m => m a -> m a -> m a
+x ||> y = x `gcatch` (\(_ :: IOException) -> y)
 
 showSeverityCaption :: Severity -> String
 #if __GLASGOW_HASKELL__ >= 706
@@ -273,17 +261,6 @@ setHideAllPackages :: DynFlags -> DynFlags
 setHideAllPackages df = gopt_set df Opt_HideAllPackages
 #else
 setHideAllPackages df = dopt_set df Opt_HideAllPackages
-#endif
-
-addPackageFlags :: [Package] -> DynFlags -> DynFlags
-addPackageFlags pkgs df =
-    df { packageFlags = packageFlags df ++ expose `map` pkgs }
-  where
-#if __GLASGOW_HASKELL__ >= 710
-    expose :: Package -> PackageFlag
-    expose pkg = ExposePackage (PackageIdArg $ showPkgId pkg) (ModRenaming True [])
-#else
-    expose pkg = ExposePackageId $ showPkgId pkg
 #endif
 
 ----------------------------------------------------------------
@@ -444,29 +421,6 @@ emptyWarnFlags = []
 ----------------------------------------------------------------
 ----------------------------------------------------------------
 
-benchmarkBuildInfo :: P.PackageDescription -> [P.BuildInfo]
-#if __GLASGOW_HASKELL__ >= 704
-benchmarkBuildInfo pd = map P.benchmarkBuildInfo $ P.benchmarks pd
-#else
-benchmarkBuildInfo pd = []
-#endif
-
-benchmarkTargets :: P.PackageDescription -> [String]
-#if __GLASGOW_HASKELL__ >= 704
-benchmarkTargets pd = map toModuleString $ concatMap P.benchmarkModules $ P.benchmarks pd
-#else
-benchmarkTargets = []
-#endif
-
-toModuleString :: M.ModuleName -> String
-toModuleString mn = fromFilePath $ M.toFilePath mn
-  where
-    fromFilePath :: FilePath -> String
-    fromFilePath fp = map (\c -> if c=='/' then '.' else c) fp
-
-----------------------------------------------------------------
-----------------------------------------------------------------
-
 #if __GLASGOW_HASKELL__ >= 708
 type GLMatch = LMatch RdrName (LHsExpr RdrName)
 type GLMatchI = LMatch Id (LHsExpr Id)
@@ -501,35 +455,6 @@ occName = rdrNameOcc
 #endif
 
 ----------------------------------------------------------------
-
-setFlags :: DynFlags -> DynFlags
-#if __GLASGOW_HASKELL__ >= 708
-setFlags df = df `gopt_unset` Opt_SpecConstr -- consume memory if -O2
-#else
-setFlags = id
-#endif
-
-----------------------------------------------------------------
-
-ghcVersion :: Version
-ghcVersion =
-    case readP_to_S parseVersion $ cProjectVersion  of
-      [(ver, "")] -> ver
-      _ -> error "parsing ghc version(cProjectVersion) failed."
-
-
-#if __GLASGOW_HASKELL__ >= 710
-mkGHCCompilerId :: Version -> Distribution.Simple.Compiler.CompilerInfo
--- TODO we should probably fill this out properly
-mkGHCCompilerId v =
-    CompilerInfo (CompilerId GHC v) NoAbiTag Nothing Nothing Nothing
-#else
-mkGHCCompilerId :: Version -> CompilerId
-mkGHCCompilerId v = CompilerId GHC v
-#endif
-
-----------------------------------------------------------------
-
 
 #if __GLASGOW_HASKELL__ < 710
 -- Copied from ghc/InteractiveUI.hs
