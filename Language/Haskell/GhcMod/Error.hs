@@ -33,8 +33,6 @@ data GhcModError = GMENoMsg
                  -- ^ No cabal file found.
                  | GMETooManyCabalFiles [FilePath]
                  -- ^ Too many cabal files found.
-                 | GMEInvalidCradleFile
-                 -- ^ Could not parse the cradle file
                    deriving (Eq,Show,Typeable)
 
 instance Exception GhcModError
@@ -63,8 +61,6 @@ gmeDoc e = case e of
     GMETooManyCabalFiles cfs ->
         text $ "Multiple cabal files found. Possible cabal files: \""
                ++ intercalate "\", \"" cfs ++"\"."
-    GMEInvalidCradleFile ->
-        text "Could not parse the cradle file."
 
 modifyError :: MonadError e m => (e -> e) -> m a -> m a
 modifyError f action = action `catchError` \e -> throwError $ f e

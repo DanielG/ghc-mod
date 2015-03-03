@@ -5,7 +5,6 @@ module Language.Haskell.GhcMod.Cradle (
   , cleanupCradle
   ) where
 
-import Language.Haskell.GhcMod.Error
 import Language.Haskell.GhcMod.GhcPkg
 import Language.Haskell.GhcMod.PathsAndFiles
 import Language.Haskell.GhcMod.Types
@@ -36,7 +35,8 @@ customCradle wdir = do
     Just cabalFile <- findCabalFile wdir
     let cabalDir = takeDirectory cabalFile
     Just cradleFile <- findCradleFile cabalDir
-    (pkgDbStack, tmpDir) <- parseCradle cradleFile
+    tmpDir <- newTempDir cabalDir
+    pkgDbStack <- parseCradle cradleFile
     return Cradle {
         cradleCurrentDir = wdir
       , cradleRootDir    = cabalDir
@@ -90,18 +90,12 @@ findCradleWithoutSandbox = do
     return cradle { cradlePkgDbStack = [GlobalDb]} -- FIXME
 
 
-parseCradle :: FilePath -> IO ([GhcPkgDb], FilePath)
+parseCradle :: FilePath -> IO [GhcPkgDb]
 parseCradle path = do
     source <- readFile path
-    parseCradle' source
+    return $ parseCradle' source
   where
-    parseCradle' source = do
-      let ls = filter (not . null) $ lines source
-      case ls of
-        (x:xs) -> do
-          tmpDir <- newTempDir x
-          return (map parsePkgDb xs, tmpDir)
-        _ -> throw GMEInvalidCradleFile
+    parseCradle' source = map parsePkgDb $ filter (not . null) $ lines source
 
     parsePkgDb "global" = GlobalDb
     parsePkgDb "user" = UserDb

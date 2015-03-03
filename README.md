@@ -49,7 +49,6 @@ all sorts of nasty conflicts.
 To customize the package databases used by `ghc-mod`, put a file called `.ghc-mod.cradle` beside the `.cabal` file with the following syntax:
 
 ```
-temp directory root
 package db 1
 ...
 package db n
