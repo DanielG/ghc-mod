@@ -60,7 +60,15 @@ getConfig cradle = do
    prjDir = cradleRootDir cradle
 
    configure :: (IOish m, MonadError GhcModError m) => m ()
-   configure = withDirectory_ prjDir $ void $ readProcess' "cabal" ["configure"]
+   configure = withDirectory_ prjDir $ void $ readProcess' "cabal" ("configure":pkgDbArgs)
+
+   pkgDbArgs :: [String]
+   pkgDbArgs = "--package-db=clear" : map pkgDbArg (cradlePkgDbStack cradle)
+
+   pkgDbArg :: GhcPkgDb -> String
+   pkgDbArg GlobalDb      = "--package-db=global"
+   pkgDbArg UserDb        = "--package-db=user"
+   pkgDbArg (PackageDb p) = "--package-db=" ++ p
 
 -- | Get list of 'Package's needed by all components of the current package
 cabalConfigDependencies :: (IOish m, MonadError GhcModError m)
