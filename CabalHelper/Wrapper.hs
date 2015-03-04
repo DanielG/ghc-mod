@@ -14,7 +14,7 @@
 -- You should have received a copy of the GNU Affero General Public License
 -- along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-{-# LANGUAGE TemplateHaskell, OverloadedStrings, RecordWildCards #-}
+{-# LANGUAGE TemplateHaskell, RecordWildCards #-}
 module Main where
 
 import Control.Applicative
@@ -26,11 +26,7 @@ import Data.List
 import Data.Maybe
 import Data.String
 import Data.Version
-import Data.ByteString (ByteString)
-import qualified Data.ByteString as BS
-import qualified Data.ByteString.Char8 as BS8
 import Text.Printf
-import Text.ParserCombinators.ReadP
 import System.Environment
 import System.Directory
 import System.FilePath
@@ -44,7 +40,7 @@ import Distribution.Text (display)
 import NotCPP.Declarations
 
 import Paths_ghc_mod
-import Common
+import CabalHelper.Common
 import Utils
 
 ifD [d| getExecutablePath = getProgName |]
@@ -61,21 +57,21 @@ usage = do
 \)\n"
 
 main :: IO ()
-main = do
+main = handlePanic $ do
   args <- getArgs
   case args of
     "print-appdatadir":[] -> putStrLn =<< appDataDir
     "print-build-platform":[] -> putStrLn $ display buildPlatform
     distdir:_ -> do
       cfgf <- canonicalizePath (distdir </> "setup-config")
-      mhdr <- (parseHeader =<<) . listToMaybe . BS8.lines <$> BS.readFile cfgf
+      mhdr <- getCabalConfigHeader cfgf
       case mhdr of
-        Nothing -> error $ printf "\
+        Nothing -> panic $ printf "\
 \Could not read Cabal's persistent setup configuration header\n\
 \- Check first line of: %s\n\
 \- Maybe try: $ cabal configure" cfgf
 
-        Just Header {..} -> do
+        Just (hdrCabalVersion, _hdrCompilerVersion) -> do
           eexe <- compileHelper hdrCabalVersion
           case eexe of
               Left e -> exitWith e
@@ -92,17 +88,17 @@ tryFindSrcDirInGhcModTree :: IO (Maybe FilePath)
 tryFindSrcDirInGhcModTree  = do
   dir <- (!!4) . iterate takeDirectory <$> getExecutablePath
   exists <- doesFileExist $ dir </> "ghc-mod.cabal"
-  src_exists <- doesFileExist $ dir </> "cabal-helper/Main.hs"
+  src_exists <- doesFileExist $ dir </> "CabalHelper/Main.hs"
   if exists && src_exists
-     then return $ Just (dir </> "cabal-helper")
+     then return $ Just dir
      else return Nothing
 
 tryFindRealSrcDir :: IO (Maybe FilePath)
 tryFindRealSrcDir = do
     datadir <- getDataDir
-    exists <- doesFileExist $ datadir </> "cabal-helper/Main.hs"
+    exists <- doesFileExist $ datadir </> "CabalHelper/Main.hs"
     return $ if exists
-               then Just $ datadir </> "cabal-helper"
+               then Just datadir
                else Nothing
 
 findCabalHelperSourceDir :: IO FilePath
@@ -116,35 +112,52 @@ findCabalHelperSourceDir = do
 compileHelper :: Version -> IO (Either ExitCode FilePath)
 compileHelper cabalVer = do
   chdir <- findCabalHelperSourceDir
-  mver <- find (sameMajorVersion cabalVer) <$> listCabalVersions
-  couldBeSrcDir <- takeDirectory <$> getDataDir
 
-  case mver of
-    Nothing -> do
-      let cabalFile = couldBeSrcDir </> "Cabal.cabal"
-      cabal <- doesFileExist cabalFile
-      if cabal
-        then do
-          ver <- cabalFileVersion <$> readFile cabalFile
-          compile $ Compile chdir (Just couldBeSrcDir) ver []
-        else errorNoCabal cabalVer
-    Just ver ->
-        compile $ Compile chdir Nothing ver [cabalPkgId ver]
+  -- First check if we already compiled this version of cabal
+  db_exists <- cabalPkgDbExists cabalVer
+  case db_exists of
+    True -> compileWithPkg chdir . Just =<< cabalPkgDb cabalVer
+    False -> do
+      -- Next check if this version is globally available
+      mver <- find (== cabalVer) <$> listCabalVersions
+      couldBeSrcDir <- takeDirectory <$> getDataDir
+      case mver of
+        Nothing -> do
+          -- If not see if we're in a cabal source tree
+          let cabalFile = couldBeSrcDir </> "Cabal.cabal"
+          cabal <- doesFileExist cabalFile
+          if cabal
+            then do
+              ver <- cabalFileVersion <$> readFile cabalFile
+              compileWithCabalTree chdir ver couldBeSrcDir
+            else do
+              -- otherwise compile the requested cabal version into an isolated
+              -- package-db
+              db <- installCabal cabalVer
+              compileWithPkg chdir (Just db)
+        Just _ ->
+          compileWithPkg chdir Nothing
+
  where
+   compileWithCabalTree chdir ver srcDir =
+       compile $ Compile chdir (Just srcDir) Nothing ver []
+
+   compileWithPkg chdir mdb =
+       compile $ Compile chdir Nothing mdb cabalVer [cabalPkgId cabalVer]
+
    cabalPkgId v = "Cabal-" ++ showVersion v
 
-errorNoCabal :: Version -> a
-errorNoCabal cabalVer = error $ printf "\
-\No appropriate Cabal package found, wanted version %s.\n\
-\- Check output of: $ ghc-pkg list Cabal\n\
-\- Maybe try: $ cabal install Cabal --constraint 'Cabal == %s.*'" sver mjver
- where
-   sver = showVersion cabalVer
-   mjver = showVersion $ majorVer cabalVer
+-- errorNoCabal :: Version -> a
+-- errorNoCabal cabalVer = panic $ printf "\
+-- \No appropriate Cabal package found, wanted version %s.\n\
+-- \- Check output of: $ ghc-pkg list Cabal\n\
+-- \- Maybe try: $ cabal install Cabal --constraint 'Cabal == %s'" sver sver
+--  where
+--    sver = showVersion cabalVer
 
 errorNoMain :: FilePath -> a
-errorNoMain datadir = error $ printf "\
-\Could not find $datadir/cabal-helper/Main.hs!\n\
+errorNoMain datadir = panic $ printf "\
+\Could not find $datadir/CabalHelper/Main.hs!\n\
 \\n\
 \If you are a developer you can use the environment variable `ghc_mod_datadir'\n\
 \to override $datadir[1], `$ export ghc_mod_datadir=$PWD' will work in the\n\
@@ -158,6 +171,7 @@ errorNoMain datadir = error $ printf "\
 data Compile = Compile {
       cabalHelperSourceDir :: FilePath,
       cabalSourceDir :: Maybe FilePath,
+      packageDb      :: Maybe FilePath,
       cabalVersion   :: Version,
       packageDeps    :: [String]
     }
@@ -167,7 +181,7 @@ compile Compile {..} = do
     outdir <- appDataDir
     createDirectoryIfMissing True outdir
 
-    let exe = outdir </> "cabal-helper-" ++ showVersion (majorVer cabalVersion)
+    let exe = outdir </> "cabal-helper-" ++ showVersion cabalVersion
 
     recompile <-
       case cabalSourceDir of
@@ -182,23 +196,42 @@ compile Compile {..} = do
              concat [
           [ "-outputdir", outdir
           , "-o", exe
+          , "-optP-DCABAL_HELPER=1"
           , "-optP-DCABAL_MAJOR=" ++ show mj
           , "-optP-DCABAL_MINOR=" ++ show mi
           ],
+          maybeToList $ ("-package-db="++) <$> packageDb,
           map ("-i"++) $ cabalHelperSourceDir:maybeToList cabalSourceDir,
           concatMap (\p -> ["-package", p]) packageDeps,
-          [ "--make",  cabalHelperSourceDir </> "Main.hs" ]
+          [ "--make",  cabalHelperSourceDir </> "CabalHelper/Main.hs" ]
          ]
 
     if recompile
        then do
-         (_, _, _, h) <- createProcess
-           (proc "ghc" ghc_opts) { std_out = UseHandle stderr }
-         rv <- waitForProcess h
+         rv <- callProcessStderr' Nothing "ghc" ghc_opts
          return $ case rv of
                     ExitSuccess -> Right exe
                     e@(ExitFailure _) -> Left e
       else return $ Right exe
+
+callProcessStderr' :: Maybe FilePath -> FilePath -> [String] -> IO ExitCode
+callProcessStderr' mwd exe args = do
+  (_, _, _, h) <- createProcess (proc exe args) { std_out = UseHandle stderr
+                                                , cwd = mwd }
+  waitForProcess h
+
+callProcessStderr :: Maybe FilePath -> FilePath -> [String] -> IO ()
+callProcessStderr mwd exe args = do
+  rv <- callProcessStderr' mwd exe args
+  case rv of
+    ExitSuccess -> return ()
+    ExitFailure v -> processFailedException "callProcessStderr" exe args v
+
+processFailedException :: String -> String -> [String] -> Int -> IO a
+processFailedException fn exe args rv =
+      panic $ concat [fn, ": ", exe, " "
+                     , intercalate " " (map show args)
+                     , " (exit " ++ show rv ++ ")"]
 
 timeHsFiles :: FilePath -> IO [TimedFile]
 timeHsFiles dir = do
@@ -209,17 +242,50 @@ timeHsFiles dir = do
      exists <- doesFileExist f
      return $ exists && ".hs" `isSuffixOf` f
 
+installCabal :: Version -> IO FilePath
+installCabal ver = do
+  db <- createPkgDb ver
+  callProcessStderr (Just "/") "cabal" [ "--package-db=clear"
+                                       , "--package-db=global"
+                                       , "--package-db=" ++ db
+                                       , "-j1"
+                                       , "install", "Cabal-"++showVersion ver
+                                       ]
+  return db
 
+createPkgDb :: Version -> IO FilePath
+createPkgDb ver = do
+  db <- cabalPkgDb ver
+  exists <- doesDirectoryExist db
+  when (not exists) $ callProcessStderr Nothing "ghc-pkg" ["init", db]
+  return db
+
+cabalPkgDb :: Version -> IO FilePath
+cabalPkgDb ver = do
+  appdir <- appDataDir
+  return $ appdir </> "cabal-" ++ showVersion ver ++ "-db"
+
+cabalPkgDbExists :: Version -> IO Bool
+cabalPkgDbExists ver = do
+  db <- cabalPkgDb ver
+  dexists <- doesDirectoryExist db
+  case dexists of
+    False -> return False
+    True -> do
+      vers <- listCabalVersions' (Just db)
+      return $ ver `elem` vers
+
+listCabalVersions :: IO [Version]
+listCabalVersions = listCabalVersions' Nothing
 
 -- TODO: Include sandbox? Probably only relevant for build-type:custom projects.
-listCabalVersions :: IO [Version]
-listCabalVersions = do
-  catMaybes . map (fmap snd . parsePkgId . fromString) . words
-          <$> readProcess "ghc-pkg" ["list", "--simple-output", "Cabal"] ""
+listCabalVersions' :: Maybe FilePath -> IO [Version]
+listCabalVersions' mdb = do
+  let mdbopt = ("--package-db="++) <$> mdb
+      opts = ["list", "--simple-output", "Cabal"] ++ maybeToList mdbopt
 
-data Header = Header { hdrCabalVersion    :: Version
-                     , hdrCompilerVersion :: Version
-                     }
+  catMaybes . map (fmap snd . parsePkgId . fromString) . words
+          <$> readProcess "ghc-pkg" opts ""
 
 -- | Find @version: XXX@ delcaration in a cabal file
 cabalFileVersion :: String -> Version
@@ -228,31 +294,3 @@ cabalFileVersion cabalFile = do
  where
   ls = map (map toLower) $ lines cabalFile
   extract = dropWhile (/=':') >>> dropWhile isSpace >>> takeWhile (not . isSpace)
-
-parseHeader :: ByteString -> Maybe Header
-parseHeader header = case BS8.words header of
-  ["Saved", "package", "config", "for", _pkgId ,
-   "written", "by", cabalId,
-   "using", compId]
-    -> liftM2 Header (ver cabalId) (ver compId)
-  _ -> error "parsing setup-config header failed"
- where
-   ver i = snd <$> parsePkgId i
-
-parsePkgId :: ByteString -> Maybe (ByteString, Version)
-parsePkgId bs =
-    case BS8.split '-' bs of
-      [pkg, vers] -> Just (pkg, parseVer $ BS8.unpack vers)
-      _ -> Nothing
-
-parseVer :: String -> Version
-parseVer vers = runReadP parseVersion vers
-
-majorVer :: Version -> Version
-majorVer (Version b _) = Version (take 2 b) []
-
-sameMajorVersion :: Version -> Version -> Bool
-sameMajorVersion a b = majorVer a == majorVer b
-
-runReadP :: ReadP t -> String -> t
-runReadP p i = let (a,""):[] = filter ((=="") . snd) $ readP_to_S p i in a

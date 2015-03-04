@@ -23,6 +23,7 @@ module Language.Haskell.GhcMod.CabalHelper (
   ) where
 
 import Control.Applicative
+import Control.Arrow
 import Control.Monad
 import Data.Monoid
 import Data.List
@@ -100,5 +101,9 @@ cabalHelper = withCabal $ do
         Just (GmCabalHelperStrings ghcOpts),
         Just (GmCabalHelperStrings ghcSrcOpts),
         Just (GmCabalHelperStrings ghcPkgOpts) ] = res
+      eps' = map (second $ fmap $ map md) eps
 
-  return $ CabalHelper eps srcDirs ghcOpts ghcSrcOpts ghcPkgOpts
+  return $ CabalHelper eps' srcDirs ghcOpts ghcSrcOpts ghcPkgOpts
+
+ where
+   md (GmModuleName mn) = mkModuleName mn

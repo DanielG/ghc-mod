@@ -24,7 +24,6 @@ import Data.List
 import Data.Char
 import Data.Maybe
 import Data.Traversable (traverse)
-import Types
 import System.Directory
 import System.FilePath
 import System.IO.Unsafe

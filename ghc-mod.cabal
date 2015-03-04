@@ -23,7 +23,7 @@ Cabal-Version:          >= 1.16
 Build-Type:             Custom
 Data-Files:             elisp/Makefile
                         elisp/*.el
-                        cabal-helper/*.hs
+                        CabalHelper/*.hs
 
 Extra-Source-Files:     ChangeLog
                         SetupCompat.hs
@@ -65,8 +65,8 @@ Library
   Exposed-Modules:      Language.Haskell.GhcMod
                         Language.Haskell.GhcMod.Internal
   Other-Modules:        Paths_ghc_mod
-                        Types
                         Utils
+                        CabalHelper.Types
                         Language.Haskell.GhcMod.Boot
                         Language.Haskell.GhcMod.Browse
                         Language.Haskell.GhcMod.CaseSplit
@@ -177,10 +177,10 @@ Executable ghc-modi
 Executable cabal-helper-wrapper
   Default-Language:     Haskell2010
   Other-Extensions:     TemplateHaskell
-  Main-Is:              Wrapper.hs
+  Main-Is:              CabalHelper/Wrapper.hs
   Other-Modules:        Paths_ghc_mod
   GHC-Options:          -Wall
-  HS-Source-Dirs:       cabal-helper, .
+  HS-Source-Dirs:       .
   X-Install-Target:     $libexecdir
   Build-Depends:        base >= 4.0 && < 5
                       , bytestring
@@ -207,14 +207,13 @@ Test-Suite doctest
 Test-Suite spec
   Default-Language:     Haskell2010
   Default-Extensions:   ScopedTypeVariables, RecordWildCards, NamedFieldPuns,
-                        ConstraintKinds, FlexibleContexts, OverloadedStrings
+                        ConstraintKinds, FlexibleContexts
   Main-Is:              Main.hs
   Hs-Source-Dirs:       test, .
   Ghc-Options:          -Wall -fno-warn-deprecations
   CPP-Options:          -DSPEC=1
   Type:                 exitcode-stdio-1.0
   Other-Modules:        Paths_ghc_mod
-                        Types
                         Dir
                         Spec
                         TestUtils

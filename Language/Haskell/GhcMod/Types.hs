@@ -2,7 +2,7 @@
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 module Language.Haskell.GhcMod.Types (
     module Language.Haskell.GhcMod.Types
-  , module Types
+  , module CabalHelper.Types
   , ModuleName
   , mkModuleName
   , moduleNameString
@@ -11,6 +11,7 @@ module Language.Haskell.GhcMod.Types (
 import Control.Monad.Trans.Control (MonadBaseControl)
 import Control.Monad.Error (Error(..))
 import Control.Exception (Exception)
+import Data.List (intercalate)
 import Data.Map (Map)
 import qualified Data.Map as Map
 import Data.Set (Set)
@@ -22,7 +23,7 @@ import MonadUtils (MonadIO)
 import GHC (ModuleName, moduleNameString, mkModuleName)
 import PackageConfig (PackageConfig)
 
-import Types
+import CabalHelper.Types
 
 -- | A constraint alias (-XConstraintKinds) to make functions dealing with
 -- 'GhcModT' somewhat cleaner.
@@ -95,6 +96,52 @@ data Cradle = Cradle {
 
 ----------------------------------------------------------------
 
+-- | GHC package database flags.
+data GhcPkgDb = GlobalDb | UserDb | PackageDb String deriving (Eq, Show)
+
+-- | A single GHC command line option.
+type GHCOption  = String
+
+-- | An include directory for modules.
+type IncludeDir = FilePath
+
+-- | A package name.
+type PackageBaseName = String
+
+-- | A package version.
+type PackageVersion  = String
+
+-- | A package id.
+type PackageId  = String
+
+-- | A package's name, verson and id.
+type Package    = (PackageBaseName, PackageVersion, PackageId)
+
+pkgName :: Package -> PackageBaseName
+pkgName (n,_,_) = n
+
+pkgVer :: Package -> PackageVersion
+pkgVer (_,v,_) = v
+
+pkgId :: Package -> PackageId
+pkgId (_,_,i) = i
+
+showPkg :: Package -> String
+showPkg (n,v,_) = intercalate "-" [n,v]
+
+showPkgId :: Package -> String
+showPkgId (n,v,i) = intercalate "-" [n,v,i]
+
+-- | Haskell expression.
+type Expression = String
+
+-- | Module name.
+type ModuleString = String
+
+-- | A Module
+type Module = [String]
+
+
 data GmLogLevel = GmPanic
                 | GmException
                 | GmError
@@ -139,21 +186,6 @@ instance Read ModuleName where
                                  ("ModuleName",s) <- lex r',
                                  (m,t) <- readsPrec (app_prec+1) s]) r
         where app_prec = 10
-
-
---- \ / These types MUST be in sync with the copies in cabal-helper/Main.hs
-data GmComponentName = GmSetupHsName
-                     | GmLibName
-                     | GmExeName String
-                     | GmTestName String
-                     | GmBenchName String
-  deriving (Eq, Ord, Read, Show)
-data GmCabalHelperResponse
-    = GmCabalHelperStrings [(GmComponentName, [String])]
-    | GmCabalHelperEntrypoints [(GmComponentName, Either FilePath [ModuleName])]
-    | GmCabalHelperLbi String
-  deriving (Read, Show)
---- ^ These types MUST be in sync with the copies in cabal-helper/Main.hs
 
 data GhcModError
     = GMENoMsg

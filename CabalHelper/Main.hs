@@ -33,6 +33,8 @@ import Distribution.PackageDescription (PackageDescription,
 import Distribution.PackageDescription.Parse (readPackageDescription)
 import Distribution.PackageDescription.Configuration (flattenPackageDescription)
 
+import Distribution.Simple.Program (requireProgram, ghcProgram)
+import Distribution.Simple.Program.Types (ConfiguredProgram(..))
 import Distribution.Simple.Configure (getPersistBuildConfig)
 import Distribution.Simple.LocalBuildInfo (LocalBuildInfo(..),
                                            Component(..),
@@ -70,26 +72,9 @@ import System.Exit
 import System.IO
 import System.IO.Unsafe (unsafeInterleaveIO, unsafePerformIO)
 import Text.Printf
-import Common
 
---- \ / These types MUST be in sync with the copies in lib:ghc-mod
-data GmComponentName = GmSetupHsName
-                     | GmLibName
-                     | GmExeName String
-                     | GmTestName String
-                     | GmBenchName String
-  deriving (Eq, Ord, Read, Show)
-data GmCabalHelperResponse
-    = GmCabalHelperStrings [(GmComponentName, [String])]
-    | GmCabalHelperEntrypoints [(GmComponentName, Either FilePath [ModuleName])]
-    | GmCabalHelperLbi String
-  deriving (Read, Show)
---- ^ These types MUST be in sync with the copies in ../Types.hs
-
-
--- MUST be compatible to the one in GHC
-newtype ModuleName = ModuleName String
-  deriving (Eq, Ord, Read, Show)
+import CabalHelper.Common
+import CabalHelper.Types
 
 usage = do
   prog <- getProgName
@@ -177,7 +162,7 @@ main = do
                                [] -> removeInplaceDeps pd clbi
            opts = componentGhcOptions v lbi bi clbi' outdir
            in
-              renderGhcOptions (compiler lbi) $ opts `mappend` adopts
+              renderGhcOptions' lbi v $ opts `mappend` adopts
 
     "ghc-src-options":flags ->
       Just . GmCabalHelperStrings <$$> componentsMap lbi v distdir $$
@@ -200,7 +185,7 @@ main = do
                ghcOptSourcePath      = ghcOptSourcePath opts
               }
             in
-              renderGhcOptions comp $ opts `mappend` adopts
+              renderGhcOptions' lbi v $ opts `mappend` adopts
 
     "ghc-pkg-options":flags ->
       Just . GmCabalHelperStrings <$$> componentsMap lbi v distdir $$
@@ -218,19 +203,19 @@ main = do
                        ghcOptHideAllPackages = ghcOptHideAllPackages opts
                    }
            in
-             renderGhcOptions (compiler lbi) $ opts' `mappend` adopts
+             renderGhcOptions' lbi v $ opts' `mappend` adopts
 
     "entrypoints":[] -> do
       eps <- componentsMap lbi v distdir $ \c clbi bi ->
-               componentEntrypoints c
+               return $ componentEntrypoints c
       -- MUST append Setup component at the end otherwise CabalHelper gets
       -- confused
-      let eps' = eps ++ [(GmSetupHsName, Right [ModuleName "Setup"])]
+      let eps' = eps ++ [(GmSetupHsName, Right [GmModuleName "Setup"])]
       return $ Just $ GmCabalHelperEntrypoints eps'
 
     "source-dirs":[] ->
       Just . GmCabalHelperStrings <$$> componentsMap lbi v distdir $$
-      \c clbi bi -> hsSourceDirs bi
+      \c clbi bi -> return $ hsSourceDirs bi
 
     "print-lbi":[] ->
       return $ Just $ GmCabalHelperLbi $ show lbi
@@ -253,7 +238,7 @@ componentsMap :: LocalBuildInfo
               -> (   Component
                   -> ComponentLocalBuildInfo
                   -> BuildInfo
-                  -> a)
+                  -> IO a)
               -> IO [(GmComponentName, a)]
 componentsMap lbi v distdir f = do
     let pd = localPkgDescr lbi
@@ -265,7 +250,8 @@ componentsMap lbi v distdir f = do
             name = componentNameFromComponent c
 
         l' <- readIORef lr
-        writeIORef lr $ (componentNameToGm name, f c clbi bi):l'
+        r <- f c clbi bi
+        writeIORef lr $ (componentNameToGm name, r):l'
     reverse <$> readIORef lr
 
 componentNameToGm CLibName = GmLibName
@@ -287,10 +273,10 @@ componentOutDir lbi (CTest TestSuite { testInterface = TestSuiteLibV09 _ _, ..})
 componentOutDir lbi (CBench Benchmark { benchmarkInterface = BenchmarkExeV10 _ _, ..})=
     exeOutDir lbi benchmarkName
 
-gmModuleName :: C.ModuleName -> ModuleName
-gmModuleName = ModuleName . intercalate "." . components
+gmModuleName :: C.ModuleName -> GmModuleName
+gmModuleName = GmModuleName . intercalate "." . components
 
-componentEntrypoints :: Component -> Either FilePath [ModuleName]
+componentEntrypoints :: Component -> Either FilePath [GmModuleName]
 componentEntrypoints (CLib Library {..})
     = Right $ map gmModuleName exposedModules
 componentEntrypoints (CExe Executable {..})
@@ -343,3 +329,12 @@ removeInplaceDeps pd clbi = let
  where
    isInplaceDep :: (InstalledPackageId, PackageId) -> Bool
    isInplaceDep (ipid, pid) = inplacePackageId pid == ipid
+
+renderGhcOptions' lbi v opts = do
+#if CABAL_MAJOR == 1 && CABAL_MINOR < 20
+  (ghcProg, _) <- requireProgram v ghcProgram (withPrograms lbi)
+  let Just ghcVer = programVersion ghcProg
+  return $ renderGhcOptions ghcVer opts
+#else
+  return $ renderGhcOptions (compiler lbi) opts
+#endif
