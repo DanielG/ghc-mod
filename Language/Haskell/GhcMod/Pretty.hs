@@ -17,6 +17,8 @@
 module Language.Haskell.GhcMod.Pretty where
 
 import Control.Arrow hiding ((<+>))
+import Data.Char
+import Data.List
 import Text.PrettyPrint
 
 import Language.Haskell.GhcMod.Types
@@ -56,7 +58,7 @@ warnDoc :: Doc -> Doc
 warnDoc d = text "Warning" <+>: d
 
 strDoc :: String -> Doc
-strDoc str = doc str
+strDoc str = doc (dropWhileEnd isSpace str)
  where
    doc :: String -> Doc
    doc = lines

@@ -1,9 +1,9 @@
 {-# LANGUAGE CPP #-}
 module CheckSpec where
 
-import Data.List (isSuffixOf, isInfixOf, isPrefixOf)
+import Data.List (isInfixOf, isPrefixOf) --isSuffixOf,
 import Language.Haskell.GhcMod
-import System.FilePath
+--import System.FilePath
 import Test.Hspec
 
 import TestUtils
@@ -17,20 +17,21 @@ spec = do
                 res <- runD $ checkSyntax ["main.hs"]
                 res `shouldBe` "main.hs:5:1:Warning: Top-level binding with no type signature: main :: IO ()\n"
 
+
         it "works even if a module imports another module from a different directory" $ do
             withDirectory_ "test/data/check-test-subdir" $ do
                 res <- runD $ checkSyntax ["test/Bar/Baz.hs"]
                 res `shouldSatisfy` (("test" </> "Foo.hs:3:1:Warning: Top-level binding with no type signature: foo :: [Char]\n") `isSuffixOf`)
 
         it "detects cyclic imports" $ do
-            withDirectory_ "test/data" $ do
+            withDirectory_ "test/data/import-cycle" $ do
                 res <- runD $ checkSyntax ["Mutual1.hs"]
                 res `shouldSatisfy` ("Module imports form a cycle" `isInfixOf`)
 
         it "works with modules using QuasiQuotes" $ do
-            withDirectory_ "test/data" $ do
-                res <- runD $ checkSyntax ["Baz.hs"]
-                res `shouldSatisfy` ("Baz.hs:5:1:Warning:" `isPrefixOf`)
+            withDirectory_ "test/data/quasi-quotes" $ do
+                res <- runD $ checkSyntax ["QuasiQuotes.hs"]
+                res `shouldSatisfy` ("QuasiQuotes.hs:6:1:Warning:" `isInfixOf`)
 
 #if __GLASGOW_HASKELL__ >= 708
         it "works with modules using PatternSynonyms" $ do
@@ -40,12 +41,12 @@ spec = do
 #endif
 
         it "works with foreign exports" $ do
-            withDirectory_ "test/data" $ do
+            withDirectory_ "test/data/foreign-export" $ do
                 res <- runD $ checkSyntax ["ForeignExport.hs"]
                 res `shouldBe` ""
 
         context "when no errors are found" $ do
             it "doesn't output an empty line" $ do
-                withDirectory_ "test/data/ghc-mod-check/Data" $ do
+                withDirectory_ "test/data/ghc-mod-check/lib/Data" $ do
                     res <- runD $ checkSyntax ["Foo.hs"]
                     res `shouldBe` ""

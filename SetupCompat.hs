@@ -15,12 +15,23 @@ import Distribution.Simple.Setup
 import Distribution.Simple.Install
 
 import qualified Data.Map as M
+import Data.Map (Map)
 
 
 import NotCPP.Declarations
 import Language.Haskell.TH
 
-$(ifndefD "componentsConfigs" [d| deriving instance (Ord ComponentName) |] )
+-- $(ifdefD "componentsConfigs" [d| deriving instance (Ord ComponentName) |] )
+
+$(ifD [d|
+
+ showComponentName :: ComponentName -> String
+ showComponentName CLibName          = "library"
+ showComponentName (CExeName   name) = "executable '" ++ name ++ "'"
+ showComponentName (CTestName  name) = "test suite '" ++ name ++ "'"
+ showComponentName (CBenchName name) = "benchmark '" ++ name ++ "'"
+
+ |])
 
 $(ifelsedefD "componentsConfigs" [d|
 
@@ -38,8 +49,7 @@ $(ifelsedefD "componentsConfigs" [d|
     -> LocalBuildInfo
  setComponentsConfigs lbi cs = flip execState lbi $ mapM setClbis gcs
   where
---   gcs :: [ [(ComponentLocalBuildInfo, ComponentName, a)] ]
-   gcs = groupBy (sameKind `on` fst3) $ sortBy (compare `on` fst3) cs
+   gcs = groupBy (sameKind `on` fst3) $ sortBy (compare `on` showComponentName . fst3) cs
 
    fst3 (x,_,_) = x
 
@@ -130,16 +140,17 @@ $(ifD [d|
 
 
 $(ifelsedefD "componentPackageRenaming" [d|
+ -- M.Map PackageName
+ newtype Deps = Deps  { unDeps :: ([(InstalledPackageId, PackageId)], Map PackageName $(cT "ModuleRenaming")) }
+-- $(return $ TySynD $(mkName "Deps") [] [t| |] )
 
- type Deps = ([(InstalledPackageId, PackageId)], M.Map PackageName $(cT "ModuleRenaming"))
-
- noDeps = ([], M.empty)
+ noDeps = Deps ([], M.empty)
 
  getDeps :: ComponentLocalBuildInfo -> Deps
- getDeps = componentPackageDeps &&& $(nE "componentPackageRenaming")
+ getDeps = componentPackageDeps &&& $(nE "componentPackageRenaming") >>> Deps
 
  setUnionDeps :: Deps -> ComponentLocalBuildInfo -> ComponentLocalBuildInfo
- setUnionDeps (deps, rns) clbi = let
+ setUnionDeps (Deps (deps, rns)) clbi = let
          clbi' = setComponentPackageRenaming clbi rns
          cpdeps = componentPackageDeps clbi
        in
@@ -166,15 +177,15 @@ $(ifelsedefD "componentPackageRenaming" [d|
 
  |] [d|
 
- type Deps = [(InstalledPackageId, PackageId)]
+ newtype Deps = Deps { unDeps :: [(InstalledPackageId, PackageId)] }
 
- noDeps = []
+ noDeps = Deps []
 
  getDeps :: ComponentLocalBuildInfo -> Deps
- getDeps lbi = componentPackageDeps lbi
+ getDeps lbi = Deps $ componentPackageDeps lbi
 
  setUnionDeps :: Deps -> ComponentLocalBuildInfo -> ComponentLocalBuildInfo
- setUnionDeps deps clbi = let
+ setUnionDeps (Deps deps) clbi = let
          cpdeps = componentPackageDeps clbi
        in
          clbi {

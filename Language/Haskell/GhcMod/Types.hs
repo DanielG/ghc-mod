@@ -68,7 +68,7 @@ defaultOptions :: Options
 defaultOptions = Options {
     outputStyle   = PlainStyle
   , lineSeparator = LineSeparator "\0"
-  , logLevel      = GmPanic
+  , logLevel      = GmException
 --  , ghcProgram    = "ghc"
   , cabalProgram  = "cabal"
   , ghcUserOptions= []

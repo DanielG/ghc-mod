@@ -35,7 +35,7 @@ module Language.Haskell.GhcMod.Error (
 
 import Control.Arrow
 import Control.Exception
-import Control.Monad.Error
+import Control.Monad.Error hiding (MonadIO, liftIO)
 import qualified Data.Set as Set
 import Data.List
 import Data.Version
@@ -49,8 +49,8 @@ import Config (cProjectVersion, cHostPlatformString)
 import Paths_ghc_mod (version)
 
 import Language.Haskell.GhcMod.Types
+import Language.Haskell.GhcMod.Monad.Types
 import Language.Haskell.GhcMod.Pretty
-
 
 type GmError m = MonadError GhcModError m
 
@@ -101,10 +101,15 @@ gmeDoc e = case e of
     GMECabalCompAssignment ctx ->
         text "Could not find a consistent component assignment for modules:" $$
           (nest 4 $ foldr ($+$) empty $ map ctxDoc ctx) $$
-        empty $$
-        text "Try this and that"
+        text "" $$
+        text "- Are you sure all these modules exist?" $$
+        text "- Maybe try enabling test suites and or benchmarks:" $$
+            nest 4 (backticks $ text "cabal configure --enable-tests --enable-benchmarks") $$
+        text "- To find out which components ghc-mod knows about try:" $$
+            nest 4 (backticks $ text "ghc-mod debug")
 
       where
+        backticks d = char '`' <> d <> char '`'
         ctxDoc = moduleDoc *** compsDoc
                  >>> first (<> colon) >>> uncurry (flip hang 4)
 
@@ -177,10 +182,11 @@ tryFix action f = do
 
 data GHandler m a = forall e . Exception e => GHandler (e -> m a)
 
-gcatches :: ExceptionMonad m => m a -> [GHandler m a] -> m a
+gcatches :: (MonadIO m, ExceptionMonad m) => m a -> [GHandler m a] -> m a
 gcatches io handlers = io `gcatch` gcatchesHandler handlers
 
-gcatchesHandler :: ExceptionMonad m => [GHandler m a] -> SomeException -> m a
+gcatchesHandler :: (MonadIO m, ExceptionMonad m)
+    => [GHandler m a] -> SomeException -> m a
 gcatchesHandler handlers e = foldr tryHandler (liftIO $ throw e) handlers
     where tryHandler (GHandler handler) res
               = case fromException e of

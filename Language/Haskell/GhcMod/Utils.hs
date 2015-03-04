@@ -25,6 +25,7 @@ import Control.Arrow
 import Control.Applicative
 import Data.Char
 import Language.Haskell.GhcMod.Error
+import Language.Haskell.GhcMod.Monad.Types
 import Exception
 import System.Directory (getCurrentDirectory, setCurrentDirectory, doesFileExist)
 import System.Process (readProcess)

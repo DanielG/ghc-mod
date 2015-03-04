@@ -6,7 +6,7 @@ main :: IO ()
 main = doctest [
     "-package"
   , "ghc"
-  , "-XConstraintKinds", "-XFlexibleContexts"
+  , "-XConstraintKinds", "-XFlexibleContexts", "-XScopedTypeVariables", "-XRecordWildCards", "-XNamedFieldPuns"
   , "-idist/build/autogen/"
   , "-optP-include"
   , "-optPdist/build/autogen/cabal_macros.h"

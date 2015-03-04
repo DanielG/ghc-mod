@@ -6,7 +6,11 @@ ghc:
 
 install:
   - cabal update
+#  - ( $CABAL122 && cabal install cabal-install --constraint "Cabal >= 1.22" && ghc-pkg unregister Cabal ) || true
+  - echo $PATH
+  - which cabal
   - cabal install happy --constraint 'transformers <= 0.3.0.0'
+  - cabal install Cabal --constraint "Cabal == $(cabal --version | grep 'Cabal library' | awk '{ print $3 }' | awk -vFS=. '{ print $1 "." $2 }' | tail -n1).*"
   - happy --version
   - cabal install -j --only-dependencies --enable-tests
 

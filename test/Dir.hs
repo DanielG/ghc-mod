@@ -1,9 +1,15 @@
-module Dir where
+module Dir (
+    module Dir
+  , getCurrentDirectory
+  , (</>)
+  ) where
 
 import Control.Exception as E
 import Data.List (isPrefixOf)
 import System.Directory
-import System.FilePath (addTrailingPathSeparator)
+import System.FilePath (addTrailingPathSeparator,(</>))
+
+
 
 withDirectory_ :: FilePath -> IO a -> IO a
 withDirectory_ dir action = bracket getCurrentDirectory

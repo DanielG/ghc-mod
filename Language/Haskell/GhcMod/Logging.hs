@@ -54,5 +54,5 @@ gmLog level loc' doc = do
       msg = gmRenderDoc $ gmLogLevelDoc level <+> loc <+> doc
 
   when (Just level <= level') $
-       liftIO $ hPutStrLn stderr msg
+       liftIO $ hPutStr stderr msg
   gmlJournal (GhcModLog Nothing [(level, render loc, msg)])

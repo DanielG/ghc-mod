@@ -29,6 +29,7 @@ import System.FilePath
 import System.IO.Unsafe
 
 import Language.Haskell.GhcMod.Types
+import Language.Haskell.GhcMod.Monad.Types
 import Language.Haskell.GhcMod.Error
 import Language.Haskell.GhcMod.Read
 import Language.Haskell.GhcMod.Utils hiding (dropWhileEnd)

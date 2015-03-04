@@ -5,6 +5,7 @@ Author:                 Kazu Yamamoto <kazu@iij.ad.jp>
                         Alejandro Serrano <trupill@gmail.com>
 Maintainer:             Kazu Yamamoto <kazu@iij.ad.jp>
 License:                AGPL-3
+License-File:           LICENSE
 License-Files:          COPYING.BSD3 COPYING.AGPL3
 Homepage:               http://www.mew.org/~kazu/proj/ghc-mod/
 Synopsis:               Happy Haskell Programming
@@ -28,34 +29,42 @@ Data-Files:             elisp/Makefile
 Extra-Source-Files:     ChangeLog
                         SetupCompat.hs
                         NotCPP/*.hs
-			test/data/*.cabal
-                        test/data/*.hs
-                        test/data/cabal.sandbox.config.in
-                        test/data/.cabal-sandbox/i386-osx-ghc-7.6.3-packages.conf.d/Cabal-1.18.1.3-2b161c6bf77657aa17e1681d83cb051b.conf
+                        test/data/annotations/*.hs
                         test/data/broken-cabal/*.cabal
                         test/data/broken-cabal/cabal.sandbox.config.in
-                        test/data/broken-sandbox/*.cabal
                         test/data/broken-sandbox/cabal.sandbox.config
+                        test/data/broken-sandbox/dummy.cabal
+                        test/data/cabal-flags/cabal-flags.cabal
+                        test/data/cabal-project/*.cabal
+                        test/data/cabal-project/*.hs
+                        test/data/cabal-project/cabal.sandbox.config.in
+                        test/data/cabal-project/subdir1/subdir2/dummy
                         test/data/case-split/*.hs
-                        test/data/cabal-flags/*.cabal
-                        test/data/check-test-subdir/*.cabal
-                        test/data/check-test-subdir/src/Check/Test/*.hs
-                        test/data/check-test-subdir/test/*.hs
-                        test/data/check-test-subdir/test/Bar/*.hs
                         test/data/check-packageid/cabal.sandbox.config.in
                         test/data/check-packageid/.cabal-sandbox/i386-osx-ghc-7.6.3-packages.conf.d/template-haskell-2.8.0.0-32d4f24abdbb6bf41272b183b2e23e9c.conf
+                        test/data/check-test-subdir/*.cabal
+                        test/data/check-test-subdir/src/Check/Test/*.hs
                         test/data/duplicate-pkgver/cabal.sandbox.config.in
                         test/data/duplicate-pkgver/duplicate-pkgver.cabal
                         test/data/duplicate-pkgver/.cabal-sandbox/i386-osx-ghc-7.6.3-packages.conf.d/template-haskell-1.0-7c59d13f32294d1ef6dc6233c24df961.conf
                         test/data/duplicate-pkgver/.cabal-sandbox/i386-osx-ghc-7.6.3-packages.conf.d/template-haskell-2.8.0.0-14e543bdae2da4d2aeff5386892c9112.conf
                         test/data/duplicate-pkgver/.cabal-sandbox/i386-osx-ghc-7.6.3-packages.conf.d/template-haskell-2.8.0.0-32d4f24abdbb6bf41272b183b2e23e9c.conf
-                        test/data/pattern-synonyms/*.cabal
-                        test/data/pattern-synonyms/*.hs
+                        test/data/foreign-export/*.hs
                         test/data/ghc-mod-check/*.cabal
                         test/data/ghc-mod-check/*.hs
-                        test/data/ghc-mod-check/Data/*.hs
-                        test/data/subdir1/subdir2/dummy
-                        test/data/.cabal-sandbox/packages/00-index.tar
+                        test/data/ghc-mod-check/lib/Data/*.hs
+                        test/data/hlint/*.hs
+                        test/data/home-module-graph/cpp/*.hs
+                        test/data/home-module-graph/cycle/*.hs
+                        test/data/home-module-graph/errors/*.hs
+                        test/data/home-module-graph/indirect/*.hs
+                        test/data/home-module-graph/indirect-update/*.hs
+                        test/data/import-cycle/*.hs
+                        test/data/non-exported/*.hs
+                        test/data/pattern-synonyms/*.cabal
+                        test/data/pattern-synonyms/*.hs
+                        test/data/quasi-quotes/*.hs
+                        test/data/template-haskell/*.hs
 
 Library
   Default-Language:     Haskell2010
