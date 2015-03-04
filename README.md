@@ -44,6 +44,18 @@ Make sure you're not using the MELPA version of `ghc.el` otherwise you might get
 all sorts of nasty conflicts.
 
 
+## Custom ghc-mod cradle
+
+To customize the package databases used by `ghc-mod`, put a file called `ghc-mod.cradle` beside the `.cabal` file with the following syntax:
+
+```
+package db 1
+...
+package db n
+```
+
+each package database line is either a *path* to a package database, or `global` or `user`.
+
 ## IRC
 
 If you have any problems, suggestions, comments swing by

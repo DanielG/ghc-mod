@@ -114,3 +114,13 @@ setupConfigPath = localBuildInfoFile defaultDistPref
 
 packageCache :: String
 packageCache = "package.cache"
+
+-- | @findCradleFile dir@. Searches for a @ghc-mod.cradle@ file in @dir@.
+-- If it exists in the given directory it is returned otherwise @findCradleFile@ returns @Nothing@
+findCradleFile :: FilePath -> IO (Maybe FilePath)
+findCradleFile directory = do
+    let path = directory </> "ghc-mod.cradle"
+    exists <- doesFileExist $ path
+    case exists of
+        True  -> return $ Just path
+        False -> return Nothing
