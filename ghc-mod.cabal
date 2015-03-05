@@ -3,7 +3,7 @@ Version:                0
 Author:                 Kazu Yamamoto <kazu@iij.ad.jp>
                         Daniel Gröber <dxld@darkboxed.org>
                         Alejandro Serrano <trupill@gmail.com>
-Maintainer:             Kazu Yamamoto <kazu@iij.ad.jp>
+Maintainer:             Daniel Gröber <dxld@darkboxed.org>
 License:                AGPL-3
 License-File:           LICENSE
 License-Files:          COPYING.BSD3 COPYING.AGPL3
