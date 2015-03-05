@@ -73,7 +73,7 @@ usage =
 -- TODO: Generate the stuff below automatically
 ghcModUsage :: String
 ghcModUsage =
- "Usage: ghc-mod [OPTIONS...] COMMAND [OPTIONS...] \n\
+ "Usage: ghc-mod [OPTIONS...] COMMAND [CMD_ARGS...] \n\
  \*Global Options (OPTIONS)*\n\
  \    Global options can be specified before and after the command and\n\
  \    interspersed with command specific options\n\
@@ -383,7 +383,8 @@ progMain (globalOptions,cmdArgs) = do
                   (res,_) <- runGhcModT globalOptions $ ghcCommands cmdArgs
                   case res of
                     Right s -> putStr s
-                    Left e -> exitError $ render (gmeDoc e)
+                    Left e -> exitError $
+                        renderStyle style { ribbonsPerLine = 1.2 } (gmeDoc e)
 
               -- Obtain ghc options by letting ourselfs be executed by
               -- @cabal repl@
@@ -524,7 +525,7 @@ newtype InvalidCommandLine = InvalidCommandLine (Either String String)
 instance Exception InvalidCommandLine
 
 exitError :: String -> IO a
-exitError msg = hPutStrLn stderr msg >> exitFailure
+exitError msg = hPutStrLn stderr (dropWhileEnd (=='\n') msg) >> exitFailure
 
 fatalError :: String -> a
 fatalError s = throw $ FatalError $ progName ++ ": " ++ s
