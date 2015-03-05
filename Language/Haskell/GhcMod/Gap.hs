@@ -38,6 +38,7 @@ module Language.Haskell.GhcMod.Gap (
   , occName
   , listVisibleModuleNames
   , listVisibleModules
+  , lookupModulePackageInAllPackages
   , Language.Haskell.GhcMod.Gap.isSynTyCon
   , parseModuleHeader
   ) where
@@ -89,20 +90,18 @@ import RdrName (rdrNameOcc)
 
 #if __GLASGOW_HASKELL__ < 710
 import UniqFM (eltsUFM)
-import Packages (exposedModules, exposed, pkgIdMap)
-import PackageConfig (PackageConfig, packageConfigId)
+import Module
 #endif
 
 #if __GLASGOW_HASKELL__ >= 704
 import qualified Data.IntSet as I (IntSet, empty)
 #endif
 
-
 import Bag
 import Lexer as L
 import Parser
 import SrcLoc
-
+import Packages
 
 ----------------------------------------------------------------
 ----------------------------------------------------------------
@@ -474,6 +473,20 @@ allExposedModules df = concat $ map exposedModules $ allExposedPackageConfigs df
 
 listVisibleModuleNames :: DynFlags -> [ModuleName]
 listVisibleModuleNames = allExposedModules
+#endif
+
+lookupModulePackageInAllPackages ::
+    DynFlags -> ModuleName -> [String]
+lookupModulePackageInAllPackages df mn =
+#if __GLASGOW_HASKELL__ >= 710
+    unpackSPId . sourcePackageId . snd <$> lookupModuleInAllPackages df mn
+ where
+   unpackSPId (SourcePackageId fs) = unpackFS fs
+#else
+    unpackPId . sourcePackageId . fst <$> lookupModuleInAllPackages df mn
+ where
+   unpackPId pid = packageIdString $ mkPackageId pid
+--       n ++ "-" ++ showVersion v
 #endif
 
 listVisibleModules :: DynFlags -> [GHC.Module]

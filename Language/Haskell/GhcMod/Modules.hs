@@ -1,15 +1,26 @@
 module Language.Haskell.GhcMod.Modules (modules) where
 
-import qualified GHC as G
+import Control.Arrow
+import Data.List
 import Language.Haskell.GhcMod.Convert
+import Language.Haskell.GhcMod.Types
 import Language.Haskell.GhcMod.Monad
-import Language.Haskell.GhcMod.Gap (listVisibleModuleNames)
-import Module (moduleNameString)
+import Language.Haskell.GhcMod.Gap ( listVisibleModuleNames
+                                   , lookupModulePackageInAllPackages
+                                   )
+
+import qualified GHC as G
 
 ----------------------------------------------------------------
 
 -- | Listing installed modules.
 modules :: (IOish m, GmEnv m) => m String
 modules = do
-  dflags <- runGmPkgGhc G.getSessionDynFlags
-  convert' $ map moduleNameString $ listVisibleModuleNames dflags
+  Options { detailed } <- options
+  df <- runGmPkgGhc G.getSessionDynFlags
+  let mns = listVisibleModuleNames df
+      pmnss = map (first moduleNameString) $ zip mns (modulePkg df `map` mns)
+  convert' $ nub [ if detailed then pkg ++ " " ++ mn else mn
+                 | (mn, pkgs) <- pmnss, pkg <- pkgs ]
+ where
+   modulePkg df = lookupModulePackageInAllPackages df

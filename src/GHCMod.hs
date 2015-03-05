@@ -88,6 +88,9 @@ ghcModUsage =
  \\n\
  \    - list [FLAGS...] | modules [FLAGS...]\n\
  \        List all visible modules.\n\
+ \      Flags:\n\
+ \        -d\n\
+ \            Print package modules belong to.\n\
  \\n\
  \    - lang\n\
  \        List all known GHC language extensions.\n\
@@ -558,7 +561,8 @@ modulesCmd, languagesCmd, flagsCmd, browseCmd, checkSyntaxCmd, expandTemplateCmd
   findSymbolCmd, lintCmd, rootInfoCmd, pkgDocCmd, dumpSymbolCmd, bootCmd
   :: IOish m => [String] -> GhcModT m String
 
-modulesCmd    = withParseCmd' "modules" [] $ \[] -> modules
+modulesCmd    = withParseCmd' "modules" s $ \[] -> modules
+ where s = modulesArgSpec
 languagesCmd  = withParseCmd' "lang"    [] $ \[] -> languages
 flagsCmd      = withParseCmd' "flag"    [] $ \[] -> flags
 debugInfoCmd  = withParseCmd' "debug"   [] $ \[] -> debugInfo
@@ -571,7 +575,7 @@ findSymbolCmd     = withParseCmd' "find" [] $ \[sym]  -> findSymbol sym
 pkgDocCmd         = withParseCmd' "doc"  [] $ \[mdl]  -> pkgDoc mdl
 lintCmd           = withParseCmd' "lint" s  $ \[file] -> lint file
  where s = hlintArgSpec
-browseCmd         = withParseCmd s  $ \mdls   -> concat <$> browse `mapM` mdls
+browseCmd         = withParseCmd s $ \mdls -> concat <$> browse `mapM` mdls
  where s = browseArgSpec
 checkSyntaxCmd    = withParseCmd [] $ checkAction checkSyntax
 expandTemplateCmd = withParseCmd [] $ checkAction expandTemplate
@@ -600,6 +604,14 @@ locAction' :: String -> (String -> Int -> Int -> String -> a) -> [String] -> a
 locAction' _ action [f,_,line,col,expr] = action f (read line) (read col) expr
 locAction' _ action [f,  line,col,expr] = action f (read line) (read col) expr
 locAction' cmd _ _ = throw $ InvalidCommandLine (Left cmd)
+
+
+modulesArgSpec :: [OptDescr (Options -> Options)]
+modulesArgSpec =
+    [ option "d" ["detailed"] "Print package modules belong to." $
+             NoArg $ \o -> o { detailed = True }
+    ]
+
 
 hlintArgSpec :: [OptDescr (Options -> Options)]
 hlintArgSpec =
