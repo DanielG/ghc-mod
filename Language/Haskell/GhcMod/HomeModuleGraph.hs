@@ -30,19 +30,13 @@ module Language.Haskell.GhcMod.HomeModuleGraph (
  , moduleGraphToDot
  ) where
 
-import Bag
-import DriverPipeline hiding (unP)
+import DriverPipeline
 import ErrUtils
 import Exception
-import FastString
 import Finder
 import GHC
 import HscTypes
-import Lexer
 import MonadUtils hiding (foldrM)
-import Parser
-import SrcLoc
-import StringBuffer
 
 import Control.Arrow ((&&&))
 import Control.Monad
@@ -51,8 +45,8 @@ import Control.Monad.State.Strict (execStateT)
 import Control.Monad.State.Class
 import Data.Maybe
 import Data.Monoid
-import Data.Map.Strict  (Map)
-import qualified Data.Map.Strict  as Map
+import Data.Map  (Map)
+import qualified Data.Map  as Map
 import Data.Set (Set)
 import qualified Data.Set as Set
 import System.FilePath
@@ -61,6 +55,7 @@ import Language.Haskell.GhcMod.Logging
 import Language.Haskell.GhcMod.Logger
 import Language.Haskell.GhcMod.Monad.Types
 import Language.Haskell.GhcMod.Types
+import Language.Haskell.GhcMod.Gap (parseModuleHeader)
 
 -- | Turn module graph into a graphviz dot file
 --
@@ -249,22 +244,3 @@ fileModuleName env fn = handle (\(_ :: SomeException) -> return $ Right Nothing)
       Right (_, lmdl) -> do
         let HsModule {..} = unLoc lmdl
         return $ Right $ unLoc <$> hsmodName
-
-parseModuleHeader
-    :: String         -- ^ Haskell module source text (full Unicode is supported)
-    -> DynFlags
-    -> FilePath       -- ^ the filename (for source locations)
-    -> Either ErrorMessages (WarningMessages, Located (HsModule RdrName))
-parseModuleHeader str dflags filename =
-   let
-       loc  = mkRealSrcLoc (mkFastString filename) 1 1
-       buf  = stringToStringBuffer str
-   in
-   case unP Parser.parseHeader (mkPState dflags buf loc) of
-
-     PFailed sp err   ->
-         Left (unitBag (mkPlainErrMsg dflags sp err))
-
-     POk pst rdr_module ->
-         let (warns,_) = getMessages pst in
-         Right (warns, rdr_module)

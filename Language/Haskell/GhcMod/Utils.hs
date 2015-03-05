@@ -128,7 +128,7 @@ libexecNotExitsError exe dir = printf
 
 tryFindGhcModTreeLibexecDir :: IO (Maybe FilePath)
 tryFindGhcModTreeLibexecDir  = do
-  exe <- getExecutablePath
+  exe <- getExecutablePath'
   dir <- case takeFileName exe of
     "ghc" -> do -- we're probably in ghci; try CWD
         getCurrentDirectory

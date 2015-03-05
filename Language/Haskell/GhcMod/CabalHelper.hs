@@ -29,7 +29,7 @@ import Data.Monoid
 import Data.List
 import Language.Haskell.GhcMod.Types
 import Language.Haskell.GhcMod.Monad.Types
-import Language.Haskell.GhcMod.Error
+import Language.Haskell.GhcMod.Error as E
 import Language.Haskell.GhcMod.Utils
 import Language.Haskell.GhcMod.World
 import Language.Haskell.GhcMod.PathsAndFiles
@@ -93,7 +93,7 @@ cabalHelper = withCabal $ do
 
   res <- liftIO $ cached cradleRootDir (cabalHelperCache cmds) $ do
            out <- readProcess exe (distdir:cmds) ""
-           evaluate (read out) `catch`
+           evaluate (read out) `E.catch`
                \(SomeException _) -> error "cabalHelper: read failed"
 
   let [ Just (GmCabalHelperEntrypoints eps),

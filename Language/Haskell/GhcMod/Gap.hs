@@ -39,6 +39,7 @@ module Language.Haskell.GhcMod.Gap (
   , listVisibleModuleNames
   , listVisibleModules
   , Language.Haskell.GhcMod.Gap.isSynTyCon
+  , parseModuleHeader
   ) where
 
 import Control.Applicative hiding (empty)
@@ -95,6 +96,13 @@ import PackageConfig (PackageConfig, packageConfigId)
 #if __GLASGOW_HASKELL__ >= 704
 import qualified Data.IntSet as I (IntSet, empty)
 #endif
+
+
+import Bag
+import Lexer as L
+import Parser
+import SrcLoc
+
 
 ----------------------------------------------------------------
 ----------------------------------------------------------------
@@ -487,3 +495,27 @@ isSynTyCon = GHC.isTypeSynonymTyCon
 #else
 isSynTyCon = GHC.isSynTyCon
 #endif
+
+
+parseModuleHeader
+    :: String         -- ^ Haskell module source text (full Unicode is supported)
+    -> DynFlags
+    -> FilePath       -- ^ the filename (for source locations)
+    -> Either ErrorMessages (WarningMessages, Located (HsModule RdrName))
+parseModuleHeader str dflags filename =
+   let
+       loc  = mkRealSrcLoc (mkFastString filename) 1 1
+       buf  = stringToStringBuffer str
+   in
+   case L.unP Parser.parseHeader (mkPState dflags buf loc) of
+
+     PFailed sp err   ->
+#if __GLASGOW_HASKELL__ >= 706
+         Left (unitBag (mkPlainErrMsg dflags sp err))
+#else
+         Left (unitBag (mkPlainErrMsg sp err))
+#endif
+
+     POk pst rdr_module ->
+         let (warns,_) = getMessages pst in
+         Right (warns, rdr_module)

@@ -1,9 +1,10 @@
 {-# LANGUAGE CPP #-}
 module CheckSpec where
 
-import Data.List (isInfixOf, isPrefixOf) --isSuffixOf,
 import Language.Haskell.GhcMod
---import System.FilePath
+
+import Data.List
+import System.Process
 import Test.Hspec
 
 import TestUtils
@@ -20,6 +21,7 @@ spec = do
 
         it "works even if a module imports another module from a different directory" $ do
             withDirectory_ "test/data/check-test-subdir" $ do
+                _ <- system "cabal configure --enable-tests"
                 res <- runD $ checkSyntax ["test/Bar/Baz.hs"]
                 res `shouldSatisfy` (("test" </> "Foo.hs:3:1:Warning: Top-level binding with no type signature: foo :: [Char]\n") `isSuffixOf`)
 

@@ -38,8 +38,8 @@ import System.IO
 #endif
 
 #if MIN_VERSION_containers(0,5,0)
-import Data.Map.Strict (Map)
-import qualified Data.Map.Strict as M
+import Data.Map (Map)
+import qualified Data.Map as M
 #else
 import Data.Map (Map)
 import qualified Data.Map as M

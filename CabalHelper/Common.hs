@@ -18,7 +18,7 @@
 module CabalHelper.Common where
 
 import Control.Applicative
-import Control.Exception
+import Control.Exception as E
 import Control.Monad
 import Data.List
 import Data.Maybe
@@ -40,7 +40,7 @@ panic msg = throw $ Panic msg
 
 handlePanic :: IO a -> IO a
 handlePanic action =
-    action `catch` \(Panic msg) -> errMsg msg >> exitFailure
+    action `E.catch` \(Panic msg) -> errMsg msg >> exitFailure
 
 errMsg :: String -> IO ()
 errMsg str = do

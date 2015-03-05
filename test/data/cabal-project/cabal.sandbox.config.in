@@ -1,0 +1,25 @@
+-- This is a Cabal package environment file.
+-- THIS FILE IS AUTO-GENERATED. DO NOT EDIT DIRECTLY.
+-- Please create a 'cabal.config' file in the same directory
+-- if you want to change the default settings for this sandbox.
+
+
+local-repo: @CWD@/test/data/cabal-project/.cabal-sandbox/packages
+logs-dir: @CWD@/test/data/cabal-project/.cabal-sandbox/logs
+world-file: @CWD@/test/data/cabal-project/.cabal-sandbox/world
+user-install: False
+package-db: @CWD@/test/data/cabal-project/.cabal-sandbox/i386-osx-ghc-7.6.3-packages.conf.d
+build-summary: @CWD@/test/data/cabal-project/.cabal-sandbox/logs/build.log
+
+install-dirs
+  prefix: @CWD@/test/data/cabal-project/.cabal-sandbox
+  bindir: $prefix/bin
+  libdir: $prefix/lib
+  libsubdir: $arch-$os-$compiler/$pkgid
+  libexecdir: $prefix/libexec
+  datadir: $prefix/share
+  datasubdir: $arch-$os-$compiler/$pkgid
+  docdir: $datadir/doc/$arch-$os-$compiler/$pkgid
+  htmldir: $docdir/html
+  haddockdir: $htmldir
+  sysconfdir: $prefix/etc

@@ -36,13 +36,14 @@ import Language.Haskell.GhcMod.GhcPkg
 import Language.Haskell.GhcMod.Error
 import Language.Haskell.GhcMod.Logging
 import Language.Haskell.GhcMod.Types
+import Language.Haskell.GhcMod.Utils
 
 import Data.Maybe
 import Data.Either
 import Data.Foldable (foldrM)
 import Data.IORef
-import Data.Map.Strict (Map)
-import qualified Data.Map.Strict  as Map
+import Data.Map (Map)
+import qualified Data.Map  as Map
 import Data.Set (Set)
 import qualified Data.Set as Set
 
@@ -51,8 +52,7 @@ import System.FilePath
 
 withLightHscEnv :: forall m a. IOish m
     => [GHCOption] -> (HscEnv -> m a) -> m a
-withLightHscEnv opts action = gbracket initEnv teardownEnv (action)
-
+withLightHscEnv opts action = gbracket initEnv teardownEnv action
  where
    teardownEnv :: HscEnv -> m ()
    teardownEnv env = liftIO $ do
@@ -241,7 +241,7 @@ resolveEntrypoints env srcDirs ms =
    resolve :: Either FilePath ModuleName -> IO (Maybe ModulePath)
    resolve (Right mn) = findModulePath env mn
    resolve (Left fn') = do
-       mfn <- findFile srcDirs fn'
+       mfn <- findFile' srcDirs fn'
        case mfn of
          Nothing -> return Nothing
          Just fn'' -> do
@@ -253,6 +253,8 @@ resolveEntrypoints env srcDirs ms =
                      case mmn of
                        Nothing -> mkMainModulePath fn
                        Just mn -> ModulePath mn fn
+   findFile' dirs file =
+       mconcat <$> mapM (mightExist . (</>file)) dirs
 
 resolveGmComponents :: (IOish m, GmState m, GmLog m, GmEnv m)
                     => Maybe [Either FilePath ModuleName]

@@ -22,7 +22,7 @@ module NotCPP.Declarations where
 import Control.Arrow
 import Control.Applicative
 import Data.Maybe
-import Language.Haskell.TH.Syntax hiding (lookupName)
+import Language.Haskell.TH.Syntax
 
 import NotCPP.LookupValueName
 
@@ -39,10 +39,10 @@ recUpdE' :: Q Exp -> Name -> Exp -> Q Exp
 recUpdE' ex name assign = do
   RecUpdE <$> ex <*> pure [(name, assign)]
 
-lookupName :: (NameSpace, String) -> Q (Maybe Name)
-lookupName (VarName, n) = lookupValueName n
-lookupName (DataName, n) = lookupValueName n
-lookupName (TcClsName, n) = lookupTypeName n
+lookupName' :: (NameSpace, String) -> Q (Maybe Name)
+lookupName' (VarName, n) = lookupValueName n
+lookupName' (DataName, n) = lookupValueName n
+lookupName' (TcClsName, n) = lookupTypeName n
 
 -- Does this even make sense?
 ifelseD :: Q [Dec] -> Q [Dec] -> Q [Dec]
@@ -90,14 +90,16 @@ ifD decls' = do
       _ -> return [])
 
 definedNames :: [(NameSpace, Name)] -> Q [Name]
-definedNames ns = catMaybes <$> (lookupName . second nameBase) `mapM` ns
+definedNames ns = catMaybes <$> (lookupName' . second nameBase) `mapM` ns
 
 boundNames :: Dec -> [(NameSpace, Name)]
 boundNames decl =
     case decl of
       SigD n _ -> [(VarName, n)]
       FunD n _cls -> [(VarName, n)]
+#if __GLASGOW_HASKELL__ >= 706
       InfixD _ n -> [(VarName, n)]
+#endif
       ValD p _ _ -> map ((,) VarName) $ patNames p
 
       TySynD n _ _ -> [(TcClsName, n)]

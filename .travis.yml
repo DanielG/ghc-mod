@@ -5,12 +5,13 @@ ghc:
   - 7.8
 
 install:
+  - sudo apt-get install zlib1g-dev
   - cabal update
 #  - ( $CABAL122 && cabal install cabal-install --constraint "Cabal >= 1.22" && ghc-pkg unregister Cabal ) || true
   - echo $PATH
   - which cabal
-  - cabal install happy --constraint 'transformers <= 0.3.0.0'
-  - cabal install Cabal --constraint "Cabal == $(cabal --version | grep 'Cabal library' | awk '{ print $3 }' | awk -vFS=. '{ print $1 "." $2 }' | tail -n1).*"
+  - cabal install cabal-install --constraint "Cabal == $(cabal --version | grep 'Cabal library' | awk '{ print $3 }' | awk -vFS=. '{ print $1 "." $2 }' | tail -n1).*"
+#  - cabal install Cabal --constraint "Cabal == $(cabal --version | grep 'Cabal library' | awk '{ print $3 }' | tail -n1)"
   - happy --version
   - cabal install -j --only-dependencies --enable-tests
 
@@ -25,6 +26,8 @@ script:
   - if [ -n "$(ghc --version | awk '{ print $8 }' | sed -n '/^7.8/p')" ]; then export WERROR="--ghc-option=-Werror"; fi
   - cabal configure --enable-tests $WERROR
   - cabal build
+  - export ghc_mod_libexecdir=$PWD/dist/build/cabal-helper-wrapper
+  - export ghc_mod_datadir=$PWD
   - cabal test
 
 matrix:

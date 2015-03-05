@@ -19,6 +19,7 @@ module Main where
 
 import Control.Applicative
 import Control.Arrow
+import Control.Exception as E
 import Control.Monad
 import Control.Monad.Trans.Maybe
 import Data.Char
@@ -133,7 +134,8 @@ compileHelper cabalVer = do
             else do
               -- otherwise compile the requested cabal version into an isolated
               -- package-db
-              db <- installCabal cabalVer
+              db <- installCabal cabalVer `E.catch`
+                  \(SomeException _) -> errorInstallCabal cabalVer
               compileWithPkg chdir (Just db)
         Just _ ->
           compileWithPkg chdir Nothing
@@ -149,11 +151,26 @@ compileHelper cabalVer = do
 
 -- errorNoCabal :: Version -> a
 -- errorNoCabal cabalVer = panic $ printf "\
--- \No appropriate Cabal package found, wanted version %s.\n\
--- \- Check output of: $ ghc-pkg list Cabal\n\
--- \- Maybe try: $ cabal install Cabal --constraint 'Cabal == %s'" sver sver
+-- \No appropriate Cabal package found, wanted version %s.\n"
 --  where
 --    sver = showVersion cabalVer
+
+errorInstallCabal :: Version -> a
+errorInstallCabal cabalVer = panic $ printf "\
+\Installing Cabal version %s failed.\n\
+\n\
+\You have two choices now:\n\
+\- Either you install this version of Cabal in your globa/luser package-db\n\
+\  somehow\n\
+\n\
+\- Or you can see if you can update your cabal-install to use a different\n\
+\  version of the Cabal library that we can build with:\n\
+\    $ cabal install cabal-install --constraint 'Cabal > %s'\n\
+\n\
+\To check the version cabal-install is currently using try:\n\
+\    $ cabal --version\n" sver sver
+ where
+   sver = showVersion cabalVer
 
 errorNoMain :: FilePath -> a
 errorNoMain datadir = panic $ printf "\

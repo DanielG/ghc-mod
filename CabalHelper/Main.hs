@@ -114,7 +114,7 @@ main = do
          errMsg $ "distdir '"++distdir++"' does not exist"
          exitFailure
 
-  v <- maybe silent (const deafening) <$> lookupEnv "GHC_MOD_DEBUG"
+  v <- maybe silent (const deafening) . lookup  "GHC_MOD_DEBUG" <$> getEnvironment
   lbi <- unsafeInterleaveIO $ getPersistBuildConfig distdir
   let pd = localPkgDescr lbi
 

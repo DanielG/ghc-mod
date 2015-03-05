@@ -17,7 +17,7 @@
 {-# LANGUAGE CPP, GeneralizedNewtypeDeriving, FlexibleInstances #-}
 {-# LANGUAGE FlexibleContexts, MultiParamTypeClasses, RankNTypes #-}
 {-# LANGUAGE TypeFamilies, UndecidableInstances, BangPatterns #-}
-{-# LANGUAGE StandaloneDeriving, InstanceSigs #-}
+{-# LANGUAGE StandaloneDeriving #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
 module Language.Haskell.GhcMod.Monad.Types (
