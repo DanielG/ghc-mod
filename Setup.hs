@@ -31,7 +31,7 @@ main = defaultMainWithHooks $ simpleUserHooks {
  , instHook = \pd lbi uh ifl ->
               (instHook simpleUserHooks) pd lbi uh ifl
 
- , postConf = sanityCheckCabalVersions
+-- , postConf = sanityCheckCabalVersions
  }
 
 xBuildDependsLike :: LocalBuildInfo -> LocalBuildInfo
@@ -118,59 +118,58 @@ parseVer str =
       [(ver, _)] -> ver
       _ -> error $ "No parse (Ver) :(\n" ++ str ++ "\n"
 
-sanityCheckCabalVersions args cf desc lbi = do
-  (cabalInstallVer, cabalVer) <- getCabalExecVer
+-- sanityCheckCabalVersions args cf desc lbi = do
+--   (cabalInstallVer, cabalVer) <- getCabalExecVer
 
-  let
-        ghcVer = compilerVersion (compiler lbi)
-        -- ghc >= 7.10?
-        minGhc710 = ghcVer `withinRange` orLaterVersion (parseVer "7.10")
+--   let
+--         ghcVer = compilerVersion (compiler lbi)
+--         -- ghc >= 7.10?
+--         minGhc710 = ghcVer `withinRange` orLaterVersion (parseVer "7.10")
 
-  when minGhc710 $ do
-    let cabalHelperCabalVer = compCabalVer (CExeName "cabal-helper")
+--   when minGhc710 $ do
+--     let cabalHelperCabalVer = compCabalVer (CExeName "cabal-helper")
 
-    when (not $ cabalVer `sameMajorVersionAs` cabalHelperCabalVer) $
-         failCabalVersionDifferent cabalVer cabalHelperCabalVer
+--     when (not $ cabalVer `sameMajorVersionAs` cabalHelperCabalVer) $
+--          failCabalVersionDifferent cabalVer cabalHelperCabalVer
 
-  -- carry on as usual
-  (postConf simpleUserHooks) args cf desc lbi
+--   -- carry on as usual
+--   (postConf simpleUserHooks) args cf desc lbi
 
- where
-   earlierVersionThan ver ver' =
-       ver `withinRange` earlierVersion ver'
-   sameMajorVersionAs ver ver' =
-       ver `withinRange` withinVersion (Version (take 2 $ versionBranch ver') [])
+--  where
+--    earlierVersionThan ver ver' =
+--        ver `withinRange` earlierVersion ver'
+--    sameMajorVersionAs ver ver' =
+--        ver `withinRange` withinVersion (Version (take 2 $ versionBranch ver') [])
 
-   compCabalVer comp = let
-       clbi = getComponentLocalBuildInfo lbi comp
+--    compCabalVer comp = let
+--        clbi = getComponentLocalBuildInfo lbi comp
 
-       [cabalVer] =
-           [ ver | (_, PackageIdentifier pkg ver) <- componentPackageDeps clbi
-           , pkg == PackageName "Cabal" ]
-     in cabalVer
+--        [cabalVer] =
+--            [ ver | (_, PackageIdentifier pkg ver) <- componentPackageDeps clbi
+--            , pkg == PackageName "Cabal" ]
+--      in cabalVer
 
+-- getCabalExecVer = do
+--   ["cabal-install", "version", cabalInstallVer, "using", "version", cabalVer, "of", "the", "Cabal", "library"] <- words <$> readProcess "cabal" ["--version"] ""
+--   return (parseVer cabalInstallVer, parseVer cabalVer)
 
-getCabalExecVer = do
-  ["cabal-install", "version", cabalInstallVer, "using", "version", cabalVer, "of", "the", "Cabal", "library"] <- words <$> readProcess "cabal" ["--version"] ""
-  return (parseVer cabalInstallVer, parseVer cabalVer)
+-- failCabalVersionDifferent cabalVer libCabalVer =
+--   putStrLn rerr  >> exitFailure
+--  where
+--    replace :: String -> String -> String -> String
+--    replace _ _ [] = []
+--    replace n r h@(h':hs)
+--        | map snd (n `zip` h ) == n = r ++ replace n r (drop (length n) h)
+--        | otherwise = h':replace n r hs
 
-failCabalVersionDifferent cabalVer libCabalVer =
-  putStrLn rerr  >> exitFailure
- where
-   replace :: String -> String -> String -> String
-   replace _ _ [] = []
-   replace n r h@(h':hs)
-       | map snd (n `zip` h ) == n = r ++ replace n r (drop (length n) h)
-       | otherwise = h':replace n r hs
-
-   rerr = replace "X.XX.X.X" (showVersion libCabalVer) $
-          replace "Y.YY.Y.Y" (showVersion cabalVer) err
-   err = "\
-\Error: Cabal seems to have decided ghc-mod should be built using Cabal\n\
-\X.XX.X.X while the `cabal' executable in your PATH was built with Cabal\n\
-\Y.YY.Y.Y. This will lead to conflicts when running ghc-mod in any project\n\
-\where you use this `cabal' executable. Please compile ghc-mod using the same\n\
-\Cabal version as your `cabal' executable or recompile cabal-install using\n\
-\this version of the Cabal library.\n\
-\\n\
-\See: https://github.com/kazu-yamamoto/ghc-mod/wiki/InconsistentCabalVersions\n"
+--    rerr = replace "X.XX.X.X" (showVersion libCabalVer) $
+--           replace "Y.YY.Y.Y" (showVersion cabalVer) err
+--    err = "\
+-- \Error: Cabal seems to have decided ghc-mod should be built using Cabal\n\
+-- \X.XX.X.X while the `cabal' executable in your PATH was built with Cabal\n\
+-- \Y.YY.Y.Y. This will lead to conflicts when running ghc-mod in any project\n\
+-- \where you use this `cabal' executable. Please compile ghc-mod using the same\n\
+-- \Cabal version as your `cabal' executable or recompile cabal-install using\n\
+-- \this version of the Cabal library.\n\
+-- \\n\
+-- \See: https://github.com/kazu-yamamoto/ghc-mod/wiki/InconsistentCabalVersions\n"
