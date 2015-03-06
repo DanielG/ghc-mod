@@ -207,7 +207,7 @@ compile Compile {..} = do
           case exists of
             False -> return True
             True -> do
-                tsrcs <- timeHsFiles cabalHelperSourceDir
+                tsrcs <- timeHsFiles $ cabalHelperSourceDir </> "CabalHelper"
                 texe <- timeFile exe
                 return $ any (texe <) tsrcs
         Just _ -> return True -- let ghc do the difficult recomp checking
