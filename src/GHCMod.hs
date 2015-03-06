@@ -263,8 +263,13 @@ reqArg udsc dsc = ReqArg dsc udsc
 globalArgSpec :: [OptDescr (Options -> Options)]
 globalArgSpec =
       [ option "v" ["verbose"] "Can be given multiple times to be increasingly\
-                               \more verbose." $
+                               \ be more verbose." $
                NoArg $ \o -> o { logLevel = increaseLogLevel (logLevel o) }
+
+      , option "q" [] "Can be given multiple times to be increasingly be less\
+                      \ verbose." $
+               NoArg $ \o -> o { logLevel = decreaseLogLevel (logLevel o) }
+
 
       , option "l" ["tolisp"] "Format output as an S-Expression" $
                NoArg $ \o -> o { outputStyle = LispStyle }

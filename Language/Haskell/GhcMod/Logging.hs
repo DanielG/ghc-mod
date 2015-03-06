@@ -40,6 +40,10 @@ increaseLogLevel :: GmLogLevel -> GmLogLevel
 increaseLogLevel l | l == maxBound = l
 increaseLogLevel l = succ l
 
+decreaseLogLevel :: GmLogLevel -> GmLogLevel
+decreaseLogLevel l | l == minBound = l
+decreaseLogLevel l = succ l
+
 -- |
 -- >>> Just GmDebug <= Nothing
 -- False

@@ -12,6 +12,7 @@ module Language.Haskell.GhcMod (
   -- * Logging
   , GmLogLevel
   , increaseLogLevel
+  , decreaseLogLevel
   , gmSetLogLevel
   , gmLog
   -- * Types
