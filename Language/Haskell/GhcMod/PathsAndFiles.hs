@@ -233,9 +233,10 @@ cabalBuildPlatform = dropWhileEnd isSpace $ unsafePerformIO $
 packageCache :: String
 packageCache = "package.cache"
 
-cabalHelperCache :: [String] -> Cached [String] [Maybe GmCabalHelperResponse]
-cabalHelperCache cmds = Cached {
-    inputFiles = [setupConfigPath],
+cabalHelperCache ::
+    FilePath -> [String] -> Cached [String] [Maybe GmCabalHelperResponse]
+cabalHelperCache cabalHelperExe cmds = Cached {
+    inputFiles = [cabalHelperExe, setupConfigPath],
     inputData  = cmds,
     cacheFile  = setupConfigPath <.> "ghc-mod.cabal-helper"
   }

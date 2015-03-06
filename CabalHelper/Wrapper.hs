@@ -54,16 +54,17 @@ usage = do
    usageMsg = "\
 \( print-appdatadir\n\
 \| print-build-platform\n\
-\| DIST_DIR [CABAL_HELPER_ARGS...]\n\
-\)\n"
+\| DIST_DIR ( print-exe | [CABAL_HELPER_ARGS...] ) )\n"
 
 main :: IO ()
 main = handlePanic $ do
   args <- getArgs
   case args of
+    [] -> usage
+    "--help":[] -> usage
     "print-appdatadir":[] -> putStrLn =<< appDataDir
     "print-build-platform":[] -> putStrLn $ display buildPlatform
-    distdir:_ -> do
+    distdir:args' -> do
       cfgf <- canonicalizePath (distdir </> "setup-config")
       mhdr <- getCabalConfigHeader cfgf
       case mhdr of
@@ -76,11 +77,12 @@ main = handlePanic $ do
           eexe <- compileHelper hdrCabalVersion
           case eexe of
               Left e -> exitWith e
-              Right exe -> do
-                  (_,_,_,h) <- createProcess $ proc exe args
-                  exitWith =<< waitForProcess h
-
-    _ -> usage
+              Right exe ->
+                case args' of
+                  "print-exe":_ -> putStrLn exe
+                  _ -> do
+                    (_,_,_,h) <- createProcess $ proc exe args
+                    exitWith =<< waitForProcess h
 
 appDataDir :: IO FilePath
 appDataDir = (</> "cabal-helper") <$> getAppUserDataDirectory "ghc-mod"
@@ -137,7 +139,7 @@ compileHelper cabalVer = do
               db <- installCabal cabalVer `E.catch`
                   \(SomeException _) -> errorInstallCabal cabalVer
               compileWithPkg chdir (Just db)
-        Just _ ->
+        Just _ -> do
           compileWithPkg chdir Nothing
 
  where
@@ -229,11 +231,24 @@ compile Compile {..} = do
 
     if recompile
        then do
+         -- TODO: touch exe after, ghc doesn't do that if the input files didn't
+         -- actually change
          rv <- callProcessStderr' Nothing "ghc" ghc_opts
          return $ case rv of
                     ExitSuccess -> Right exe
                     e@(ExitFailure _) -> Left e
       else return $ Right exe
+
+ where
+   timeHsFiles :: FilePath -> IO [TimedFile]
+   timeHsFiles dir = do
+       fs <- map (dir</>) <$> getDirectoryContents dir
+       mapM timeFile =<< filterM isHsFile (filter (=="Wrapper.hs") fs)
+    where
+      isHsFile f = do
+        exists <- doesFileExist f
+        return $ exists && ".hs" `isSuffixOf` f
+
 
 callProcessStderr' :: Maybe FilePath -> FilePath -> [String] -> IO ExitCode
 callProcessStderr' mwd exe args = do
@@ -253,15 +268,6 @@ processFailedException fn exe args rv =
       panic $ concat [fn, ": ", exe, " "
                      , intercalate " " (map show args)
                      , " (exit " ++ show rv ++ ")"]
-
-timeHsFiles :: FilePath -> IO [TimedFile]
-timeHsFiles dir = do
-    fs <- map (dir</>) <$> getDirectoryContents dir
-    mapM timeFile =<< filterM isHsFile fs
- where
-   isHsFile f = do
-     exists <- doesFileExist f
-     return $ exists && ".hs" `isSuffixOf` f
 
 installCabal :: Version -> IO FilePath
 installCabal ver = do

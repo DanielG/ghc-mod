@@ -80,18 +80,17 @@ data CabalHelper = CabalHelper {
 
 cabalHelper :: (MonadIO m, GmEnv m) => m CabalHelper
 cabalHelper = withCabal $ do
+  Cradle {..} <- cradle
   let cmds = [ "entrypoints"
              , "source-dirs"
              , "ghc-options"
              , "ghc-src-options"
              , "ghc-pkg-options" ]
+      distdir = cradleRootDir </> "dist"
 
-  Cradle {..} <- cradle
   exe <- liftIO $ findLibexecExe "cabal-helper-wrapper"
-
-  let distdir = cradleRootDir </> "dist"
-
-  res <- liftIO $ cached cradleRootDir (cabalHelperCache cmds) $ do
+  hexe <- liftIO $ readProcess exe [distdir, "print-exe"] ""
+  res <- liftIO $ cached cradleRootDir (cabalHelperCache hexe cmds) $ do
            out <- readProcess exe (distdir:cmds) ""
            evaluate (read out) `E.catch`
                \(SomeException _) -> error "cabalHelper: read failed"
