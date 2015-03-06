@@ -102,13 +102,18 @@ gmeDoc e = case e of
         text "Could not find a consistent component assignment for modules:" $$
           (nest 4 $ foldr ($+$) empty $ map ctxDoc ctx) $$
         text "" $$
-        text "- Are you sure all these modules exist?" $$
-        text "- Maybe try enabling test suites and or benchmarks:" $$
-            nest 4 (backticks $ text "cabal configure --enable-tests --enable-benchmarks") $$
+        (if all (Set.null . snd) ctx
+           then noComponentSuggestions
+           else empty) $$
         text "- To find out which components ghc-mod knows about try:" $$
             nest 4 (backticks $ text "ghc-mod debug")
 
       where
+        noComponentSuggestions =
+          text "- Are some of these modules part of a test and or benchmark?\
+               \ Try enabling them:" $$
+              nest 4 (backticks $ text "cabal configure --enable-tests [--enable-benchmarks]")
+
         backticks d = char '`' <> d <> char '`'
         ctxDoc = moduleDoc *** compsDoc
                  >>> first (<> colon) >>> uncurry (flip hang 4)
