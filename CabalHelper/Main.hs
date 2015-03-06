@@ -58,6 +58,10 @@ import qualified Distribution.ModuleName as C (ModuleName)
 import Distribution.Text (display)
 import Distribution.Verbosity (Verbosity, silent, deafening)
 
+#if CABAL_MAJOR == 1 && CABAL_MINOR >= 22
+import Distribution.Utils.NubList
+#endif
+
 import Control.Applicative ((<$>))
 import Control.Monad
 import Control.Exception (catch, PatternMatchFail(..))
