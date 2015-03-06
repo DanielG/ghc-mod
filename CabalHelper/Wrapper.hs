@@ -203,9 +203,13 @@ compile Compile {..} = do
     recompile <-
       case cabalSourceDir of
         Nothing -> do
-          tsrcs <- timeHsFiles cabalHelperSourceDir
-          texe <- timeMaybe exe
-          return $ any ((texe <) . Just) tsrcs
+          exists <- doesFileExist exe
+          case exists of
+            False -> return True
+            True -> do
+                tsrcs <- timeHsFiles cabalHelperSourceDir
+                texe <- timeFile exe
+                return $ any (texe <) tsrcs
         Just _ -> return True -- let ghc do the difficult recomp checking
 
     let Version (mj:mi:_) _ = cabalVersion
