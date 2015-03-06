@@ -282,7 +282,7 @@ gmModuleName = GmModuleName . intercalate "." . components
 
 componentEntrypoints :: Component -> Either FilePath [GmModuleName]
 componentEntrypoints (CLib Library {..})
-    = Right $ map gmModuleName exposedModules
+    = Right $ map gmModuleName $ exposedModules ++ (otherModules libBuildInfo)
 componentEntrypoints (CExe Executable {..})
     = Left modulePath
 componentEntrypoints (CTest TestSuite { testInterface = TestSuiteExeV10 _ fp })
