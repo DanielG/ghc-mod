@@ -265,6 +265,7 @@ installCabal ver = do
   callProcessStderr (Just "/") "cabal" [ "--package-db=clear"
                                        , "--package-db=global"
                                        , "--package-db=" ++ db
+                                       , "--prefix=" ++ db </> "prefix"
                                        , "-j1"
                                        , "install", "Cabal-"++showVersion ver
                                        ]
