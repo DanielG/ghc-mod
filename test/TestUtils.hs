@@ -31,7 +31,7 @@ import Test.Hspec
 import Exception
 
 testLogLevel :: GmLogLevel
-testLogLevel = GmException
+testLogLevel = GmDebug
 
 extract :: Show e => IO (Either e a, w) -> IO a
 extract action = do

@@ -23,6 +23,8 @@ module Language.Haskell.GhcMod.Logging (
   ) where
 
 import Control.Monad
+import Data.List
+import Data.Char
 import Data.Monoid (mempty, mappend, mconcat, (<>))
 import System.IO
 import Text.PrettyPrint hiding (style, (<>))
@@ -52,7 +54,8 @@ gmLog level loc' doc = do
   let loc | loc' == "" = empty
           | otherwise = text (head $ lines loc') <> colon
       msg = gmRenderDoc $ gmLogLevelDoc level <+> loc <+> doc
+      msg' = dropWhileEnd isSpace msg
 
   when (Just level <= level') $
-       liftIO $ hPutStr stderr msg
+       liftIO $ hPutStrLn stderr msg'
   gmlJournal (GhcModLog Nothing [(level, render loc, msg)])
