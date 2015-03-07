@@ -58,16 +58,20 @@ getComponents = cabalHelper >>= \CabalHelper {..} -> return $ let
           GmComponent cn opts srcOpts ep ep srcDirs mempty
   in sc:cs
 
-
 withCabal :: (MonadIO m, GmEnv m) => m a -> m a
 withCabal action = do
     crdl <- cradle
-    Options { cabalProgram } <- options
-
+    opts <- options
     liftIO $ whenM (isSetupConfigOutOfDate <$> getCurrentWorld crdl) $
-        withDirectory_ (cradleRootDir crdl) $
-            void $ readProcess cabalProgram ["configure"] ""
-
+        withDirectory_ (cradleRootDir crdl) $ do
+            let progOpts =
+                    [ "--with-ghc=" ++ ghcProgram opts ]
+                    -- Only pass ghc-pkg if it was actually set otherwise we
+                    -- might break cabal's guessing logic
+                    ++ if ghcPkgProgram opts /= ghcPkgProgram defaultOptions
+                         then [ "--with-ghc-pkg=" ++ ghcPkgProgram opts ]
+                         else []
+            void $ readProcess (cabalProgram opts) ("configure":progOpts) ""
     action
 
 data CabalHelper = CabalHelper {
@@ -81,19 +85,27 @@ data CabalHelper = CabalHelper {
 cabalHelper :: (MonadIO m, GmEnv m) => m CabalHelper
 cabalHelper = withCabal $ do
   Cradle {..} <- cradle
-  let cmds = [ "entrypoints"
+  Options {..} <- options
+  let args = [ "entrypoints"
              , "source-dirs"
              , "ghc-options"
              , "ghc-src-options"
-             , "ghc-pkg-options" ]
+             , "ghc-pkg-options"
+             , "--with-ghc="     ++ ghcProgram
+             , "--with-ghc-pkg=" ++ ghcPkgProgram
+             , "--with-cabal="   ++ cabalProgram
+             ]
+
       distdir = cradleRootDir </> "dist"
 
-  exe <- liftIO $ findLibexecExe "cabal-helper-wrapper"
-  hexe <- liftIO $ readProcess exe [distdir, "print-exe"] ""
-  res <- liftIO $ cached cradleRootDir (cabalHelperCache hexe cmds) $ do
-           out <- readProcess exe (distdir:cmds) ""
-           evaluate (read out) `E.catch`
-               \(SomeException _) -> error "cabalHelper: read failed"
+  res <- liftIO $ do
+    exe  <- findLibexecExe "cabal-helper-wrapper"
+    hexe <- readProcess exe [distdir, "print-exe"] ""
+
+    cached cradleRootDir (cabalHelperCache hexe args) $ do
+        out <- readProcess exe (distdir:args) ""
+        evaluate (read out) `E.catch`
+            \(SomeException _) -> error "cabalHelper: read failed"
 
   let [ Just (GmCabalHelperEntrypoints eps),
         Just (GmCabalHelperStrings srcDirs),

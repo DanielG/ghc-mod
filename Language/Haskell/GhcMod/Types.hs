@@ -47,8 +47,10 @@ data Options = Options {
   , lineSeparator :: LineSeparator
   -- | Verbosity
   , logLevel      :: GmLogLevel
---  -- | @ghc@ program name.
---  , ghcProgram    :: FilePath
+  -- | @ghc@ program name.
+  , ghcProgram    :: FilePath
+  -- | @ghc-pkg@ program name.
+  , ghcPkgProgram :: FilePath
   -- | @cabal@ program name.
   , cabalProgram  :: FilePath
     -- | GHC command line options set on the @ghc-mod@ command line
@@ -68,8 +70,9 @@ defaultOptions :: Options
 defaultOptions = Options {
     outputStyle   = PlainStyle
   , lineSeparator = LineSeparator "\0"
-  , logLevel      = GmException
---  , ghcProgram    = "ghc"
+  , logLevel      = GmInfo
+  , ghcProgram    = "ghc"
+  , ghcPkgProgram = "ghc-pkg"
   , cabalProgram  = "cabal"
   , ghcUserOptions= []
   , operators     = False

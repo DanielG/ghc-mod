@@ -93,4 +93,6 @@ parseVer vers = runReadP parseVersion vers
 -- sameMajorVersion a b = majorVer a == majorVer b
 
 runReadP :: ReadP t -> String -> t
-runReadP p i = let (a,""):[] = filter ((=="") . snd) $ readP_to_S p i in a
+runReadP p i = case filter ((=="") . snd) $ readP_to_S p i of
+                 (a,""):[] -> a
+                 _ -> error $ "Error parsing: " ++ show i

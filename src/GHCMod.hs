@@ -281,8 +281,11 @@ globalArgSpec =
                reqArg "OPT" $ \g o ->
                    o { ghcUserOptions = g : ghcUserOptions o }
 
---      , option "" ["with-ghc"] "GHC executable to use" $
---               reqArg "PROG" $ \p o -> o { ghcProgram = p }
+      , option "" ["with-ghc"] "GHC executable to use" $
+               reqArg "PROG" $ \p o -> o { ghcProgram = p }
+
+      , option "" ["with-ghc-pkg"] "ghc-pkg executable to use (only needed when guessing from GHC path fails)" $
+               reqArg "PROG" $ \p o -> o { ghcPkgProgram = p }
 
       , option "" ["with-cabal"] "cabal-install executable to use" $
                reqArg "PROG" $ \p o -> o { cabalProgram = p }
