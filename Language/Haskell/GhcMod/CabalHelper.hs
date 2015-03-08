@@ -34,6 +34,7 @@ import Language.Haskell.GhcMod.Utils
 import Language.Haskell.GhcMod.World
 import Language.Haskell.GhcMod.PathsAndFiles
 import System.FilePath
+import System.Process
 
 -- | Only package related GHC options, sufficient for things that don't need to
 -- access home modules
@@ -86,21 +87,23 @@ cabalHelper :: (MonadIO m, GmEnv m) => m CabalHelper
 cabalHelper = withCabal $ do
   Cradle {..} <- cradle
   Options {..} <- options
+  let progArgs = [ "--with-ghc="     ++ ghcProgram
+                 , "--with-ghc-pkg=" ++ ghcPkgProgram
+                 , "--with-cabal="   ++ cabalProgram
+                 ]
+
   let args = [ "entrypoints"
              , "source-dirs"
              , "ghc-options"
              , "ghc-src-options"
              , "ghc-pkg-options"
-             , "--with-ghc="     ++ ghcProgram
-             , "--with-ghc-pkg=" ++ ghcPkgProgram
-             , "--with-cabal="   ++ cabalProgram
-             ]
+             ] ++ progArgs
 
       distdir = cradleRootDir </> "dist"
 
   res <- liftIO $ do
     exe  <- findLibexecExe "cabal-helper-wrapper"
-    hexe <- readProcess exe [distdir, "print-exe"] ""
+    hexe <- readProcess exe ([distdir, "print-exe"] ++ progArgs) ""
 
     cached cradleRootDir (cabalHelperCache hexe args) $ do
         out <- readProcess exe (distdir:args) ""

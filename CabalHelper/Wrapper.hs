@@ -95,15 +95,15 @@ parseCommandArgs opts argv
 
 guessProgramPaths :: Options -> IO Options
 guessProgramPaths opts = do
-    mghcPkg <- guessToolFromGhcPath "ghc-pkg" (ghcProgram opts)
-    let guessedGhcPkg = fromMaybe (ghcPkgProgram dopts) mghcPkg
-    return opts {
-       ghcPkgProgram = if guessGhcPkg then guessedGhcPkg else ghcPkgProgram dopts
-     }
+    if not (same ghcProgram opts dopts) && same ghcPkgProgram opts dopts
+       then do
+         mghcPkg <- guessToolFromGhcPath "ghc-pkg" (ghcProgram opts)
+         return opts {
+           ghcPkgProgram = fromMaybe (ghcPkgProgram opts) mghcPkg
+         }
+       else return opts
  where
-   guessGhcPkg = nsame ghcProgram opts dopts && same ghcPkgProgram opts dopts
    same f o o'  = f o == f o'
-   nsame f o o' = f o /= f o'
    dopts = defaultOptions
 
 main :: IO ()
