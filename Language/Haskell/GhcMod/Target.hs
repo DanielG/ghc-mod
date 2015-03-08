@@ -172,11 +172,19 @@ targetGhcOptions crdl sefnmn = do
        let mdlcs = moduleComponents mcs `zipMap` Set.toList sefnmn
            candidates = Set.unions $ map snd mdlcs
 
-       when (Set.null candidates) $
-          throwError $ GMECabalCompAssignment mdlcs
+       let noCandidates = Set.null candidates
+           noModuleHasAnyAssignment = all (Set.null . snd) mdlcs
 
-       let cn = pickComponent candidates
-       return $ gmcGhcOpts $ fromJust $ Map.lookup cn mcs
+       if noCandidates && noModuleHasAnyAssignment
+          then do
+            gmLog GmWarning "" $ strDoc $ "Could not find a componenet assignment, falling back to sandbox only project options."
+            sandboxOpts crdl
+          else do
+            when noCandidates $
+              throwError $ GMECabalCompAssignment mdlcs
+
+            let cn = pickComponent candidates
+            return $ gmcGhcOpts $ fromJust $ Map.lookup cn mcs
 
 moduleComponents :: Map GmComponentName (GmComponent (Set ModulePath))
                  -> Either FilePath ModuleName
