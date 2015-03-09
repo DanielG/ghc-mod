@@ -20,9 +20,9 @@ module Language.Haskell.GhcMod.Monad (
   , runGhcModT'
   , runGhcModT''
   , hoistGhcModT
-  , runGmLoadedT
-  , runGmLoadedT'
-  , runGmLoadedTWith
+  , runGmlT
+  , runGmlT'
+  , runGmlTWith
   , runGmPkgGhc
   , withGhcModEnv
   , withGhcModEnv'

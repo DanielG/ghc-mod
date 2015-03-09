@@ -46,7 +46,7 @@ splits :: IOish m
        -> Int          -- ^ Column number.
        -> GhcModT m String
 splits file lineNo colNo =
-  runGmLoadedT' [Left file] deferErrors $ ghandle handler $ do
+  ghandle handler $ runGmlT' [Left file] deferErrors $ do
       opt <- options
       crdl <- cradle
       style <- getStyle

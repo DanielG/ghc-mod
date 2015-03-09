@@ -69,7 +69,7 @@ sig :: IOish m
     -> Int          -- ^ Column number.
     -> GhcModT m String
 sig file lineNo colNo =
-    runGmLoadedT' [Left file] deferErrors $ ghandle handler $ do
+    runGmlT' [Left file] deferErrors $ ghandle fallback $ do
       opt <- options
       style <- getStyle
       dflag <- G.getSessionDynFlags
@@ -91,7 +91,7 @@ sig file lineNo colNo =
 
 
   where
-    handler (SomeException _) = do
+    fallback (SomeException _) = do
       opt <- options
       -- Code cannot be parsed by ghc module
       -- Fallback: try to get information via haskell-src-exts
@@ -332,7 +332,7 @@ refine :: IOish m
        -> Expression   -- ^ A Haskell expression.
        -> GhcModT m String
 refine file lineNo colNo expr =
-  runGmLoadedT' [Left file] deferErrors $ ghandle handler $ do
+  ghandle handler $ runGmlT' [Left file] deferErrors $ do
         opt <- options
         style <- getStyle
         dflag <- G.getSessionDynFlags
@@ -399,7 +399,7 @@ auto :: IOish m
      -> Int          -- ^ Column number.
      -> GhcModT m String
 auto file lineNo colNo =
-  runGmLoadedT' [Left file] deferErrors $ ghandle handler $ do
+  ghandle handler $ runGmlT' [Left file] deferErrors $ do
         opt <- options
         style <- getStyle
         dflag <- G.getSessionDynFlags

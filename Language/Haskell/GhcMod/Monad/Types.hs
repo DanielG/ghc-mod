@@ -23,7 +23,7 @@
 module Language.Haskell.GhcMod.Monad.Types (
   -- * Monad Types
     GhcModT(..)
-  , GmLoadedT(..)
+  , GmlT(..)
   , LightGhc(..)
   , GmGhc
   , IOish
@@ -164,7 +164,7 @@ newtype GhcModT m a = GhcModT {
                , MonadError GhcModError
                )
 
-newtype GmLoadedT m a = GmLoadedT { unGmLoadedT :: GhcModT m a }
+newtype GmlT m a = GmlT { unGmlT :: GhcModT m a }
     deriving ( Functor
              , Applicative
              , Alternative
@@ -307,20 +307,20 @@ instance MonadIO m => MonadIO (MaybeT m) where
     liftIO = lift . liftIO
 #endif
 
-instance (MonadBaseControl IO m) => MonadBase IO (GmLoadedT m) where
-    liftBase = GmLoadedT . liftBase
+instance (MonadBaseControl IO m) => MonadBase IO (GmlT m) where
+    liftBase = GmlT . liftBase
 
-instance (MonadBaseControl IO m) => MonadBaseControl IO (GmLoadedT m) where
-    type StM (GmLoadedT m) a = StM (GhcModT m) a
+instance (MonadBaseControl IO m) => MonadBaseControl IO (GmlT m) where
+    type StM (GmlT m) a = StM (GhcModT m) a
     liftBaseWith = defaultLiftBaseWith
     restoreM = defaultRestoreM
     {-# INLINE liftBaseWith #-}
     {-# INLINE restoreM #-}
 
-instance MonadTransControl GmLoadedT where
-    type StT GmLoadedT a = StT GhcModT a
-    liftWith = defaultLiftWith GmLoadedT unGmLoadedT
-    restoreT = defaultRestoreT GmLoadedT
+instance MonadTransControl GmlT where
+    type StT GmlT a = StT GhcModT a
+    liftWith = defaultLiftWith GmlT unGmlT
+    restoreT = defaultRestoreT GmlT
 
 instance (MonadBaseControl IO m) => MonadBase IO (GhcModT m) where
     liftBase = GhcModT . liftBase
@@ -366,7 +366,7 @@ gmLiftWithInner f = liftWith f >>= restoreT . return
 
 type GmGhc m = (IOish m, GhcMonad m)
 
-instance (MonadIO m, MonadBaseControl IO m) => GhcMonad (GmLoadedT m) where
+instance (MonadIO m, MonadBaseControl IO m) => GhcMonad (GmlT m) where
     getSession = do
         ref <- gmgsSession . fromJust . gmGhcSession <$> gmsGet
         liftIO $ readIORef ref
@@ -379,7 +379,7 @@ instance GhcMonad LightGhc where
     setSession a = (liftIO . flip writeIORef a) =<< LightGhc ask
 
 #if __GLASGOW_HASKELL__ >= 706
-instance (MonadIO m, MonadBaseControl IO m) => HasDynFlags (GmLoadedT m) where
+instance (MonadIO m, MonadBaseControl IO m) => HasDynFlags (GmlT m) where
     getDynFlags = hsc_dflags <$> getSession
 
 instance HasDynFlags LightGhc where
@@ -393,7 +393,7 @@ instance (MonadIO m, MonadBaseControl IO m) => ExceptionMonad (GhcModT m) where
     gmask = liftBaseOp gmask . liftRestore
      where liftRestore f r = f $ liftBaseOp_ r
 
-instance (MonadIO m, MonadBaseControl IO m) => ExceptionMonad (GmLoadedT m) where
+instance (MonadIO m, MonadBaseControl IO m) => ExceptionMonad (GmlT m) where
     gcatch act handler = control $ \run ->
         run act `gcatch` (run . handler)
 

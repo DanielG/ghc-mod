@@ -42,7 +42,7 @@ browse pkgmdl = do
       runGmPkgGhc $
         processExports opt =<< tryModuleInfo =<< G.findModule mdlname mpkgid
 
-    goHomeModule = runGmLoadedT [Right mdlname] $ do
+    goHomeModule = runGmlT [Right mdlname] $ do
       opt <- options
       processExports opt =<< tryModuleInfo =<< G.findModule mdlname Nothing
 

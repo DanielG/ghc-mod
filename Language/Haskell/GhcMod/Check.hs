@@ -29,7 +29,7 @@ check :: IOish m
       => [FilePath]  -- ^ The target files.
       -> GhcModT m (Either String String)
 check files =
-    runGmLoadedTWith
+    runGmlTWith
       (map Left files)
       return
       ((fmap fst <$>) . withLogger (setAllWarningFlags . setNoMaxRelevantBindings))
@@ -49,7 +49,7 @@ expandTemplate files = either id id <$> expand files
 -- | Expanding Haskell Template.
 expand :: IOish m => [FilePath] -> GhcModT m (Either String String)
 expand files =
-    runGmLoadedTWith
+    runGmlTWith
       (map Left files)
       return
       ((fmap fst <$>) . withLogger (Gap.setDumpSplices . setNoWarningFlags))

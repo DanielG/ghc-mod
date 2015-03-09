@@ -117,24 +117,23 @@ initSession opts mdf = do
 --       ( setModeSimple -- $ setEmptyLogger
 --                       df)
 
-runGmLoadedT :: IOish m
-             => [Either FilePath ModuleName] -> GmLoadedT m a -> GhcModT m a
-runGmLoadedT fns action = runGmLoadedT' fns return action
+runGmlT :: IOish m => [Either FilePath ModuleName] -> GmlT m a -> GhcModT m a
+runGmlT fns action = runGmlT' fns return action
 
-runGmLoadedT' :: IOish m
+runGmlT' :: IOish m
               => [Either FilePath ModuleName]
               -> (DynFlags -> Ghc DynFlags)
-              -> GmLoadedT m a
+              -> GmlT m a
               -> GhcModT m a
-runGmLoadedT' fns mdf action = runGmLoadedTWith fns mdf id action
+runGmlT' fns mdf action = runGmlTWith fns mdf id action
 
-runGmLoadedTWith :: IOish m
+runGmlTWith :: IOish m
                  => [Either FilePath ModuleName]
                  -> (DynFlags -> Ghc DynFlags)
-                 -> (GmLoadedT m a -> GmLoadedT m b)
-                 -> GmLoadedT m a
+                 -> (GmlT m a -> GmlT m b)
+                 -> GmlT m a
                  -> GhcModT m b
-runGmLoadedTWith efnmns' mdf wrapper action = do
+runGmlTWith efnmns' mdf wrapper action = do
     crdl <- cradle
     Options { ghcUserOptions } <- options
 
@@ -150,7 +149,7 @@ runGmLoadedTWith efnmns' mdf wrapper action = do
     initSession opts' $
         setModeSimple >>> setEmptyLogger >>> mdf
 
-    unGmLoadedT $ wrapper $ do
+    unGmlT $ wrapper $ do
       loadTargets (map moduleNameString mns ++ rfns)
       action
 
@@ -293,7 +292,7 @@ resolveGmComponents mumns cs = do
 
 
 -- | Set the files as targets and load them.
-loadTargets :: IOish m => [String] -> GmLoadedT m ()
+loadTargets :: IOish m => [String] -> GmlT m ()
 loadTargets filesOrModules = do
     gmLog GmDebug "loadTargets" $
           text "Loading" <+>: fsep (map text filesOrModules)

@@ -3,7 +3,7 @@ module Language.Haskell.GhcMod.Info (
   , types
   ) where
 
-import Control.Applicative ((<$>))
+import Control.Applicative
 import Data.Function (on)
 import Data.List (sortBy)
 import Data.Maybe (catMaybes)
@@ -29,14 +29,14 @@ info :: IOish m
      => FilePath     -- ^ A target file.
      -> Expression   -- ^ A Haskell expression.
      -> GhcModT m String
-info file expr = runGmLoadedT' [Left file] deferErrors $ withContext $ do
-    opt <- options
-    convert opt <$> ghandle handler body
+info file expr =
+    ghandle handler $ runGmlT' [Left file] deferErrors $ withContext $
+      convert <$> options <*> body
   where
     handler (SomeException ex) = do
         gmLog GmException "info" $
                 text "" $$ nest 4 (showDoc ex)
-        return "Cannot show info"
+        convert' "Cannot show info"
 
     body = do
         sdoc <- Gap.infoThing expr
@@ -54,7 +54,7 @@ types :: IOish m
       -> Int          -- ^ Column number.
       -> GhcModT m String
 types file lineNo colNo =
-    runGmLoadedT' [Left file] deferErrors $ ghandle handler $ withContext $ do
+    ghandle handler $ runGmlT' [Left file] deferErrors $ withContext $ do
         crdl <- cradle
         modSum <- Gap.fileModSummary (cradleCurrentDir crdl </> file)
         srcSpanTypes <- getSrcSpanType modSum lineNo colNo
