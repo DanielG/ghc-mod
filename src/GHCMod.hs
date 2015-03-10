@@ -266,7 +266,7 @@ globalArgSpec =
                                \ be more verbose." $
                NoArg $ \o -> o { logLevel = increaseLogLevel (logLevel o) }
 
-      , option "q" [] "Can be given multiple times to be increasingly be less\
+      , option "s" [] "Can be given multiple times to be increasingly be less\
                       \ verbose." $
                NoArg $ \o -> o { logLevel = decreaseLogLevel (logLevel o) }
 
