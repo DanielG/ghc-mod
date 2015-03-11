@@ -5,8 +5,9 @@ import Test.DocTest
 
 main :: IO ()
 main = doctest
-  [ "-package", "ghc"
+  [ "-package", "ghc-" ++ VERSION_ghc
   , "-package", "transformers-" ++ VERSION_transformers
+  , "-package", "mtl-" ++ VERSION_mtl
   , "-package", "directory-" ++ VERSION_directory
   , "-XConstraintKinds", "-XFlexibleContexts", "-XScopedTypeVariables", "-XRecordWildCards", "-XNamedFieldPuns"
   , "-idist/build/autogen/"
