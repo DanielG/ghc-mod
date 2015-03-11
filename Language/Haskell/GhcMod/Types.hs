@@ -1,5 +1,5 @@
 {-# LANGUAGE DeriveDataTypeable, GADTs, StandaloneDeriving, DataKinds #-}
-{-# OPTIONS_GHC -fno-warn-orphans #-}
+{-# OPTIONS_GHC -fno-warn-orphans -fno-warn-deprecations #-}
 module Language.Haskell.GhcMod.Types (
     module Language.Haskell.GhcMod.Types
   , module CabalHelper.Types

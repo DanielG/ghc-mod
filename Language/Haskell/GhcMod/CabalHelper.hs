@@ -34,7 +34,6 @@ import Language.Haskell.GhcMod.Utils
 import Language.Haskell.GhcMod.World
 import Language.Haskell.GhcMod.PathsAndFiles
 import System.FilePath
-import System.Process
 
 -- | Only package related GHC options, sufficient for things that don't need to
 -- access home modules
