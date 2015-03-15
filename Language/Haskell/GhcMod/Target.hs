@@ -46,6 +46,7 @@ import Data.Map (Map)
 import qualified Data.Map  as Map
 import Data.Set (Set)
 import qualified Data.Set as Set
+import Distribution.Helper
 
 import System.Directory
 import System.FilePath
@@ -185,9 +186,9 @@ targetGhcOptions crdl sefnmn = do
             let cn = pickComponent candidates
             return $ gmcGhcOpts $ fromJust $ Map.lookup cn mcs
 
-moduleComponents :: Map GmComponentName (GmComponent (Set ModulePath))
+moduleComponents :: Map ChComponentName (GmComponent (Set ModulePath))
                  -> Either FilePath ModuleName
-                 -> Set GmComponentName
+                 -> Set ChComponentName
 moduleComponents m efnmn =
     foldr' Set.empty m $ \c s ->
         let
@@ -203,9 +204,8 @@ moduleComponents m efnmn =
 
    foldr' b as f = Map.foldr f b as
 
-pickComponent :: Set GmComponentName -> GmComponentName
+pickComponent :: Set ChComponentName -> ChComponentName
 pickComponent scn = Set.findMin scn
-
 
 packageGhcOptions :: (MonadIO m, GmEnv m) => m [GHCOption]
 packageGhcOptions = do
@@ -223,14 +223,16 @@ sandboxOpts crdl = return $ ["-i" ++ d | d <- [wdir,rdir]] ++ pkgOpts
 
 resolveGmComponent :: (IOish m, GmLog m, GmEnv m)
     => Maybe [Either FilePath ModuleName] -- ^ Updated modules
-    -> GmComponent (Either FilePath [ModuleName])
+    -> GmComponent ChEntrypoint
     -> m (GmComponent (Set ModulePath))
 resolveGmComponent mums c@GmComponent {..} =
   withLightHscEnv gmcGhcSrcOpts $ \env -> do
     let srcDirs = gmcSourceDirs
         mg = gmcHomeModuleGraph
 
-    let eps = either (return . Left) (map Right) gmcEntrypoints
+    Cradle { cradleRootDir } <- cradle
+
+    eps <- liftIO $ resolveChEntrypoints cradleRootDir gmcEntrypoints
     simp <- liftIO $ resolveEntrypoints env srcDirs eps
     sump <- liftIO $ case mums of
         Nothing -> return simp
@@ -263,11 +265,30 @@ resolveEntrypoints env srcDirs ms =
    findFile' dirs file =
        mconcat <$> mapM (mightExist . (</>file)) dirs
 
+resolveChEntrypoints ::
+  FilePath -> ChEntrypoint -> IO [Either FilePath ModuleName]
+resolveChEntrypoints _ (ChLibEntrypoint em om) =
+    return $ map (Right . chModToMod) (em ++ om)
+
+resolveChEntrypoints _ (ChExeEntrypoint main om) =
+    return $ [Left main] ++ map (Right . chModToMod) om
+
+resolveChEntrypoints srcDir ChSetupEntrypoint = do
+  shs <- doesFileExist (srcDir </> "Setup.hs")
+  slhs <- doesFileExist (srcDir </> "Setup.lhs")
+  return $ case (shs, slhs) of
+    (True, _) -> [Left "Setup.hs"]
+    (_, True) -> [Left "Setup.lhs"]
+    (False, False) -> []
+
+chModToMod :: ChModuleName -> ModuleName
+chModToMod (ChModuleName mn) = mkModuleName mn
+
 resolveGmComponents :: (IOish m, GmState m, GmLog m, GmEnv m)
                     => Maybe [Either FilePath ModuleName]
                         -- ^ Updated modules
-                    -> [GmComponent (Either FilePath [ModuleName])]
-                    -> m (Map GmComponentName (GmComponent (Set ModulePath)))
+                    -> [GmComponent ChEntrypoint]
+                    -> m (Map ChComponentName (GmComponent (Set ModulePath)))
 resolveGmComponents mumns cs = do
     s <- gmsGet
     m' <- foldrM' (gmComponents s) cs $ \c m -> do

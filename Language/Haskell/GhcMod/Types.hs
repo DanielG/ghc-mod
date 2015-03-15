@@ -2,7 +2,6 @@
 {-# OPTIONS_GHC -fno-warn-orphans -fno-warn-deprecations #-}
 module Language.Haskell.GhcMod.Types (
     module Language.Haskell.GhcMod.Types
-  , module CabalHelper.Types
   , ModuleName
   , mkModuleName
   , moduleNameString
@@ -18,12 +17,11 @@ import Data.Set (Set)
 import qualified Data.Set as Set
 import Data.Monoid
 import Data.Typeable (Typeable)
+import Distribution.Helper
 import Exception (ExceptionMonad)
 import MonadUtils (MonadIO)
 import GHC (ModuleName, moduleNameString, mkModuleName)
 import PackageConfig (PackageConfig)
-
-import CabalHelper.Types
 
 -- | A constraint alias (-XConstraintKinds) to make functions dealing with
 -- 'GhcModT' somewhat cleaner.
@@ -168,10 +166,10 @@ instance Monoid GmModuleGraph where
         GmModuleGraph (a <> a') (b <> b') (Map.unionWith Set.union c c')
 
 data GmComponent eps = GmComponent {
-      gmcName            :: GmComponentName,
+      gmcName            :: ChComponentName,
       gmcGhcOpts         :: [GHCOption],
       gmcGhcSrcOpts      :: [GHCOption],
-      gmcRawEntrypoints  :: Either FilePath [ModuleName],
+      gmcRawEntrypoints  :: ChEntrypoint,
       gmcEntrypoints     :: eps,
       gmcSourceDirs      :: [FilePath],
       gmcHomeModuleGraph :: GmModuleGraph
@@ -204,10 +202,10 @@ data GhcModError
     | GMECabalFlags GhcModError
     -- ^ Retrieval of the cabal configuration flags failed.
 
-    | GMECabalComponent GmComponentName
+    | GMECabalComponent ChComponentName
     -- ^ Cabal component could not be found
 
-    | GMECabalCompAssignment [(Either FilePath ModuleName, Set GmComponentName)]
+    | GMECabalCompAssignment [(Either FilePath ModuleName, Set ChComponentName)]
     -- ^ Could not find a consistent component assignment for modules
 
     | GMEProcess String [String] (Either (String, String, Int) GhcModError)

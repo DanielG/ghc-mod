@@ -19,6 +19,7 @@ module Language.Haskell.GhcMod.Pretty where
 import Control.Arrow hiding ((<+>))
 import Data.Char
 import Data.List
+import Distribution.Helper
 import Text.PrettyPrint
 
 import Language.Haskell.GhcMod.Types
@@ -29,12 +30,12 @@ docStyle = style { ribbonsPerLine = 1.2 }
 gmRenderDoc :: Doc -> String
 gmRenderDoc = renderStyle docStyle
 
-gmComponentNameDoc :: GmComponentName -> Doc
-gmComponentNameDoc GmSetupHsName   = text $ "Setup.hs"
-gmComponentNameDoc GmLibName       = text $ "library"
-gmComponentNameDoc (GmExeName n)   = text $ "exe:" ++ n
-gmComponentNameDoc (GmTestName n)  = text $ "test:" ++ n
-gmComponentNameDoc (GmBenchName n) = text $ "bench:" ++ n
+gmComponentNameDoc :: ChComponentName -> Doc
+gmComponentNameDoc ChSetupHsName   = text $ "Setup.hs"
+gmComponentNameDoc ChLibName       = text $ "library"
+gmComponentNameDoc (ChExeName n)   = text $ "exe:" ++ n
+gmComponentNameDoc (ChTestName n)  = text $ "test:" ++ n
+gmComponentNameDoc (ChBenchName n) = text $ "bench:" ++ n
 
 gmLogLevelDoc :: GmLogLevel -> Doc
 gmLogLevelDoc GmPanic     = text "PANIC"

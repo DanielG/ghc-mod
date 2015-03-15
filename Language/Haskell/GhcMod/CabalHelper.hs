@@ -15,21 +15,18 @@
 -- along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 module Language.Haskell.GhcMod.CabalHelper (
-    CabalHelper(..)
-  , getComponents
-  , getGhcOptions
+    getComponents
   , getGhcPkgOptions
-  , cabalHelper
   ) where
 
 import Control.Applicative
-import Control.Arrow
 import Control.Monad
 import Data.Monoid
-import Data.List
-import Language.Haskell.GhcMod.Types
+import Distribution.Helper
+import qualified Language.Haskell.GhcMod.Types as T
+import Language.Haskell.GhcMod.Types hiding (ghcProgram, ghcPkgProgram,
+                                             cabalProgram)
 import Language.Haskell.GhcMod.Monad.Types
-import Language.Haskell.GhcMod.Error as E
 import Language.Haskell.GhcMod.Utils
 import Language.Haskell.GhcMod.World
 import Language.Haskell.GhcMod.PathsAndFiles
@@ -37,26 +34,42 @@ import System.FilePath
 
 -- | Only package related GHC options, sufficient for things that don't need to
 -- access home modules
-getGhcPkgOptions :: (MonadIO m, GmEnv m) => m [(GmComponentName, [GHCOption])]
-getGhcPkgOptions = chGhcPkgOptions `liftM` cabalHelper
+getGhcPkgOptions :: (MonadIO m, GmEnv m) => m [(ChComponentName, [GHCOption])]
+getGhcPkgOptions = do
+  Cradle {..} <- cradle
+  let distdir = cradleRootDir </> "dist"
+  runQuery distdir ghcPkgOptions
 
-getGhcOptions :: (MonadIO m, GmEnv m) => m [(GmComponentName, [GHCOption])]
-getGhcOptions = chGhcOptions `liftM` cabalHelper
+helperProgs :: Options -> Programs
+helperProgs opts = Programs {
+                            cabalProgram  = T.cabalProgram opts,
+                            ghcProgram    = T.ghcProgram opts,
+                            ghcPkgProgram = T.ghcPkgProgram opts
+                          }
 
 -- | Primary interface to cabal-helper and intended single entrypoint to
 -- constructing 'GmComponent's
 --
 -- The Component\'s 'gmcHomeModuleGraph' will be empty and has to be resolved by
 -- 'resolveGmComponents'.
-getComponents :: (MonadIO m, GmEnv m)
-    => m [GmComponent (Either FilePath [ModuleName])]
-getComponents = cabalHelper >>= \CabalHelper {..} -> return $ let
-  ([(scn, sep)], eps) = partition ((GmSetupHsName ==) . fst) chEntrypoints
-  sc = GmComponent scn [] [] sep sep ["."] mempty
-  cs = flip map (zip4 eps chGhcOptions chGhcSrcOptions chSourceDirs) $
-      \((cn, ep), (_, opts), (_, srcOpts), (_, srcDirs)) ->
+getComponents :: (MonadIO m, GmEnv m) => m [GmComponent ChEntrypoint]
+getComponents = withCabal $ do
+    Cradle {..} <- cradle
+    let distdir = cradleRootDir </> "dist"
+    opt <- options
+
+    runQuery' (helperProgs opt) distdir $ do
+      q <- liftM4 join4 ghcOptions ghcSrcOptions entrypoints sourceDirs
+      return $ flip map q $ \(cn, (opts, (srcOpts, (ep, srcDirs)))) ->
           GmComponent cn opts srcOpts ep ep srcDirs mempty
-  in sc:cs
+ where
+   join4 a b c = join' a . join' b . join' c
+   join' :: Eq a => [(a,b)] -> [(a,c)] -> [(a,(b,c))]
+   join' lb lc = [ (a, (b, c))
+                | (a, b) <- lb
+                , (a', c) <- lc
+                , a == a'
+                ]
 
 withCabal :: (MonadIO m, GmEnv m) => m a -> m a
 withCabal action = do
@@ -65,58 +78,11 @@ withCabal action = do
     liftIO $ whenM (isSetupConfigOutOfDate <$> getCurrentWorld crdl) $
         withDirectory_ (cradleRootDir crdl) $ do
             let progOpts =
-                    [ "--with-ghc=" ++ ghcProgram opts ]
+                    [ "--with-ghc=" ++ T.ghcProgram opts ]
                     -- Only pass ghc-pkg if it was actually set otherwise we
                     -- might break cabal's guessing logic
-                    ++ if ghcPkgProgram opts /= ghcPkgProgram defaultOptions
-                         then [ "--with-ghc-pkg=" ++ ghcPkgProgram opts ]
+                    ++ if T.ghcPkgProgram opts /= T.ghcPkgProgram defaultOptions
+                         then [ "--with-ghc-pkg=" ++ T.ghcPkgProgram opts ]
                          else []
-            void $ readProcess (cabalProgram opts) ("configure":progOpts) ""
+            void $ readProcess (T.cabalProgram opts) ("configure":progOpts) ""
     action
-
-data CabalHelper = CabalHelper {
-      chEntrypoints   :: [(GmComponentName, Either FilePath [ModuleName])],
-      chSourceDirs    :: [(GmComponentName, [String])],
-      chGhcOptions    :: [(GmComponentName, [String])],
-      chGhcSrcOptions :: [(GmComponentName, [String])],
-      chGhcPkgOptions :: [(GmComponentName, [String])]
-    } deriving (Show)
-
-cabalHelper :: (MonadIO m, GmEnv m) => m CabalHelper
-cabalHelper = withCabal $ do
-  Cradle {..} <- cradle
-  Options {..} <- options
-  let progArgs = [ "--with-ghc="     ++ ghcProgram
-                 , "--with-ghc-pkg=" ++ ghcPkgProgram
-                 , "--with-cabal="   ++ cabalProgram
-                 ]
-
-  let args = [ "entrypoints"
-             , "source-dirs"
-             , "ghc-options"
-             , "ghc-src-options"
-             , "ghc-pkg-options"
-             ] ++ progArgs
-
-      distdir = cradleRootDir </> "dist"
-
-  res <- liftIO $ do
-    exe  <- findLibexecExe "cabal-helper-wrapper"
-    hexe <- readProcess exe ([distdir, "print-exe"] ++ progArgs) ""
-
-    cached cradleRootDir (cabalHelperCache hexe args) $ do
-        out <- readProcess exe (distdir:args) ""
-        evaluate (read out) `E.catch`
-            \(SomeException _) -> error "cabalHelper: read failed"
-
-  let [ Just (GmCabalHelperEntrypoints eps),
-        Just (GmCabalHelperStrings srcDirs),
-        Just (GmCabalHelperStrings ghcOpts),
-        Just (GmCabalHelperStrings ghcSrcOpts),
-        Just (GmCabalHelperStrings ghcPkgOpts) ] = res
-      eps' = map (second $ fmap $ map md) eps
-
-  return $ CabalHelper eps' srcDirs ghcOpts ghcSrcOpts ghcPkgOpts
-
- where
-   md (GmModuleName mn) = mkModuleName mn

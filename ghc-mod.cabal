@@ -24,7 +24,6 @@ Cabal-Version:          >= 1.16
 Build-Type:             Custom
 Data-Files:             elisp/Makefile
                         elisp/*.el
-                        CabalHelper/*.hs
 
 Extra-Source-Files:     ChangeLog
                         SetupCompat.hs
@@ -78,7 +77,6 @@ Library
                         Language.Haskell.GhcMod.Internal
   Other-Modules:        Paths_ghc_mod
                         Utils
-                        CabalHelper.Types
                         Language.Haskell.GhcMod.Boot
                         Language.Haskell.GhcMod.Browse
                         Language.Haskell.GhcMod.CaseSplit
@@ -116,6 +114,7 @@ Library
   Build-Depends:        base >= 4.0 && < 5
                       , bytestring
                       , containers
+                      , cabal-helper >= 0.3
                       , deepseq
                       , directory
                       , filepath
@@ -185,27 +184,6 @@ Executable ghc-modi
                       , time
                       , ghc
                       , ghc-mod
-
-Executable cabal-helper-wrapper
-  Default-Language:     Haskell2010
-  Other-Extensions:     TemplateHaskell
-  Main-Is:              CabalHelper/Wrapper.hs
-  Other-Modules:        Paths_ghc_mod
-  GHC-Options:          -Wall
-  HS-Source-Dirs:       .
-  X-Install-Target:     $libexecdir
-  Build-Depends:        base >= 4.0 && < 5
-                      , bytestring
-                      , binary
-                      , containers
-                      , Cabal >= 1.14
-                      , directory
-                      , filepath
-                      , old-time
-                      , process
-                      , transformers
-                      , template-haskell
-                      , time
 
 Test-Suite doctest
   Type:                 exitcode-stdio-1.0

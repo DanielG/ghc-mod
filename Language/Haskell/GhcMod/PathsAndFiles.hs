@@ -23,7 +23,9 @@ import Control.Monad.Trans.Maybe
 import Data.List
 import Data.Char
 import Data.Maybe
+import Data.Version
 import Data.Traversable (traverse)
+import Distribution.Helper
 import System.Directory
 import System.FilePath
 import System.IO.Unsafe
@@ -233,11 +235,11 @@ cabalBuildPlatform = dropWhileEnd isSpace $ unsafePerformIO $
 packageCache :: String
 packageCache = "package.cache"
 
-cabalHelperCache ::
-    FilePath -> [String] -> Cached [String] [Maybe GmCabalHelperResponse]
-cabalHelperCache cabalHelperExe cmds = Cached {
-    inputFiles = [cabalHelperExe, setupConfigPath],
-    inputData  = cmds,
+cabalHelperCache :: Version -> [String]
+                 -> Cached (Version, [String]) [GmComponent ChEntrypoint]
+cabalHelperCache cabalHelperVer cmds = Cached {
+    inputFiles = [setupConfigPath],
+    inputData  = (cabalHelperVer, cmds),
     cacheFile  = setupConfigPath <.> "ghc-mod.cabal-helper"
   }
 

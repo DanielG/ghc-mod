@@ -103,6 +103,7 @@ import Data.Map (Map, empty)
 import Data.Maybe
 import Data.Monoid
 import Data.IORef
+import Distribution.Helper
 
 import MonadUtils (MonadIO(..))
 
@@ -128,7 +129,7 @@ data GmGhcSession = GmGhcSession {
 
 data GhcModState = GhcModState {
       gmGhcSession   :: !(Maybe GmGhcSession)
-    , gmComponents   :: !(Map GmComponentName (GmComponent (Set ModulePath)))
+    , gmComponents   :: !(Map ChComponentName (GmComponent (Set ModulePath)))
     , gmCompilerMode :: !CompilerMode
     }
 
