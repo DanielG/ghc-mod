@@ -32,7 +32,7 @@ check files =
     runGmlTWith
       (map Left files)
       return
-      ((fmap fst <$>) . withLogger (setAllWarningFlags . setNoMaxRelevantBindings))
+      ((fmap fst <$>) . withLogger setNoMaxRelevantBindings)
       (return ())
 
 ----------------------------------------------------------------
