@@ -2,7 +2,7 @@
 module SetupCompat where
 
 import Control.Arrow
-import Control.Monad.State.Strict
+import Control.Monad.Trans.State
 import Data.List
 import Data.Maybe
 import Data.Functor
