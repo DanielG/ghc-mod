@@ -101,4 +101,5 @@ withCabal action = do
                          then [ "--with-ghc-pkg=" ++ T.ghcPkgProgram opts ]
                          else []
             void $ readProcess (T.cabalProgram opts) ("configure":progOpts) ""
+            writeAutogenFiles $ cradleRootDir crdl </> "dist"
     action
