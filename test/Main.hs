@@ -29,9 +29,8 @@ main = do
   genGhcPkgCache `mapM_` pkgDirs
 
   let caches = [ "setup-config"
-               , "setup-config.ghc-mod.cabal-ghc-options"
-               , "setup-config.ghc-mod.cabal-helper.ghc-options"
                , "setup-config.ghc-mod.cabal-helper"
+               , "setup-config.ghc-mod.resolved-components"
                , "ghc-mod.cache"
                ]
       cachesFindExp :: String
@@ -39,10 +38,9 @@ main = do
 
       cleanCmd = "find test \\( "++ cachesFindExp ++" \\) -exec rm {} \\;"
 
-  print cleanCmd
+  putStrLn $ "$ " ++ cleanCmd
   void $ system cleanCmd
   void $ system "cabal --version"
-  putStrLn $ "ghc-mod was built with Cabal version " ++ VERSION_Cabal
   void $ system "ghc --version"
 
   (putStrLn =<< runD debugInfo)

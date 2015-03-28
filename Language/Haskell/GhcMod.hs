@@ -34,6 +34,7 @@ module Language.Haskell.GhcMod (
   , check
   , checkSyntax
   , debugInfo
+  , componentInfo
   , expandTemplate
   , info
   , lint
@@ -58,7 +59,6 @@ module Language.Haskell.GhcMod (
 import Language.Haskell.GhcMod.Boot
 import Language.Haskell.GhcMod.Browse
 import Language.Haskell.GhcMod.CaseSplit
-import Language.Haskell.GhcMod.CabalHelper
 import Language.Haskell.GhcMod.Check
 import Language.Haskell.GhcMod.Cradle
 import Language.Haskell.GhcMod.Debug
@@ -73,4 +73,3 @@ import Language.Haskell.GhcMod.Modules
 import Language.Haskell.GhcMod.Monad
 import Language.Haskell.GhcMod.PkgDoc
 import Language.Haskell.GhcMod.Types
-import Language.Haskell.GhcMod.Target

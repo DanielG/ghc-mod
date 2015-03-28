@@ -196,6 +196,9 @@ ghcModUsage =
  \        Print debugging information. Please include the output in any bug\n\
  \        reports you submit.\n\
  \\n\
+ \    - debugComponent [MODULE_OR_FILE...]\n\
+ \        Debugging information related to cabal component resolution.\n\
+ \\n\
  \    - boot\n\
  \         Internal command used by the emacs frontend.\n"
  -- "\n\
@@ -514,6 +517,7 @@ ghcCommands (cmd:args) = fn args
      "check"   -> checkSyntaxCmd
      "expand"  -> expandTemplateCmd
      "debug"   -> debugInfoCmd
+     "debugComponent" -> componentInfoCmd
      "info"    -> infoCmd
      "type"    -> typesCmd
      "split"   -> splitsCmd
@@ -565,7 +569,7 @@ catchArgs cmd action =
         throw $ InvalidCommandLine (Left cmd)
 
 modulesCmd, languagesCmd, flagsCmd, browseCmd, checkSyntaxCmd, expandTemplateCmd,
-  debugInfoCmd, infoCmd, typesCmd, splitsCmd, sigCmd, refineCmd, autoCmd,
+  debugInfoCmd, componentInfoCmd, infoCmd, typesCmd, splitsCmd, sigCmd, refineCmd, autoCmd,
   findSymbolCmd, lintCmd, rootInfoCmd, pkgDocCmd, dumpSymbolCmd, bootCmd
   :: IOish m => [String] -> GhcModT m String
 
@@ -575,6 +579,7 @@ languagesCmd  = withParseCmd' "lang"    [] $ \[] -> languages
 flagsCmd      = withParseCmd' "flag"    [] $ \[] -> flags
 debugInfoCmd  = withParseCmd' "debug"   [] $ \[] -> debugInfo
 rootInfoCmd   = withParseCmd' "root"    [] $ \[] -> rootInfo
+componentInfoCmd = withParseCmd' "debugComponent" [] $ \ts -> componentInfo ts
 -- internal
 bootCmd       = withParseCmd' "boot" [] $ \[] -> boot
 

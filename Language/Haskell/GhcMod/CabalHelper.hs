@@ -14,6 +14,7 @@
 -- You should have received a copy of the GNU Affero General Public License
 -- along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+{-# LANGUAGE CPP #-}
 module Language.Haskell.GhcMod.CabalHelper (
     getComponents
   , getGhcPkgOptions
@@ -32,6 +33,8 @@ import Language.Haskell.GhcMod.Utils
 import Language.Haskell.GhcMod.World
 import Language.Haskell.GhcMod.PathsAndFiles
 import System.FilePath
+
+import Paths_ghc_mod as GhcMod
 
 -- | Only package related GHC options, sufficient for things that don't need to
 -- access home modules
@@ -86,6 +89,7 @@ cabalHelperCache = Cached {
                 , (a', c) <- lc
                 , a == a'
                 ]
+
 
 withCabal :: (MonadIO m, GmEnv m) => m a -> m a
 withCabal action = do

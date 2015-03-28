@@ -72,18 +72,20 @@ Library
   Default-Language:     Haskell2010
   GHC-Options:          -Wall -fno-warn-deprecations
   Default-Extensions:   ScopedTypeVariables, RecordWildCards, NamedFieldPuns,
-                        ConstraintKinds, FlexibleContexts
+                        ConstraintKinds, FlexibleContexts,
+                        DataKinds, KindSignatures
   Exposed-Modules:      Language.Haskell.GhcMod
                         Language.Haskell.GhcMod.Internal
   Other-Modules:        Paths_ghc_mod
                         Utils
                         Language.Haskell.GhcMod.Boot
                         Language.Haskell.GhcMod.Browse
+                        Language.Haskell.GhcMod.CabalHelper
+                        Language.Haskell.GhcMod.Caching
                         Language.Haskell.GhcMod.CaseSplit
                         Language.Haskell.GhcMod.Check
                         Language.Haskell.GhcMod.Convert
                         Language.Haskell.GhcMod.Cradle
-                        Language.Haskell.GhcMod.CabalHelper
                         Language.Haskell.GhcMod.Debug
                         Language.Haskell.GhcMod.Doc
                         Language.Haskell.GhcMod.DynFlags
@@ -113,6 +115,7 @@ Library
                         Language.Haskell.GhcMod.World
   Build-Depends:        base >= 4.0 && < 5
                       , bytestring
+                      , cereal >= 0.4
                       , containers
                       , cabal-helper >= 0.3
                       , deepseq
@@ -200,7 +203,8 @@ Test-Suite doctest
 Test-Suite spec
   Default-Language:     Haskell2010
   Default-Extensions:   ScopedTypeVariables, RecordWildCards, NamedFieldPuns,
-                        ConstraintKinds, FlexibleContexts
+                        ConstraintKinds, FlexibleContexts,
+                        DataKinds, KindSignatures
   Main-Is:              Main.hs
   Hs-Source-Dirs:       test, .
   Ghc-Options:          -Wall -fno-warn-deprecations

@@ -27,14 +27,14 @@ module Language.Haskell.GhcMod.Monad.Types (
   , LightGhc(..)
   , GmGhc
   , IOish
-  -- ** Environment, state and logging
+  -- * Environment, state and logging
   , GhcModEnv(..)
   , GhcModState(..)
   , defaultGhcModState
   , GmGhcSession(..)
   , GmComponent(..)
   , CompilerMode(..)
-  -- ** Accessing 'GhcModEnv', 'GhcModState' and 'GhcModLog'
+  -- * Accessing 'GhcModEnv', 'GhcModState' and 'GhcModLog'
   , GmLogLevel(..)
   , GhcModLog(..)
   , GhcModError(..)
@@ -46,7 +46,7 @@ module Language.Haskell.GhcMod.Monad.Types (
   , withOptions
   , getCompilerMode
   , setCompilerMode
-  -- ** Re-exporting convenient stuff
+  -- * Re-exporting convenient stuff
   , MonadIO
   , liftIO
   ) where

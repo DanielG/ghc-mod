@@ -1,9 +1,10 @@
-module Language.Haskell.GhcMod.Debug (debugInfo, rootInfo) where
+module Language.Haskell.GhcMod.Debug (debugInfo, rootInfo, componentInfo) where
 
 import Control.Arrow (first)
 import Control.Applicative ((<$>))
 import qualified Data.Map as Map
 import qualified Data.Set as Set
+import Data.Char
 import Text.PrettyPrint
 import Language.Haskell.GhcMod.Convert
 import Language.Haskell.GhcMod.Monad
@@ -35,8 +36,8 @@ debugInfo = do
 
 cabalDebug :: IOish m => GhcModT m [String]
 cabalDebug = do
-    Cradle {..} <- cradle
-    mcs <- resolveGmComponents Nothing =<< getComponents
+    crdl@Cradle {..} <- cradle
+    mcs <- resolveGmComponents Nothing =<< mapM (resolveEntrypoint crdl) =<< getComponents
     let entrypoints = Map.map gmcEntrypoints mcs
         graphs      = Map.map gmcHomeModuleGraph mcs
         opts        = Map.map gmcGhcOpts mcs
@@ -53,6 +54,20 @@ cabalDebug = do
          , "GHC search path options:\n" ++ render (nest 4 $
               mapDoc gmComponentNameDoc (fsep . map text) srcOpts)
          ]
+
+componentInfo :: IOish m => [String] -> GhcModT m String
+componentInfo ts = do
+    crdl <- cradle
+    opts <- targetGhcOptions crdl $ Set.fromList $ map guessModuleFile ts
+
+    return $ unlines $
+         [ "GHC Cabal options:\n"       ++ render (nest 4 $ fsep $ map text opts)
+         ]
+
+guessModuleFile :: String -> Either FilePath ModuleName
+guessModuleFile mn@(h:r)
+    | isUpper h && all isAlphaNum r = Right $ mkModuleName mn
+guessModuleFile str = Left str
 
 graphDoc :: GmModuleGraph -> Doc
 graphDoc GmModuleGraph{..} =

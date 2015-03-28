@@ -14,6 +14,8 @@
 -- You should have received a copy of the GNU Affero General Public License
 -- along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+
 module Language.Haskell.GhcMod.Logging (
     module Language.Haskell.GhcMod.Logging
   , module Language.Haskell.GhcMod.Pretty
@@ -22,7 +24,9 @@ module Language.Haskell.GhcMod.Logging (
   , module Data.Monoid
   ) where
 
+import Control.Applicative hiding (empty)
 import Control.Monad
+import Control.Monad.Trans.Class
 import Data.List
 import Data.Char
 import Data.Monoid (mempty, mappend, mconcat, (<>))
@@ -57,9 +61,20 @@ gmLog level loc' doc = do
 
   let loc | loc' == "" = empty
           | otherwise = text loc'
-      msg = gmRenderDoc $ (gmLogLevelDoc level <+> loc) <+>: doc
+      msg = gmRenderDoc $ (gmLogLevelDoc level <+>: loc) <+>: doc
       msg' = dropWhileEnd isSpace msg
 
   when (Just level <= level') $
        liftIO $ hPutStrLn stderr msg'
   gmlJournal (GhcModLog Nothing [(level, render loc, msg)])
+
+newtype LogDiscardT m a = LogDiscardT { runLogDiscard :: m a }
+    deriving (Functor, Applicative, Monad)
+
+instance MonadTrans LogDiscardT where
+    lift = LogDiscardT
+
+instance Monad m => GmLog (LogDiscardT m) where
+    gmlJournal = const $ return ()
+    gmlHistory = return mempty
+    gmlClear = return ()
