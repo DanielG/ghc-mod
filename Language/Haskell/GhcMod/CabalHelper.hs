@@ -22,6 +22,7 @@ module Language.Haskell.GhcMod.CabalHelper (
 import Control.Applicative
 import Control.Monad
 import Data.Monoid
+import Data.Version
 import Distribution.Helper
 import qualified Language.Haskell.GhcMod.Types as T
 import Language.Haskell.GhcMod.Types hiding (ghcProgram, ghcPkgProgram,
@@ -52,16 +53,31 @@ helperProgs opts = Programs {
 --
 -- The Component\'s 'gmcHomeModuleGraph' will be empty and has to be resolved by
 -- 'resolveGmComponents'.
-getComponents :: (MonadIO m, GmEnv m) => m [GmComponent ChEntrypoint]
-getComponents = withCabal $ do
-    Cradle {..} <- cradle
-    let distdir = cradleRootDir </> "dist"
-    opt <- options
+getComponents :: (MonadIO m, GmEnv m, GmLog m)
+              => m [GmComponent GMCRaw ChEntrypoint]
+getComponents = do
+  opt <- options
+  Cradle {..} <- cradle
+  let gmVer = GhcMod.version
+      chVer = VERSION_cabal_helper
+      d = (helperProgs opt
+          , cradleRootDir </> "dist"
+          , (gmVer, chVer)
+          )
+  withCabal $ cached cradleRootDir cabalHelperCache d
 
-    runQuery' (helperProgs opt) distdir $ do
-      q <- liftM4 join4 ghcOptions ghcSrcOptions entrypoints sourceDirs
-      return $ flip map q $ \(cn, (opts, (srcOpts, (ep, srcDirs)))) ->
-          GmComponent cn opts srcOpts ep ep srcDirs mempty
+cabalHelperCache :: MonadIO m => Cached m
+                      (Programs, FilePath, (Version, String))
+                      [GmComponent GMCRaw ChEntrypoint]
+cabalHelperCache = Cached {
+    cacheFile = cabalHelperCacheFile,
+    cachedAction = \ _ (progs, root, _) ->
+      runQuery' progs root $ do
+        q <- liftM4 join4 ghcOptions ghcSrcOptions entrypoints sourceDirs
+        let cs = flip map q $ \(cn, (opts, (srcOpts, (ep, srcDirs)))) ->
+                   GmComponent cn opts srcOpts ep ep srcDirs mempty
+        return ([setupConfigPath], cs)
+  }
  where
    join4 a b c = join' a . join' b . join' c
    join' :: Eq a => [(a,b)] -> [(a,c)] -> [(a,(b,c))]

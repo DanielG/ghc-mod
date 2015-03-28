@@ -14,27 +14,26 @@
 -- You should have received a copy of the GNU Affero General Public License
 -- along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-module Language.Haskell.GhcMod.PathsAndFiles where
+module Language.Haskell.GhcMod.PathsAndFiles (
+    module Language.Haskell.GhcMod.PathsAndFiles
+  , module Language.Haskell.GhcMod.Caching
+  ) where
 
 import Config (cProjectVersion)
 import Control.Applicative
 import Control.Monad
-import Control.Monad.Trans.Maybe
 import Data.List
 import Data.Char
 import Data.Maybe
-import Data.Version
 import Data.Traversable (traverse)
-import Distribution.Helper
 import System.Directory
 import System.FilePath
 import System.IO.Unsafe
 
 import Language.Haskell.GhcMod.Types
-import Language.Haskell.GhcMod.Monad.Types
 import Language.Haskell.GhcMod.Error
-import Language.Haskell.GhcMod.Read
 import Language.Haskell.GhcMod.Utils hiding (dropWhileEnd)
+import Language.Haskell.GhcMod.Caching
 import qualified Language.Haskell.GhcMod.Utils as U
 
 -- | Guaranteed to be a path to a directory with no trailing slash.
@@ -43,12 +42,6 @@ type DirPath = FilePath
 -- | Guaranteed to be the name of a file only (no slashes).
 type FileName = String
 
-data Cached d a = Cached {
-      inputFiles :: [FilePath],
-      inputData  :: d,
-      cacheFile  :: FilePath
-    }
-
 newtype UnString = UnString { unString :: String }
 
 instance Show UnString where
@@ -56,43 +49,6 @@ instance Show UnString where
 
 instance Read UnString where
     readsPrec _ = \str -> [(UnString str, "")]
-
--- |
---
--- >>> any (Just 3 <) [Just 1, Nothing, Just 2]
--- False
---
--- >>> any (Just 0 <) [Just 1, Nothing, Just 2]
--- True
---
--- >>> any (Just 0 <) [Nothing]
--- False
---
--- >>> any (Just 0 <) []
--- False
-cached :: forall a d. (Read a, Show a, Eq d, Read d, Show d)
-       => DirPath -> Cached d a -> IO a -> IO a
-cached dir Cached {..} ma = do
-    ins <- (maybeTimeFile . (dir </>)) `mapM` inputFiles
-    c <- maybeTimeFile (dir </> cacheFile)
-    if any (c<) ins || isNothing c
-       then writeCache
-       else maybe ma return =<< readCache
- where
-   maybeTimeFile :: FilePath -> IO (Maybe TimedFile)
-   maybeTimeFile f = traverse timeFile =<< mightExist f
-
-   writeCache = do
-     a <- ma
-     writeFile (dir </> cacheFile) $ unlines [show inputData, show a]
-     return a
-
-   readCache :: IO (Maybe a)
-   readCache = runMaybeT $ do
-     hdr:c:_ <- lines <$> liftIO (readFile $ dir </> cacheFile)
-     if inputData /= read hdr
-       then liftIO $ writeCache
-       else MaybeT $ return $ readMaybe c
 
 -- | @findCabalFiles dir@. Searches for a @.cabal@ files in @dir@'s parent
 -- directories. The first parent directory containing more than one cabal file
@@ -235,13 +191,6 @@ cabalBuildPlatform = dropWhileEnd isSpace $ unsafePerformIO $
 packageCache :: String
 packageCache = "package.cache"
 
-cabalHelperCache :: Version -> [String]
-                 -> Cached (Version, [String]) [GmComponent ChEntrypoint]
-cabalHelperCache cabalHelperVer cmds = Cached {
-    inputFiles = [setupConfigPath],
-    inputData  = (cabalHelperVer, cmds),
-    cacheFile  = setupConfigPath <.> "ghc-mod.cabal-helper"
-  }
 
 -- | Filename of the symbol table cache file.
 symbolCache :: Cradle -> FilePath
@@ -249,3 +198,9 @@ symbolCache crdl = cradleTempDir crdl </> symbolCacheFile
 
 symbolCacheFile :: String
 symbolCacheFile = "ghc-mod.symbol-cache"
+
+resolvedComponentsCacheFile :: String
+resolvedComponentsCacheFile = setupConfigPath <.> "ghc-mod.resolved-components"
+
+cabalHelperCacheFile :: String
+cabalHelperCacheFile = setupConfigPath <.> "ghc-mod.cabal-helper"

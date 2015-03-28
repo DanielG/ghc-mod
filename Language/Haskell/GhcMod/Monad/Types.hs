@@ -129,7 +129,7 @@ data GmGhcSession = GmGhcSession {
 
 data GhcModState = GhcModState {
       gmGhcSession   :: !(Maybe GmGhcSession)
-    , gmComponents   :: !(Map ChComponentName (GmComponent (Set ModulePath)))
+    , gmComponents   :: !(Map ChComponentName (GmComponent GMCResolved (Set ModulePath)))
     , gmCompilerMode :: !CompilerMode
     }
 

@@ -1,4 +1,5 @@
-{-# LANGUAGE DeriveDataTypeable, GADTs, StandaloneDeriving, DataKinds #-}
+{-# LANGUAGE DeriveDataTypeable, DeriveFunctor, DeriveGeneric, StandaloneDeriving,
+             DefaultSignatures #-}
 {-# OPTIONS_GHC -fno-warn-orphans -fno-warn-deprecations #-}
 module Language.Haskell.GhcMod.Types (
     module Language.Haskell.GhcMod.Types
@@ -10,18 +11,24 @@ module Language.Haskell.GhcMod.Types (
 import Control.Monad.Trans.Control (MonadBaseControl)
 import Control.Monad.Error (Error(..))
 import Control.Exception (Exception)
+import Control.Applicative
+import Control.Arrow
+import Data.Serialize
+import Data.Version
 import Data.List (intercalate)
 import Data.Map (Map)
 import qualified Data.Map as Map
 import Data.Set (Set)
 import qualified Data.Set as Set
 import Data.Monoid
+import Data.Maybe
 import Data.Typeable (Typeable)
 import Distribution.Helper
 import Exception (ExceptionMonad)
 import MonadUtils (MonadIO)
 import GHC (ModuleName, moduleNameString, mkModuleName)
 import PackageConfig (PackageConfig)
+import GHC.Generics
 
 -- | A constraint alias (-XConstraintKinds) to make functions dealing with
 -- 'GhcModT' somewhat cleaner.
@@ -158,14 +165,42 @@ data GmModuleGraph = GmModuleGraph {
       gmgFileMap    :: Map FilePath ModulePath,
       gmgModuleMap  :: Map ModuleName ModulePath,
       gmgGraph      :: Map ModulePath (Set ModulePath)
-    } deriving (Eq, Ord, Show, Read, Typeable)
+    } deriving (Eq, Ord, Show, Read, Generic, Typeable)
+
+instance Serialize GmModuleGraph where
+    put GmModuleGraph {..} = let
+        mpim :: Map ModulePath Integer
+        graph :: Map Integer (Set Integer)
+
+        mpim = Map.fromList $
+                (Map.keys gmgGraph) `zip` [0..]
+        mpToInt :: ModulePath -> Integer
+        mpToInt mp = fromJust $ Map.lookup mp mpim
+
+        graph = Map.map (Set.map mpToInt) $ Map.mapKeys mpToInt gmgGraph
+        in put (mpim, graph)
+
+    get = do
+     (mpim :: Map ModulePath Integer, graph :: Map Integer (Set Integer)) <- get
+     let
+         swapMap = Map.fromList . map swap . Map.toList
+         swap (a,b) = (b,a)
+         impm = swapMap mpim
+         intToMp i = fromJust $ Map.lookup i impm
+         mpGraph :: Map ModulePath (Set ModulePath)
+         mpGraph = Map.map (Set.map intToMp) $ Map.mapKeys intToMp graph
+         mpFm = Map.fromList $ map (mpPath &&& id) $ Map.keys mpim
+         mpMn = Map.fromList $ map (mpModule &&& id) $ Map.keys mpim
+     return $ GmModuleGraph mpFm mpMn mpGraph
 
 instance Monoid GmModuleGraph where
     mempty  = GmModuleGraph mempty mempty mempty
     mappend (GmModuleGraph a b c) (GmModuleGraph a' b' c') =
         GmModuleGraph (a <> a') (b <> b') (Map.unionWith Set.union c c')
 
-data GmComponent eps = GmComponent {
+data GmComponentType = GMCRaw
+                     | GMCResolved
+data GmComponent (t :: GmComponentType) eps = GmComponent {
       gmcName            :: ChComponentName,
       gmcGhcOpts         :: [GHCOption],
       gmcGhcSrcOpts      :: [GHCOption],
@@ -173,10 +208,17 @@ data GmComponent eps = GmComponent {
       gmcEntrypoints     :: eps,
       gmcSourceDirs      :: [FilePath],
       gmcHomeModuleGraph :: GmModuleGraph
-    } deriving (Eq, Ord, Show, Read, Typeable)
+    } deriving (Eq, Ord, Show, Read, Generic, Typeable, Functor)
+
+instance Serialize eps => Serialize (GmComponent t eps)
 
 data ModulePath = ModulePath { mpModule :: ModuleName, mpPath :: FilePath }
-    deriving (Eq, Ord, Show, Read, Typeable)
+    deriving (Eq, Ord, Show, Read, Generic, Typeable)
+instance Serialize ModulePath
+
+instance Serialize ModuleName where
+    get = mkModuleName <$> get
+    put mn = put (moduleNameString mn)
 
 instance Show ModuleName where
     show mn = "ModuleName " ++ show (moduleNameString mn)
@@ -235,3 +277,12 @@ data GMConfigStateFileError
     | GMConfigStateFileMissing
 --    | GMConfigStateFileBadVersion PackageIdentifier PackageIdentifier (Either ConfigStateFileError LocalBuildInfo)
   deriving (Eq, Show, Read, Typeable)
+
+
+deriving instance Generic Version
+instance Serialize Version
+
+instance Serialize Programs
+instance Serialize ChModuleName
+instance Serialize ChComponentName
+instance Serialize ChEntrypoint

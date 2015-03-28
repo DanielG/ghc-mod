@@ -1,7 +1,6 @@
 {-# LANGUAGE CPP #-}
 module Utils where
 
-import Control.Monad
 import Control.Applicative
 import Data.Traversable
 import System.Directory
@@ -18,7 +17,8 @@ type ModTime = UTCTime
 type ModTime = ClockTime
 #endif
 
-data TimedFile = TimedFile FilePath ModTime deriving (Eq, Show)
+data TimedFile = TimedFile { tfPath :: FilePath, tfTime :: ModTime }
+                 deriving (Eq, Show)
 
 instance Ord TimedFile where
     compare (TimedFile _ a) (TimedFile _ b) = compare a b
@@ -32,5 +32,4 @@ mightExist f = do
   return $ if exists then (Just f) else (Nothing)
 
 timeMaybe :: FilePath -> IO (Maybe TimedFile)
-timeMaybe f = do
-  join $ (timeFile `traverse`) <$> mightExist f
+timeMaybe f = traverse timeFile =<< mightExist f

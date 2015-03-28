@@ -32,6 +32,7 @@ import Language.Haskell.GhcMod.DynFlags
 import Language.Haskell.GhcMod.Monad.Types
 import Language.Haskell.GhcMod.CabalHelper
 import Language.Haskell.GhcMod.HomeModuleGraph
+import Language.Haskell.GhcMod.PathsAndFiles
 import Language.Haskell.GhcMod.GhcPkg
 import Language.Haskell.GhcMod.Error
 import Language.Haskell.GhcMod.Logging
@@ -154,7 +155,7 @@ runGmlTWith efnmns' mdf wrapper action = do
       loadTargets (map moduleNameString mns ++ rfns)
       action
 
-targetGhcOptions :: IOish m
+targetGhcOptions :: forall m. IOish m
                   => Cradle
                   -> Set (Either FilePath ModuleName)
                   -> GhcModT m [GHCOption]
@@ -162,12 +163,15 @@ targetGhcOptions crdl sefnmn = do
     when (Set.null sefnmn) $ error "targetGhcOptions: no targets given"
 
     case cradleCabalFile crdl of
-      Just _ -> cabalOpts
+      Just _ -> cabalOpts crdl
       Nothing -> sandboxOpts crdl
  where
    zipMap f l = l `zip` (f `map` l)
-   cabalOpts = do
-       mcs <- resolveGmComponents Nothing =<< getComponents
+
+   cabalOpts :: Cradle -> GhcModT m [String]
+   cabalOpts Cradle{..} = do
+       comps <- mapM (resolveEntrypoint crdl) =<< getComponents
+       mcs <- cached cradleRootDir resolvedComponentsCache comps
 
        let mdlcs = moduleComponents mcs `zipMap` Set.toList sefnmn
            candidates = Set.unions $ map snd mdlcs
@@ -186,7 +190,36 @@ targetGhcOptions crdl sefnmn = do
             let cn = pickComponent candidates
             return $ gmcGhcOpts $ fromJust $ Map.lookup cn mcs
 
-moduleComponents :: Map ChComponentName (GmComponent (Set ModulePath))
+resolvedComponentsCache :: IOish m => Cached (GhcModT m)
+    [GmComponent GMCRaw(Set.Set ModulePath)]
+    (Map.Map ChComponentName (GmComponent GMCResolved (Set.Set ModulePath)))
+resolvedComponentsCache = Cached {
+    cacheFile  = resolvedComponentsCacheFile,
+    cachedAction = \tcfs comps -> do
+        Cradle {..} <- cradle
+        let changedFiles =
+                filter (/= cradleRootDir </> setupConfigPath) $ map tfPath $ tcFiles tcfs
+            mums = if null changedFiles
+                     then Nothing
+                     else Just $ map Left changedFiles
+
+        mcs <- resolveGmComponents mums comps
+        return (setupConfigPath:flatten mcs , mcs)
+ }
+
+ where
+   flatten :: Map.Map ChComponentName (GmComponent t (Set.Set ModulePath))
+           -> [FilePath]
+   flatten = Map.elems
+      >>> map (gmcHomeModuleGraph >>> gmgGraph
+               >>> Map.elems
+               >>> map (Set.map mpPath)
+               >>> Set.unions
+              )
+      >>> Set.unions
+      >>> Set.toList
+
+moduleComponents :: Map ChComponentName (GmComponent t (Set ModulePath))
                  -> Either FilePath ModuleName
                  -> Set ChComponentName
 moduleComponents m efnmn =
@@ -216,52 +249,57 @@ packageGhcOptions = do
       Nothing -> sandboxOpts crdl
 
 sandboxOpts :: Monad m => Cradle -> m [String]
-sandboxOpts crdl = return $ ["-i" ++ d | d <- [wdir,rdir]] ++ pkgOpts
+sandboxOpts crdl =
+    return $ ["-i" ++ d | d <- [wdir,rdir]] ++ pkgOpts ++ ["-Wall"]
   where
     pkgOpts = ghcDbStackOpts $ cradlePkgDbStack crdl
     (wdir, rdir) = (cradleCurrentDir crdl, cradleRootDir crdl)
 
 resolveGmComponent :: (IOish m, GmLog m, GmEnv m)
     => Maybe [Either FilePath ModuleName] -- ^ Updated modules
-    -> GmComponent ChEntrypoint
-    -> m (GmComponent (Set ModulePath))
-resolveGmComponent mums c@GmComponent {..} =
+    -> GmComponent GMCRaw (Set ModulePath)
+    -> m (GmComponent GMCResolved (Set ModulePath))
+resolveGmComponent mums c@GmComponent {..} = do
   withLightHscEnv gmcGhcSrcOpts $ \env -> do
-    let srcDirs = gmcSourceDirs
-        mg = gmcHomeModuleGraph
-
-    Cradle { cradleRootDir } <- cradle
-
-    eps <- liftIO $ resolveChEntrypoints cradleRootDir gmcEntrypoints
-    simp <- liftIO $ resolveEntrypoints env srcDirs eps
-    sump <- liftIO $ case mums of
+    let srcDirs = if null gmcSourceDirs then [""] else gmcSourceDirs
+    let mg = gmcHomeModuleGraph
+    let simp = gmcEntrypoints
+    sump <- case mums of
         Nothing -> return simp
-        Just ums -> resolveEntrypoints env srcDirs ums
+        Just ums -> Set.fromList . catMaybes <$> mapM (resolveModule env srcDirs) ums
 
     mg' <- updateHomeModuleGraph env mg simp sump
 
     return $ c { gmcEntrypoints = simp, gmcHomeModuleGraph = mg' }
 
-resolveEntrypoints :: MonadIO m
-    => HscEnv -> [FilePath] -> [Either FilePath ModuleName] -> m (Set ModulePath)
-resolveEntrypoints env srcDirs ms =
-    liftIO $ Set.fromList . catMaybes <$> resolve `mapM` ms
+resolveEntrypoint :: IOish m
+    => Cradle
+    -> GmComponent GMCRaw ChEntrypoint
+    -> m (GmComponent GMCRaw (Set ModulePath))
+resolveEntrypoint Cradle {..} c@GmComponent {..} =
+    withLightHscEnv gmcGhcSrcOpts $ \env -> do
+      let srcDirs = if null gmcSourceDirs then [""] else gmcSourceDirs
+      eps <- liftIO $ resolveChEntrypoints cradleRootDir gmcEntrypoints
+      rms <- resolveModule env srcDirs `mapM` eps
+      return c { gmcEntrypoints = Set.fromList $ catMaybes rms }
+
+resolveModule :: MonadIO m =>
+    HscEnv -> [FilePath] -> Either FilePath ModuleName -> m (Maybe ModulePath)
+resolveModule env _srcDirs (Right mn) = liftIO $ findModulePath env mn
+resolveModule env srcDirs (Left fn') = liftIO $ do
+    mfn <- findFile' srcDirs fn'
+    case mfn of
+      Nothing -> return Nothing
+      Just fn'' -> do
+          let fn = normalise fn''
+          emn <- fileModuleName env fn
+          return $ case emn of
+              Left _ -> Nothing
+              Right mmn -> Just $
+                  case mmn of
+                    Nothing -> mkMainModulePath fn
+                    Just mn -> ModulePath mn fn
  where
-   resolve :: Either FilePath ModuleName -> IO (Maybe ModulePath)
-   resolve (Right mn) = findModulePath env mn
-   resolve (Left fn') = do
-       mfn <- findFile' srcDirs fn'
-       case mfn of
-         Nothing -> return Nothing
-         Just fn'' -> do
-             let fn = normalise fn''
-             emn <- fileModuleName env fn
-             return $ case emn of
-                 Left _ -> Nothing
-                 Right mmn -> Just $
-                     case mmn of
-                       Nothing -> mkMainModulePath fn
-                       Just mn -> ModulePath mn fn
    findFile' dirs file =
        mconcat <$> mapM (mightExist . (</>file)) dirs
 
@@ -284,11 +322,11 @@ resolveChEntrypoints srcDir ChSetupEntrypoint = do
 chModToMod :: ChModuleName -> ModuleName
 chModToMod (ChModuleName mn) = mkModuleName mn
 
-resolveGmComponents :: (IOish m, GmState m, GmLog m, GmEnv m)
-                    => Maybe [Either FilePath ModuleName]
-                        -- ^ Updated modules
-                    -> [GmComponent ChEntrypoint]
-                    -> m (Map ChComponentName (GmComponent (Set ModulePath)))
+resolveGmComponents :: (IOish m, GmState m, GmLog m, GmEnv m) =>
+    Maybe [Either FilePath ModuleName]
+        -- ^ Updated modules
+    -> [GmComponent GMCRaw (Set ModulePath)]
+    -> m (Map ChComponentName (GmComponent GMCResolved (Set ModulePath)))
 resolveGmComponents mumns cs = do
     s <- gmsGet
     m' <- foldrM' (gmComponents s) cs $ \c m -> do
@@ -307,10 +345,9 @@ resolveGmComponents mumns cs = do
      return $ Map.insert (gmcName rc) rc m
 
    same :: Eq b
-        => (forall a. GmComponent a -> b)
-        -> GmComponent c -> GmComponent d -> Bool
+        => (forall t a. GmComponent t a -> b)
+        -> GmComponent u c -> GmComponent v d -> Bool
    same f a b = (f a) == (f b)
-
 
 -- | Set the files as targets and load them.
 loadTargets :: IOish m => [String] -> GmlT m ()
