@@ -481,7 +481,11 @@ getPatsForVariable tcs (lineNo, colNo) =
 #else
                     :: [G.LMatch Id]
 #endif
+#if __GLASGOW_HASKELL__ >= 710
               (L _ (G.Match _ pats _ _):_) = m
+#else
+              (L _ (G.Match pats _ _):_) = m
+#endif
            in (funId, pats)
         _ -> (error "This should never happen", [])
 
