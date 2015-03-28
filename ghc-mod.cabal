@@ -1,7 +1,7 @@
 Name:                   ghc-mod
 Version:                0
-Author:                 Kazu Yamamoto <kazu@iij.ad.jp>
-                        Daniel Gröber <dxld@darkboxed.org>
+Author:                 Kazu Yamamoto <kazu@iij.ad.jp>,
+                        Daniel Gröber <dxld@darkboxed.org>,
                         Alejandro Serrano <trupill@gmail.com>
 Maintainer:             Daniel Gröber <dxld@darkboxed.org>
 License:                AGPL-3
@@ -9,17 +9,21 @@ License-File:           LICENSE
 License-Files:          COPYING.BSD3 COPYING.AGPL3
 Homepage:               http://www.mew.org/~kazu/proj/ghc-mod/
 Synopsis:               Happy Haskell Programming
-Description:            The ghc-mod command is a backend command to enrich
-                        Haskell programming on editors including
-                        Emacs, Vim, and Sublime.
-                        The ghc-mod command is based on ghc-mod library
-                        which is a wrapper of GHC API.
-                        This package includes the ghc-mod command,
-                        the ghc-mod library, and Emacs front-end
-                        (for historical reasons).
-                        For more information, please see its home page.
+Description:
+  ghc-mod is a backend program to enrich Haskell programming in editors. It
+  strives to offer most of the features one has come to expect from modern IDEs
+  in any editor.
 
-Category:               Development
+  ghc-mod provides a library for other haskell programs to use as well as a
+  standalone program for easy editor integration. All of the fundamental
+  functionality of the frontend program can be accessed through the library
+  however many implementation details are hidden and if you want to
+  significantly extend ghc-mod you should submit these changes upstream instead
+  of implementing them on top of the library.
+
+  For more information, please see its home page.
+
+Category:               GHC, Development
 Cabal-Version:          >= 1.16
 Build-Type:             Custom
 Data-Files:             elisp/Makefile
