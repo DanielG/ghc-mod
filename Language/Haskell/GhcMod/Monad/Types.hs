@@ -78,6 +78,7 @@ import Control.Monad.Reader (ReaderT(..))
 import Control.Monad.Error (ErrorT(..), MonadError(..))
 import Control.Monad.State.Strict (StateT(..))
 import Control.Monad.Trans.Journal (JournalT)
+import Control.Monad.Trans.Maybe (MaybeT)
 
 import Control.Monad.Base (MonadBase(..), liftBase)
 import Control.Monad.Trans.Control
@@ -87,14 +88,10 @@ import Control.Monad.Writer.Class
 import Control.Monad.State.Class (MonadState(..))
 import Control.Monad.Journal.Class (MonadJournal(..))
 import Control.Monad.Trans.Class (MonadTrans(..))
-
-#ifdef MONADIO_INSTANCES
-import Control.Monad.Trans.Maybe (MaybeT)
 import Control.Monad.Error (Error(..))
-#endif
+import qualified Control.Monad.IO.Class as MTL
 
 #if DIFFERENT_MONADIO
-import qualified Control.Monad.IO.Class
 import Data.Monoid (Monoid)
 #endif
 
@@ -105,7 +102,7 @@ import Data.Monoid
 import Data.IORef
 import Distribution.Helper
 
-import MonadUtils (MonadIO(..))
+import qualified MonadUtils as GHC (MonadIO(..))
 
 data GhcModEnv = GhcModEnv {
       gmOptions    :: Options
@@ -159,8 +156,9 @@ newtype GhcModT m a = GhcModT {
                , Alternative
                , Monad
                , MonadPlus
+               , MTL.MonadIO
 #if DIFFERENT_MONADIO
-               , Control.Monad.IO.Class.MonadIO
+               , GHC.MonadIO
 #endif
                , MonadError GhcModError
                )
@@ -172,9 +170,9 @@ newtype GmlT m a = GmlT { unGmlT :: GhcModT m a }
              , Monad
              , MonadPlus
              , MonadTrans
-             , MonadIO
+             , MTL.MonadIO
 #if DIFFERENT_MONADIO
-             , Control.Monad.IO.Class.MonadIO
+             , GHC.MonadIO
 #endif
              , MonadError GhcModError
              , GmEnv
@@ -186,12 +184,43 @@ newtype LightGhc a = LightGhc { unLightGhc :: ReaderT (IORef HscEnv) IO a }
     deriving ( Functor
              , Applicative
              , Monad
-             , MonadIO
+             , MTL.MonadIO
 #if DIFFERENT_MONADIO
-             , Control.Monad.IO.Class.MonadIO
+             , GHC.MonadIO
 #endif
              )
 
+#if DIFFERENT_MONADIO
+instance MTL.MonadIO m => GHC.MonadIO (ReaderT x m) where
+    liftIO = MTL.liftIO
+instance MTL.MonadIO m => GHC.MonadIO (StateT x m) where
+    liftIO = MTL.liftIO
+instance (Error e, MTL.MonadIO m) => GHC.MonadIO (ErrorT e m) where
+    liftIO = MTL.liftIO
+instance MTL.MonadIO m => GHC.MonadIO (JournalT x m) where
+    liftIO = MTL.liftIO
+instance MTL.MonadIO m => GHC.MonadIO (MaybeT m) where
+    liftIO = MTL.liftIO
+#endif
+
+instance MonadIO IO where
+    liftIO = id
+instance MonadIO m => MonadIO (ReaderT x m) where
+    liftIO = MTL.liftIO
+instance MonadIO m => MonadIO (StateT x m) where
+    liftIO = MTL.liftIO
+instance (Error e, MonadIO m) => MonadIO (ErrorT e m) where
+    liftIO = MTL.liftIO
+instance MonadIO m => MonadIO (JournalT x m) where
+    liftIO = MTL.liftIO
+instance MonadIO m => MonadIO (MaybeT m) where
+    liftIO = MTL.liftIO
+instance MonadIOC m => MonadIO (GhcModT m) where
+    liftIO = MTL.liftIO
+instance MonadIOC m => MonadIO (GmlT m) where
+    liftIO = MTL.liftIO
+instance MonadIO LightGhc where
+    liftIO = MTL.liftIO
 
 class Monad m => GmEnv m where
     gmeAsk :: m GhcModEnv
@@ -263,9 +292,6 @@ instance (Monad m, GmLog m) => GmLog (StateT s m) where
     gmlHistory = lift gmlHistory
     gmlClear = lift gmlClear
 
-instance MonadIO m => MonadIO (GhcModT m) where
-    liftIO action = GhcModT $ liftIO action
-
 instance Monad m => MonadJournal GhcModLog (GhcModT m) where
   journal !w = GhcModT $ lift $ lift $ (journal w)
   history    = GhcModT $ lift $ lift $ history
@@ -290,23 +316,6 @@ instance MonadState s m => MonadState s (GhcModT m) where
     get = GhcModT $ lift $ lift $ lift get
     put = GhcModT . lift . lift . lift . put
     state = GhcModT . lift . lift . lift . state
-
-#if MONADIO_INSTANCES
-instance MonadIO m => MonadIO (StateT s m) where
-    liftIO = lift . liftIO
-
-instance MonadIO m => MonadIO (ReaderT r m) where
-    liftIO = lift . liftIO
-
-instance (Monoid w, MonadIO m) => MonadIO (JournalT w m) where
-    liftIO = lift . liftIO
-
-instance (Error e, MonadIO m) => MonadIO (ErrorT e m) where
-    liftIO = lift . liftIO
-
-instance MonadIO m => MonadIO (MaybeT m) where
-    liftIO = lift . liftIO
-#endif
 
 instance (MonadBaseControl IO m) => MonadBase IO (GmlT m) where
     liftBase = GmlT . liftBase
@@ -370,14 +379,14 @@ type GmGhc m = (IOish m, GhcMonad m)
 instance (MonadIO m, MonadBaseControl IO m) => GhcMonad (GmlT m) where
     getSession = do
         ref <- gmgsSession . fromJust . gmGhcSession <$> gmsGet
-        liftIO $ readIORef ref
+        GHC.liftIO $ readIORef ref
     setSession a = do
         ref <- gmgsSession . fromJust . gmGhcSession <$> gmsGet
-        liftIO $ flip writeIORef a ref
+        GHC.liftIO $ flip writeIORef a ref
 
 instance GhcMonad LightGhc where
-    getSession = (liftIO . readIORef) =<< LightGhc ask
-    setSession a = (liftIO . flip writeIORef a) =<< LightGhc ask
+    getSession = (GHC.liftIO . readIORef) =<< LightGhc ask
+    setSession a = (GHC.liftIO . flip writeIORef a) =<< LightGhc ask
 
 #if __GLASGOW_HASKELL__ >= 706
 instance (MonadIO m, MonadBaseControl IO m) => HasDynFlags (GmlT m) where

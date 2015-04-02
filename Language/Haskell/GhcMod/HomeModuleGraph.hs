@@ -36,9 +36,9 @@ import Exception
 import Finder
 import GHC
 import HscTypes
-import MonadUtils hiding (foldrM)
 
 import Control.Arrow ((&&&))
+import Control.Applicative ((<$>))
 import Control.Monad
 import Control.Monad.Trans.Maybe (MaybeT(..), runMaybeT)
 import Control.Monad.State.Strict (execStateT)

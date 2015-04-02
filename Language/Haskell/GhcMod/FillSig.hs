@@ -167,7 +167,8 @@ getSignature modSum lineNo colNo = do
                       return $ InstanceDecl loc cls
 
 -- Get signature from haskell-src-exts
-getSignatureFromHE :: GhcMonad m => FilePath -> Int -> Int -> m (Maybe HESigInfo)
+getSignatureFromHE :: (MonadIO m, GhcMonad m) =>
+    FilePath -> Int -> Int -> m (Maybe HESigInfo)
 getSignatureFromHE file lineNo colNo = do
   presult <- liftIO $ HE.parseFile file
   return $ case presult of

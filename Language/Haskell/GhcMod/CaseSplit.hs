@@ -195,7 +195,8 @@ showFieldNames dflag style v (x:xs) = let fName = showName dflag style x
 ----------------------------------------------------------------
 -- c. Code for performing the case splitting
 
-genCaseSplitTextFile :: GhcMonad m => FilePath -> SplitToTextInfo -> m String
+genCaseSplitTextFile :: (MonadIO m, GhcMonad m) =>
+    FilePath -> SplitToTextInfo -> m String
 genCaseSplitTextFile file info = liftIO $ do
   t <- T.readFile file
   return $ getCaseSplitText (T.lines t) info

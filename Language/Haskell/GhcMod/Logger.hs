@@ -2,6 +2,7 @@ module Language.Haskell.GhcMod.Logger (
     withLogger
   , withLogger'
   , checkErrorPrefix
+  , errsToStr
   ) where
 
 import Control.Arrow
@@ -96,10 +97,10 @@ withLogger' env action = do
 
 -- | Converting 'SourceError' to 'String'.
 sourceError :: DynFlags -> PprStyle -> SourceError -> [String]
-sourceError df st src_err = errBagToStrList df st $ srcErrorMessages src_err
+sourceError df st src_err = errsToStr df st $ reverse $ bagToList $ srcErrorMessages src_err
 
-errBagToStrList :: DynFlags -> PprStyle -> Bag ErrMsg -> [String]
-errBagToStrList df st = map (ppErrMsg df st) . reverse . bagToList
+errsToStr :: DynFlags -> PprStyle -> [ErrMsg] -> [String]
+errsToStr df st = map (ppErrMsg df st)
 
 ----------------------------------------------------------------
 

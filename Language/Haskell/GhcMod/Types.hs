@@ -1,5 +1,5 @@
-{-# LANGUAGE DeriveDataTypeable, DeriveFunctor, DeriveGeneric, StandaloneDeriving,
-             DefaultSignatures #-}
+{-# LANGUAGE CPP, DeriveDataTypeable, DeriveFunctor, DeriveGeneric,
+  StandaloneDeriving, DefaultSignatures, FlexibleInstances #-}
 {-# OPTIONS_GHC -fno-warn-orphans -fno-warn-deprecations #-}
 module Language.Haskell.GhcMod.Types (
     module Language.Haskell.GhcMod.Types
@@ -10,6 +10,7 @@ module Language.Haskell.GhcMod.Types (
 
 import Control.Monad.Trans.Control (MonadBaseControl)
 import Control.Monad.Error (Error(..))
+import qualified Control.Monad.IO.Class as MTL
 import Control.Exception (Exception)
 import Control.Applicative
 import Control.Arrow
@@ -25,7 +26,9 @@ import Data.Maybe
 import Data.Typeable (Typeable)
 import Distribution.Helper
 import Exception (ExceptionMonad)
-import MonadUtils (MonadIO)
+#if __GLASGOW_HASKELL__ < 708
+import qualified MonadUtils as GHC (MonadIO(..))
+#endif
 import GHC (ModuleName, moduleNameString, mkModuleName)
 import PackageConfig (PackageConfig)
 import GHC.Generics
@@ -37,6 +40,18 @@ import GHC.Generics
 -- exception handling. Usually this will simply be 'IO' but we parametrise it in
 -- the exported API so users have the option to use a custom inner monad.
 type IOish m = (Functor m, MonadIO m, MonadBaseControl IO m, ExceptionMonad m)
+
+
+-- MonadUtils of GHC 7.6 or earlier defines its own MonadIO.
+-- MonadUtils of GHC 7.8 or later imports MonadIO in Monad.Control.IO.Class.
+#if __GLASGOW_HASKELL__ < 708
+type MonadIOC m = (GHC.MonadIO m, MTL.MonadIO m)
+#else
+type MonadIOC m = (MTL.MonadIO m)
+#endif
+
+class MonadIOC m => MonadIO m where
+    liftIO :: IO a -> m a
 
 -- | Output style.
 data OutputStyle = LispStyle  -- ^ S expression style.
@@ -208,7 +223,7 @@ data GmComponent (t :: GmComponentType) eps = GmComponent {
       gmcEntrypoints     :: eps,
       gmcSourceDirs      :: [FilePath],
       gmcHomeModuleGraph :: GmModuleGraph
-    } deriving (Eq, Ord, Show, Read, Generic, Typeable, Functor)
+    } deriving (Eq, Ord, Show, Read, Generic, Functor)
 
 instance Serialize eps => Serialize (GmComponent t eps)
 

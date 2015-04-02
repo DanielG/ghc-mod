@@ -49,7 +49,6 @@ import Config (cProjectVersion, cHostPlatformString)
 import Paths_ghc_mod (version)
 
 import Language.Haskell.GhcMod.Types
-import Language.Haskell.GhcMod.Monad.Types
 import Language.Haskell.GhcMod.Pretty
 
 type GmError m = MonadError GhcModError m
