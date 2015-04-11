@@ -24,7 +24,7 @@ Description:
   For more information, please see its home page.
 
 Category:               GHC, Development
-Cabal-Version:          >= 1.16
+Cabal-Version:          >= 1.14
 Build-Type:             Custom
 Data-Files:             elisp/Makefile
                         elisp/*.el
@@ -121,7 +121,7 @@ Library
                       , bytestring
                       , cereal >= 0.4
                       , containers
-                      , cabal-helper >= 0.3
+                      , cabal-helper >= 0.3.1.0
                       , deepseq
                       , directory
                       , filepath
@@ -146,9 +146,10 @@ Library
                       , djinn-ghc >= 0.0.2.2
   if impl(ghc < 7.8)
     Build-Depends:      convertible
-  if impl(ghc <= 7.4.2)
+  if impl(ghc < 7.5)
     -- Only used to constrain random to a version that still works with GHC 7.4
-    Build-Depends:      random <= 1.0.1.1
+    Build-Depends:      random <= 1.0.1.1,
+                        ghc-prim
 
 Executable ghc-mod
   Default-Language:     Haskell2010
@@ -229,7 +230,7 @@ Test-Suite spec
                         PathsAndFilesSpec
                         HomeModuleGraphSpec
 
-  Build-Depends:        hspec
+  Build-Depends:        hspec >= 2.0.0
   if impl(ghc == 7.4.*)
     Build-Depends:     executable-path
   X-Build-Depends-Like: CLibName

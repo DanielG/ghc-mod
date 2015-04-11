@@ -13,12 +13,12 @@ import Data.IORef (IORef, newIORef, readIORef, writeIORef, modifyIORef)
 import System.FilePath (normalise)
 import Text.PrettyPrint
 
-import Bag (Bag, bagToList)
 import ErrUtils (ErrMsg, errMsgShortDoc, errMsgExtraInfo)
 import GHC (DynFlags, SrcSpan, Severity(SevError))
 import HscTypes
 import Outputable
 import qualified GHC as G
+import Bag
 
 import Language.Haskell.GhcMod.Convert
 import Language.Haskell.GhcMod.Doc (showPage)

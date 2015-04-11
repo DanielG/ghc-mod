@@ -10,11 +10,10 @@ install:
 #  - ( $CABAL122 && cabal install cabal-install --constraint "Cabal >= 1.22" && ghc-pkg unregister Cabal ) || true
   - echo $PATH
   - which cabal
-  - cabal install cabal-install --constraint "Cabal == $(cabal --version | grep 'Cabal library' | awk '{ print $3 }' | awk -vFS=. '{ print $1 "." $2 }' | tail -n1).*"
 #  - cabal install Cabal --constraint "Cabal == $(cabal --version | grep 'Cabal library' | awk '{ print $3 }' | tail -n1)"
   - cabal install happy
   - happy --version
-  - cabal install -j --only-dependencies --enable-tests
+  - cabal install -j --only-dependencies --enable-tests --constraint "tagged < 0.8"
 
 script:
   - touch ChangeLog # Create ChangeLog if we're not on the release branch
@@ -27,7 +26,7 @@ script:
   - if [ -n "$(ghc --version | awk '{ print $8 }' | sed -n '/^7.8/p')" ]; then export WERROR="--ghc-option=-Werror"; fi
   - cabal configure --enable-tests $WERROR
   - cabal build
-  - export ghc_mod_libexecdir=$PWD/dist/build/cabal-helper-wrapper
+  - export cabal_helper_libexecdir=$HOME/.cabal/bin
   - export ghc_mod_datadir=$PWD
   - cabal test
 

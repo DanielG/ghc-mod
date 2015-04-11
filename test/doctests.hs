@@ -9,7 +9,7 @@ main = doctest
   , "-package", "transformers-" ++ VERSION_transformers
   , "-package", "mtl-" ++ VERSION_mtl
   , "-package", "directory-" ++ VERSION_directory
-  , "-XConstraintKinds", "-XFlexibleContexts", "-XScopedTypeVariables", "-XRecordWildCards", "-XNamedFieldPuns"
+  , "-XScopedTypeVariables", "-XRecordWildCards", "-XNamedFieldPuns", "-XConstraintKinds", "-XFlexibleContexts", "-XDataKinds", "-XKindSignatures"
   , "-idist/build/autogen/"
   , "-optP-include"
   , "-optPdist/build/autogen/cabal_macros.h"
