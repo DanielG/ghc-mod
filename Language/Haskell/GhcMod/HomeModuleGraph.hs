@@ -24,13 +24,16 @@ module Language.Haskell.GhcMod.HomeModuleGraph (
  , findModulePath
  , findModulePathSet
  , fileModuleName
+ , canonicalizeModulePath
  , homeModuleGraph
  , updateHomeModuleGraph
+ , canonicalizeModuleGraph
  , reachable
  , moduleGraphToDot
  ) where
 
 import DriverPipeline
+import DynFlags
 import ErrUtils
 import Exception
 import Finder
@@ -45,14 +48,17 @@ import Control.Monad.State.Strict (execStateT)
 import Control.Monad.State.Class
 import Data.Maybe
 import Data.Monoid
+import Data.Traversable as T (mapM)
 import Data.Map  (Map)
 import qualified Data.Map  as Map
 import Data.Set (Set)
 import qualified Data.Set as Set
 import System.FilePath
+import System.Directory
 
 import Language.Haskell.GhcMod.Logging
 import Language.Haskell.GhcMod.Logger
+import Language.Haskell.GhcMod.PathsAndFiles
 import Language.Haskell.GhcMod.Monad.Types
 import Language.Haskell.GhcMod.Types
 import Language.Haskell.GhcMod.Gap (parseModuleHeader)
@@ -111,12 +117,8 @@ reachable smp0 GmModuleGraph {..} = go smp0
 pruneUnreachable :: Set ModulePath -> GmModuleGraph -> GmModuleGraph
 pruneUnreachable smp0 gmg@GmModuleGraph {..} = let
     r = reachable smp0 gmg
-    rfn = Set.map mpPath r
-    rmn = Set.map mpModule r
   in
     GmModuleGraph {
-      gmgFileMap = Map.filterWithKey (\k _ -> k `Set.member` rfn) gmgFileMap,
-      gmgModuleMap = Map.filterWithKey (\k _ -> k `Set.member` rmn) gmgModuleMap,
       gmgGraph = Map.filterWithKey (\k _ -> k `Set.member` r) gmgGraph
     }
 
@@ -143,9 +145,19 @@ find env mn = liftIO $ do
   res <- findHomeModule env mn
   case res of
    -- TODO: handle SOURCE imports (hs-boot stuff): addBootSuffixLocn loc
-    Found loc@ModLocation { ml_hs_file = Just _ } _mod -> do
+    Found loc@ModLocation { ml_hs_file = Just _ } _mod ->
         return $ normalise <$> ml_hs_file loc
     _ -> return Nothing
+
+
+canonicalizeModulePath (ModulePath mn fp) = ModulePath mn <$> canonicalizePath fp
+
+canonicalizeModuleGraph :: MonadIO m => GmModuleGraph -> m GmModuleGraph
+canonicalizeModuleGraph GmModuleGraph {..} = liftIO $ do
+    GmModuleGraph . Map.fromList <$> mapM fmg (Map.toList gmgGraph)
+ where
+   fmg (mp, smp) = liftM2 (,) (canonicalizeModulePath mp) (Set.fromList <$> mapM canonicalizeModulePath (Set.toList smp))
+
 
 updateHomeModuleGraph :: (IOish m, GmLog m, GmEnv m)
                       => HscEnv
@@ -153,19 +165,17 @@ updateHomeModuleGraph :: (IOish m, GmLog m, GmEnv m)
                       -> Set ModulePath -- ^ Initial set of modules
                       -> Set ModulePath -- ^ Updated set of modules
                       -> m GmModuleGraph
-updateHomeModuleGraph env GmModuleGraph {..} smp usmp = do
+updateHomeModuleGraph env GmModuleGraph {..} smp sump = do
     -- TODO: It would be good if we could retain information about modules that
     -- stop to compile after we've already successfully parsed them at some
     -- point. Figure out a way to delete the modules about to be updated only
     -- after we're sure they won't fail to parse .. or something. Should probably
     -- push this whole prune logic deep into updateHomeModuleGraph'
-   (pruneUnreachable smp . sGraph) `liftM` runS (updateHomeModuleGraph' env usmp)
+   (pruneUnreachable smp . sGraph) `liftM` runS (updateHomeModuleGraph' env sump)
  where
    runS = flip execStateT defaultS { sGraph = graph' }
    graph' = GmModuleGraph {
-       gmgFileMap = Set.foldr (Map.delete . mpPath) gmgFileMap usmp,
-       gmgModuleMap = Set.foldr (Map.delete . mpModule) gmgModuleMap usmp,
-       gmgGraph = Set.foldr Map.delete gmgGraph usmp
+       gmgGraph = Set.foldr Map.delete gmgGraph sump
     }
 
 mkFileMap :: Set ModulePath -> Map FilePath ModulePath
@@ -181,7 +191,6 @@ updateHomeModuleGraph'
     -> m ()
 updateHomeModuleGraph' env smp0 = do
     go `mapM_` Set.toList smp0
-
  where
    go :: ModulePath -> m ()
    go mp = do
@@ -192,8 +201,6 @@ updateHomeModuleGraph' env smp0 = do
            smp <- collapseMaybeSet `liftM` step mp
 
            graphUnion GmModuleGraph {
-               gmgFileMap = mkFileMap smp,
-               gmgModuleMap = mkModuleMap smp,
                gmgGraph = Map.singleton mp smp
             }
 

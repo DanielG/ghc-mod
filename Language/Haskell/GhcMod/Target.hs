@@ -142,14 +142,14 @@ runGmlTWith efnmns' mdf wrapper action = do
     let (fns, mns) = partitionEithers efnmns'
         ccfns = map (cradleCurrentDir crdl </>) fns
     cfns <- liftIO $ mapM canonicalizePath ccfns
-    let rfns = map (makeRelative $ cradleRootDir crdl) cfns
-        serfnmn = Set.fromList $ map Right mns ++ map Left rfns
-
+    let serfnmn = Set.fromList $ map Right mns ++ map Left cfns
     opts <- targetGhcOptions crdl serfnmn
     let opts' = opts ++ ghcUserOptions
 
     initSession opts' $
         setModeSimple >>> setEmptyLogger >>> mdf
+
+    let rfns = map (makeRelative $ cradleRootDir crdl) cfns
 
     unGmlT $ wrapper $ do
       loadTargets (map moduleNameString mns ++ rfns)
@@ -268,7 +268,7 @@ resolveGmComponent mums c@GmComponent {..} = do
         Nothing -> return simp
         Just ums -> Set.fromList . catMaybes <$> mapM (resolveModule env srcDirs) ums
 
-    mg' <- updateHomeModuleGraph env mg simp sump
+    mg' <- canonicalizeModuleGraph =<< updateHomeModuleGraph env mg simp sump
 
     return $ c { gmcEntrypoints = simp, gmcHomeModuleGraph = mg' }
 
@@ -285,13 +285,14 @@ resolveEntrypoint Cradle {..} c@GmComponent {..} =
 
 resolveModule :: MonadIO m =>
     HscEnv -> [FilePath] -> Either FilePath ModuleName -> m (Maybe ModulePath)
-resolveModule env _srcDirs (Right mn) = liftIO $ findModulePath env mn
+resolveModule env _srcDirs (Right mn) =
+    liftIO $ traverse canonicalizeModulePath =<< findModulePath env mn
 resolveModule env srcDirs (Left fn') = liftIO $ do
     mfn <- findFile' srcDirs fn'
     case mfn of
       Nothing -> return Nothing
       Just fn'' -> do
-          let fn = normalise fn''
+          fn <- canonicalizePath fn''
           emn <- fileModuleName env fn
           return $ case emn of
               Left _ -> Nothing

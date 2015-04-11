@@ -177,8 +177,6 @@ data GmLogLevel = GmPanic
 type PkgDb = (Map Package PackageConfig)
 
 data GmModuleGraph = GmModuleGraph {
-      gmgFileMap    :: Map FilePath ModulePath,
-      gmgModuleMap  :: Map ModuleName ModulePath,
       gmgGraph      :: Map ModulePath (Set ModulePath)
     } deriving (Eq, Ord, Show, Read, Generic, Typeable)
 
@@ -204,14 +202,12 @@ instance Serialize GmModuleGraph where
          intToMp i = fromJust $ Map.lookup i impm
          mpGraph :: Map ModulePath (Set ModulePath)
          mpGraph = Map.map (Set.map intToMp) $ Map.mapKeys intToMp graph
-         mpFm = Map.fromList $ map (mpPath &&& id) $ Map.keys mpim
-         mpMn = Map.fromList $ map (mpModule &&& id) $ Map.keys mpim
-     return $ GmModuleGraph mpFm mpMn mpGraph
+     return $ GmModuleGraph mpGraph
 
 instance Monoid GmModuleGraph where
-    mempty  = GmModuleGraph mempty mempty mempty
-    mappend (GmModuleGraph a b c) (GmModuleGraph a' b' c') =
-        GmModuleGraph (a <> a') (b <> b') (Map.unionWith Set.union c c')
+    mempty  = GmModuleGraph mempty
+    mappend (GmModuleGraph a) (GmModuleGraph a') =
+        GmModuleGraph (Map.unionWith Set.union a a')
 
 data GmComponentType = GMCRaw
                      | GMCResolved
