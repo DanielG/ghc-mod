@@ -13,7 +13,6 @@ import Control.Monad.Error (Error(..))
 import qualified Control.Monad.IO.Class as MTL
 import Control.Exception (Exception)
 import Control.Applicative
-import Control.Arrow
 import Data.Serialize
 import Data.Version
 import Data.List (intercalate)

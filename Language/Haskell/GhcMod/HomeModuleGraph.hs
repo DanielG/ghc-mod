@@ -48,7 +48,6 @@ import Control.Monad.State.Strict (execStateT)
 import Control.Monad.State.Class
 import Data.Maybe
 import Data.Monoid
-import Data.Traversable as T (mapM)
 import Data.Map  (Map)
 import qualified Data.Map  as Map
 import Data.Set (Set)
@@ -58,7 +57,6 @@ import System.Directory
 
 import Language.Haskell.GhcMod.Logging
 import Language.Haskell.GhcMod.Logger
-import Language.Haskell.GhcMod.PathsAndFiles
 import Language.Haskell.GhcMod.Monad.Types
 import Language.Haskell.GhcMod.Types
 import Language.Haskell.GhcMod.Gap (parseModuleHeader)
@@ -150,6 +148,7 @@ find env mn = liftIO $ do
     _ -> return Nothing
 
 
+canonicalizeModulePath :: ModulePath -> IO ModulePath
 canonicalizeModulePath (ModulePath mn fp) = ModulePath mn <$> canonicalizePath fp
 
 canonicalizeModuleGraph :: MonadIO m => GmModuleGraph -> m GmModuleGraph

@@ -10,8 +10,6 @@ import Utils (TimedFile(..), timeMaybe, mightExist)
 import Language.Haskell.GhcMod.Monad.Types
 import Language.Haskell.GhcMod.Logging
 
-import Utils
-
 data Cached m d a =
      Cached { cacheFile       :: FilePath,
               cachedAction    :: TimedCacheFiles -> d -> Maybe a -> m ([FilePath], a)

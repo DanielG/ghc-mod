@@ -72,7 +72,7 @@ spec = do
                 , mp "H"
                 , mp "I"
                 ]
-            fileMap = mkFileMap smp
+
             moduleMap = mkModuleMap smp
 
             completeGraph =
@@ -104,8 +104,6 @@ spec = do
                 ]
 
             g = GmModuleGraph {
-               gmgFileMap   = fileMap,
-               gmgModuleMap = moduleMap,
                gmgGraph     = graph
              }
 

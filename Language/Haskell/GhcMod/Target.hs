@@ -43,6 +43,7 @@ import Data.Maybe
 import Data.Monoid
 import Data.Either
 import Data.Foldable (foldrM)
+import Data.Traversable (traverse)
 import Data.IORef
 import Data.Map (Map)
 import qualified Data.Map  as Map
