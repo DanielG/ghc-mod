@@ -40,6 +40,7 @@ import Language.Haskell.GhcMod.Types
 import Language.Haskell.GhcMod.Utils
 
 import Data.Maybe
+import Data.Monoid
 import Data.Either
 import Data.Foldable (foldrM)
 import Data.IORef
@@ -327,7 +328,7 @@ resolveModule env srcDirs (Left fn') = liftIO $ do
                     Just mn -> ModulePath mn fn
  where
    findFile' dirs file =
-       mconcat <$> mapM (mightExist . (</>file)) dirs
+       getFirst . mconcat <$> mapM (fmap First . mightExist . (</>file)) dirs
 
 resolveChEntrypoints ::
   FilePath -> ChEntrypoint -> IO [Either FilePath ModuleName]
