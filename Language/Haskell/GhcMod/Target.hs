@@ -174,7 +174,7 @@ targetGhcOptions crdl sefnmn = do
        mcs <- cached cradleRootDir resolvedComponentsCache comps
 
        let mdlcs = moduleComponents mcs `zipMap` Set.toList sefnmn
-           candidates = Set.unions $ map snd mdlcs
+           candidates = findCandidates $ map snd mdlcs
 
        let noCandidates = Set.null candidates
            noModuleHasAnyAssignment = all (Set.null . snd) mdlcs
@@ -248,6 +248,11 @@ moduleComponents m efnmn =
    smp c = Map.keysSet $ gmgGraph $ gmcHomeModuleGraph c
 
    foldr' b as f = Map.foldr f b as
+
+
+findCandidates :: [Set ChComponentName] -> Set ChComponentName
+findCandidates [] = Set.empty
+findCandidates scns = foldl1 Set.intersection scns
 
 pickComponent :: Set ChComponentName -> ChComponentName
 pickComponent scn = Set.findMin scn
