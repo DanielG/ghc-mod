@@ -74,7 +74,7 @@ cabalHelperCache :: MonadIO m => Cached m
                       [GmComponent GMCRaw ChEntrypoint]
 cabalHelperCache = Cached {
     cacheFile = cabalHelperCacheFile,
-    cachedAction = \ _ (progs, root, _) ->
+    cachedAction = \ _ (progs, root, _) _ ->
       runQuery' progs root $ do
         q <- liftM5 join5
                ghcOptions

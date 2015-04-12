@@ -191,17 +191,29 @@ targetGhcOptions crdl sefnmn = do
             return $ gmcGhcOpts $ fromJust $ Map.lookup cn mcs
 
 resolvedComponentsCache :: IOish m => Cached (GhcModT m)
-    [GmComponent GMCRaw(Set.Set ModulePath)]
+    [GmComponent GMCRaw (Set.Set ModulePath)]
     (Map.Map ChComponentName (GmComponent GMCResolved (Set.Set ModulePath)))
 resolvedComponentsCache = Cached {
     cacheFile  = resolvedComponentsCacheFile,
-    cachedAction = \tcfs comps -> do
+    cachedAction = \tcfs comps ma -> do
         Cradle {..} <- cradle
-        let changedFiles =
-                filter (/= cradleRootDir </> setupConfigPath) $ map tfPath $ tcFiles tcfs
-            mums = if null changedFiles
-                     then Nothing
-                     else Just $ map Left changedFiles
+        let mums =
+              case invalidatingInputFiles tcfs of
+                Nothing -> Nothing
+                Just iifs ->
+                  let
+                      filterOutSetupCfg =
+                          filter (/= cradleRootDir </> setupConfigPath)
+                      changedFiles = filterOutSetupCfg iifs
+                  in if null changedFiles
+                       then Nothing
+                       else Just $ map Left changedFiles
+
+        case ma of
+          Just mcs -> gmsGet >>= \s -> gmsPut s { gmComponents = mcs }
+          Nothing -> return ()
+
+--        liftIO $ print ("changed files", mums :: Maybe [Either FilePath ()])
 
         mcs <- resolveGmComponents mums comps
         return (setupConfigPath:flatten mcs , mcs)

@@ -5,6 +5,7 @@ import Data.Maybe
 import Data.Serialize
 import qualified Data.ByteString as BS
 import System.FilePath
+import Utils (TimedFile(..), timeMaybe, mightExist)
 
 import Language.Haskell.GhcMod.Monad.Types
 import Language.Haskell.GhcMod.Logging
@@ -13,7 +14,7 @@ import Utils
 
 data Cached m d a =
      Cached { cacheFile       :: FilePath,
-              cachedAction    :: TimedCacheFiles -> d -> m ([FilePath], a)
+              cachedAction    :: TimedCacheFiles -> d -> Maybe a -> m ([FilePath], a)
               -- ^ The cached action, will only run if
               -- * The cache doesn\'t exist yet
               -- * The cache exists and 'inputData' changed
@@ -37,21 +38,21 @@ cached dir cd d = do
     let defTcf = TimedCacheFiles tcfile []
 
     case mcc of
-      Nothing -> writeCache defTcf "cache missing"
-      Just (ifs, d', _) | d /= d' -> do
+      Nothing -> writeCache defTcf Nothing "cache missing"
+      Just (ifs, d', a) | d /= d' -> do
           tcf <- timeCacheInput dir (cacheFile cd) ifs
-          writeCache tcf "input data changed"
+          writeCache tcf (Just a) "input data changed"
       Just (ifs, _, a) -> do
                     tcf <- timeCacheInput dir (cacheFile cd) ifs
                     let invifs = invalidatingInputFiles tcf
                     case invifs of
-                      Nothing -> writeCache tcf "cache missing, existed a sec ago WTF?"
+                      Nothing -> writeCache tcf (Just a) "cache missing, existed a sec ago WTF?"
                       Just [] -> return a
-                      Just _ -> writeCache tcf "input files changed"
+                      Just _ -> writeCache tcf (Just a) "input files changed"
 
  where
-   writeCache tcf cause = do
-     (ifs', a) <- (cachedAction cd) tcf d
+   writeCache tcf ma cause = do
+     (ifs', a) <- (cachedAction cd) tcf d ma
      gmLog GmDebug "" $ (text "regenerating cache") <+>: text (cacheFile cd)
                                                     <+> parens (text cause)
      liftIO $ BS.writeFile (dir </> cacheFile cd) $ encode (ifs', d, a)
