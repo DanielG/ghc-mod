@@ -57,12 +57,27 @@ cabalDebug = do
 
 componentInfo :: IOish m => [String] -> GhcModT m String
 componentInfo ts = do
+    -- TODO: most of this is copypasta of targetGhcOptions. Factor out more
+    -- useful function from there.
     crdl <- cradle
-    opts <- targetGhcOptions crdl $ Set.fromList $ map guessModuleFile ts
+    let sefnmn = Set.fromList $ map guessModuleFile ts
+    comps <- mapM (resolveEntrypoint crdl) =<< getComponents
+    mcs <- resolveGmComponents Nothing comps
+    let
+        mdlcs = moduleComponents mcs `zipMap` Set.toList sefnmn
+        candidates = findCandidates $ map snd mdlcs
+        cn = pickComponent candidates
+    opts <- targetGhcOptions crdl sefnmn
 
     return $ unlines $
-         [ "GHC Cabal options:\n"       ++ render (nest 4 $ fsep $ map text opts)
+         [ "Matching Components:\n"     ++ render (nest 4 $
+              alistDoc (either text mnDoc) (setDoc gmComponentNameDoc) mdlcs)
+         , "Picked Component:\n"        ++ render (nest 4 $
+              gmComponentNameDoc cn)
+         , "GHC Cabal options:\n"       ++ render (nest 4 $ fsep $ map text opts)
          ]
+ where
+   zipMap f l = l `zip` (f `map` l)
 
 guessModuleFile :: String -> Either FilePath ModuleName
 guessModuleFile mn@(h:r)
@@ -71,17 +86,25 @@ guessModuleFile str = Left str
 
 graphDoc :: GmModuleGraph -> Doc
 graphDoc GmModuleGraph{..} =
-    mapDoc mpDoc' smpDoc' gmgGraph
+    mapDoc mpDoc smpDoc' gmgGraph
  where
    smpDoc' smp = vcat $ map mpDoc' $ Set.toList smp
    mpDoc' = text . moduleNameString . mpModule
 
+setDoc :: (a -> Doc) -> Set.Set a -> Doc
+setDoc f s = vcat $ map f $ Set.toList s
+
 smpDoc :: Set.Set ModulePath -> Doc
-smpDoc smp = vcat $ map mpDoc $ Set.toList smp
+smpDoc smp = setDoc mpDoc smp
 
 mpDoc :: ModulePath -> Doc
 mpDoc (ModulePath mn fn) = text (moduleNameString mn) <+> parens (text fn)
 
+mnDoc :: ModuleName -> Doc
+mnDoc mn = text (moduleNameString mn)
+
+alistDoc :: Ord k => (k -> Doc) -> (a -> Doc) -> [(k, a)] -> Doc
+alistDoc fk fa alist = mapDoc fk fa (Map.fromList alist)
 
 mapDoc :: (k -> Doc) -> (a -> Doc) -> Map.Map k a -> Doc
 mapDoc kd ad m = vcat $
