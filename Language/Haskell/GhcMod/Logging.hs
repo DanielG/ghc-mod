@@ -60,8 +60,8 @@ gmLog level loc' doc = do
   GhcModLog { gmLogLevel = level' } <- gmlHistory
 
   let loc | loc' == "" = empty
-          | otherwise = text loc'
-      msg = gmRenderDoc $ (gmLogLevelDoc level <+>: loc) <+>: doc
+          | otherwise = empty <+>: text loc'
+      msg = gmRenderDoc $ (gmLogLevelDoc level <> loc) <+>: doc
       msg' = dropWhileEnd isSpace msg
 
   when (Just level <= level') $
