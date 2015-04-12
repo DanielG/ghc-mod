@@ -26,13 +26,13 @@ import Data.List
 import Data.Char
 import Data.Maybe
 import Data.Traversable (traverse)
+import Distribution.Helper (buildPlatform)
 import System.Directory
 import System.FilePath
 import System.IO.Unsafe
 
 import Language.Haskell.GhcMod.Types
 import Language.Haskell.GhcMod.Error
-import Language.Haskell.GhcMod.Utils hiding (dropWhileEnd)
 import Language.Haskell.GhcMod.Caching
 import qualified Language.Haskell.GhcMod.Utils as U
 
@@ -185,8 +185,7 @@ ghcSandboxPkgDbDir =
    cabalBuildPlatform ++ "-ghc-" ++ cProjectVersion ++ "-packages.conf.d"
 
 cabalBuildPlatform :: String
-cabalBuildPlatform = dropWhileEnd isSpace $ unsafePerformIO $
-    readLibExecProcess' "cabal-helper-wrapper" ["print-build-platform"]
+cabalBuildPlatform = unsafePerformIO $ buildPlatform
 
 packageCache :: String
 packageCache = "package.cache"
