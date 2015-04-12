@@ -76,13 +76,18 @@ cabalHelperCache = Cached {
     cacheFile = cabalHelperCacheFile,
     cachedAction = \ _ (progs, root, _) ->
       runQuery' progs root $ do
-        q <- liftM4 join4 ghcOptions ghcSrcOptions entrypoints sourceDirs
-        let cs = flip map q $ \(cn, (opts, (srcOpts, (ep, srcDirs)))) ->
-                   GmComponent cn opts srcOpts ep ep srcDirs mempty
+        q <- liftM5 join5
+               ghcOptions
+               ghcSrcOptions
+               ghcLangOptions
+               entrypoints
+               sourceDirs
+        let cs = flip map q $ \(cn, (opts, (srcOpts, (langOpts, (ep, srcDirs))))) ->
+                   GmComponent cn opts srcOpts langOpts ep ep srcDirs mempty
         return ([setupConfigPath], cs)
   }
  where
-   join4 a b c = join' a . join' b . join' c
+   join5 a b c d = join' a . join' b . join' c . join' d
    join' :: Eq a => [(a,b)] -> [(a,c)] -> [(a,(b,c))]
    join' lb lc = [ (a, (b, c))
                 | (a, b) <- lb

@@ -180,6 +180,9 @@ setupConfigFile crdl = cradleRootDir crdl </> setupConfigPath
 setupConfigPath :: FilePath
 setupConfigPath = "dist/setup-config" -- localBuildInfoFile defaultDistPref
 
+macrosHeaderPath :: FilePath
+macrosHeaderPath = "dist/build/autogen/cabal_macros.h"
+
 ghcSandboxPkgDbDir :: String
 ghcSandboxPkgDbDir =
    cabalBuildPlatform ++ "-ghc-" ++ cProjectVersion ++ "-packages.conf.d"

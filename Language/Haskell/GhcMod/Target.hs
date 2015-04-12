@@ -260,17 +260,25 @@ resolveGmComponent :: (IOish m, GmLog m, GmEnv m)
     -> GmComponent GMCRaw (Set ModulePath)
     -> m (GmComponent GMCResolved (Set ModulePath))
 resolveGmComponent mums c@GmComponent {..} = do
-  withLightHscEnv gmcGhcSrcOpts $ \env -> do
+  withLightHscEnv ghcOpts $ \env -> do
     let srcDirs = if null gmcSourceDirs then [""] else gmcSourceDirs
     let mg = gmcHomeModuleGraph
     let simp = gmcEntrypoints
     sump <- case mums of
         Nothing -> return simp
-        Just ums -> Set.fromList . catMaybes <$> mapM (resolveModule env srcDirs) ums
+        Just ums ->
+            Set.fromList . catMaybes <$>
+               mapM (resolveModule env srcDirs) ums
 
     mg' <- canonicalizeModuleGraph =<< updateHomeModuleGraph env mg simp sump
 
     return $ c { gmcEntrypoints = simp, gmcHomeModuleGraph = mg' }
+
+ where ghcOpts = concat [
+           gmcGhcSrcOpts,
+           gmcGhcLangOpts,
+           [ "-optP-include", "-optP" ++ macrosHeaderPath ]
+        ]
 
 resolveEntrypoint :: IOish m
     => Cradle

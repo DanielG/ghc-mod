@@ -164,7 +164,6 @@ type ModuleString = String
 -- | A Module
 type Module = [String]
 
-
 data GmLogLevel = GmPanic
                 | GmException
                 | GmError
@@ -215,6 +214,7 @@ data GmComponent (t :: GmComponentType) eps = GmComponent {
       gmcName            :: ChComponentName,
       gmcGhcOpts         :: [GHCOption],
       gmcGhcSrcOpts      :: [GHCOption],
+      gmcGhcLangOpts     :: [GHCOption],
       gmcRawEntrypoints  :: ChEntrypoint,
       gmcEntrypoints     :: eps,
       gmcSourceDirs      :: [FilePath],
