@@ -37,10 +37,8 @@ import Language.Haskell.GhcMod.GhcPkg
 import Language.Haskell.GhcMod.Error
 import Language.Haskell.GhcMod.Logging
 import Language.Haskell.GhcMod.Types
-import Language.Haskell.GhcMod.Utils
 
 import Data.Maybe
-import Data.Monoid
 import Data.Either
 import Data.Foldable (foldrM)
 import Data.Traversable (traverse)
@@ -315,7 +313,7 @@ resolveModule :: MonadIO m =>
 resolveModule env _srcDirs (Right mn) =
     liftIO $ traverse canonicalizeModulePath =<< findModulePath env mn
 resolveModule env srcDirs (Left fn') = liftIO $ do
-    mfn <- findFile' srcDirs fn'
+    mfn <- findFile srcDirs fn'
     case mfn of
       Nothing -> return Nothing
       Just fn'' -> do
@@ -327,9 +325,6 @@ resolveModule env srcDirs (Left fn') = liftIO $ do
                   case mmn of
                     Nothing -> mkMainModulePath fn
                     Just mn -> ModulePath mn fn
- where
-   findFile' dirs file =
-       getFirst . mconcat <$> mapM (fmap First . mightExist . (</>file)) dirs
 
 resolveChEntrypoints ::
   FilePath -> ChEntrypoint -> IO [Either FilePath ModuleName]
@@ -365,7 +360,6 @@ resolveGmComponents mumns cs = do
                        else insertUpdated m c
     gmsPut s { gmComponents = m' }
     return m'
-
  where
    foldrM' b fa f = foldrM f b fa
    insertUpdated m c = do
