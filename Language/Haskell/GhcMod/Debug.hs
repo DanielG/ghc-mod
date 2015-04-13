@@ -1,10 +1,12 @@
 module Language.Haskell.GhcMod.Debug (debugInfo, rootInfo, componentInfo) where
 
 import Control.Arrow (first)
-import Control.Applicative ((<$>))
+import Control.Applicative
+import Control.Monad
 import qualified Data.Map as Map
 import qualified Data.Set as Set
 import Data.Char
+import Data.List.Split
 import Text.PrettyPrint
 import Language.Haskell.GhcMod.Convert
 import Language.Haskell.GhcMod.Monad
@@ -13,6 +15,7 @@ import Language.Haskell.GhcMod.Internal
 import Language.Haskell.GhcMod.CabalHelper
 import Language.Haskell.GhcMod.Target
 import Language.Haskell.GhcMod.Pretty
+import Language.Haskell.GhcMod.Utils
 
 ----------------------------------------------------------------
 
@@ -60,7 +63,7 @@ componentInfo ts = do
     -- TODO: most of this is copypasta of targetGhcOptions. Factor out more
     -- useful function from there.
     crdl <- cradle
-    let sefnmn = Set.fromList $ map guessModuleFile ts
+    sefnmn <- Set.fromList `liftM` mapM guessModuleFile ts
     comps <- mapM (resolveEntrypoint crdl) =<< getComponents
     mcs <- resolveGmComponents Nothing comps
     let
@@ -79,10 +82,17 @@ componentInfo ts = do
  where
    zipMap f l = l `zip` (f `map` l)
 
-guessModuleFile :: String -> Either FilePath ModuleName
-guessModuleFile mn@(h:r)
-    | isUpper h && all isAlphaNum r = Right $ mkModuleName mn
-guessModuleFile str = Left str
+guessModuleFile :: MonadIO m => String -> m (Either FilePath ModuleName)
+guessModuleFile m
+  | (isUpper . head .&&. (all $ all $ isAlphaNum .||. (=='.')) . splitOn ".") m =
+      return $ Right $ mkModuleName m
+ where
+   infixr 1 .||.
+   infixr 2 .&&.
+   (.||.) = liftA2 (||)
+   (.&&.) = liftA2 (&&)
+
+guessModuleFile str = Left `liftM` liftIO (canonFilePath str)
 
 graphDoc :: GmModuleGraph -> Doc
 graphDoc GmModuleGraph{..} =

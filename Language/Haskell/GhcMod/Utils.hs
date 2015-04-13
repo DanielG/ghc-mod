@@ -34,6 +34,7 @@ import System.FilePath (splitDrive, takeDirectory, takeFileName, pathSeparators,
                         (</>))
 import System.IO.Temp (createTempDirectory)
 import System.Environment
+import System.Directory
 import Text.Printf
 
 import Paths_ghc_mod (getLibexecDir)
@@ -159,3 +160,9 @@ getExecutablePath' = getExecutablePath
 #else
 getExecutablePath' = getProgName
 #endif
+
+canonFilePath f = do
+  p <- canonicalizePath f
+  e <- doesFileExist p
+  when (not e) $ error $ "canonFilePath: not a file: " ++ p
+  return p
