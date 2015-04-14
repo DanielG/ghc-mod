@@ -27,14 +27,14 @@ import Data.Char
 import Language.Haskell.GhcMod.Error
 import Language.Haskell.GhcMod.Monad.Types
 import Exception
-import System.Directory (getCurrentDirectory, setCurrentDirectory, doesFileExist)
+import System.Directory (getCurrentDirectory, setCurrentDirectory, doesFileExist,
+                         getTemporaryDirectory, canonicalizePath, doesFileExist)
 import System.Process (readProcess)
-import System.Directory (getTemporaryDirectory)
+import System.Directory ()
 import System.FilePath (splitDrive, takeDirectory, takeFileName, pathSeparators,
                         (</>))
 import System.IO.Temp (createTempDirectory)
 import System.Environment
-import System.Directory
 import Text.Printf
 
 import Paths_ghc_mod (getLibexecDir)
@@ -161,6 +161,7 @@ getExecutablePath' = getExecutablePath
 getExecutablePath' = getProgName
 #endif
 
+canonFilePath :: FilePath -> IO FilePath
 canonFilePath f = do
   p <- canonicalizePath f
   e <- doesFileExist p
