@@ -3,6 +3,7 @@
 import Distribution.Simple
 import Distribution.Simple.Setup
 import Distribution.Simple.Install
+import Distribution.Simple.Register
 import Distribution.Simple.InstallDirs as ID
 import Distribution.Simple.LocalBuildInfo
 import Distribution.PackageDescription
@@ -26,10 +27,8 @@ main = defaultMainWithHooks $ simpleUserHooks {
    confHook = \(gpd, hbi) cf ->
               xBuildDependsLike <$> (confHook simpleUserHooks) (gpd, hbi) cf
 
- , copyHook = xInstallTargetHook
-
- , instHook = \pd lbi uh ifl ->
-              (instHook simpleUserHooks) pd lbi uh ifl
+ , instHook = inst
+ , copyHook = copy
 
 -- , postConf = sanityCheckCabalVersions
  }
@@ -60,14 +59,38 @@ xBuildDependsLike lbi =
       where
         fields = customFieldsBI (componentBuildInfo comp)
 
-xInstallTargetHook ::
-    PackageDescription -> LocalBuildInfo -> UserHooks -> CopyFlags -> IO ()
-xInstallTargetHook pd lbi uh cf = do
+-- mostly copypasta from 'defaultInstallHook'
+inst ::
+    PackageDescription -> LocalBuildInfo -> UserHooks -> InstallFlags -> IO ()
+inst pd lbi _uf ifl = do
+  let copyFlags = defaultCopyFlags {
+                      copyDistPref   = installDistPref ifl,
+                      copyDest       = toFlag NoCopyDest,
+                      copyVerbosity  = installVerbosity ifl
+                  }
+  xInstallTarget pd lbi (\pd' lbi' -> install pd' lbi' copyFlags)
+  let registerFlags = defaultRegisterFlags {
+                          regDistPref  = installDistPref ifl,
+                          regInPlace   = installInPlace ifl,
+                          regPackageDB = installPackageDB ifl,
+                          regVerbosity = installVerbosity ifl
+                      }
+  when (hasLibs pd) $ register pd lbi registerFlags
+
+copy :: PackageDescription -> LocalBuildInfo -> UserHooks -> CopyFlags -> IO ()
+copy pd lbi _uh cf =
+    xInstallTarget pd lbi (\pd' lbi' -> install pd' lbi' cf)
+
+xInstallTarget :: PackageDescription
+               -> LocalBuildInfo
+               -> (PackageDescription -> LocalBuildInfo -> IO ())
+               -> IO ()
+xInstallTarget pd lbi fn = do
   let (extended, regular) = partition (isJust . installTarget) (executables pd)
 
   let pd_regular = pd { executables = regular }
 
-  flip mapM extended $ \exe -> do
+  _ <- flip mapM extended $ \exe -> do
     putStrLn $ "extended "  ++ show (exeName exe)
 
     let
@@ -87,10 +110,9 @@ xInstallTargetHook pd lbi uh cf = do
                    bindir = install_target''
                  }
                }
+    fn pd_extended lbi'
 
-    install pd_extended lbi' cf
-
-  install pd_regular lbi cf
+  fn pd_regular lbi
 
  where
    installTarget :: Executable -> Maybe PathTemplate
@@ -108,6 +130,7 @@ xInstallTargetHook pd lbi uh cf = do
    withPT f pt = toPathTemplate $ f (fromPathTemplate pt)
    withSP f p  = joinPath $ f (splitPath p)
 
+onlyExePackageDesc :: [Executable] -> PackageDescription -> PackageDescription
 onlyExePackageDesc exes pd = emptyPackageDescription {
                      package = package pd
                    , executables = exes
