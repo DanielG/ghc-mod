@@ -89,7 +89,7 @@ defaultOptions :: Options
 defaultOptions = Options {
     outputStyle   = PlainStyle
   , lineSeparator = LineSeparator "\0"
-  , logLevel      = GmInfo
+  , logLevel      = GmWarning
   , ghcProgram    = "ghc"
   , ghcPkgProgram = "ghc-pkg"
   , cabalProgram  = "cabal"
