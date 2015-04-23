@@ -6,8 +6,6 @@ import Config (cProjectVersion)
 import MonadUtils (liftIO)
 import Control.Applicative
 import Control.Monad
-import Control.Exception ( SomeException(..), fromException, Exception
-                         , Handler(..), catches, throw)
 import Data.Typeable (Typeable)
 import Data.Version (showVersion)
 import Data.Default
@@ -15,6 +13,7 @@ import Data.List
 import Data.List.Split
 import Data.Maybe
 import Data.Char (isSpace)
+import Exception
 import Language.Haskell.GhcMod
 import Language.Haskell.GhcMod.Internal
 import Paths_ghc_mod
@@ -74,7 +73,7 @@ usage =
 -- TODO: Generate the stuff below automatically
 ghcModUsage :: String
 ghcModUsage =
- "Usage: ghc-mod [OPTIONS...] COMMAND [OPTIONS...] \n\
+ "Usage: ghc-mod [OPTIONS...] COMMAND [CMD_ARGS...] \n\
  \*Global Options (OPTIONS)*\n\
  \    Global options can be specified before and after the command and\n\
  \    interspersed with command specific options\n\
@@ -91,7 +90,7 @@ ghcModUsage =
  \        List all visible modules.\n\
  \      Flags:\n\
  \        -d\n\
- \            Also print the modules' package.\n\
+ \            Print package modules belong to.\n\
  \\n\
  \    - lang\n\
  \        List all known GHC language extensions.\n\
@@ -183,12 +182,12 @@ ghcModUsage =
  \        -l\n\
  \            Option to be passed to hlint.\n\
  \\n\
- \    - root FILE\n\
- \       Try to find the project directory given FILE. For Cabal\n\
- \       projects this is the directory containing the cabal file, for\n\
- \       projects that use a cabal sandbox but have no cabal file this is the\n\
- \       directory containing the sandbox and otherwise this is the directory\n\
- \       containing FILE.\n\
+ \    - root\n\
+ \        Try to find the project directory. For Cabal projects this is the\n\
+ \        directory containing the cabal file, for projects that use a cabal\n\
+ \        sandbox but have no cabal file this is the directory containing the\n\
+ \        cabal.sandbox.config file and otherwise this is the current\n\
+ \        directory.\n\
  \\n\
  \    - doc MODULE\n\
  \        Try finding the html documentation directory for the given MODULE.\n\
@@ -196,6 +195,9 @@ ghcModUsage =
  \    - debug\n\
  \        Print debugging information. Please include the output in any bug\n\
  \        reports you submit.\n\
+ \\n\
+ \    - debugComponent [MODULE_OR_FILE...]\n\
+ \        Debugging information related to cabal component resolution.\n\
  \\n\
  \    - boot\n\
  \         Internal command used by the emacs frontend.\n"
@@ -227,27 +229,32 @@ ghcModiUsage =
  where
    indent = ("    "++)
 
-
-
-
 cmdUsage :: String -> String -> String
-cmdUsage cmd s =
+cmdUsage cmd realUsage =
   let
       -- Find command head
-      a = dropWhile (not . (("    - " ++ cmd) `isInfixOf`)) $ lines s
+      a = dropWhile (not . isCmdHead) $ lines realUsage
       -- Take til the end of the current command block
       b = flip takeWhile a $ \l ->
-           all isSpace l || (isIndented l && (isCurrCmdHead l || isNotCmdHead l))
+            all isSpace l || (isIndented l && (isCmdHead l || isNotCmdHead l))
       -- Drop extra newline from the end
       c = dropWhileEnd (all isSpace) b
 
       isIndented    = ("    " `isPrefixOf`)
       isNotCmdHead  = ( not .  ("    - " `isPrefixOf`))
-      isCurrCmdHead = (("    - " ++ cmd) `isPrefixOf`)
+
+      containsAnyCmdHead s = (("    - ") `isInfixOf` s)
+      containsCurrCmdHead s = (("    - " ++ cmd) `isInfixOf` s)
+      isCmdHead s =
+          containsAnyCmdHead s &&
+            or [ containsCurrCmdHead s
+               , any (cmd `isPrefixOf`) (splitOn " | " s)
+               ]
 
       unindent (' ':' ':' ':' ':l) = l
       unindent l = l
   in unlines $ unindent <$> c
+
 ----------------------------------------------------------------
 
 option :: [Char] -> [String] -> String -> ArgDescr a -> OptDescr a
@@ -258,8 +265,14 @@ reqArg udsc dsc = ReqArg dsc udsc
 
 globalArgSpec :: [OptDescr (Options -> Options)]
 globalArgSpec =
-      [ option "v" ["verbose"] "Be more verbose." $
-               NoArg $ \o -> o { ghcUserOptions = "-v" : ghcUserOptions o }
+      [ option "v" ["verbose"] "Can be given multiple times to be increasingly\
+                               \ be more verbose." $
+               NoArg $ \o -> o { logLevel = increaseLogLevel (logLevel o) }
+
+      , option "s" [] "Can be given multiple times to be increasingly be less\
+                      \ verbose." $
+               NoArg $ \o -> o { logLevel = decreaseLogLevel (logLevel o) }
+
 
       , option "l" ["tolisp"] "Format output as an S-Expression" $
                NoArg $ \o -> o { outputStyle = LispStyle }
@@ -273,6 +286,9 @@ globalArgSpec =
 
       , option "" ["with-ghc"] "GHC executable to use" $
                reqArg "PROG" $ \p o -> o { ghcProgram = p }
+
+      , option "" ["with-ghc-pkg"] "ghc-pkg executable to use (only needed when guessing from GHC path fails)" $
+               reqArg "PROG" $ \p o -> o { ghcPkgProgram = p }
 
       , option "" ["with-cabal"] "cabal-install executable to use" $
                reqArg "PROG" $ \p o -> o { cabalProgram = p }
@@ -321,7 +337,8 @@ handler = flip catches $
           , Handler $ \(InvalidCommandLine e) -> do
                 case e of
                   Left cmd ->
-                      exitError $ (cmdUsage cmd ghcModUsage) ++ "\n"
+                      exitError $ "Usage for `"++cmd++"' command:\n\n"
+                                  ++ (cmdUsage cmd ghcModUsage) ++ "\n"
                                   ++ progName ++ ": Invalid command line form."
                   Right msg -> exitError $ progName ++ ": " ++ msg
           ]
@@ -380,7 +397,8 @@ progMain (globalOptions,cmdArgs) = do
                   (res,_) <- runGhcModT globalOptions $ ghcCommands cmdArgs
                   case res of
                     Right s -> putStr s
-                    Left e -> exitError $ render (gmeDoc e)
+                    Left e -> exitError $
+                        renderStyle style { ribbonsPerLine = 1.2 } (gmeDoc e)
 
               -- Obtain ghc options by letting ourselfs be executed by
               -- @cabal repl@
@@ -499,6 +517,7 @@ ghcCommands (cmd:args) = fn args
      "check"   -> checkSyntaxCmd
      "expand"  -> expandTemplateCmd
      "debug"   -> debugInfoCmd
+     "debugComponent" -> componentInfoCmd
      "info"    -> infoCmd
      "type"    -> typesCmd
      "split"   -> splitsCmd
@@ -521,7 +540,7 @@ newtype InvalidCommandLine = InvalidCommandLine (Either String String)
 instance Exception InvalidCommandLine
 
 exitError :: String -> IO a
-exitError msg = hPutStrLn stderr msg >> exitFailure
+exitError msg = hPutStrLn stderr (dropWhileEnd (=='\n') msg) >> exitFailure
 
 fatalError :: String -> a
 fatalError s = throw $ FatalError $ progName ++ ": " ++ s
@@ -535,25 +554,41 @@ withParseCmd spec action args  = do
   (opts', rest) <- parseCommandArgs spec args <$> options
   withOptions (const opts') $ action rest
 
+withParseCmd' :: (IOish m, ExceptionMonad m)
+              => String
+              -> [OptDescr (Options -> Options)]
+              -> ([String] -> GhcModT m a)
+              -> [String]
+              -> GhcModT m a
+withParseCmd' cmd spec action args =
+    catchArgs cmd $ withParseCmd spec action args
+
+catchArgs :: (Monad m, ExceptionMonad m) => String -> m a -> m a
+catchArgs cmd action =
+    action `gcatch` \(PatternMatchFail _) ->
+        throw $ InvalidCommandLine (Left cmd)
+
 modulesCmd, languagesCmd, flagsCmd, browseCmd, checkSyntaxCmd, expandTemplateCmd,
-  debugInfoCmd, infoCmd, typesCmd, splitsCmd, sigCmd, refineCmd, autoCmd,
+  debugInfoCmd, componentInfoCmd, infoCmd, typesCmd, splitsCmd, sigCmd, refineCmd, autoCmd,
   findSymbolCmd, lintCmd, rootInfoCmd, pkgDocCmd, dumpSymbolCmd, bootCmd
   :: IOish m => [String] -> GhcModT m String
 
-modulesCmd    = withParseCmd [] $ \[] -> modules
-languagesCmd  = withParseCmd [] $ \[] -> languages
-flagsCmd      = withParseCmd [] $ \[] -> flags
-debugInfoCmd  = withParseCmd [] $ \[] -> debugInfo
-rootInfoCmd   = withParseCmd [] $ \[] -> rootInfo
+modulesCmd    = withParseCmd' "modules" s $ \[] -> modules
+ where s = modulesArgSpec
+languagesCmd  = withParseCmd' "lang"    [] $ \[] -> languages
+flagsCmd      = withParseCmd' "flag"    [] $ \[] -> flags
+debugInfoCmd  = withParseCmd' "debug"   [] $ \[] -> debugInfo
+rootInfoCmd   = withParseCmd' "root"    [] $ \[] -> rootInfo
+componentInfoCmd = withParseCmd' "debugComponent" [] $ \ts -> componentInfo ts
 -- internal
-bootCmd       = withParseCmd [] $ \[] -> boot
+bootCmd       = withParseCmd' "boot" [] $ \[] -> boot
 
-dumpSymbolCmd     = withParseCmd [] $ \[tmpdir] -> dumpSymbol tmpdir
-findSymbolCmd     = withParseCmd [] $ \[sym]  -> findSymbol sym
-pkgDocCmd         = withParseCmd [] $ \[mdl]  -> pkgDoc mdl
-lintCmd           = withParseCmd s  $ \[file] -> lint file
+dumpSymbolCmd     = withParseCmd' "dump" [] $ \[tmpdir] -> dumpSymbol tmpdir
+findSymbolCmd     = withParseCmd' "find" [] $ \[sym]  -> findSymbol sym
+pkgDocCmd         = withParseCmd' "doc"  [] $ \[mdl]  -> pkgDoc mdl
+lintCmd           = withParseCmd' "lint" s  $ \[file] -> lint file
  where s = hlintArgSpec
-browseCmd         = withParseCmd s  $ \mdls   -> concat <$> browse `mapM` mdls
+browseCmd         = withParseCmd s $ \mdls -> concat <$> browse `mapM` mdls
  where s = browseArgSpec
 checkSyntaxCmd    = withParseCmd [] $ checkAction checkSyntax
 expandTemplateCmd = withParseCmd [] $ checkAction expandTemplate
@@ -583,11 +618,20 @@ locAction' _ action [f,_,line,col,expr] = action f (read line) (read col) expr
 locAction' _ action [f,  line,col,expr] = action f (read line) (read col) expr
 locAction' cmd _ _ = throw $ InvalidCommandLine (Left cmd)
 
+
+modulesArgSpec :: [OptDescr (Options -> Options)]
+modulesArgSpec =
+    [ option "d" ["detailed"] "Print package modules belong to." $
+             NoArg $ \o -> o { detailed = True }
+    ]
+
+
 hlintArgSpec :: [OptDescr (Options -> Options)]
 hlintArgSpec =
     [ option "h" ["hlintOpt"] "Option to be passed to hlint" $
              reqArg "hlintOpt" $ \h o -> o { hlintOpts = h : hlintOpts o }
     ]
+
 browseArgSpec :: [OptDescr (Options -> Options)]
 browseArgSpec =
     [ option "o" ["operators"] "Also print operators." $

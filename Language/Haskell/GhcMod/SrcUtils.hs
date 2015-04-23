@@ -13,12 +13,9 @@ import qualified GHC as G
 import GHC.SYB.Utils (Stage(..), everythingStaged)
 import GhcMonad
 import qualified Language.Haskell.Exts.Annotated as HE
-import Language.Haskell.GhcMod.Doc (showOneLine, getStyle)
-import Language.Haskell.GhcMod.DynFlags
-import Language.Haskell.GhcMod.Gap (HasType(..), setWarnTypedHoles, setDeferTypeErrors)
+import Language.Haskell.GhcMod.Doc
+import Language.Haskell.GhcMod.Gap
 import qualified Language.Haskell.GhcMod.Gap as Gap
-import Language.Haskell.GhcMod.Monad (IOish, GhcModT)
-import Language.Haskell.GhcMod.Target (setTargetFiles)
 import OccName (OccName)
 import Outputable (PprStyle)
 import TcHsSyn (hsPatType)
@@ -82,22 +79,6 @@ typeSigInRangeHE _  _ _= False
 
 pretty :: DynFlags -> PprStyle -> Type -> String
 pretty dflag style = showOneLine dflag style . Gap.typeForUser
-
-----------------------------------------------------------------
-
-inModuleContext :: IOish m
-                => FilePath
-                -> (DynFlags -> PprStyle -> GhcModT m a)
-                -> GhcModT m a
-inModuleContext file action =
-    withDynFlags (setWarnTypedHoles . setDeferTypeErrors . setNoWarningFlags) $ do
-    setTargetFiles [file]
-    Gap.withContext $ do
-        dflag <- G.getSessionDynFlags
-        style <- getStyle
-        action dflag style
-
-----------------------------------------------------------------
 
 showName :: DynFlags -> PprStyle -> G.Name -> String
 showName dflag style name = showOneLine dflag style $ Gap.nameForUser name

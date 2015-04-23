@@ -127,7 +127,7 @@
 (defun ghc-expand-th ()
   (interactive)
   (let* ((file (buffer-file-name))
-	 (cmds (list "expand" file))
+	 (cmds (list "-b" "\n" "expand" file))
 	 (source (ghc-run-ghc-mod cmds)))
     (when source
       (ghc-display

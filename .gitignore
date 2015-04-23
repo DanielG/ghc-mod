@@ -7,6 +7,10 @@ package.cache
 cabal.sandbox.config
 # Mac OS generates
 # .DS_Store
+*.o
+*.dyn_o
+*.hi
+*.dyn_hi
 
 # Where do these files come from?  They're not readable.
 # For instance, .#Help.page

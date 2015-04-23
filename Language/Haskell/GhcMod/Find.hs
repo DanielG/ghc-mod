@@ -26,7 +26,9 @@ import Language.Haskell.GhcMod.Monad
 import Language.Haskell.GhcMod.Types
 import Language.Haskell.GhcMod.Utils
 import Language.Haskell.GhcMod.PathsAndFiles
+import Language.Haskell.GhcMod.Gap (listVisibleModules)
 import Name (getOccString)
+import Module (moduleName)
 import System.Directory (doesFileExist, getModificationTime)
 import System.FilePath ((</>), takeDirectory)
 import System.IO
@@ -36,8 +38,8 @@ import System.IO
 #endif
 
 #if MIN_VERSION_containers(0,5,0)
-import Data.Map.Strict (Map)
-import qualified Data.Map.Strict as M
+import Data.Map (Map)
+import qualified Data.Map as M
 #else
 import Data.Map (Map)
 import qualified Data.Map as M
@@ -56,17 +58,6 @@ data SymbolDb = SymbolDb {
 
 isOutdated :: SymbolDb -> IO Bool
 isOutdated db = symbolDbCachePath db `isOlderThan` packageCachePath db
-
-----------------------------------------------------------------
-
--- | When introducing incompatible changes to the 'symbolCache' file format
--- increment this version number.
-symbolCacheVersion :: Integer
-symbolCacheVersion = 0
-
--- | Filename of the symbol table cache file.
-symbolCache :: String
-symbolCache = "ghc-mod-"++ show symbolCacheVersion ++".cache"
 
 ----------------------------------------------------------------
 
@@ -90,7 +81,7 @@ loadSymbolDb :: IOish m => GhcModT m SymbolDb
 loadSymbolDb = do
     ghcMod <- liftIO ghcModExecutable
     tmpdir <- cradleTempDir <$> cradle
-    file <- chop <$> readProcess' ghcMod ["dumpsym", tmpdir]
+    file <- liftIO $ chop <$> readProcess ghcMod ["dumpsym", tmpdir] ""
     !db <- M.fromAscList . map conv . lines <$> liftIO (readFile file)
     return $ SymbolDb {
         table = db
@@ -111,12 +102,12 @@ loadSymbolDb = do
 --   The file name is printed.
 
 dumpSymbol :: IOish m => FilePath -> GhcModT m String
-dumpSymbol dir = do
-    let cache = dir </> symbolCache
+dumpSymbol dir = runGmPkgGhc $ do
+    let cache = dir </> symbolCacheFile
         pkgdb = dir </> packageCache
 
     create <- liftIO $ cache `isOlderThan` pkgdb
-    when create $ (liftIO . writeSymbolCache cache) =<< getSymbolTable
+    when create $ (liftIO . writeSymbolCache cache) =<< getGlobalSymbolTable
     return $ unlines [cache]
 
 writeSymbolCache :: FilePath
@@ -136,25 +127,20 @@ isOlderThan cache file = do
         tFile <- getModificationTime file
         return $ tCache <= tFile -- including equal just in case
 
--- | Browsing all functions in all system/user modules.
-getSymbolTable :: IOish m => GhcModT m [(Symbol,[ModuleString])]
-getSymbolTable = do
-    ghcModules <- G.packageDbModules True
-    moduleInfos <- mapM G.getModuleInfo ghcModules
-    let modules = do
-         m <- ghcModules
-         let moduleName = G.moduleNameString $ G.moduleName m
---             modulePkg = G.packageIdString $ G.modulePackageId m
-         return moduleName
-
+-- | Browsing all functions in all system modules.
+getGlobalSymbolTable :: LightGhc [(Symbol,[ModuleString])]
+getGlobalSymbolTable = do
+    df  <- G.getSessionDynFlags
+    let mods = listVisibleModules df
+    moduleInfos <- mapM G.getModuleInfo mods
     return $ collectModules
-           $ extractBindings `concatMap` (moduleInfos `zip` modules)
+           $ extractBindings `concatMap` (moduleInfos `zip` mods)
 
-extractBindings :: (Maybe G.ModuleInfo, ModuleString)
+extractBindings :: (Maybe G.ModuleInfo, G.Module)
                 -> [(Symbol, ModuleString)]
 extractBindings (Nothing,_)  = []
-extractBindings (Just inf,mdlname) =
-    map (\name -> (getOccString name, mdlname)) names
+extractBindings (Just inf,mdl) =
+    map (\name -> (getOccString name, moduleNameString $ moduleName mdl)) names
   where
     names = G.modInfoExports inf
 

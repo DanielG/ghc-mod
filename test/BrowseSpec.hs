@@ -26,7 +26,8 @@ spec = do
             syms `shouldContain` ["Left :: a -> Either a b"]
 
     describe "`browse' in a project directory" $ do
-        it "lists symbols defined in a a local module (e.g. `Baz.baz)" $ do
-            withDirectory_ "test/data" $ do
-                syms <- runID $ lines <$> browse "Baz"
-                syms `shouldContain` ["baz"]
+        it "can list symbols defined in a a local module" $ do
+            withDirectory_ "test/data/ghc-mod-check/lib" $ do
+                syms <- runD $ lines <$> browse "Data.Foo"
+                syms `shouldContain` ["foo"]
+                syms `shouldContain` ["fibonacci"]

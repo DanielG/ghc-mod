@@ -9,6 +9,26 @@ import System.FilePath ((</>), pathSeparator)
 import Test.Hspec
 
 import Dir
+import TestUtils
+
+clean_ :: IO Cradle -> IO Cradle
+clean_ f = do
+  crdl <- f
+  cleanupCradle crdl
+  return crdl
+
+relativeCradle :: FilePath -> Cradle -> Cradle
+relativeCradle dir crdl = crdl {
+    cradleCurrentDir    = toRelativeDir dir  $  cradleCurrentDir crdl
+  , cradleRootDir       = toRelativeDir dir  $  cradleRootDir    crdl
+  , cradleCabalFile     = toRelativeDir dir <$> cradleCabalFile  crdl
+  }
+
+-- Work around GHC 7.2.2 where `canonicalizePath "/"` returns "/.".
+stripLastDot :: FilePath -> FilePath
+stripLastDot path
+  | (pathSeparator:'.':"") `isSuffixOf` path = init path
+  | otherwise = path
 
 spec :: Spec
 spec = do
@@ -16,7 +36,7 @@ spec = do
         it "returns the current directory" $ do
             withDirectory_ "/" $ do
                 curDir <- stripLastDot <$> canonicalizePath "/"
-                res <- findCradle
+                res <- clean_ findCradle
                 cradleCurrentDir res `shouldBe` curDir
                 cradleRootDir    res `shouldBe` curDir
                 cradleCabalFile  res `shouldBe` Nothing
@@ -24,19 +44,34 @@ spec = do
 
         it "finds a cabal file and a sandbox" $ do
             cwd <- getCurrentDirectory
-            withDirectory "test/data/subdir1/subdir2" $ \dir -> do
-                res <- relativeCradle dir <$> findCradle
-                cradleCurrentDir res `shouldBe` "test" </> "data" </> "subdir1" </> "subdir2"
-                cradleRootDir    res `shouldBe` "test" </> "data"
-                cradleCabalFile  res `shouldBe` Just ("test" </> "data" </> "cabalapi.cabal")
-                cradlePkgDbStack res `shouldBe` [GlobalDb, PackageDb (cwd </> "test/data/.cabal-sandbox/i386-osx-ghc-7.6.3-packages.conf.d")]
+            withDirectory "test/data/cabal-project/subdir1/subdir2" $ \dir -> do
+                res <- relativeCradle dir <$> clean_ findCradle
+
+                cradleCurrentDir res `shouldBe`
+                    "test/data/cabal-project/subdir1/subdir2"
+
+                cradleRootDir    res `shouldBe` "test/data/cabal-project"
+
+                cradleCabalFile  res `shouldBe`
+                    Just ("test/data/cabal-project/cabalapi.cabal")
+
+                let [GlobalDb, sb] = cradlePkgDbStack res
+                sb `shouldSatisfy`
+                   isPkgDbAt (cwd </> "test/data/cabal-project/.cabal-sandbox")
 
         it "works even if a sandbox config file is broken" $ do
             withDirectory "test/data/broken-sandbox" $ \dir -> do
-                res <- relativeCradle dir <$> findCradle
-                cradleCurrentDir res `shouldBe` "test" </> "data" </> "broken-sandbox"
-                cradleRootDir    res `shouldBe` "test" </> "data" </> "broken-sandbox"
-                cradleCabalFile  res `shouldBe` Just ("test" </> "data" </> "broken-sandbox" </> "dummy.cabal")
+                res <- relativeCradle dir <$> clean_ findCradle
+                cradleCurrentDir res `shouldBe`
+                    "test" </> "data" </> "broken-sandbox"
+
+                cradleRootDir    res `shouldBe`
+                    "test" </> "data" </> "broken-sandbox"
+
+
+                cradleCabalFile  res `shouldBe`
+                  Just ("test" </> "data" </> "broken-sandbox" </> "dummy.cabal")
+
                 cradlePkgDbStack res `shouldBe` [GlobalDb, UserDb]
 
         it "uses the custom cradle file if present" $ do
@@ -46,17 +81,3 @@ spec = do
                 cradleRootDir res    `shouldBe` "test" </> "data" </> "custom-cradle"
                 cradleCabalFile res  `shouldBe` Just ("test" </> "data" </> "custom-cradle" </> "dummy.cabal")
                 cradlePkgDbStack res `shouldBe` [PackageDb "a/packages", GlobalDb, PackageDb "b/packages", UserDb, PackageDb "c/packages"]
-
-
-relativeCradle :: FilePath -> Cradle -> Cradle
-relativeCradle dir cradle = cradle {
-    cradleCurrentDir    = toRelativeDir dir  $  cradleCurrentDir cradle
-  , cradleRootDir       = toRelativeDir dir  $  cradleRootDir    cradle
-  , cradleCabalFile     = toRelativeDir dir <$> cradleCabalFile  cradle
-  }
-
--- Work around GHC 7.2.2 where `canonicalizePath "/"` returns "/.".
-stripLastDot :: FilePath -> FilePath
-stripLastDot path
-  | (pathSeparator:'.':"") `isSuffixOf` path = init path
-  | otherwise = path

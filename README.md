@@ -59,4 +59,11 @@ each package database line is either a *path* to a package database, or `global`
 ## IRC
 
 If you have any problems, suggestions, comments swing by
-[#ghc-mod](irc://chat.freenode.net/ghc-mod) on Freenode.
+[\#ghc-mod (web client)](https://kiwiirc.com/client/irc.freenode.org/ghc-mod) on
+Freenode. If you're reporting a bug please also create an issue
+[here](https://github.com/DanielG/ghc-mod/issues) so we have a way to contact
+you if you don't have time to stay.
+
+Do hang around for a while if no one answers and repeat your question if you
+still haven't gotten any answer after a day or so. You're most likely to get an
+answer during the day in GMT+1.

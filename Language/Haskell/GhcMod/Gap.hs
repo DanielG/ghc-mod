@@ -13,7 +13,6 @@ module Language.Haskell.GhcMod.Gap (
   , showSeverityCaption
   , setCabalPkg
   , setHideAllPackages
-  , addPackageFlags
   , setDeferTypeErrors
   , setWarnTypedHoles
   , setDumpSplices
@@ -33,14 +32,15 @@ module Language.Haskell.GhcMod.Gap (
   , fileModSummary
   , WarnFlags
   , emptyWarnFlags
-  , benchmarkBuildInfo
-  , benchmarkTargets
-  , toModuleString
   , GLMatch
   , GLMatchI
   , getClass
   , occName
-  , setFlags
+  , listVisibleModuleNames
+  , listVisibleModules
+  , lookupModulePackageInAllPackages
+  , Language.Haskell.GhcMod.Gap.isSynTyCon
+  , parseModuleHeader
   ) where
 
 import Control.Applicative hiding (empty)
@@ -49,15 +49,15 @@ import CoreSyn (CoreExpr)
 import Data.List (intersperse)
 import Data.Maybe (catMaybes)
 import Data.Time.Clock (UTCTime)
+import Data.Traversable (traverse)
 import DataCon (dataConRepType)
 import Desugar (deSugarExpr)
 import DynFlags
 import ErrUtils
+import Exception
 import FastString
 import GhcMonad
 import HscTypes
-import Language.Haskell.GhcMod.GHCChoice
-import Language.Haskell.GhcMod.Types
 import NameSet
 import OccName
 import Outputable
@@ -65,8 +65,8 @@ import PprTyThing
 import StringBuffer
 import TcType
 import Var (varType)
+import System.Directory
 
-import qualified Distribution.PackageDescription as P
 import qualified InstEnv
 import qualified Pretty
 import qualified StringBuffer as SB
@@ -88,10 +88,20 @@ import Data.Convertible
 import RdrName (rdrNameOcc)
 #endif
 
+#if __GLASGOW_HASKELL__ < 710
+import UniqFM (eltsUFM)
+import Module
+#endif
+
 #if __GLASGOW_HASKELL__ >= 704
 import qualified Data.IntSet as I (IntSet, empty)
-import qualified Distribution.ModuleName as M (ModuleName,toFilePath)
 #endif
+
+import Bag
+import Lexer as L
+import Parser
+import SrcLoc
+import Packages
 
 ----------------------------------------------------------------
 ----------------------------------------------------------------
@@ -173,7 +183,11 @@ toStringBuffer = liftIO . stringToStringBuffer . unlines
 ----------------------------------------------------------------
 
 fOptions :: [String]
-#if __GLASGOW_HASKELL__ >= 704
+#if __GLASGOW_HASKELL__ >= 710
+fOptions = [option | (FlagSpec option _ _ _) <- fFlags]
+        ++ [option | (FlagSpec option _ _ _) <- fWarningFlags]
+        ++ [option | (FlagSpec option _ _ _) <- fLangFlags]
+#elif __GLASGOW_HASKELL__ >= 704
 fOptions = [option | (option,_,_) <- fFlags]
         ++ [option | (option,_,_) <- fWarningFlags]
         ++ [option | (option,_,_) <- fLangFlags]
@@ -187,9 +201,11 @@ fOptions = [option | (option,_,_,_) <- fFlags]
 ----------------------------------------------------------------
 
 fileModSummary :: GhcMonad m => FilePath -> m ModSummary
-fileModSummary file = do
+fileModSummary file' = do
     mss <- getModuleGraph
-    let [ms] = filter (\m -> ml_hs_file (ms_location m) == Just file) mss
+    file <- liftIO $ canonicalizePath file'
+    [ms] <- liftIO $ flip filterM mss $ \m ->
+        (Just file==) <$> canonicalizePath `traverse` ml_hs_file (ms_location m)
     return ms
 
 withContext :: GhcMonad m => m a -> m a
@@ -202,25 +218,30 @@ withContext action = gbracket setup teardown body
         action
     topImports = do
         mss <- getModuleGraph
-        ms <- map modName <$> filterM isTop mss
+        mns <- map modName <$> filterM isTop mss
+        let ii = map IIModule mns
 #if __GLASGOW_HASKELL__ >= 704
-        return ms
+        return ii
 #else
-        return (ms,[])
+        return (ii,[])
 #endif
     isTop mos = lookupMod mos ||> returnFalse
     lookupMod mos = lookupModule (ms_mod_name mos) Nothing >> return True
     returnFalse = return False
 #if __GLASGOW_HASKELL__ >= 706
-    modName = IIModule . moduleName . ms_mod
+    modName = moduleName . ms_mod
     setCtx = setContext
 #elif __GLASGOW_HASKELL__ >= 704
-    modName = IIModule . ms_mod
+    modName = ms_mod
     setCtx = setContext
 #else
     modName = ms_mod
     setCtx = uncurry setContext
 #endif
+
+-- | Try the left action, if an IOException occurs try the right action.
+(||>) :: ExceptionMonad m => m a -> m a -> m a
+x ||> y = x `gcatch` (\(_ :: IOException) -> y)
 
 showSeverityCaption :: Severity -> String
 #if __GLASGOW_HASKELL__ >= 706
@@ -248,12 +269,6 @@ setHideAllPackages df = gopt_set df Opt_HideAllPackages
 #else
 setHideAllPackages df = dopt_set df Opt_HideAllPackages
 #endif
-
-addPackageFlags :: [Package] -> DynFlags -> DynFlags
-addPackageFlags pkgs df =
-    df { packageFlags = packageFlags df ++ expose `map` pkgs }
-  where
-    expose pkg = ExposePackageId $ showPkgId pkg
 
 ----------------------------------------------------------------
 
@@ -413,29 +428,6 @@ emptyWarnFlags = []
 ----------------------------------------------------------------
 ----------------------------------------------------------------
 
-benchmarkBuildInfo :: P.PackageDescription -> [P.BuildInfo]
-#if __GLASGOW_HASKELL__ >= 704
-benchmarkBuildInfo pd = map P.benchmarkBuildInfo $ P.benchmarks pd
-#else
-benchmarkBuildInfo pd = []
-#endif
-
-benchmarkTargets :: P.PackageDescription -> [String]
-#if __GLASGOW_HASKELL__ >= 704
-benchmarkTargets pd = map toModuleString $ concatMap P.benchmarkModules $ P.benchmarks pd
-#else
-benchmarkTargets = []
-#endif
-
-toModuleString :: M.ModuleName -> String
-toModuleString mn = fromFilePath $ M.toFilePath mn
-  where
-    fromFilePath :: FilePath -> String
-    fromFilePath fp = map (\c -> if c=='/' then '.' else c) fp
-
-----------------------------------------------------------------
-----------------------------------------------------------------
-
 #if __GLASGOW_HASKELL__ >= 708
 type GLMatch = LMatch RdrName (LHsExpr RdrName)
 type GLMatchI = LMatch Id (LHsExpr Id)
@@ -445,7 +437,12 @@ type GLMatchI = LMatch Id
 #endif
 
 getClass :: [LInstDecl Name] -> Maybe (Name, SrcSpan)
-#if __GLASGOW_HASKELL__ >= 708
+#if __GLASGOW_HASKELL__ >= 710
+-- Instance declarations of sort 'instance F (G a)'
+getClass [L loc (ClsInstD (ClsInstDecl {cid_poly_ty = (L _ (HsForAllTy _ _ _ _ (L _ (HsAppTy (L _ (HsTyVar className)) _))))}))] = Just (className, loc)
+-- Instance declarations of sort 'instance F G' (no variables)
+getClass [L loc (ClsInstD (ClsInstDecl {cid_poly_ty = (L _ (HsAppTy (L _ (HsTyVar className)) _))}))] = Just (className, loc)
+#elif __GLASGOW_HASKELL__ >= 708
 -- Instance declarations of sort 'instance F (G a)'
 getClass [L loc (ClsInstD (ClsInstDecl {cid_poly_ty = (L _ (HsForAllTy _ _ _ (L _ (HsAppTy (L _ (HsTyVar className)) _))))}))] = Just (className, loc)
 -- Instance declarations of sort 'instance F G' (no variables)
@@ -465,11 +462,73 @@ occName = rdrNameOcc
 #endif
 
 ----------------------------------------------------------------
-----------------------------------------------------------------
 
-setFlags :: DynFlags -> DynFlags
-#if __GLASGOW_HASKELL__ >= 708
-setFlags df = df `gopt_unset` Opt_SpecConstr -- consume memory if -O2
-#else
-setFlags = id
+#if __GLASGOW_HASKELL__ < 710
+-- Copied from ghc/InteractiveUI.hs
+allExposedPackageConfigs :: DynFlags -> [PackageConfig]
+allExposedPackageConfigs df = filter exposed $ eltsUFM $ pkgIdMap $ pkgState df
+
+allExposedModules :: DynFlags -> [ModuleName]
+allExposedModules df = concat $ map exposedModules $ allExposedPackageConfigs df
+
+listVisibleModuleNames :: DynFlags -> [ModuleName]
+listVisibleModuleNames = allExposedModules
 #endif
+
+lookupModulePackageInAllPackages ::
+    DynFlags -> ModuleName -> [String]
+lookupModulePackageInAllPackages df mn =
+#if __GLASGOW_HASKELL__ >= 710
+    unpackSPId . sourcePackageId . snd <$> lookupModuleInAllPackages df mn
+ where
+   unpackSPId (SourcePackageId fs) = unpackFS fs
+#else
+    unpackPId . sourcePackageId . fst <$> lookupModuleInAllPackages df mn
+ where
+   unpackPId pid = packageIdString $ mkPackageId pid
+--       n ++ "-" ++ showVersion v
+#endif
+
+listVisibleModules :: DynFlags -> [GHC.Module]
+listVisibleModules df = let
+#if __GLASGOW_HASKELL__ >= 710
+    modNames = listVisibleModuleNames df
+    mods = [ m | mn <- modNames, (m, _) <- lookupModuleInAllPackages df mn ]
+#else
+    pkgCfgs = allExposedPackageConfigs df
+    mods = [ mkModule pid modname | p <- pkgCfgs
+           , let pid = packageConfigId p
+           , modname <- exposedModules p ]
+#endif
+    in mods
+
+isSynTyCon :: TyCon -> Bool
+#if __GLASGOW_HASKELL__ >= 710
+isSynTyCon = GHC.isTypeSynonymTyCon
+#else
+isSynTyCon = GHC.isSynTyCon
+#endif
+
+
+parseModuleHeader
+    :: String         -- ^ Haskell module source text (full Unicode is supported)
+    -> DynFlags
+    -> FilePath       -- ^ the filename (for source locations)
+    -> Either ErrorMessages (WarningMessages, Located (HsModule RdrName))
+parseModuleHeader str dflags filename =
+   let
+       loc  = mkRealSrcLoc (mkFastString filename) 1 1
+       buf  = stringToStringBuffer str
+   in
+   case L.unP Parser.parseHeader (mkPState dflags buf loc) of
+
+     PFailed sp err   ->
+#if __GLASGOW_HASKELL__ >= 706
+         Left (unitBag (mkPlainErrMsg dflags sp err))
+#else
+         Left (unitBag (mkPlainErrMsg sp err))
+#endif
+
+     POk pst rdr_module ->
+         let (warns,_) = getMessages pst in
+         Right (warns, rdr_module)

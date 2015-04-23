@@ -12,8 +12,6 @@ import qualified Language.Haskell.GhcMod.Gap as Gap
 import Language.Haskell.GhcMod.Types
 import System.IO.Unsafe (unsafePerformIO)
 
-data Build = CabalPkg | SingleFile deriving Eq
-
 setEmptyLogger :: DynFlags -> DynFlags
 setEmptyLogger df = Gap.setLogAction df $ \_ _ _ _ _ -> return ()
 
@@ -41,36 +39,14 @@ setModeIntelligent df = df {
   , optLevel  = 0
   }
 
-setIncludeDirs :: [IncludeDir] -> DynFlags -> DynFlags
-setIncludeDirs idirs df = df { importPaths = idirs }
-
-setBuildEnv :: Build -> DynFlags -> DynFlags
-setBuildEnv build = setHideAllPackages build . setCabalPackage build
-
--- | With ghc-7.8 this option simply makes GHC print a message suggesting users
--- add hiddend packages to the build-depends field in their cabal file when the
--- user tries to import a module form a hidden package.
-setCabalPackage :: Build -> DynFlags -> DynFlags
-setCabalPackage CabalPkg df = Gap.setCabalPkg df
-setCabalPackage _ df = df
-
--- | Enable hiding of all package not explicitly exposed (like Cabal does)
-setHideAllPackages :: Build -> DynFlags -> DynFlags
-setHideAllPackages CabalPkg df = Gap.setHideAllPackages df
-setHideAllPackages _ df = df
-
 -- | Parse command line ghc options and add them to the 'DynFlags' passed
 addCmdOpts :: GhcMonad m => [GHCOption] -> DynFlags -> m DynFlags
 addCmdOpts cmdOpts df =
-    tfst <$> G.parseDynamicFlags df (map G.noLoc cmdOpts)
+    fst3 <$> G.parseDynamicFlags df (map G.noLoc cmdOpts)
   where
-    tfst (a,_,_) = a
+    fst3 (a,_,_) = a
 
 ----------------------------------------------------------------
-
--- | Return the 'DynFlags' currently in use in the GHC session.
-getDynamicFlags :: IO DynFlags
-getDynamicFlags = G.runGhc (Just libdir) G.getSessionDynFlags
 
 withDynFlags :: GhcMonad m
              => (DynFlags -> DynFlags)
@@ -119,3 +95,7 @@ setNoMaxRelevantBindings df = df { maxRelevantBinds = Nothing }
 #else
 setNoMaxRelevantBindings = id
 #endif
+
+deferErrors :: DynFlags -> Ghc DynFlags
+deferErrors df = return $
+  Gap.setWarnTypedHoles $ Gap.setDeferTypeErrors $ setNoWarningFlags df

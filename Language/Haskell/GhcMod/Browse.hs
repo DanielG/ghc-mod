@@ -4,52 +4,54 @@ module Language.Haskell.GhcMod.Browse (
 
 import Control.Applicative ((<$>))
 import Control.Exception (SomeException(..))
-import Data.Char (isAlpha)
-import Data.List (sort)
-import Data.Maybe (catMaybes)
-import Exception (ghandle)
-import FastString (mkFastString)
-import GHC (GhcException(CmdLineError), ModuleInfo, Name, TyThing, DynFlags, Type, TyCon)
+import Data.Char
+import Data.List
+import Data.Maybe
+import FastString
+import GHC
 import qualified GHC as G
 import Language.Haskell.GhcMod.Convert
 import Language.Haskell.GhcMod.Doc (showPage, styleUnqualified)
-import Language.Haskell.GhcMod.Gap
-import Language.Haskell.GhcMod.Monad (GhcModT, options)
-import Language.Haskell.GhcMod.Target (setTargetFiles)
+import Language.Haskell.GhcMod.Gap as Gap
+import Language.Haskell.GhcMod.Monad
 import Language.Haskell.GhcMod.Types
 import Name (getOccString)
-import Outputable (ppr, Outputable)
+import Outputable
 import TyCon (isAlgTyCon)
 import Type (dropForAlls, splitFunTy_maybe, mkFunTy, isPredTy)
+import Exception (ExceptionMonad, ghandle)
 
 ----------------------------------------------------------------
 
 -- | Getting functions, classes, etc from a module.
 --   If 'detailed' is 'True', their types are also obtained.
 --   If 'operators' is 'True', operators are also returned.
-browse :: IOish m
+browse :: forall m. IOish m
        => ModuleString -- ^ A module name. (e.g. \"Data.List\")
        -> GhcModT m String
-browse pkgmdl = convert' . sort =<< (listExports =<< getModule)
+browse pkgmdl = do
+    convert' . sort =<< go
   where
+    -- TODO: Add API to Gm.Target to check if module is home module without
+    -- bringing up a GHC session as well then this can be made a lot cleaner
+    go = ghandle (\(SomeException _) -> return []) $ do
+      goPkgModule `G.gcatch` (\(SomeException _) -> goHomeModule)
+
+    goPkgModule = do
+      opt <- options
+      runGmPkgGhc $
+        processExports opt =<< tryModuleInfo =<< G.findModule mdlname mpkgid
+
+    goHomeModule = runGmlT [Right mdlname] $ do
+      opt <- options
+      processExports opt =<< tryModuleInfo =<< G.findModule mdlname Nothing
+
+    tryModuleInfo m = fromJust <$> G.getModuleInfo m
+
     (mpkg,mdl) = splitPkgMdl pkgmdl
     mdlname = G.mkModuleName mdl
     mpkgid = mkFastString <$> mpkg
-    listExports Nothing       = return []
-    listExports (Just mdinfo) = processExports mdinfo
-    -- findModule works only for package modules, moreover,
-    -- you cannot load a package module. On the other hand,
-    -- to browse a local module you need to load it first.
-    -- If CmdLineError is signalled, we assume the user
-    -- tried browsing a local module.
-    getModule = browsePackageModule `G.gcatch` fallback `G.gcatch` handler
-    browsePackageModule = G.findModule mdlname mpkgid >>= G.getModuleInfo
-    browseLocalModule = ghandle handler $ do
-      setTargetFiles [mdl]
-      G.findModule mdlname Nothing >>= G.getModuleInfo
-    fallback (CmdLineError _) = browseLocalModule
-    fallback _                = return Nothing
-    handler (SomeException _) = return Nothing
+
 -- |
 --
 -- >>> splitPkgMdl "base:Prelude"
@@ -71,22 +73,23 @@ isNotOp :: String -> Bool
 isNotOp (h:_) = isAlpha h || (h == '_')
 isNotOp _ = error "isNotOp"
 
-processExports :: IOish m => ModuleInfo -> GhcModT m [String]
-processExports minfo = do
-  opt <- options
+processExports :: (G.GhcMonad m, MonadIO m, ExceptionMonad m)
+               => Options -> ModuleInfo -> m [String]
+processExports opt minfo = do
   let
     removeOps
       | operators opt = id
       | otherwise = filter (isNotOp . getOccString)
   mapM (showExport opt minfo) $ removeOps $ G.modInfoExports minfo
 
-showExport :: IOish m => Options -> ModuleInfo -> Name -> GhcModT m String
+showExport :: forall m. (G.GhcMonad m, MonadIO m, ExceptionMonad m)
+           => Options -> ModuleInfo -> Name -> m String
 showExport opt minfo e = do
   mtype' <- mtype
   return $ concat $ catMaybes [mqualified, Just $ formatOp $ getOccString e, mtype']
   where
     mqualified = (G.moduleNameString (G.moduleName $ G.nameModule e) ++ ".") `justIf` qualified opt
-    mtype :: IOish m => GhcModT m (Maybe String)
+    mtype :: m (Maybe String)
     mtype
       | detailed opt = do
         tyInfo <- G.modInfoLookupName minfo e
@@ -101,8 +104,9 @@ showExport opt minfo e = do
       | null nm    = error "formatOp"
       | isNotOp nm = nm
       | otherwise  = "(" ++ nm ++ ")"
-    inOtherModule :: IOish m => Name -> GhcModT m (Maybe TyThing)
-    inOtherModule nm = G.getModuleInfo (G.nameModule nm) >> G.lookupGlobalName nm
+    inOtherModule :: Name -> m (Maybe TyThing)
+    inOtherModule nm = do
+      G.getModuleInfo (G.nameModule nm) >> G.lookupGlobalName nm
     justIf :: a -> Bool -> Maybe a
     justIf x True = Just x
     justIf _ False = Nothing
@@ -127,7 +131,7 @@ tyType typ
       && not (G.isClassTyCon typ) = Just "data"
     | G.isNewTyCon typ            = Just "newtype"
     | G.isClassTyCon typ          = Just "class"
-    | G.isSynTyCon typ            = Just "type"
+    | Gap.isSynTyCon typ          = Just "type"
     | otherwise                   = Nothing
 
 removeForAlls :: Type -> Type

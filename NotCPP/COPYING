@@ -1,9 +1,9 @@
--- Copyright   :  Isaac Jones 2003-2004
-{- All rights reserved.
+Copyright Ben Millwood 2012
+
+All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
-modification, are permitted provided that the following conditions are
-met:
+modification, are permitted provided that the following conditions are met:
 
     * Redistributions of source code must retain the above copyright
       notice, this list of conditions and the following disclaimer.
@@ -13,7 +13,7 @@ met:
       disclaimer in the documentation and/or other materials provided
       with the distribution.
 
-    * Neither the name of Isaac Jones nor the names of other
+    * Neither the name of Ben Millwood nor the names of other
       contributors may be used to endorse or promote products derived
       from this software without specific prior written permission.
 
@@ -27,32 +27,4 @@ LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
 DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
 THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. -}
-
--- | ComponentLocalBuildInfo for Cabal >= 1.18
-module Language.Haskell.GhcMod.Cabal18 (
-    ComponentLocalBuildInfo
-  , componentPackageDeps
-  , componentLibraries
-  ) where
-
-import Distribution.Package (InstalledPackageId, PackageId)
-
-data LibraryName = LibraryName String
-    deriving (Read, Show)
-
-data ComponentLocalBuildInfo
-  = LibComponentLocalBuildInfo {
-    componentPackageDeps :: [(InstalledPackageId, PackageId)],
-    componentLibraries :: [LibraryName]
-  }
-  | ExeComponentLocalBuildInfo {
-    componentPackageDeps :: [(InstalledPackageId, PackageId)]
-  }
-  | TestComponentLocalBuildInfo {
-    componentPackageDeps :: [(InstalledPackageId, PackageId)]
-  }
-  | BenchComponentLocalBuildInfo {
-    componentPackageDeps :: [(InstalledPackageId, PackageId)]
-  }
-  deriving (Read, Show)
+OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
