@@ -111,13 +111,6 @@ getPackageDbStack :: FilePath -- ^ Project Directory (where the
 getPackageDbStack cdir =
     ([GlobalDb] ++) . maybe [UserDb] return <$> getSandboxDb cdir
 
--- Just for testing
-findCradleWithoutSandbox :: IO Cradle
-findCradleWithoutSandbox = do
-    cradle <- findCradle
-    return cradle { cradlePkgDbStack = [GlobalDb]} -- FIXME
-
-
 parseCradle :: FilePath -> IO [GhcPkgDb]
 parseCradle path = do
     source <- readFile path
