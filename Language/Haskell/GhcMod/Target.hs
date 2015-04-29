@@ -146,7 +146,7 @@ runGmlTWith efnmns' mdf wrapper action = do
     cfns <- liftIO $ mapM canonicalizePath ccfns
     let serfnmn = Set.fromList $ map Right mns ++ map Left cfns
     opts <- targetGhcOptions crdl serfnmn
-    let opts' = opts ++ ghcUserOptions
+    let opts' = opts ++ ["-O0"] ++ ghcUserOptions
 
     initSession opts' $
         setModeSimple >>> setEmptyLogger >>> mdf
