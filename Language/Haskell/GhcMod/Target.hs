@@ -92,34 +92,33 @@ initSession :: IOish m
 initSession opts mdf = do
    s <- gmsGet
    case gmGhcSession s of
-     Just GmGhcSession {..} -> do
-         if gmgsOptions == opts
-            then return ()
-            else error "TODO: reload stuff"
-     Nothing -> do
-       Cradle { cradleTempDir } <- cradle
-       ghc <- liftIO $ runGhc (Just libdir) $ do
-           let setDf df =
-                setTmpDir cradleTempDir <$> (mdf =<< addCmdOpts opts df)
-           _ <- setSessionDynFlags =<< setDf =<< getSessionDynFlags
-           getSession
+     Just GmGhcSession {..} -> when (gmgsOptions /= opts) $ putNewSession s
+     Nothing -> putNewSession s
 
-       rghc <- liftIO $ newIORef ghc
-       gmsPut s { gmGhcSession = Just $ GmGhcSession opts rghc }
+ where
+   putNewSession s = do
+     rghc <- (liftIO . newIORef =<< newSession =<< cradle)
+     gmsPut s { gmGhcSession = Just $ GmGhcSession opts rghc }
+
+   newSession Cradle { cradleTempDir } = liftIO $ do
+     runGhc (Just libdir) $ do
+       let setDf df = setTmpDir cradleTempDir <$> (mdf =<< addCmdOpts opts df)
+       _ <- setSessionDynFlags =<< setDf =<< getSessionDynFlags
+       getSession
+
+dropSession :: IOish m => GhcModT m ()
+dropSession = do
+  s <- gmsGet
+  case gmGhcSession s of
+    Just (GmGhcSession _opts ref) -> do
+      -- TODO: This is still not enough, there seem to still be references to
+      -- GHC's state around afterwards.
+      liftIO $ writeIORef ref (error "HscEnv: session was dropped")
+      liftIO $ setUnsafeGlobalDynFlags (error "DynFlags: session was dropped")
 
 
--- $ do
---         dflags <- getSessionDynFlags
---         defaultCleanupHandler dflags $ do
---             initializeFlagsWithCradle opt (gmCradle env)
---
-
--- initSession :: GhcMonad m => Options -> [GHCOption] -> m ()
--- initSession Options {..} ghcOpts = do
---     df <- G.getSessionDynFlags
---     void $
---       ( setModeSimple -- $ setEmptyLogger
---                       df)
+    Nothing -> return ()
+  gmsPut s { gmGhcSession = Nothing }
 
 runGmlT :: IOish m => [Either FilePath ModuleName] -> GmlT m a -> GhcModT m a
 runGmlT fns action = runGmlT' fns return action
