@@ -13,7 +13,7 @@ install:
   - if [ -n "$(cabal --version | grep 'Cabal library' | awk '{ print $3 }' | tail -n1 | sed -n '/^1.18/p')" ]; then cabal install cabal-install --constraint "Cabal == 1.18.* && > 1.18.0"; fi
   - cabal install happy
   - happy --version
-  - cabal install -j --only-dependencies --enable-tests --constraint "tagged < 0.8"
+  - cabal install -j --only-dependencies --enable-tests
 
 script:
   - touch ChangeLog # Create ChangeLog if we're not on the release branch
