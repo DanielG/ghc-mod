@@ -65,7 +65,7 @@ nil            does not display errors/warnings.
 (defun ghc-check-syntax ()
   (interactive)
   (ghc-with-process (ghc-check-send)
-		    'ghc-check-callback
+            `(lambda (status) (interactive) (ghc-check-callback ,(file-name-directory (buffer-file-name)) status))
 		    (lambda () (setq mode-line-process " -:-"))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -87,11 +87,11 @@ nil            does not display errors/warnings.
 	    (mapconcat (lambda (x) (concat "\"" x "\"")) los ", ")
 	    "]")))
 
-(defun ghc-check-callback (status)
+(defun ghc-check-callback (dirname status)
   (cond
    ((eq status 'ok)
     (let* ((errs (ghc-read-lisp-this-buffer))
-	   (infos (ghc-to-info errs)))
+	   (infos (ghc-to-info dirname errs)))
       (cond
        (infos
 	(let ((file ghc-process-original-file)
@@ -126,13 +126,13 @@ nil            does not display errors/warnings.
       (setq mode-line-process " failed")
       (force-mode-line-update)))))
 
-(defun ghc-to-info (errs)
+(defun ghc-to-info (dirname errs)
   ;; [^\t] to include \n.
-  (let ((regex "^\\([^\n]*\\):\\([0-9]+\\):\\([0-9]+\\): *\\([^\t]+\\)")
+  (let ((regex "^.*/\\([^\n]*\\):\\([0-9]+\\):\\([0-9]+\\): *\\([^\t]+\\)")
 	info infos)
     (dolist (err errs (nreverse infos))
       (when (string-match regex err)
-	(let* ((file (expand-file-name (match-string 1 err))) ;; for Windows
+	(let* ((file (concat dirname (match-string 1 err))) ;; for Windows
 	       (line (string-to-number (match-string 2 err)))
                (coln (string-to-number (match-string 3 err)))
 	       (msg (match-string 4 err))
