@@ -30,16 +30,10 @@ import Text.PrettyPrint
 
 import Misc
 
-
-
 progVersion :: String
 progVersion =
-    progName ++ " version " ++ showVersion version ++ " compiled by GHC "
-                            ++ cProjectVersion ++ "\n"
-
--- TODO: remove (ghc) version prefix!
-progName :: String
-progName = unsafePerformIO $ takeFileName <$> getProgName
+    "ghc-mod version " ++ showVersion version ++ " compiled by GHC "
+                       ++ cProjectVersion ++ "\n"
 
 optionUsage :: (String -> String) -> [OptDescr a] -> [String]
 optionUsage indent opts = concatMap optUsage opts
@@ -64,15 +58,9 @@ optionUsage indent opts = concatMap optUsage opts
             ReqArg _ label -> s ++ label
             OptArg _ label -> s ++ "["++label++"]"
 
+-- TODO: Generate the stuff below automatically
 usage :: String
 usage =
-    case progName of
-      "ghc-modi" -> ghcModiUsage
-      _ -> ghcModUsage
-
--- TODO: Generate the stuff below automatically
-ghcModUsage :: String
-ghcModUsage =
  "Usage: ghc-mod [OPTIONS...] COMMAND [CMD_ARGS...] \n\
  \*Global Options (OPTIONS)*\n\
  \    Global options can be specified before and after the command and\n\
@@ -200,32 +188,12 @@ ghcModUsage =
  \        Debugging information related to cabal component resolution.\n\
  \\n\
  \    - boot\n\
- \         Internal command used by the emacs frontend.\n"
- -- "\n\
- -- \The following forms are supported so ghc-mod can be invoked by\n\
- -- \`cabal repl':\n\
- -- \\n\
- -- \     ghc-mod --make GHC_OPTIONS\n\
- -- \         Pass all options through to the GHC executable.\n\
- -- \\n\
- -- \     ghc-mod --interactive GHC_OPTIONS [--ghc-mod]\n\
- -- \         Start ghci emulation mode. GHC_OPTIONS are passed to the\n\
- -- \         GHC API. If `--ghc-mod' is given ghc-mod specific extensions\n\
- -- \         are enabled.\n"
- where
-   indent = ("    "++)
-
-ghcModiUsage :: String
-ghcModiUsage =
- "Usage: ghc-modi [OPTIONS...] COMMAND\n\
- \*Options*\n"
-   ++ (unlines $ indent <$> optionUsage indent globalArgSpec) ++
- "*Commands*\n\
- \    - version | --version\n\
- \        Print the version of the program.\n\
+ \         Internal command used by the emacs frontend.\n\
  \\n\
- \    - help | --help\n\
- \       Print this help message.\n"
+ \    - legacy-interactive [OPTIONS...]\n\
+ \         ghc-modi compatibility mode.\n\
+ \      *Options*\n"
+   ++ (unlines $ indent <$> optionUsage indent globalArgSpec)
  where
    indent = ("    "++)
 
@@ -255,6 +223,9 @@ cmdUsage cmd realUsage =
       unindent l = l
   in unlines $ unindent <$> c
 
+ghcModStyle :: Style
+ghcModStyle = style { lineLength = 80, ribbonsPerLine = 1.2 }
+
 ----------------------------------------------------------------
 
 option :: [Char] -> [String] -> String -> ArgDescr a -> OptDescr a
@@ -280,7 +251,7 @@ globalArgSpec =
       , option "b" ["boundary"] "Output line separator"$
                reqArg "SEP" $ \s o -> o { lineSeparator = LineSeparator s }
 
-      , option "g" ["ghcOpt"] "Option to be passed to GHC" $
+      , option "g" ["ghcOpt", "ghc-option"] "Option to be passed to GHC" $
                reqArg "OPT" $ \g o ->
                    o { ghcUserOptions = g : ghcUserOptions o }
 
@@ -297,10 +268,14 @@ globalArgSpec =
 
 parseGlobalArgs :: [String] -> Either InvalidCommandLine (Options, [String])
 parseGlobalArgs argv
-    = case O.getOpt RequireOrder globalArgSpec argv of
-        (o,r,[]  ) -> Right $ (foldr id defaultOptions o, r)
-        (_,_,errs) -> Left $ InvalidCommandLine $ Right $
-            "Parsing command line options failed: " ++ concat errs
+    = case O.getOpt' Permute globalArgSpec argv of
+        (o,r,u,[]) -> Right $ (foldr id defaultOptions o, u ++ r)
+        (_,_,u,e)  -> Left $ InvalidCommandLine $ Right $
+            "Parsing command line options failed: "
+               ++ concat (e ++ map errUnrec u)
+ where
+   errUnrec :: String -> String
+   errUnrec optStr = "unrecognized option `" ++ optStr ++ "'\n"
 
 parseCommandArgs :: [OptDescr (Options -> Options)]
                  -> [String]
@@ -322,8 +297,6 @@ data CmdError = UnknownCommand String
 
 instance Exception CmdError
 
-----------------------------------------------------------------
-
 data InteractiveOptions = InteractiveOptions {
       ghcModExtensions :: Bool
     }
@@ -338,9 +311,9 @@ handler = flip catches $
                 case e of
                   Left cmd ->
                       exitError $ "Usage for `"++cmd++"' command:\n\n"
-                                  ++ (cmdUsage cmd ghcModUsage) ++ "\n"
-                                  ++ progName ++ ": Invalid command line form."
-                  Right msg -> exitError $ progName ++ ": " ++ msg
+                                  ++ (cmdUsage cmd usage) ++ "\n"
+                                  ++ "ghc-mod: Invalid command line form."
+                  Right msg -> exitError $ "ghc-mod: " ++ msg
           ]
 
 main :: IO ()
@@ -362,78 +335,19 @@ main = handler $ do
 
 progMain :: (Options,[String]) -> IO ()
 progMain (globalOptions,cmdArgs) = do
-    -- let (ghcArgs, modArgs) = second stripSeperator $ span (/="--") args
-    --     _realGhcArgs = filter (/="--ghc-mod") ghcArgs
-
-    --     (globalOptions,_cmdArgs) = parseGlobalArgs modArgs
-
-    --     stripSeperator ("--":rest) = rest
-    --     stripSeperator l = l
-
-    case progName of
-      "ghc-modi" -> do
-          legacyInteractive globalOptions =<< emptyNewUnGetLine
-
-
-      _
-          -- | "--numeric-version" `elem` ghcArgs || "--make" `elem` ghcArgs -> do
-          --     rawSystem (ghcProgram globalOptions) realGhcArgs >>= exitWith
-
-          -- | "--interactive" `elem` ghcArgs -> do
-          --     let interactiveOptions = if "--ghc-mod" `elem` ghcArgs
-          --                              then def { ghcModExtensions = True }
-          --                              else def
-
-          --     -- TODO: pass ghcArgs' to ghc API
-          --     putStrLn "\ninteractive\n"
-          --     --print realGhcArgs
-          --     (res, _) <- runGhcModT globalOptions $ undefined
-          --     case res of
-          --       Right s -> putStr s
-          --       Left e -> exitError $ render (gmeDoc e)
-
-
-          | otherwise -> do
-                  (res,_) <- runGhcModT globalOptions $ ghcCommands cmdArgs
-                  case res of
-                    Right s -> putStr s
-                    Left e -> exitError $
-                        renderStyle style { ribbonsPerLine = 1.2 } (gmeDoc e)
-
-              -- Obtain ghc options by letting ourselfs be executed by
-              -- @cabal repl@
-              -- TODO: need to do something about non-cabal projects
-              -- exe <- ghcModExecutable
-              -- let cabalArgs = ["repl", "-v0", "--with-ghc="++exe]
-              --              ++ (("--ghc-option="++) `map` ("--ghc-mod":"--":args))
-
-              -- print cabalArgs
-
-              -- rawSystem "cabal" cabalArgs >>= exitWith
-
-
-
--- ghc-modi
-legacyInteractive :: Options -> UnGetLine -> IO ()
-legacyInteractive opt ref = flip catches handlers $ do
-    (res,_) <- runGhcModT opt $ do
-             symdbreq <- liftIO $ newSymDbReq opt
-             world <- liftIO . getCurrentWorld =<< cradle
-             legacyInteractiveLoop symdbreq ref world
-
+    (res,_) <- runGhcModT globalOptions $ ghcCommands cmdArgs
     case res of
       Right () -> return ()
-      Left e -> putStrLn $ notGood $ render (gmeDoc e)
+      Left e -> exitError $ renderStyle ghcModStyle (gmeDoc e)
 
- where
-   handlers = [ Handler $ \Restart -> legacyInteractive opt ref ]
-
-isExitCodeException :: SomeException -> Bool
-isExitCodeException e = isJust mExitCode
- where
-   mExitCode :: Maybe ExitCode
-   mExitCode = fromException e
-
+-- ghc-modi
+legacyInteractive :: IOish m => GhcModT m ()
+legacyInteractive =
+  liftIO emptyNewUnGetLine >>= \ref -> do
+    opt <- options
+    symdbreq <- liftIO $ newSymDbReq opt
+    world <- liftIO . getCurrentWorld =<< cradle
+    legacyInteractiveLoop symdbreq ref world
 
 bug :: String -> IO ()
 bug msg = do
@@ -449,7 +363,6 @@ escapeNewlines = replace "\n" "\\n" . replace "\\n" "\\\\n"
 replace :: String -> String -> String -> String
 replace needle replacement = intercalate replacement . splitOn needle
 
-
 legacyInteractiveLoop :: IOish m
                       => SymDbReq -> UnGetLine -> World -> GhcModT m ()
 legacyInteractiveLoop symdbreq ref world = do
@@ -464,8 +377,6 @@ legacyInteractiveLoop symdbreq ref world = do
     when changed $ do
         liftIO $ ungetCommand ref cmdArg
         throw Restart
-
-    liftIO . prepareAutogen =<< cradle
 
     let (cmd':args') = split (keepDelimsR $ condense $ whenElt isSpace) cmdArg
         arg = concat args'
@@ -497,7 +408,6 @@ legacyInteractiveLoop symdbreq ref world = do
     liftIO $ putStr res >> putStrLn "OK" >> hFlush stdout
     legacyInteractiveLoop symdbreq ref world
 
-
 globalCommands :: [String] -> Maybe String
 globalCommands []      = Nothing
 globalCommands (cmd:_) = case cmd of
@@ -505,11 +415,12 @@ globalCommands (cmd:_) = case cmd of
     _ | cmd == "version" || cmd == "--version" -> Just progVersion
     _                                          -> Nothing
 
-ghcCommands :: IOish m => [String] -> GhcModT m String
+ghcCommands :: IOish m => [String] -> GhcModT m ()
 ghcCommands []         = fatalError "No command given (try --help)"
-ghcCommands (cmd:args) = fn args
+ghcCommands (cmd:args) = do
+    liftIO . putStr =<< action args
  where
-   fn = case cmd of
+   action = case cmd of
      _ | cmd == "list" || cmd == "modules" -> modulesCmd
      "lang"    -> languagesCmd
      "flag"    -> flagsCmd
@@ -530,7 +441,10 @@ ghcCommands (cmd:args) = fn args
      "doc"     -> pkgDocCmd
      "dumpsym" -> dumpSymbolCmd
      "boot"    -> bootCmd
+     "legacy-interactive" -> legacyInteractiveCmd
      _         -> fatalError $ "unknown command: `" ++ cmd ++ "'"
+
+
 
 newtype FatalError = FatalError String deriving (Show, Typeable)
 instance Exception FatalError
@@ -543,7 +457,7 @@ exitError :: String -> IO a
 exitError msg = hPutStrLn stderr (dropWhileEnd (=='\n') msg) >> exitFailure
 
 fatalError :: String -> a
-fatalError s = throw $ FatalError $ progName ++ ": " ++ s
+fatalError s = throw $ FatalError $ "ghc-mod: " ++ s
 
 withParseCmd :: IOish m
              => [OptDescr (Options -> Options)]
@@ -569,8 +483,9 @@ catchArgs cmd action =
         throw $ InvalidCommandLine (Left cmd)
 
 modulesCmd, languagesCmd, flagsCmd, browseCmd, checkSyntaxCmd, expandTemplateCmd,
-  debugInfoCmd, componentInfoCmd, infoCmd, typesCmd, splitsCmd, sigCmd, refineCmd, autoCmd,
-  findSymbolCmd, lintCmd, rootInfoCmd, pkgDocCmd, dumpSymbolCmd, bootCmd
+  debugInfoCmd, componentInfoCmd, infoCmd, typesCmd, splitsCmd, sigCmd,
+  refineCmd, autoCmd, findSymbolCmd, lintCmd, rootInfoCmd, pkgDocCmd,
+  dumpSymbolCmd, bootCmd, legacyInteractiveCmd
   :: IOish m => [String] -> GhcModT m String
 
 modulesCmd    = withParseCmd' "modules" s $ \[] -> modules
@@ -603,6 +518,8 @@ infoCmd       = withParseCmd [] $ action
   where action [file,_,expr] = info file expr
         action [file,expr]   = info file expr
         action _ = throw $ InvalidCommandLine (Left "info")
+
+legacyInteractiveCmd = withParseCmd [] $ \[] -> legacyInteractive >> return ""
 
 checkAction :: ([t] -> a) -> [t] -> a
 checkAction _ []         = throw $ InvalidCommandLine (Right "No files given.")
