@@ -46,7 +46,7 @@ increaseLogLevel l = succ l
 
 decreaseLogLevel :: GmLogLevel -> GmLogLevel
 decreaseLogLevel l | l == minBound = l
-decreaseLogLevel l = succ l
+decreaseLogLevel l = pred l
 
 -- |
 -- >>> Just GmDebug <= Nothing
