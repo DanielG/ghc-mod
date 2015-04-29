@@ -396,7 +396,7 @@ loadTargets filesOrModules = do
             resetTargets targets
             setIntelligent
             gmLog GmInfo "loadTargets" $
-                text "Switching to LinkInMemory/HscInterpreted (memory hungry)"
+                text "Target needs interpeter, switching to LinkInMemory/HscInterpreted. Perfectly normal if anything is using TemplateHaskell, QuasiQuotes or PatternSynonyms."
             loadTargets' Intelligent
           else
             loadTargets' Simple
