@@ -222,7 +222,7 @@ updateHomeModuleGraph' env smp0 = do
           Left errs -> do
             -- TODO: Remember these and present them as proper errors if this is
             -- the file the user is looking at.
-            gmLog GmWarning ("preprocess' " ++ show fn) $ vcat $ map strDoc errs
+            gmLog GmWarning ("preprocess " ++ show fn) $ empty $+$ (vcat $ map text errs)
             return Nothing
 
    imports :: ModulePath -> String -> DynFlags -> MaybeT m (Set ModulePath)
