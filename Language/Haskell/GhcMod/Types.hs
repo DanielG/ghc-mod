@@ -210,14 +210,15 @@ instance Monoid GmModuleGraph where
 data GmComponentType = GMCRaw
                      | GMCResolved
 data GmComponent (t :: GmComponentType) eps = GmComponent {
+      gmcHomeModuleGraph :: GmModuleGraph,
       gmcName            :: ChComponentName,
       gmcGhcOpts         :: [GHCOption],
+      gmcGhcPkgOpts      :: [GHCOption],
       gmcGhcSrcOpts      :: [GHCOption],
       gmcGhcLangOpts     :: [GHCOption],
       gmcRawEntrypoints  :: ChEntrypoint,
       gmcEntrypoints     :: eps,
-      gmcSourceDirs      :: [FilePath],
-      gmcHomeModuleGraph :: GmModuleGraph
+      gmcSourceDirs      :: [FilePath]
     } deriving (Eq, Ord, Show, Read, Generic, Functor)
 
 instance Serialize eps => Serialize (GmComponent t eps)

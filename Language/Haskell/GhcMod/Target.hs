@@ -82,7 +82,7 @@ runLightGhc env action = do
   renv <- newIORef env
   flip runReaderT renv $ unLightGhc action
 
-runGmPkgGhc :: (IOish m, GmEnv m) => LightGhc a -> m a
+runGmPkgGhc :: (IOish m, GmEnv m, GmLog m) => LightGhc a -> m a
 runGmPkgGhc action = do
     pkgOpts <- packageGhcOptions
     withLightHscEnv pkgOpts $ \env -> liftIO $ runLightGhc env action
@@ -258,7 +258,7 @@ findCandidates scns = foldl1 Set.intersection scns
 pickComponent :: Set ChComponentName -> ChComponentName
 pickComponent scn = Set.findMin scn
 
-packageGhcOptions :: (MonadIO m, GmEnv m) => m [GHCOption]
+packageGhcOptions :: (MonadIO m, GmEnv m, GmLog m) => m [GHCOption]
 packageGhcOptions = do
     crdl <- cradle
     case cradleCabalFile crdl of

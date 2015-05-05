@@ -38,11 +38,9 @@ import Paths_ghc_mod as GhcMod
 
 -- | Only package related GHC options, sufficient for things that don't need to
 -- access home modules
-getGhcPkgOptions :: (MonadIO m, GmEnv m) => m [(ChComponentName, [GHCOption])]
-getGhcPkgOptions = do
-  Cradle {..} <- cradle
-  let distdir = cradleRootDir </> "dist"
-  runQuery distdir ghcPkgOptions
+getGhcPkgOptions :: (MonadIO m, GmEnv m, GmLog m)
+                 => m [(ChComponentName, [GHCOption])]
+getGhcPkgOptions = map (\c -> (gmcName c, gmcGhcPkgOpts c)) `liftM` getComponents
 
 helperProgs :: Options -> Programs
 helperProgs opts = Programs {
@@ -76,25 +74,31 @@ cabalHelperCache = Cached {
     cacheFile = cabalHelperCacheFile,
     cachedAction = \ _ (progs, root, _) _ ->
       runQuery' progs root $ do
-        q <- liftM5 join5
+        q <- liftM7 join7
                ghcOptions
+               ghcPkgOptions
                ghcSrcOptions
                ghcLangOptions
                entrypoints
+               entrypoints
                sourceDirs
-        let cs = flip map q $ \(cn, (opts, (srcOpts, (langOpts, (ep, srcDirs))))) ->
-                   GmComponent cn opts srcOpts langOpts ep ep srcDirs mempty
+        let cs = flip map q $ curry8 (GmComponent mempty)
         return ([setupConfigPath], cs)
   }
  where
-   join5 a b c d = join' a . join' b . join' c . join' d
+   curry8 fn (a, (b, (c, (d, (e, (f, (g, h))))))) = fn a b c d e f g h
+
+   liftM7 fn ma mb mc md me mf mg = do
+     a <- ma; b <- mb; c <- mc; d <- md; e <- me; f <- mf; g <- mg
+     return (fn a b c d e f g)
+
+   join7 a b c d e f = join' a . join' b . join' c . join' d . join' e . join' f
    join' :: Eq a => [(a,b)] -> [(a,c)] -> [(a,(b,c))]
    join' lb lc = [ (a, (b, c))
-                | (a, b) <- lb
-                , (a', c) <- lc
-                , a == a'
-                ]
-
+                 | (a, b) <- lb
+                 , (a', c) <- lc
+                 , a == a'
+                 ]
 
 withCabal :: (MonadIO m, GmEnv m) => m a -> m a
 withCabal action = do

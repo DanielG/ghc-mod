@@ -14,7 +14,7 @@ import qualified GHC as G
 ----------------------------------------------------------------
 
 -- | Listing installed modules.
-modules :: (IOish m, GmEnv m) => m String
+modules :: (IOish m, GmEnv m, GmLog m) => m String
 modules = do
   Options { detailed } <- options
   df <- runGmPkgGhc G.getSessionDynFlags
