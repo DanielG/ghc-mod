@@ -190,10 +190,8 @@ usage =
  \    - boot\n\
  \         Internal command used by the emacs frontend.\n\
  \\n\
- \    - legacy-interactive [OPTIONS...]\n\
- \         ghc-modi compatibility mode.\n\
- \      *Options*\n"
-   ++ (unlines $ indent <$> optionUsage indent globalArgSpec)
+ \    - legacy-interactive\n\
+ \         ghc-modi compatibility mode.\n"
  where
    indent = ("    "++)
 
