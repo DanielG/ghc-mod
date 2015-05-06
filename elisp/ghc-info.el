@@ -82,7 +82,7 @@
     (if (null tinfos)
 	(progn
 	  (ghc-type-clear-overlay)
-	  (message "Cannot guess type"))
+	  (message "Cannot determine type"))
       (let* ((tinfo (nth (ghc-type-get-ix) tinfos))
 	     (type (ghc-tinfo-get-info tinfo))
 	     (beg-line (ghc-tinfo-get-beg-line tinfo))
