@@ -175,7 +175,6 @@ Executable ghc-modi
   Main-Is:              GHCModi.hs
   Other-Modules:        Paths_ghc_mod
                         Misc
-                        Utils
   GHC-Options:          -Wall -threaded -fno-warn-deprecations
   if os(windows)
       Cpp-Options:      -DWINDOWS
