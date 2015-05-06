@@ -20,7 +20,7 @@
 (defvar-local ghc-process-callback nil)
 (defvar-local ghc-process-hook nil)
 
-(defvar ghc-command "ghc-modi")
+(defvar ghc-command "ghc-mod")
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -63,7 +63,7 @@
    (t cpro)))
 
 (defun ghc-start-process (name buf)
-  (let* ((opts (append '("--legacy-interactive" "-b" "\n" "-l") (ghc-make-ghc-options)))
+  (let* ((opts (append '("legacy-interactive" "-b" "\n" "-l" "-s") (ghc-make-ghc-options)))
 	 (pro (apply 'start-file-process name buf ghc-command opts)))
     (set-process-filter pro 'ghc-process-filter)
     (set-process-sentinel pro 'ghc-process-sentinel)

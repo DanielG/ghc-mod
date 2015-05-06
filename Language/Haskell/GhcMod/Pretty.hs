@@ -38,6 +38,7 @@ gmComponentNameDoc (ChTestName n)  = text $ "test:" ++ n
 gmComponentNameDoc (ChBenchName n) = text $ "bench:" ++ n
 
 gmLogLevelDoc :: GmLogLevel -> Doc
+gmLogLevelDoc GmSilent    = error "GmSilent MUST not be used for log messages"
 gmLogLevelDoc GmPanic     = text "PANIC"
 gmLogLevelDoc GmException = text "EXCEPTION"
 gmLogLevelDoc GmError     = text "ERROR"

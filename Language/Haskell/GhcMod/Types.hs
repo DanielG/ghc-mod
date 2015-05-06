@@ -163,7 +163,8 @@ type ModuleString = String
 -- | A Module
 type Module = [String]
 
-data GmLogLevel = GmPanic
+data GmLogLevel = GmSilent
+                | GmPanic
                 | GmException
                 | GmError
                 | GmWarning

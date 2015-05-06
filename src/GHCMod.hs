@@ -11,7 +11,6 @@ import Data.Version (showVersion)
 import Data.Default
 import Data.List
 import Data.List.Split
-import Data.Maybe
 import Data.Char (isSpace)
 import Exception
 import Language.Haskell.GhcMod
@@ -20,12 +19,10 @@ import Paths_ghc_mod
 import System.Console.GetOpt (OptDescr(..), ArgDescr(..), ArgOrder(..))
 import qualified System.Console.GetOpt as O
 import System.Directory (setCurrentDirectory)
-import System.Environment (getArgs,getProgName)
+import System.Environment (getArgs)
 import System.Exit (exitFailure)
 import System.IO (hPutStrLn, stdout, stderr, hSetEncoding, utf8, hFlush)
-import System.IO.Unsafe (unsafePerformIO)
-import System.FilePath (takeFileName)
-import System.Exit (ExitCode, exitSuccess)
+import System.Exit (exitSuccess)
 import Text.PrettyPrint
 
 import Misc
@@ -232,16 +229,23 @@ option s l udsc dsc = Option s l dsc udsc
 reqArg :: String -> (String -> a) -> ArgDescr a
 reqArg udsc dsc = ReqArg dsc udsc
 
+optArg :: String -> (Maybe String -> a) -> ArgDescr a
+optArg udsc dsc = OptArg dsc udsc
+
+intToLogLevel :: Int -> GmLogLevel
+intToLogLevel = toEnum
+
 globalArgSpec :: [OptDescr (Options -> Options)]
 globalArgSpec =
-      [ option "v" ["verbose"] "Can be given multiple times to be increasingly\
-                               \ be more verbose." $
-               NoArg $ \o -> o { logLevel = increaseLogLevel (logLevel o) }
+      [ option "v" ["verbose"] "Increase or set log level. (0-6)" $
+               optArg "LEVEL" $ \ml o -> o {
+                   logLevel = case ml of
+                                Nothing -> increaseLogLevel (logLevel o)
+                                Just l -> toEnum $ min 6 $ read l
+                 }
 
-      , option "s" [] "Can be given multiple times to be increasingly be less\
-                      \ verbose." $
-               NoArg $ \o -> o { logLevel = decreaseLogLevel (logLevel o) }
-
+      , option "s" [] "Be silent, set log level to 0" $
+               NoArg $ \o -> o { logLevel = toEnum 0 }
 
       , option "l" ["tolisp"] "Format output as an S-Expression" $
                NoArg $ \o -> o { outputStyle = LispStyle }
