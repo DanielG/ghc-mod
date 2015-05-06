@@ -57,16 +57,16 @@ decreaseLogLevel l = pred l
 -- False
 gmLog :: (MonadIO m, GmLog m) => GmLogLevel -> String -> Doc -> m ()
 gmLog level loc' doc = do
-  GhcModLog { gmLogLevel = level' } <- gmlHistory
+  GhcModLog { gmLogLevel = Just level' } <- gmlHistory
 
   let loc | loc' == "" = empty
           | otherwise = text loc' <+>: empty
-      msg = gmRenderDoc $ gmLogLevelDoc level <+>: sep [loc, doc]
-      msg' = dropWhileEnd isSpace msg
+      msgDoc = gmLogLevelDoc level <+>: sep [loc, doc]
+      msg = dropWhileEnd isSpace $ gmRenderDoc msgDoc
 
-  when (Just level <= level') $
-       liftIO $ hPutStrLn stderr msg'
-  gmlJournal (GhcModLog Nothing [(level, render loc, msg)])
+  when (level <= level') $ liftIO $ hPutStrLn stderr msg
+
+  gmlJournal (GhcModLog Nothing [(level, loc', msgDoc)])
 
 newtype LogDiscardT m a = LogDiscardT { runLogDiscard :: m a }
     deriving (Functor, Applicative, Monad)

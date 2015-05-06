@@ -101,6 +101,7 @@ import Data.Maybe
 import Data.Monoid
 import Data.IORef
 import Distribution.Helper
+import Text.PrettyPrint (Doc)
 
 import qualified MonadUtils as GHC (MonadIO(..))
 
@@ -111,8 +112,8 @@ data GhcModEnv = GhcModEnv {
 
 data GhcModLog = GhcModLog {
       gmLogLevel    :: Maybe GmLogLevel,
-      gmLogMessages :: [(GmLogLevel, String, String)]
-    } deriving (Eq, Show, Read)
+      gmLogMessages :: [(GmLogLevel, String, Doc)]
+    } deriving (Show)
 
 instance Monoid GhcModLog where
     mempty = GhcModLog (Just GmPanic) mempty

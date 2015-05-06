@@ -78,7 +78,7 @@ runE = runErrorT
 runNullLog :: MonadIO m => JournalT GhcModLog m a -> m a
 runNullLog action = do
   (a,w) <- runJournalT action
-  when (w /= mempty) $ liftIO $ print w
+  liftIO $ print w
   return a
 
 shouldReturnError :: Show a

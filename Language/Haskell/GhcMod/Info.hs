@@ -64,7 +64,9 @@ types file lineNo colNo =
 
         convert' $ map (toTup dflag st) $ sortBy (cmp `on` fst) srcSpanTypes
  where
-   handler (SomeException _) = return []
+   handler (SomeException ex) = do
+     gmLog GmException "types" $ showDoc ex
+     return []
 
 getSrcSpanType :: GhcMonad m => G.ModSummary -> Int -> Int -> m [(SrcSpan, Type)]
 getSrcSpanType modSum lineNo colNo = do
