@@ -19,7 +19,6 @@ import Language.Haskell.GhcMod.Types
 
 import Control.Arrow
 import Control.Applicative
-import Control.Monad (when)
 import Control.Monad.Error (ErrorT, runErrorT)
 import Control.Monad.Trans.Journal
 import Data.List.Split

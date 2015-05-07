@@ -114,7 +114,8 @@ dropSession = do
       -- TODO: This is still not enough, there seem to still be references to
       -- GHC's state around afterwards.
       liftIO $ writeIORef ref (error "HscEnv: session was dropped")
-      liftIO $ setUnsafeGlobalDynFlags (error "DynFlags: session was dropped")
+      -- Not available on ghc<7.8; didn't really help anyways
+      -- liftIO $ setUnsafeGlobalDynFlags (error "DynFlags: session was dropped")
 
 
     Nothing -> return ()
