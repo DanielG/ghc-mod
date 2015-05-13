@@ -270,7 +270,7 @@ globalArgSpec =
 
 parseGlobalArgs :: [String] -> Either InvalidCommandLine (Options, [String])
 parseGlobalArgs argv
-    = case O.getOpt' Permute globalArgSpec argv of
+    = case O.getOpt' RequireOrder globalArgSpec argv of
         (o,r,u,[]) -> Right $ (foldr id defaultOptions o, u ++ r)
         (_,_,u,e)  -> Left $ InvalidCommandLine $ Right $
             "Parsing command line options failed: "
