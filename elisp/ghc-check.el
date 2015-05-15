@@ -167,18 +167,20 @@ nil            does not display errors/warnings.
 	  ;; If this is a bottleneck for a large code, let's fix.
 	  (goto-char (point-min))
 	  (cond
-           ((and (string= (file-truename ofile) (file-truename file)) hole)
-            (forward-line (1- line))
-            (forward-char (1- coln))
-            (setq beg (point))
-            (forward-char (length hole))
-            (setq end (point)))
-	   ((string= (string= (file-truename ofile) (file-truename file)))
-	    (forward-line (1- line))
-	    (while (eq (char-after) 32) (forward-char))
-	    (setq beg (point))
-	    (forward-line)
-	    (setq end (1- (point))))
+	   ((string= (file-truename ofile) (file-truename file))
+            (if hole
+              (progn
+                (forward-line (1- line))
+                (forward-char (1- coln))
+                (setq beg (point))
+                (forward-char (length hole))
+                (setq end (point)))
+              (progn
+                (forward-line (1- line))
+                (skip-chars-forward " ")
+                (setq beg (point))
+                (forward-line)
+                (setq end (1- (point))))))
 	   (t
 	    (setq beg (point))
 	    (forward-line)
