@@ -181,7 +181,7 @@ targetGhcOptions crdl sefnmn = do
 
        if noCandidates && noModuleHasAnyAssignment
           then do
-            gmLog GmWarning "" $ strDoc $ "Could not find a componenet assignment, falling back to sandbox only project options."
+            gmLog GmWarning "" $ strDoc $ "Could not find a component assignment, falling back to sandbox only project options."
             sandboxOpts crdl
           else do
             when noCandidates $
