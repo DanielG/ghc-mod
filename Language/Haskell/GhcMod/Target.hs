@@ -18,7 +18,7 @@
 module Language.Haskell.GhcMod.Target where
 
 import Control.Arrow
-import Control.Applicative ((<$>))
+import Control.Applicative (Applicative, (<$>))
 import Control.Monad.Reader (runReaderT)
 import GHC
 import GHC.Paths (libdir)
@@ -257,11 +257,11 @@ findCandidates scns = foldl1 Set.intersection scns
 pickComponent :: Set ChComponentName -> ChComponentName
 pickComponent scn = Set.findMin scn
 
-packageGhcOptions :: (MonadIO m, GmEnv m, GmLog m) => m [GHCOption]
+packageGhcOptions :: (Applicative m, MonadIO m, GmEnv m, GmLog m) => m [GHCOption]
 packageGhcOptions = do
     crdl <- cradle
     case cradleCabalFile crdl of
-      Just _ -> do
+      Just _ ->
         (Set.toList . Set.fromList . concat . map snd) `liftM` getGhcPkgOptions
       Nothing -> sandboxOpts crdl
 
