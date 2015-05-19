@@ -101,7 +101,10 @@ withCabal action = do
     opts <- options
     liftIO $ whenM (isSetupConfigOutOfDate <$> getCurrentWorld crdl) $
         withDirectory_ (cradleRootDir crdl) $ do
-            let pkgDbArgs = "--package-db=clear" : map pkgDbArg (cradlePkgDbStack crdl)
+            let pkgDbStack = cradlePkgDbStack crdl
+                pkgDbArgs = if pkgDbStack == defaultPkgDbStack
+                            then []
+                            else "--package-db=clear" : map pkgDbArg pkgDbStack
                 progOpts =
                     [ "--with-ghc=" ++ T.ghcProgram opts ]
                     -- Only pass ghc-pkg if it was actually set otherwise we
@@ -118,3 +121,6 @@ pkgDbArg :: GhcPkgDb -> String
 pkgDbArg GlobalDb      = "--package-db=global"
 pkgDbArg UserDb        = "--package-db=user"
 pkgDbArg (PackageDb p) = "--package-db=" ++ p
+
+defaultPkgDbStack :: [GhcPkgDb]
+defaultPkgDbStack = [GlobalDb, UserDb]
