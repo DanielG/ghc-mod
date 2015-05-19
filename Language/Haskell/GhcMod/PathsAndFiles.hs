@@ -35,6 +35,7 @@ import Language.Haskell.GhcMod.Types
 import Language.Haskell.GhcMod.Error
 import Language.Haskell.GhcMod.Caching
 import qualified Language.Haskell.GhcMod.Utils as U
+import Utils (mightExist)
 
 -- | Guaranteed to be a path to a directory with no trailing slash.
 type DirPath = FilePath
@@ -211,7 +212,4 @@ cabalHelperCacheFile = setupConfigPath <.> "ghc-mod.cabal-helper"
 findCradleFile :: FilePath -> IO (Maybe FilePath)
 findCradleFile directory = do
     let path = directory </> "ghc-mod.cradle"
-    exists <- doesFileExist $ path
-    case exists of
-        True  -> return $ Just path
-        False -> return Nothing
+    mightExist path
