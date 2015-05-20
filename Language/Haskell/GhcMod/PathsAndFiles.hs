@@ -35,6 +35,7 @@ import Language.Haskell.GhcMod.Types
 import Language.Haskell.GhcMod.Error
 import Language.Haskell.GhcMod.Caching
 import qualified Language.Haskell.GhcMod.Utils as U
+import Utils (mightExist)
 
 -- | Guaranteed to be a path to a directory with no trailing slash.
 type DirPath = FilePath
@@ -193,7 +194,6 @@ cabalBuildPlatform = unsafePerformIO $ buildPlatform
 packageCache :: String
 packageCache = "package.cache"
 
-
 -- | Filename of the symbol table cache file.
 symbolCache :: Cradle -> FilePath
 symbolCache crdl = cradleTempDir crdl </> symbolCacheFile
@@ -206,3 +206,10 @@ resolvedComponentsCacheFile = setupConfigPath <.> "ghc-mod.resolved-components"
 
 cabalHelperCacheFile :: String
 cabalHelperCacheFile = setupConfigPath <.> "ghc-mod.cabal-helper"
+
+-- | @findCradleFile dir@. Searches for a @.ghc-mod.cradle@ file in @dir@.
+-- If it exists in the given directory it is returned otherwise @findCradleFile@ returns @Nothing@
+findCradleFile :: FilePath -> IO (Maybe FilePath)
+findCradleFile directory = do
+    let path = directory </> "ghc-mod.cradle"
+    mightExist path
