@@ -15,5 +15,6 @@ main :: IO ()
 main = do
   args <- getArgs
   bindir <- getBinDir
-  h <- spawnProcess (bindir </> "ghc-mod") $ ["legacy-interactive"] ++ args
+  (_, _, _, h) <-
+    createProcess $ proc (bindir </> "ghc-mod") $ ["legacy-interactive"] ++ args
   exitWith =<< waitForProcess h
