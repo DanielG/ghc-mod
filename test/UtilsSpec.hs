@@ -1,8 +1,6 @@
 module UtilsSpec where
 
-import Language.Haskell.GhcMod.Error
 import Language.Haskell.GhcMod.Utils
-import TestUtils
 import Test.Hspec
 
 spec :: Spec
