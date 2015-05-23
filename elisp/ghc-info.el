@@ -31,6 +31,14 @@
 ;;; type
 ;;;
 
+(defface ghc-type-region
+  '((default :inherit region)
+    (((background light))
+     :background "LightBlue")
+    (((background dark))
+     :background "RoyalBlue"))
+  "Face used to mark region selected by `ghc-show-type'.")
+
 (defvar ghc-type-overlay nil)
 
 (make-variable-buffer-local 'ghc-type-overlay)
@@ -57,7 +65,7 @@
 
 (defun ghc-type-init ()
   (setq ghc-type-overlay (make-overlay 0 0))
-  (overlay-put ghc-type-overlay 'face 'region)
+  (overlay-put ghc-type-overlay 'face 'ghc-type-region)
   (ghc-type-clear-overlay)
   (setq after-change-functions
 	(cons 'ghc-type-clear-overlay after-change-functions))
