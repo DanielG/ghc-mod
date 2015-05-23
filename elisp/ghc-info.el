@@ -43,6 +43,13 @@
 
 (make-variable-buffer-local 'ghc-type-overlay)
 
+(defvar ghc-type-map
+  (let ((map (make-sparse-keymap)))
+    (define-key map (kbd "C-w") 'ghc-type-kill-region)
+    (define-key map (kbd "M-w") 'ghc-type-copy-region)
+    (define-key map (kbd "M-t") 'ghc-type-copy-type)
+    map))
+
 (defun ghc-type-set-ix (n)
   (overlay-put ghc-type-overlay 'ix n))
 
@@ -66,6 +73,7 @@
 (defun ghc-type-init ()
   (setq ghc-type-overlay (make-overlay 0 0))
   (overlay-put ghc-type-overlay 'face 'ghc-type-region)
+  (overlay-put ghc-type-overlay 'keymap ghc-type-map)
   (ghc-type-clear-overlay)
   (setq after-change-functions
 	(cons 'ghc-type-clear-overlay after-change-functions))
@@ -126,6 +134,25 @@
     (goto-char (point-min))
     (while (search-forward "[Char]" nil t)
       (replace-match "String"))))
+
+(defun ghc-type-copy-region ()
+  "Copy the region selected by `ghc-show-type'."
+  (interactive)
+  (kill-new (filter-buffer-substring
+             (overlay-start ghc-type-overlay) (overlay-end ghc-type-overlay)))
+  (ghc-type-clear-overlay))
+
+(defun ghc-type-kill-region ()
+  "Kill the region selected by `ghc-show-type'."
+  (interactive)
+  (kill-region (overlay-start ghc-type-overlay) (overlay-end ghc-type-overlay))
+  (ghc-type-clear-overlay))
+
+(defun ghc-type-copy-type ()
+  "Copy the current type given by `ghc-show-type'."
+  (interactive)
+  (let ((tinfo (nth (ghc-type-get-ix) (ghc-type-get-types))))
+    (kill-new (ghc-tinfo-get-info tinfo))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;

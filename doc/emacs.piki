@@ -29,7 +29,7 @@
 ?C-cC-i
 !Displays the info of this expression in another window.
 ?C-cC-t
-!Displays the type of this expression in the minibuffer. Type C-cC-t multiple time to enlarge the expression. The face of the region can be customized by "ghc-type-region" face.
+!Displays the type of this expression in the minibuffer. Type C-cC-t multiple time to enlarge the expression. The selected region can be killed or copied by C-w or M-w respectively. The type string can be copied by M-t. The face of the region can be customized by "ghc-type-region" face.
 ?C-cC-a
 !Selects one of possible cases.
 ?C-cC-f
