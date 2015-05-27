@@ -160,7 +160,6 @@ Executable ghc-mod
   HS-Source-Dirs:       src
   Build-Depends:        base >= 4.0 && < 5
                       , async
-                      , data-default
                       , directory
                       , filepath
                       , pretty
