@@ -1,0 +1,51 @@
+% ghcmodHappyHaskellProgram-Dg.tex
+\begin{hcarentry}[updated]{ghc-mod --- Happy Haskell Programming}
+\report{Daniel Gr\"ober}%05/15
+\status{open source, actively developed}
+\makeheader
+
+\texttt{ghc-mod} is both a backend program for enhancing editors and other kinds
+of development environments with support for Haskell, and an Emacs package
+providing the user facing functionality, internally called \texttt{ghc} for
+historical reasons. Other people have also developed numerous front ends for Vim
+and there also exist some for Atom and a few other proprietary editors.
+
+After a period of declining activity, development has been picking up pace again
+since Daniel Gr\"ober took over as maintainer. Most changes during versions
+5.0.0--5.2.1.2 consisted only of fixes and internal cleanup work, but for the
+past four months, vastly improved Cabal support has been in the works and is now
+starting to stabilize.
+
+This work is a major step forward in terms of how well ghc-mod's suggestions
+reflect what \texttt{cabal build} would report, and should also allow ghc-mod's
+other features to work even in more complicated Cabal setups.
+
+Daniel Gr\"ober has been accepted for a summer internship at IIJ Innovation
+Institute's Research Laboratory working on \texttt{ghc-mod} for two months
+(August--September). He will be working on:
+\begin{compactitem}
+
+  \item adding GHCi-like interactive code execution, to bring \texttt{ghc-mod} up
+    to feature parity with GHCi and beyond,
+
+  \item investigating how to best cooperate with \texttt{ide-backend},
+
+  \item adding a network interface to make using ghc-mod in other projects
+    easier, and
+
+  \item if time allows, cleaning up the Emacs frontend to be more user-friendly
+    and in line with Emacs' conventions.
+\end{compactitem}
+
+The goal of this work is to make \texttt{ghc-mod} the obvious choice for anyone
+implementing Haskell support for a development environment and improving
+\texttt{ghc-mod}'s overall feature set and reliability in order to give new as
+well as experienced Haskell developers the best possible experience.
+
+Right now \texttt{ghc-mod} has only one core developer and only a handful of
+occasional drive-by contributors. If \textit{you} want to help make Haskell
+development even more fun come and join us!
+
+\FurtherReading
+  \url{https://github.com/kazu-yamamoto/ghc-mod}
+\end{hcarentry}
