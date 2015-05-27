@@ -8,7 +8,6 @@ import Control.Applicative
 import Control.Monad
 import Data.Typeable (Typeable)
 import Data.Version (showVersion)
-import Data.Default
 import Data.List
 import Data.List.Split
 import Data.Char (isSpace)
@@ -302,9 +301,6 @@ instance Exception CmdError
 data InteractiveOptions = InteractiveOptions {
       ghcModExtensions :: Bool
     }
-
-instance Default InteractiveOptions where
-    def = InteractiveOptions False
 
 handler :: IO a -> IO a
 handler = flip catches $
