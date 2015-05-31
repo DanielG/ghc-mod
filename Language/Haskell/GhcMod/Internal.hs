@@ -56,6 +56,8 @@ module Language.Haskell.GhcMod.Internal (
   -- * Misc stuff
   , GHandler(..)
   , gcatches
+  -- * FileMapping
+  , module Language.Haskell.GhcMod.FileMapping
   ) where
 
 import GHC.Paths (libdir)
@@ -70,6 +72,7 @@ import Language.Haskell.GhcMod.Types
 import Language.Haskell.GhcMod.Utils
 import Language.Haskell.GhcMod.World
 import Language.Haskell.GhcMod.CabalHelper
+import Language.Haskell.GhcMod.FileMapping
 
 -- | Obtaining the directory for ghc system libraries.
 ghcLibDir :: FilePath

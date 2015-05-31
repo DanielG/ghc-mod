@@ -39,7 +39,7 @@ import Language.Haskell.GhcMod.Error
 import Language.Haskell.GhcMod.Logging
 import Language.Haskell.GhcMod.Types
 import Language.Haskell.GhcMod.Utils as U
-
+import Language.Haskell.GhcMod.FileMapping
 
 import Data.Maybe
 import Data.Monoid as Monoid
@@ -163,11 +163,20 @@ runGmlTWith efnmns' mdf wrapper action = do
     initSession opts' $
         setModeSimple >>> setEmptyLogger >>> mdf
 
-    let rfns = map (makeRelative $ cradleRootDir crdl) cfns
-
     unGmlT $ wrapper $ do
-      loadTargets (map moduleNameString mns ++ rfns)
+      targets <-
+        withLightHscEnv opts $ \env ->
+                mapM (`guessTarget` Nothing) (map moduleNameString mns ++ cfns)
+            >>= mapM (mapFile env)
+            >>= mapM relativize
+      loadTargets targets
       action
+  where
+    relativize (Target (TargetFile filePath phase) taoc src) = do
+      crdl <- cradle
+      let tid = makeRelative (cradleRootDir crdl) filePath `TargetFile` phase
+      return $ Target tid taoc src
+    relativize tgt = return tgt
 
 targetGhcOptions :: forall m. IOish m
                   => Cradle
@@ -310,7 +319,7 @@ sandboxOpts crdl = do
     getSandboxPackageDbStack cdir =
         ([GlobalDb] ++) . maybe [UserDb] return <$> getSandboxDb cdir
 
-resolveGmComponent :: (IOish m, GmLog m, GmEnv m)
+resolveGmComponent :: (IOish m, GmLog m, GmEnv m, GmState m)
     => Maybe [CompilationUnit] -- ^ Updated modules
     -> GmComponent 'GMCRaw (Set ModulePath)
     -> m (GmComponent 'GMCResolved (Set ModulePath))
@@ -335,7 +344,7 @@ resolveGmComponent mums c@GmComponent {..} = do
            [ "-optP-include", "-optP" ++ macrosHeaderPath ]
         ]
 
-resolveEntrypoint :: (IOish m, GmEnv m, GmLog m)
+resolveEntrypoint :: (IOish m, GmEnv m, GmLog m, GmState m)
     => Cradle
     -> GmComponent 'GMCRaw ChEntrypoint
     -> m (GmComponent 'GMCRaw (Set ModulePath))
@@ -367,7 +376,8 @@ resolveChEntrypoints srcDir ChSetupEntrypoint = do
 chModToMod :: ChModuleName -> ModuleName
 chModToMod (ChModuleName mn) = mkModuleName mn
 
-resolveModule :: (MonadIO m, GmEnv m, GmLog m) =>
+
+resolveModule :: (MonadIO m, GmEnv m, GmLog m, GmState m) =>
   HscEnv -> [FilePath] -> CompilationUnit -> m (Maybe ModulePath)
 resolveModule env _srcDirs (Right mn) =
     liftIO $ traverse canonicalizeModulePath =<< findModulePath env mn
@@ -427,12 +437,11 @@ resolveGmComponents mumns cs = do
    same f a b = (f a) == (f b)
 
 -- | Set the files as targets and load them.
-loadTargets :: IOish m => [String] -> GmlT m ()
-loadTargets filesOrModules = do
+loadTargets :: IOish m => [Target] -> GmlT m ()
+loadTargets targets = do
     gmLog GmDebug "loadTargets" $
-          text "Loading" <+>: fsep (map text filesOrModules)
+          text "Loading" <+>: fsep (map (text . showTargetId) targets)
 
-    targets <- forM filesOrModules (flip guessTarget Nothing)
     setTargets targets
 
     mode <- getCompilerMode
@@ -459,15 +468,18 @@ loadTargets filesOrModules = do
         void $ setSessionDynFlags (setModeIntelligent df)
         void $ load LoadAllTargets
 
-    resetTargets targets = do
+    resetTargets targets' = do
         setTargets []
         void $ load LoadAllTargets
-        setTargets targets
+        setTargets targets'
 
     setIntelligent = do
         newdf <- setModeIntelligent <$> getSessionDynFlags
         void $ setSessionDynFlags newdf
         setCompilerMode Intelligent
+
+    showTargetId (Target (TargetModule s) _ _) = moduleNameString s
+    showTargetId (Target (TargetFile s _) _ _) = s
 
 needsFallback :: ModuleGraph -> Bool
 needsFallback = any $ \ms ->

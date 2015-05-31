@@ -5,6 +5,7 @@ module Main where
 import Config (cProjectVersion)
 import MonadUtils (liftIO)
 import Control.Applicative
+import Control.Arrow
 import Control.Monad
 import Data.Typeable (Typeable)
 import Data.Version (showVersion)
@@ -270,6 +271,14 @@ globalArgSpec =
                reqArg "OPT" $ \g o -> Right $
                    o { ghcUserOptions = g : ghcUserOptions o }
 
+      , option "" ["file-map"] "Redirect one file to another, --file-map \"file1.hs=file2.hs\"" $
+               reqArg "OPT" $ \g o ->
+                  let m = case second (drop 1) $ span (/='=') g of
+                            (s,"") -> (s, MemoryMapping Nothing)
+                            (f,t)  -> (f, RedirectedMapping t)
+                  in
+                  Right $ o { fileMappings = m : fileMappings o }
+
       , option "" ["with-ghc"] "GHC executable to use" $
                reqArg "PROG" $ \p o -> Right $ o { ghcProgram = p }
 
@@ -429,6 +438,12 @@ legacyInteractiveLoop symdbreq world = do
         "boot"   -> bootCmd []
         "browse" -> browseCmd args
 
+        "load"   -> loadMappedFile arg (MemoryMapping Nothing)
+                 >> return ""
+
+        "unload" -> delMMappedFile arg
+                 >> return ""
+
         "quit"   -> liftIO $ exitSuccess
         ""       -> liftIO $ exitSuccess
         _        -> fatalError $ "unknown command: `" ++ cmd ++ "'"
@@ -444,6 +459,7 @@ legacyInteractiveLoop symdbreq world = do
 ghcCommands :: IOish m => [String] -> GhcModT m ()
 ghcCommands []         = fatalError "No command given (try --help)"
 ghcCommands (cmd:args) = do
+    loadMappedFiles
     gmPutStr =<< action args
  where
    action = case cmd of

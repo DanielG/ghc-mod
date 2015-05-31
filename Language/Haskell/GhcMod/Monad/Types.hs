@@ -48,6 +48,11 @@ module Language.Haskell.GhcMod.Monad.Types (
   , withOptions
   , getCompilerMode
   , setCompilerMode
+  , getMMappedFiles
+  , setMMappedFiles
+  , addMMappedFile
+  , delMMappedFile
+  , lookupMMappedFile
   -- * Re-exporting convenient stuff
   , MonadIO
   , liftIO
@@ -99,6 +104,8 @@ import qualified Control.Monad.IO.Class as MTL
 import Data.Monoid (Monoid)
 #endif
 
+import Data.Map (Map, empty)
+import qualified Data.Map as M
 import Data.Maybe
 import Data.Monoid
 import Data.IORef
@@ -227,6 +234,11 @@ class Monad m => GmState m where
       gmsPut s'
       return a
     {-# MINIMAL gmsState | gmsGet, gmsPut #-}
+
+instance GmState m => GmState (StateT s m) where
+    gmsGet = lift gmsGet
+    gmsPut = lift . gmsPut
+    gmsState = lift . gmsState
 
 instance Monad m => GmState (StateT GhcModState m) where
     gmsGet = get
@@ -433,6 +445,24 @@ getCompilerMode = gmCompilerMode `liftM` gmsGet
 
 setCompilerMode :: GmState m => CompilerMode -> m ()
 setCompilerMode mode = (\s -> gmsPut s { gmCompilerMode = mode } ) =<< gmsGet
+
+getMMappedFiles :: GmState m => m FileMappingMap
+getMMappedFiles = gmMMappedFiles `liftM` gmsGet
+
+setMMappedFiles :: GmState m => FileMappingMap -> m ()
+setMMappedFiles mf = (\s -> gmsPut s { gmMMappedFiles = mf } ) =<< gmsGet
+
+addMMappedFile  :: GmState m => FilePath -> FileMapping -> m ()
+addMMappedFile t fm =
+  getMMappedFiles >>= setMMappedFiles . M.insert t fm
+
+delMMappedFile  :: GmState m => FilePath -> m ()
+delMMappedFile t =
+  getMMappedFiles >>= setMMappedFiles . M.delete t
+
+lookupMMappedFile  :: GmState m => FilePath -> m (Maybe FileMapping)
+lookupMMappedFile t =
+  M.lookup t `liftM` getMMappedFiles
 
 withOptions :: GmEnv m => (Options -> Options) -> m a -> m a
 withOptions changeOpt action = gmeLocal changeEnv action

@@ -9,6 +9,7 @@ module Language.Haskell.GhcMod (
   , Options(..)
   , LineSeparator(..)
   , OutputStyle(..)
+  , FileMapping(..)
   , defaultOptions
   -- * Logging
   , GmLogLevel
@@ -63,6 +64,9 @@ module Language.Haskell.GhcMod (
   , gmErrStrLn
   , gmUnsafePutStrLn
   , gmUnsafeErrStrLn
+  -- * FileMapping
+  , getMMappedFiles
+  , setMMappedFiles
   ) where
 
 import Language.Haskell.GhcMod.Boot

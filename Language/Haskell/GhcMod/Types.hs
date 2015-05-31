@@ -69,6 +69,12 @@ data OutputStyle = LispStyle  -- ^ S expression style.
 -- | The type for line separator. Historically, a Null string is used.
 newtype LineSeparator = LineSeparator String deriving (Show)
 
+data FileMapping =  RedirectedMapping FilePath
+                  | MemoryMapping (Maybe String)
+                  deriving Show
+
+type FileMappingMap = Map FilePath FileMapping
+
 data Options = Options {
     outputStyle   :: OutputStyle
   -- | Line separator string.
@@ -93,6 +99,7 @@ data Options = Options {
   -- | If 'True', 'browse' will return fully qualified name
   , qualified     :: Bool
   , hlintOpts     :: [String]
+  , fileMappings  :: [(FilePath,FileMapping)]
   } deriving (Show)
 
 -- | A default 'Options'.
@@ -110,6 +117,7 @@ defaultOptions = Options {
   , detailed       = False
   , qualified      = False
   , hlintOpts      = []
+  , fileMappings   = []
   }
 
 ----------------------------------------------------------------
@@ -182,13 +190,14 @@ data GhcModState = GhcModState {
     , gmComponents   :: !(Map ChComponentName (GmComponent 'GMCResolved (Set ModulePath)))
     , gmCompilerMode :: !CompilerMode
     , gmCaches       :: !GhcModCaches
+    , gmMMappedFiles :: !FileMappingMap
     }
 
 data CompilerMode = Simple | Intelligent deriving (Eq,Show,Read)
 
 defaultGhcModState :: GhcModState
 defaultGhcModState =
-    GhcModState n Map.empty Simple (GhcModCaches n n n n)
+    GhcModState n Map.empty Simple (GhcModCaches n n n n) Map.empty
  where n = Nothing
 
 ----------------------------------------------------------------

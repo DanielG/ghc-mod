@@ -62,6 +62,8 @@ import Language.Haskell.GhcMod.Monad.Types
 import Language.Haskell.GhcMod.Types
 import Language.Haskell.GhcMod.Gap (parseModuleHeader)
 
+import System.IO
+
 -- | Turn module graph into a graphviz dot file
 --
 -- @dot -Tpng -o modules.png modules.dot@
@@ -124,7 +126,7 @@ pruneUnreachable smp0 gmg@GmModuleGraph {..} = let
 collapseMaybeSet :: Maybe (Set a) -> Set a
 collapseMaybeSet = maybe Set.empty id
 
-homeModuleGraph :: (IOish m, GmLog m, GmEnv m)
+homeModuleGraph :: (IOish m, GmLog m, GmEnv m, GmState m)
     => HscEnv -> Set ModulePath -> m GmModuleGraph
 homeModuleGraph env smp = updateHomeModuleGraph env mempty smp smp
 
@@ -159,7 +161,7 @@ canonicalizeModuleGraph GmModuleGraph {..} = liftIO $ do
    fmg (mp, smp) = liftM2 (,) (canonicalizeModulePath mp) (Set.fromList <$> mapM canonicalizeModulePath (Set.toList smp))
 
 
-updateHomeModuleGraph :: (IOish m, GmLog m, GmEnv m)
+updateHomeModuleGraph :: (IOish m, GmLog m, GmEnv m, GmState m)
                       => HscEnv
                       -> GmModuleGraph
                       -> Set ModulePath -- ^ Initial set of modules
@@ -185,7 +187,7 @@ mkModuleMap :: Set ModulePath -> Map ModuleName ModulePath
 mkModuleMap smp = Map.fromList $ map (mpModule &&& id) $ Set.toList smp
 
 updateHomeModuleGraph'
-    :: forall m. (MonadState S m, IOish m, GmLog m, GmEnv m)
+    :: forall m. (MonadState S m, IOish m, GmLog m, GmEnv m, GmState m)
     => HscEnv
     -> Set ModulePath     -- ^ Initial set of modules
     -> m ()
@@ -223,6 +225,7 @@ updateHomeModuleGraph' env smp0 = do
             -- the file the user is looking at.
             gmLog GmWarning ("preprocess " ++ show fn) $ Monoid.mempty $+$ (vcat $ map text errs)
             return Nothing
+
 
    imports :: ModulePath -> String -> DynFlags -> MaybeT m (Set ModulePath)
    imports mp@ModulePath {..} src dflags =
