@@ -159,9 +159,6 @@ type Expression = String
 -- | Module name.
 type ModuleString = String
 
--- | A Module
-type Module = [String]
-
 data GmLogLevel =
     GmSilent
   | GmPanic
