@@ -11,7 +11,7 @@ import Data.Char (isSymbol)
 import Data.Function (on)
 import Data.List (find, nub, sortBy)
 import qualified Data.Map as M
-import Data.Maybe (isJust, catMaybes)
+import Data.Maybe (catMaybes)
 import Exception (ghandle, SomeException(..))
 import GHC (GhcMonad, Id, ParsedModule(..), TypecheckedModule(..), DynFlags,
             SrcSpan, Type, GenLocated(L))
@@ -364,23 +364,25 @@ findVar :: GhcMonad m => DynFlags -> PprStyle
                       -> G.TypecheckedModule -> G.TypecheckedSource
                       -> Int -> Int -> m (Maybe (SrcSpan, String, Type, Bool))
 findVar dflag style tcm tcs lineNo colNo =
-  let lst = sortBy (cmp `on` G.getLoc) $
-                listifySpans tcs (lineNo, colNo) :: [G.LHsExpr Id]
-  in case lst of
-      e@(L _ (G.HsVar i)):others ->
-        do tyInfo <- Gap.getType tcm e
-           let name = getFnName dflag style i
-           if (name == "undefined" || head name == '_') && isJust tyInfo
-              then let Just (s,t) = tyInfo
-                       b = case others of  -- If inside an App, we need
-                                           -- parenthesis
-                             [] -> False
-                             L _ (G.HsApp (L _ a1) (L _ a2)):_ ->
-                               isSearchedVar i a1 || isSearchedVar i a2
-                             _  -> False
-                    in return $ Just (s, name, t, b)
-              else return Nothing
-      _ -> return Nothing
+  case lst of
+    e@(L _ (G.HsVar i)):others -> do
+      tyInfo <- Gap.getType tcm e
+      case tyInfo of
+        Just (span, typ)
+          | name == "undefined" || head name == '_' ->
+            return $ Just (span, name, typ, b)
+          where
+            name = getFnName dflag style i
+            -- If inside an App, we need parenthesis
+            b = case others of
+                  L _ (G.HsApp (L _ a1) (L _ a2)):_ ->
+                    isSearchedVar i a1 || isSearchedVar i a2
+                  _  -> False
+        _ -> return Nothing
+    _ -> return Nothing
+  where
+    lst :: [G.LHsExpr Id]
+    lst = sortBy (cmp `on` G.getLoc) $ listifySpans tcs (lineNo, colNo)
 
 infinitePrefixSupply :: String -> [String]
 infinitePrefixSupply "undefined" = repeat "undefined"
