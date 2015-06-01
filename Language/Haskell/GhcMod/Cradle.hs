@@ -57,12 +57,11 @@ customCradle wdir = do
     cabalFile <- MaybeT $ findCabalFile wdir
     let cabalDir = takeDirectory cabalFile
     cradleFile <- MaybeT $ findCradleFile cabalDir
-    tmpDir <- liftIO $ newTempDir cabalDir
     pkgDbStack <- liftIO $ parseCradle cradleFile
     return Cradle {
         cradleCurrentDir = wdir
       , cradleRootDir    = cabalDir
-      , cradleTempDir    = tmpDir
+      , cradleTempDir    = error "tmpDir"
       , cradleCabalFile  = Just cabalFile
       , cradlePkgDbStack = pkgDbStack
       }
