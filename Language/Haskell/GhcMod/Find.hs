@@ -133,9 +133,10 @@ extractBindings :: (Maybe G.ModuleInfo, G.Module)
                 -> [(Symbol, ModuleString)]
 extractBindings (Nothing,  _)   = []
 extractBindings (Just inf, mdl) =
-  map (\name -> (getOccString name, moduleNameString $ moduleName mdl)) names
+  map (\name -> (getOccString name, modStr)) names
   where
-    names = G.modInfoExports inf
+    names  = G.modInfoExports inf
+    modStr = ModuleString $ moduleNameString $ moduleName mdl
 
 collectModules :: [(Symbol, ModuleString)]
                -> [(Symbol, [ModuleString])]

@@ -64,6 +64,10 @@ instance ToString [String] where
   toLisp  opt = toSexp1 opt
   toPlain opt = inter '\n' . map (toPlain opt)
 
+instance ToString [ModuleString] where
+  toLisp  opt = toLisp opt . map getModuleString
+  toPlain opt = toPlain opt . map getModuleString
+
 -- |
 --
 -- >>> let inp = [((1,2,3,4),"foo"),((5,6,7,8),"bar")] :: [((Int,Int,Int,Int),String)]

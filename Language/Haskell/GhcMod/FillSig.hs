@@ -336,7 +336,7 @@ refine :: IOish m
        -> Int          -- ^ Column number.
        -> Expression   -- ^ A Haskell expression.
        -> GhcModT m String
-refine file lineNo colNo expr =
+refine file lineNo colNo (Expression expr) =
   ghandle handler $
     runGmlT' [Left file] deferErrors $ do
       opt <- options

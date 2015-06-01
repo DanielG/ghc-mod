@@ -27,7 +27,7 @@ import Exception (ExceptionMonad, ghandle)
 --   If 'detailed' is 'True', their types are also obtained.
 --   If 'operators' is 'True', operators are also returned.
 browse :: forall m. IOish m
-       => ModuleString -- ^ A module name. (e.g. \"Data.List\")
+       => String -- ^ A module name. (e.g. \"Data.List\", "base:Prelude")
        -> GhcModT m String
 browse pkgmdl = do
     convert' . sort =<< go

@@ -154,10 +154,12 @@ showPkgId :: Package -> String
 showPkgId (n, v, i) = intercalate "-" [n, v, i]
 
 -- | Haskell expression.
-type Expression = String
+newtype Expression = Expression { getExpression :: String }
+  deriving (Show, Eq, Ord)
 
 -- | Module name.
-type ModuleString = String
+newtype ModuleString = ModuleString { getModuleString :: String }
+  deriving (Show, Read, Eq, Ord)
 
 data GmLogLevel =
     GmSilent
