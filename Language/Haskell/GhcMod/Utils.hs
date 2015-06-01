@@ -44,18 +44,6 @@ import Utils
 dropWhileEnd :: (a -> Bool) -> [a] -> [a]
 dropWhileEnd p = foldr (\x xs -> if p x && null xs then [] else x : xs) []
 
-extractParens :: String -> String
-extractParens str = extractParens' str 0
- where
-   extractParens' :: String -> Int -> String
-   extractParens' [] _ = []
-   extractParens' (s:ss) level
-       | s `elem` "([{" = s : extractParens' ss (level+1)
-       | level == 0 = extractParens' ss 0
-       | s `elem` "}])" && level == 1 = [s]
-       | s `elem` "}])" = s : extractParens' ss (level-1)
-       | otherwise = s : extractParens' ss level
-
 withDirectory_ :: (MonadIO m, ExceptionMonad m) => FilePath -> m a -> m a
 withDirectory_ dir action =
     gbracket (liftIO getCurrentDirectory) (liftIO . setCurrentDirectory)
