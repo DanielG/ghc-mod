@@ -48,7 +48,7 @@ browse pkgmdl = do
 
     tryModuleInfo m = fromJust <$> G.getModuleInfo m
 
-    (mpkg,mdl) = splitPkgMdl pkgmdl
+    (mpkg, mdl) = splitPkgMdl pkgmdl
     mdlname = G.mkModuleName mdl
     mpkgid = mkFastString <$> mpkg
 
@@ -59,9 +59,10 @@ browse pkgmdl = do
 -- >>> splitPkgMdl "Prelude"
 -- (Nothing,"Prelude")
 splitPkgMdl :: String -> (Maybe String,String)
-splitPkgMdl pkgmdl = case break (==':') pkgmdl of
-    (mdl,"")    -> (Nothing,mdl)
-    (pkg,_:mdl) -> (Just pkg,mdl)
+splitPkgMdl pkgmdl =
+  case break (==':') pkgmdl of
+    (mdl, "")    -> (Nothing, mdl)
+    (pkg, _:mdl) -> (Just pkg, mdl)
 
 -- Haskell 2010:
 -- small -> ascSmall | uniSmall | _

@@ -50,7 +50,7 @@ type MonadIOC m = (MTL.MonadIO m)
 #endif
 
 class MonadIOC m => MonadIO m where
-    liftIO :: IO a -> m a
+  liftIO :: IO a -> m a
 
 -- | Output style.
 data OutputStyle = LispStyle  -- ^ S expression style.
@@ -83,21 +83,20 @@ data Options = Options {
   , hlintOpts     :: [String]
   } deriving (Show)
 
-
 -- | A default 'Options'.
 defaultOptions :: Options
 defaultOptions = Options {
-    outputStyle   = PlainStyle
-  , lineSeparator = LineSeparator "\0"
-  , logLevel      = GmWarning
-  , ghcProgram    = "ghc"
-  , ghcPkgProgram = "ghc-pkg"
-  , cabalProgram  = "cabal"
-  , ghcUserOptions= []
-  , operators     = False
-  , detailed      = False
-  , qualified     = False
-  , hlintOpts     = []
+    outputStyle    = PlainStyle
+  , lineSeparator  = LineSeparator "\0"
+  , logLevel       = GmWarning
+  , ghcProgram     = "ghc"
+  , ghcPkgProgram  = "ghc-pkg"
+  , cabalProgram   = "cabal"
+  , ghcUserOptions = []
+  , operators      = False
+  , detailed       = False
+  , qualified      = False
+  , hlintOpts      = []
   }
 
 ----------------------------------------------------------------
@@ -113,7 +112,7 @@ data Cradle = Cradle {
   -- | The file name of the found cabal file.
   , cradleCabalFile  :: Maybe FilePath
   -- | Package database stack
-  , cradlePkgDbStack  :: [GhcPkgDb]
+  , cradlePkgDbStack :: [GhcPkgDb]
   } deriving (Eq, Show)
 
 ----------------------------------------------------------------
@@ -122,7 +121,7 @@ data Cradle = Cradle {
 data GhcPkgDb = GlobalDb | UserDb | PackageDb String deriving (Eq, Show)
 
 -- | A single GHC command line option.
-type GHCOption  = String
+type GHCOption = String
 
 -- | An include directory for modules.
 type IncludeDir = FilePath
@@ -131,28 +130,28 @@ type IncludeDir = FilePath
 type PackageBaseName = String
 
 -- | A package version.
-type PackageVersion  = String
+type PackageVersion = String
 
 -- | A package id.
-type PackageId  = String
+type PackageId = String
 
 -- | A package's name, verson and id.
-type Package    = (PackageBaseName, PackageVersion, PackageId)
+type Package = (PackageBaseName, PackageVersion, PackageId)
 
 pkgName :: Package -> PackageBaseName
-pkgName (n,_,_) = n
+pkgName (n, _, _) = n
 
 pkgVer :: Package -> PackageVersion
-pkgVer (_,v,_) = v
+pkgVer (_, v, _) = v
 
 pkgId :: Package -> PackageId
-pkgId (_,_,i) = i
+pkgId (_, _, i) = i
 
 showPkg :: Package -> String
-showPkg (n,v,_) = intercalate "-" [n,v]
+showPkg (n, v, _) = intercalate "-" [n, v]
 
 showPkgId :: Package -> String
-showPkgId (n,v,i) = intercalate "-" [n,v,i]
+showPkgId (n, v, i) = intercalate "-" [n, v, i]
 
 -- | Haskell expression.
 type Expression = String
@@ -163,131 +162,133 @@ type ModuleString = String
 -- | A Module
 type Module = [String]
 
-data GmLogLevel = GmSilent
-                | GmPanic
-                | GmException
-                | GmError
-                | GmWarning
-                | GmInfo
-                | GmDebug
-                  deriving (Eq, Ord, Enum, Bounded, Show, Read)
+data GmLogLevel =
+    GmSilent
+  | GmPanic
+  | GmException
+  | GmError
+  | GmWarning
+  | GmInfo
+  | GmDebug
+    deriving (Eq, Ord, Enum, Bounded, Show, Read)
 
 -- | Collection of packages
 type PkgDb = (Map Package PackageConfig)
 
 data GmModuleGraph = GmModuleGraph {
-      gmgGraph      :: Map ModulePath (Set ModulePath)
-    } deriving (Eq, Ord, Show, Read, Generic, Typeable)
+    gmgGraph :: Map ModulePath (Set ModulePath)
+  } deriving (Eq, Ord, Show, Read, Generic, Typeable)
 
 instance Serialize GmModuleGraph where
-    put GmModuleGraph {..} = let
-        mpim :: Map ModulePath Integer
-        graph :: Map Integer (Set Integer)
+  put GmModuleGraph {..} = put (mpim, graph)
+    where
+      mpim :: Map ModulePath Integer
+      mpim = Map.fromList $ Map.keys gmgGraph `zip` [0..]
+      graph :: Map Integer (Set Integer)
+      graph = Map.map (Set.map mpToInt) $ Map.mapKeys mpToInt gmgGraph
+      mpToInt :: ModulePath -> Integer
+      mpToInt mp = fromJust $ Map.lookup mp mpim
 
-        mpim = Map.fromList $
-                (Map.keys gmgGraph) `zip` [0..]
-        mpToInt :: ModulePath -> Integer
-        mpToInt mp = fromJust $ Map.lookup mp mpim
-
-        graph = Map.map (Set.map mpToInt) $ Map.mapKeys mpToInt gmgGraph
-        in put (mpim, graph)
-
-    get = do
-     (mpim :: Map ModulePath Integer, graph :: Map Integer (Set Integer)) <- get
-     let
-         swapMap = Map.fromList . map swap . Map.toList
-         swap (a,b) = (b,a)
-         impm = swapMap mpim
-         intToMp i = fromJust $ Map.lookup i impm
-         mpGraph :: Map ModulePath (Set ModulePath)
-         mpGraph = Map.map (Set.map intToMp) $ Map.mapKeys intToMp graph
-     return $ GmModuleGraph mpGraph
+  get = do
+    (mpim :: Map ModulePath Integer, graph :: Map Integer (Set Integer)) <- get
+    let impm = swapMap mpim
+        intToMp i = fromJust $ Map.lookup i impm
+        mpGraph :: Map ModulePath (Set ModulePath)
+        mpGraph = Map.map (Set.map intToMp) $ Map.mapKeys intToMp graph
+    return $ GmModuleGraph mpGraph
+    where
+      swapMap :: (Ord k, Ord v) => Map k v -> Map v k
+      swapMap = Map.fromList . map (\(x, y) -> (y, x)) . Map.toList
 
 instance Monoid GmModuleGraph where
-    mempty  = GmModuleGraph mempty
-    mappend (GmModuleGraph a) (GmModuleGraph a') =
-        GmModuleGraph (Map.unionWith Set.union a a')
+  mempty  = GmModuleGraph mempty
+  mappend (GmModuleGraph a) (GmModuleGraph a') =
+    GmModuleGraph (Map.unionWith Set.union a a')
 
 data GmComponentType = GMCRaw
                      | GMCResolved
 data GmComponent (t :: GmComponentType) eps = GmComponent {
-      gmcHomeModuleGraph :: GmModuleGraph,
-      gmcName            :: ChComponentName,
-      gmcGhcOpts         :: [GHCOption],
-      gmcGhcPkgOpts      :: [GHCOption],
-      gmcGhcSrcOpts      :: [GHCOption],
-      gmcGhcLangOpts     :: [GHCOption],
-      gmcRawEntrypoints  :: ChEntrypoint,
-      gmcEntrypoints     :: eps,
-      gmcSourceDirs      :: [FilePath]
-    } deriving (Eq, Ord, Show, Read, Generic, Functor)
+    gmcHomeModuleGraph :: GmModuleGraph
+  , gmcName            :: ChComponentName
+  , gmcGhcOpts         :: [GHCOption]
+  , gmcGhcPkgOpts      :: [GHCOption]
+  , gmcGhcSrcOpts      :: [GHCOption]
+  , gmcGhcLangOpts     :: [GHCOption]
+  , gmcRawEntrypoints  :: ChEntrypoint
+  , gmcEntrypoints     :: eps
+  , gmcSourceDirs      :: [FilePath]
+  } deriving (Eq, Ord, Show, Read, Generic, Functor)
 
 instance Serialize eps => Serialize (GmComponent t eps)
 
 data ModulePath = ModulePath { mpModule :: ModuleName, mpPath :: FilePath }
-    deriving (Eq, Ord, Show, Read, Generic, Typeable)
+  deriving (Eq, Ord, Show, Read, Generic, Typeable)
 instance Serialize ModulePath
 
 instance Serialize ModuleName where
-    get = mkModuleName <$> get
-    put mn = put (moduleNameString mn)
+  get = mkModuleName <$> get
+  put mn = put (moduleNameString mn)
 
 instance Show ModuleName where
-    show mn = "ModuleName " ++ show (moduleNameString mn)
+  show mn = "ModuleName " ++ show (moduleNameString mn)
 
 instance Read ModuleName where
-    readsPrec d r = readParen (d > app_prec)
-                         (\r' -> [(mkModuleName m,t) |
-                                 ("ModuleName",s) <- lex r',
-                                 (m,t) <- readsPrec (app_prec+1) s]) r
-        where app_prec = 10
+  readsPrec d =
+    readParen
+      (d > app_prec)
+      (\r' -> [ (mkModuleName m, t)
+              | ("ModuleName", s) <- lex r'
+              , (m, t)            <- readsPrec (app_prec + 1) s
+              ])
+    where
+      app_prec = 10
 
 data GhcModError
-    = GMENoMsg
-    -- ^ Unknown error
+  = GMENoMsg
+  -- ^ Unknown error
 
-    | GMEString String
-    -- ^ Some Error with a message. These are produced mostly by
-    -- 'fail' calls on GhcModT.
+  | GMEString String
+  -- ^ Some Error with a message. These are produced mostly by
+  -- 'fail' calls on GhcModT.
 
-    | GMECabalConfigure GhcModError
-    -- ^ Configuring a cabal project failed.
+  | GMECabalConfigure GhcModError
+  -- ^ Configuring a cabal project failed.
 
-    | GMECabalFlags GhcModError
-    -- ^ Retrieval of the cabal configuration flags failed.
+  | GMECabalFlags GhcModError
+  -- ^ Retrieval of the cabal configuration flags failed.
 
-    | GMECabalComponent ChComponentName
-    -- ^ Cabal component could not be found
+  | GMECabalComponent ChComponentName
+  -- ^ Cabal component could not be found
 
-    | GMECabalCompAssignment [(Either FilePath ModuleName, Set ChComponentName)]
-    -- ^ Could not find a consistent component assignment for modules
+  | GMECabalCompAssignment [(Either FilePath ModuleName, Set ChComponentName)]
+  -- ^ Could not find a consistent component assignment for modules
 
-    | GMEProcess String [String] (Either (String, String, Int) GhcModError)
-    -- ^ Launching an operating system process failed. Fields in
-    -- order: command, arguments, (stdout, stderr, exitcode)
+  | GMEProcess String [String] (Either (String, String, Int) GhcModError)
+  -- ^ Launching an operating system process failed. Fields in
+  -- order: command, arguments, (stdout, stderr, exitcode)
 
-    | GMENoCabalFile
-    -- ^ No cabal file found.
+  | GMENoCabalFile
+  -- ^ No cabal file found.
 
-    | GMETooManyCabalFiles [FilePath]
-    -- ^ Too many cabal files found.
+  | GMETooManyCabalFiles [FilePath]
+  -- ^ Too many cabal files found.
 
-    | GMECabalStateFile GMConfigStateFileError
-      -- ^ Reading Cabal's state configuration file falied somehow.
-      deriving (Eq,Show,Typeable)
+  | GMECabalStateFile GMConfigStateFileError
+    -- ^ Reading Cabal's state configuration file falied somehow.
+    deriving (Eq,Show,Typeable)
 
 instance Error GhcModError where
-    noMsg = GMENoMsg
-    strMsg = GMEString
+  noMsg  = GMENoMsg
+  strMsg = GMEString
 
 instance Exception GhcModError
 
 data GMConfigStateFileError
-    = GMConfigStateFileNoHeader
-    | GMConfigStateFileBadHeader
-    | GMConfigStateFileNoParse
-    | GMConfigStateFileMissing
---    | GMConfigStateFileBadVersion PackageIdentifier PackageIdentifier (Either ConfigStateFileError LocalBuildInfo)
+  = GMConfigStateFileNoHeader
+  | GMConfigStateFileBadHeader
+  | GMConfigStateFileNoParse
+  | GMConfigStateFileMissing
+--  | GMConfigStateFileBadVersion PackageIdentifier PackageIdentifier (Either ConfigStateFileError LocalBuildInfo)
   deriving (Eq, Show, Read, Typeable)
 
 

@@ -2,8 +2,7 @@
 
 module Language.Haskell.GhcMod.Find
 #ifndef SPEC
-  (
-    Symbol
+  ( Symbol
   , SymbolDb
   , loadSymbolDb
   , lookupSymbol
@@ -33,17 +32,8 @@ import System.Directory (doesFileExist, getModificationTime)
 import System.FilePath ((</>))
 import System.IO
 
-#ifndef MIN_VERSION_containers
-#define MIN_VERSION_containers(x,y,z) 1
-#endif
-
-#if MIN_VERSION_containers(0,5,0)
 import Data.Map (Map)
 import qualified Data.Map as M
-#else
-import Data.Map (Map)
-import qualified Data.Map as M
-#endif
 
 ----------------------------------------------------------------
 
@@ -79,16 +69,16 @@ lookupSym sym db = M.findWithDefault [] sym $ table db
 -- | Loading a file and creates 'SymbolDb'.
 loadSymbolDb :: IOish m => GhcModT m SymbolDb
 loadSymbolDb = do
-    ghcMod <- liftIO ghcModExecutable
-    tmpdir <- cradleTempDir <$> cradle
-    file   <- liftIO $ chop <$> readProcess ghcMod ["dumpsym", tmpdir] ""
-    !db    <- M.fromAscList . map conv . lines <$> liftIO (readFile file)
-    return $ SymbolDb
-      { table             = db
-      , symbolDbCachePath = file
-      }
+  ghcMod <- liftIO ghcModExecutable
+  tmpdir <- cradleTempDir <$> cradle
+  file   <- liftIO $ chop <$> readProcess ghcMod ["dumpsym", tmpdir] ""
+  !db    <- M.fromAscList . map conv . lines <$> liftIO (readFile file)
+  return $ SymbolDb
+    { table             = db
+    , symbolDbCachePath = file
+    }
   where
-    conv :: String -> (Symbol,[ModuleString])
+    conv :: String -> (Symbol, [ModuleString])
     conv = read
     chop :: String -> String
     chop "" = ""
@@ -113,11 +103,11 @@ dumpSymbol dir = do
     cache = dir </> symbolCacheFile
 
 writeSymbolCache :: FilePath
-                 -> [(Symbol,[ModuleString])]
+                 -> [(Symbol, [ModuleString])]
                  -> IO ()
 writeSymbolCache cache sm =
   void . withFile cache WriteMode $ \hdl ->
-      mapM (hPrint hdl) sm
+    mapM (hPrint hdl) sm
 
 -- | Check whether given file is older than any file from the given set.
 -- Returns True if given file does not exist.
@@ -131,24 +121,24 @@ isOlderThan cache files = do
     return $ any (tCache <=) $ map tfTime files -- including equal just in case
 
 -- | Browsing all functions in all system modules.
-getGlobalSymbolTable :: LightGhc [(Symbol,[ModuleString])]
+getGlobalSymbolTable :: LightGhc [(Symbol, [ModuleString])]
 getGlobalSymbolTable = do
-    df  <- G.getSessionDynFlags
-    let mods = listVisibleModules df
-    moduleInfos <- mapM G.getModuleInfo mods
-    return $ collectModules
-           $ extractBindings `concatMap` (moduleInfos `zip` mods)
+  df  <- G.getSessionDynFlags
+  let mods = listVisibleModules df
+  moduleInfos <- mapM G.getModuleInfo mods
+  return $ collectModules
+         $ extractBindings `concatMap` (moduleInfos `zip` mods)
 
 extractBindings :: (Maybe G.ModuleInfo, G.Module)
                 -> [(Symbol, ModuleString)]
-extractBindings (Nothing,_)  = []
-extractBindings (Just inf,mdl) =
-    map (\name -> (getOccString name, moduleNameString $ moduleName mdl)) names
+extractBindings (Nothing,  _)   = []
+extractBindings (Just inf, mdl) =
+  map (\name -> (getOccString name, moduleNameString $ moduleName mdl)) names
   where
     names = G.modInfoExports inf
 
-collectModules :: [(Symbol,ModuleString)]
-               -> [(Symbol,[ModuleString])]
+collectModules :: [(Symbol, ModuleString)]
+               -> [(Symbol, [ModuleString])]
 collectModules = map tieup . groupBy ((==) `on` fst) . sort
   where
     tieup x = (head (map fst x), map snd x)

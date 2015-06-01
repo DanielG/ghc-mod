@@ -79,17 +79,14 @@ sig file lineNo colNo =
           Signature loc names ty ->
               ("function", fourInts loc, map (initialBody dflag style ty) names)
 
-          InstanceDecl loc cls -> let
-                body x = initialBody dflag style (G.idType x) x
-            in
-              ("instance", fourInts loc, body `map` Ty.classMethods cls)
+          InstanceDecl loc cls ->
+            let body x = initialBody dflag style (G.idType x) x
+            in ("instance", fourInts loc, body `map` Ty.classMethods cls)
 
           TyFamDecl loc name flavour vars ->
             let (rTy, initial) = initialTyFamString flavour
                 body = initialFamBody dflag style name vars
-             in (rTy, fourInts loc, [initial ++ body])
-
-
+            in (rTy, fourInts loc, [initial ++ body])
   where
     fallback (SomeException _) = do
       opt <- options
@@ -244,9 +241,11 @@ initialHead1 :: String -> [FnArg] -> [String] -> String
 initialHead1 fname args elts =
   case initialBodyArgs1 args elts of
     []      -> fname
-    arglist -> if isSymbolName fname
-               then head arglist ++ " " ++ fname ++ " " ++ unwords (tail arglist)
-               else fname ++ " " ++ unwords arglist
+    arglist
+      | isSymbolName fname ->
+        head arglist ++ " " ++ fname ++ " " ++ unwords (tail arglist)
+      | otherwise ->
+        fname ++ " " ++ unwords arglist
 
 initialBodyArgs1 :: [FnArg] -> [String] -> [String]
 initialBodyArgs1 args elts = take (length args) elts
@@ -338,39 +337,45 @@ refine :: IOish m
        -> Expression   -- ^ A Haskell expression.
        -> GhcModT m String
 refine file lineNo colNo expr =
-  ghandle handler $ runGmlT' [Left file] deferErrors $ do
-        opt <- options
-        style <- getStyle
-        dflag <- G.getSessionDynFlags
-        modSum <- Gap.fileModSummary file
-        p <- G.parseModule modSum
-        tcm@TypecheckedModule{tm_typechecked_source = tcs} <- G.typecheckModule p
-        ety <- G.exprType expr
-        whenFound opt (findVar dflag style tcm tcs lineNo colNo) $
-          \(loc, name, rty, paren) ->
-              let eArgs = getFnArgs ety
-                  rArgs = getFnArgs rty
-                  diffArgs' = length eArgs - length rArgs
-                  diffArgs  = if diffArgs' < 0 then 0 else diffArgs'
-                  iArgs = take diffArgs eArgs
-                  text = initialHead1 expr iArgs (infinitePrefixSupply name)
-               in (fourInts loc, doParen paren text)
-
- where
-   handler (SomeException _) = emptyResult =<< options
+  ghandle handler $
+    runGmlT' [Left file] deferErrors $ do
+      opt <- options
+      style <- getStyle
+      dflag <- G.getSessionDynFlags
+      modSum <- Gap.fileModSummary file
+      p <- G.parseModule modSum
+      tcm@TypecheckedModule{tm_typechecked_source = tcs} <- G.typecheckModule p
+      ety <- G.exprType expr
+      whenFound opt (findVar dflag style tcm tcs lineNo colNo) $
+        \(loc, name, rty, paren) ->
+            let eArgs = getFnArgs ety
+                rArgs = getFnArgs rty
+                diffArgs' = length eArgs - length rArgs
+                diffArgs  = if diffArgs' < 0 then 0 else diffArgs'
+                iArgs = take diffArgs eArgs
+                text = initialHead1 expr iArgs (infinitePrefixSupply name)
+             in (fourInts loc, doParen paren text)
+  where
+    handler (SomeException _) = emptyResult =<< options
 
 -- Look for the variable in the specified position
-findVar :: GhcMonad m => DynFlags -> PprStyle
-                      -> G.TypecheckedModule -> G.TypecheckedSource
-                      -> Int -> Int -> m (Maybe (SrcSpan, String, Type, Bool))
+findVar
+  :: GhcMonad m
+  => DynFlags
+  -> PprStyle
+  -> G.TypecheckedModule
+  -> G.TypecheckedSource
+  -> Int
+  -> Int
+  -> m (Maybe (SrcSpan, String, Type, Bool))
 findVar dflag style tcm tcs lineNo colNo =
   case lst of
     e@(L _ (G.HsVar i)):others -> do
       tyInfo <- Gap.getType tcm e
       case tyInfo of
-        Just (span, typ)
+        Just (s, typ)
           | name == "undefined" || head name == '_' ->
-            return $ Just (span, name, typ, b)
+            return $ Just (s, name, typ, b)
           where
             name = getFnName dflag style i
             -- If inside an App, we need parenthesis
