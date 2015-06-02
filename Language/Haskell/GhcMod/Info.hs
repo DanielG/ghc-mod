@@ -30,20 +30,21 @@ info :: IOish m
      -> Expression   -- ^ A Haskell expression.
      -> GhcModT m String
 info file expr =
-    ghandle handler $ runGmlT' [Left file] deferErrors $ withContext $
-      convert <$> options <*> body
+  ghandle handler $
+    runGmlT' [Left file] deferErrors $
+      withContext $
+        convert <$> options <*> body
   where
     handler (SomeException ex) = do
-        gmLog GmException "info" $
-                text "" $$ nest 4 (showDoc ex)
-        convert' "Cannot show info"
+      gmLog GmException "info" $ text "" $$ nest 4 (showDoc ex)
+      convert' "Cannot show info"
 
+    body :: GhcMonad m => m String
     body = do
-        sdoc <- Gap.infoThing expr
-        st <- getStyle
-        dflag <- G.getSessionDynFlags
-        return $ showPage dflag st sdoc
-
+      sdoc  <- Gap.infoThing expr
+      st    <- getStyle
+      dflag <- G.getSessionDynFlags
+      return $ showPage dflag st sdoc
 
 ----------------------------------------------------------------
 
@@ -54,14 +55,14 @@ types :: IOish m
       -> Int          -- ^ Column number.
       -> GhcModT m String
 types file lineNo colNo =
-    ghandle handler $ runGmlT' [Left file] deferErrors $ withContext $ do
-        crdl <- cradle
-        modSum <- Gap.fileModSummary (cradleCurrentDir crdl </> file)
+  ghandle handler $
+    runGmlT' [Left file] deferErrors $
+      withContext $ do
+        crdl         <- cradle
+        modSum       <- Gap.fileModSummary (cradleCurrentDir crdl </> file)
         srcSpanTypes <- getSrcSpanType modSum lineNo colNo
-
-        dflag <- G.getSessionDynFlags
-        st <- getStyle
-
+        dflag        <- G.getSessionDynFlags
+        st           <- getStyle
         convert' $ map (toTup dflag st) $ sortBy (cmp `on` fst) srcSpanTypes
  where
    handler (SomeException ex) = do
@@ -70,12 +71,12 @@ types file lineNo colNo =
 
 getSrcSpanType :: GhcMonad m => G.ModSummary -> Int -> Int -> m [(SrcSpan, Type)]
 getSrcSpanType modSum lineNo colNo = do
-    p <- G.parseModule modSum
-    tcm@TypecheckedModule{tm_typechecked_source = tcs} <- G.typecheckModule p
-    let bs = listifySpans tcs (lineNo, colNo) :: [LHsBind Id]
-        es = listifySpans tcs (lineNo, colNo) :: [LHsExpr Id]
-        ps = listifySpans tcs (lineNo, colNo) :: [LPat Id]
-    bts <- mapM (getType tcm) bs
-    ets <- mapM (getType tcm) es
-    pts <- mapM (getType tcm) ps
-    return $ catMaybes $ concat [ets, bts, pts]
+  p <- G.parseModule modSum
+  tcm@TypecheckedModule{tm_typechecked_source = tcs} <- G.typecheckModule p
+  let bs = listifySpans tcs (lineNo, colNo) :: [LHsBind Id]
+      es = listifySpans tcs (lineNo, colNo) :: [LHsExpr Id]
+      ps = listifySpans tcs (lineNo, colNo) :: [LPat Id]
+  bts <- mapM (getType tcm) bs
+  ets <- mapM (getType tcm) es
+  pts <- mapM (getType tcm) ps
+  return $ catMaybes $ concat [ets, bts, pts]

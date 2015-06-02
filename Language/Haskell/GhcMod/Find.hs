@@ -1,9 +1,8 @@
-{-# LANGUAGE CPP, BangPatterns #-}
+{-# LANGUAGE CPP, BangPatterns, DoAndIfThenElse #-}
 
 module Language.Haskell.GhcMod.Find
 #ifndef SPEC
-  (
-    Symbol
+  ( Symbol
   , SymbolDb
   , loadSymbolDb
   , lookupSymbol
@@ -16,48 +15,39 @@ module Language.Haskell.GhcMod.Find
   where
 
 import Control.Applicative ((<$>))
-import Control.Monad (when, void)
+import Control.Monad (when, void, (<=<))
 import Data.Function (on)
 import Data.List (groupBy, sort)
-import Data.Maybe (fromMaybe)
 import qualified GHC as G
 import Language.Haskell.GhcMod.Convert
+import Language.Haskell.GhcMod.Gap (listVisibleModules)
 import Language.Haskell.GhcMod.Monad
+import Language.Haskell.GhcMod.PathsAndFiles
 import Language.Haskell.GhcMod.Types
 import Language.Haskell.GhcMod.Utils
-import Language.Haskell.GhcMod.PathsAndFiles
-import Language.Haskell.GhcMod.Gap (listVisibleModules)
+import Language.Haskell.GhcMod.World (timedPackageCaches)
 import Name (getOccString)
 import Module (moduleName)
 import System.Directory (doesFileExist, getModificationTime)
-import System.FilePath ((</>), takeDirectory)
+import System.FilePath ((</>))
 import System.IO
 
-#ifndef MIN_VERSION_containers
-#define MIN_VERSION_containers(x,y,z) 1
-#endif
-
-#if MIN_VERSION_containers(0,5,0)
 import Data.Map (Map)
 import qualified Data.Map as M
-#else
-import Data.Map (Map)
-import qualified Data.Map as M
-#endif
 
 ----------------------------------------------------------------
 
 -- | Type of function and operation names.
 type Symbol = String
 -- | Database from 'Symbol' to \['ModuleString'\].
-data SymbolDb = SymbolDb {
-    table :: Map Symbol [ModuleString]
-  , packageCachePath :: FilePath
+data SymbolDb = SymbolDb
+  { table             :: Map Symbol [ModuleString]
   , symbolDbCachePath :: FilePath
   } deriving (Show)
 
-isOutdated :: SymbolDb -> IO Bool
-isOutdated db = symbolDbCachePath db `isOlderThan` packageCachePath db
+isOutdated :: (GmEnv m, IOish m) => SymbolDb -> m Bool
+isOutdated db =
+  liftIO . (isOlderThan (symbolDbCachePath db) <=< timedPackageCaches) =<< cradle
 
 ----------------------------------------------------------------
 
@@ -72,25 +62,25 @@ lookupSymbol :: IOish m => Symbol -> SymbolDb -> GhcModT m String
 lookupSymbol sym db = convert' $ lookupSym sym db
 
 lookupSym :: Symbol -> SymbolDb -> [ModuleString]
-lookupSym sym db = fromMaybe [] $ M.lookup sym $ table db
+lookupSym sym db = M.findWithDefault [] sym $ table db
 
 ---------------------------------------------------------------
 
 -- | Loading a file and creates 'SymbolDb'.
 loadSymbolDb :: IOish m => GhcModT m SymbolDb
 loadSymbolDb = do
-    ghcMod <- liftIO ghcModExecutable
-    tmpdir <- cradleTempDir <$> cradle
-    file <- liftIO $ chop <$> readProcess ghcMod ["dumpsym", tmpdir] ""
-    !db <- M.fromAscList . map conv . lines <$> liftIO (readFile file)
-    return $ SymbolDb {
-        table = db
-      , packageCachePath = takeDirectory file </> packageCache
-      , symbolDbCachePath = file
-      }
+  ghcMod <- liftIO ghcModExecutable
+  tmpdir <- cradleTempDir <$> cradle
+  file   <- liftIO $ chop <$> readProcess ghcMod ["dumpsym", tmpdir] ""
+  !db    <- M.fromAscList . map conv . lines <$> liftIO (readFile file)
+  return $ SymbolDb
+    { table             = db
+    , symbolDbCachePath = file
+    }
   where
-    conv :: String -> (Symbol,[ModuleString])
+    conv :: String -> (Symbol, [ModuleString])
     conv = read
+    chop :: String -> String
     chop "" = ""
     chop xs = init xs
 
@@ -102,50 +92,54 @@ loadSymbolDb = do
 --   The file name is printed.
 
 dumpSymbol :: IOish m => FilePath -> GhcModT m String
-dumpSymbol dir = runGmPkgGhc $ do
-    let cache = dir </> symbolCacheFile
-        pkgdb = dir </> packageCache
-
-    create <- liftIO $ cache `isOlderThan` pkgdb
-    when create $ (liftIO . writeSymbolCache cache) =<< getGlobalSymbolTable
+dumpSymbol dir = do
+  crdl <- cradle
+  runGmPkgGhc $ do
+    create <- liftIO $ isOlderThan cache =<< timedPackageCaches crdl
+    when create $
+      liftIO . writeSymbolCache cache =<< getGlobalSymbolTable
     return $ unlines [cache]
+  where
+    cache = dir </> symbolCacheFile
 
 writeSymbolCache :: FilePath
-                 -> [(Symbol,[ModuleString])]
+                 -> [(Symbol, [ModuleString])]
                  -> IO ()
 writeSymbolCache cache sm =
   void . withFile cache WriteMode $ \hdl ->
-      mapM (hPrint hdl) sm
+    mapM (hPrint hdl) sm
 
-isOlderThan :: FilePath -> FilePath -> IO Bool
-isOlderThan cache file = do
-    exist <- doesFileExist cache
-    if not exist then
-        return True
-      else do
-        tCache <- getModificationTime cache
-        tFile <- getModificationTime file
-        return $ tCache <= tFile -- including equal just in case
+-- | Check whether given file is older than any file from the given set.
+-- Returns True if given file does not exist.
+isOlderThan :: FilePath -> [TimedFile] -> IO Bool
+isOlderThan cache files = do
+  exist <- doesFileExist cache
+  if not exist
+  then return True
+  else do
+    tCache <- getModificationTime cache
+    return $ any (tCache <=) $ map tfTime files -- including equal just in case
 
 -- | Browsing all functions in all system modules.
-getGlobalSymbolTable :: LightGhc [(Symbol,[ModuleString])]
+getGlobalSymbolTable :: LightGhc [(Symbol, [ModuleString])]
 getGlobalSymbolTable = do
-    df  <- G.getSessionDynFlags
-    let mods = listVisibleModules df
-    moduleInfos <- mapM G.getModuleInfo mods
-    return $ collectModules
-           $ extractBindings `concatMap` (moduleInfos `zip` mods)
+  df  <- G.getSessionDynFlags
+  let mods = listVisibleModules df
+  moduleInfos <- mapM G.getModuleInfo mods
+  return $ collectModules
+         $ extractBindings `concatMap` (moduleInfos `zip` mods)
 
 extractBindings :: (Maybe G.ModuleInfo, G.Module)
                 -> [(Symbol, ModuleString)]
-extractBindings (Nothing,_)  = []
-extractBindings (Just inf,mdl) =
-    map (\name -> (getOccString name, moduleNameString $ moduleName mdl)) names
+extractBindings (Nothing,  _)   = []
+extractBindings (Just inf, mdl) =
+  map (\name -> (getOccString name, modStr)) names
   where
-    names = G.modInfoExports inf
+    names  = G.modInfoExports inf
+    modStr = ModuleString $ moduleNameString $ moduleName mdl
 
-collectModules :: [(Symbol,ModuleString)]
-               -> [(Symbol,[ModuleString])]
+collectModules :: [(Symbol, ModuleString)]
+               -> [(Symbol, [ModuleString])]
 collectModules = map tieup . groupBy ((==) `on` fst) . sort
   where
     tieup x = (head (map fst x), map snd x)

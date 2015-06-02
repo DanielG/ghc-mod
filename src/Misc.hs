@@ -75,7 +75,7 @@ getDb (SymDbReq ref _) = do
 
 checkDb :: IOish m => SymDbReq -> SymbolDb -> GhcModT m SymbolDb
 checkDb (SymDbReq ref act) db = do
-    outdated <- liftIO $ isOutdated db
+    outdated <- isOutdated db
     if outdated then do
         -- async and wait here is unnecessary because this is essentially
         -- synchronous. But Async can be used a cache.

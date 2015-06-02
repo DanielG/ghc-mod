@@ -513,8 +513,8 @@ autoCmd       = withParseCmd [] $ locAction  "auto"   auto
 refineCmd     = withParseCmd [] $ locAction' "refine" refine
 
 infoCmd       = withParseCmd [] $ action
-  where action [file,_,expr] = info file expr
-        action [file,expr]   = info file expr
+  where action [file,_,expr] = info file $ Expression expr
+        action [file,expr]   = info file $ Expression expr
         action _ = throw $ InvalidCommandLine (Left "info")
 
 legacyInteractiveCmd = withParseCmd [] $ \[] -> legacyInteractive >> return ""
@@ -528,9 +528,9 @@ locAction _ action [file,_,line,col] = action file (read line) (read col)
 locAction _ action [file,  line,col] = action file (read line) (read col)
 locAction cmd _ _ = throw $ InvalidCommandLine (Left cmd)
 
-locAction' :: String -> (String -> Int -> Int -> String -> a) -> [String] -> a
-locAction' _ action [f,_,line,col,expr] = action f (read line) (read col) expr
-locAction' _ action [f,  line,col,expr] = action f (read line) (read col) expr
+locAction' :: String -> (String -> Int -> Int -> Expression -> a) -> [String] -> a
+locAction' _ action [f,_,line,col,expr] = action f (read line) (read col) (Expression expr)
+locAction' _ action [f,  line,col,expr] = action f (read line) (read col) (Expression expr)
 locAction' cmd _ _ = throw $ InvalidCommandLine (Left cmd)
 
 

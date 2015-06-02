@@ -15,26 +15,26 @@
 -- along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 {-# LANGUAGE CPP #-}
+{-# LANGUAGE DoAndIfThenElse #-}
+
 module Language.Haskell.GhcMod.Utils (
     module Language.Haskell.GhcMod.Utils
   , module Utils
   , readProcess
   ) where
 
-import Control.Arrow
 import Control.Applicative
 import Data.Char
+import Exception
 import Language.Haskell.GhcMod.Error
 import Language.Haskell.GhcMod.Monad.Types
-import Exception
 import System.Directory (getCurrentDirectory, setCurrentDirectory, doesFileExist,
-                         getTemporaryDirectory, canonicalizePath, doesFileExist)
-import System.Process (readProcess)
-import System.Directory ()
+                         getTemporaryDirectory, canonicalizePath)
+import System.Environment
 import System.FilePath (splitDrive, takeDirectory, takeFileName, pathSeparators,
                         (</>))
 import System.IO.Temp (createTempDirectory)
-import System.Environment
+import System.Process (readProcess)
 import Text.Printf
 
 import Paths_ghc_mod (getLibexecDir)
@@ -44,39 +44,30 @@ import Utils
 dropWhileEnd :: (a -> Bool) -> [a] -> [a]
 dropWhileEnd p = foldr (\x xs -> if p x && null xs then [] else x : xs) []
 
-extractParens :: String -> String
-extractParens str = extractParens' str 0
- where
-   extractParens' :: String -> Int -> String
-   extractParens' [] _ = []
-   extractParens' (s:ss) level
-       | s `elem` "([{" = s : extractParens' ss (level+1)
-       | level == 0 = extractParens' ss 0
-       | s `elem` "}])" && level == 1 = [s]
-       | s `elem` "}])" = s : extractParens' ss (level-1)
-       | otherwise = s : extractParens' ss level
-
 withDirectory_ :: (MonadIO m, ExceptionMonad m) => FilePath -> m a -> m a
 withDirectory_ dir action =
-    gbracket (liftIO getCurrentDirectory) (liftIO . setCurrentDirectory)
-                (\_ -> liftIO (setCurrentDirectory dir) >> action)
+  gbracket
+    (liftIO getCurrentDirectory)
+    (liftIO . setCurrentDirectory)
+    (\_ -> liftIO (setCurrentDirectory dir) >> action)
 
 uniqTempDirName :: FilePath -> FilePath
-uniqTempDirName dir = ("ghc-mod"++) $ uncurry (++)
-        $ map escapeDriveChar *** map escapePathChar
-        $ splitDrive dir
- where
+uniqTempDirName dir =
+  "ghc-mod" ++ map escapeDriveChar drive ++ map escapePathChar path
+  where
+    (drive, path) = splitDrive dir
+    escapeDriveChar :: Char -> Char
     escapeDriveChar c
-        | isAlphaNum c = c
-        | otherwise = '-'
-
+      | isAlphaNum c = c
+      | otherwise     = '-'
+    escapePathChar :: Char -> Char
     escapePathChar c
-        | c `elem` pathSeparators = '-'
-        | otherwise = c
+      | c `elem` pathSeparators = '-'
+      | otherwise               = c
 
 newTempDir :: FilePath -> IO FilePath
 newTempDir dir =
-    flip createTempDirectory (uniqTempDirName dir) =<< getTemporaryDirectory
+  flip createTempDirectory (uniqTempDirName dir) =<< getTemporaryDirectory
 
 whenM :: IO Bool -> IO () -> IO ()
 whenM mb ma = mb >>= flip when ma
@@ -94,21 +85,21 @@ ghcModExecutable = fmap (</> "dist/build/ghc-mod/ghc-mod") getCurrentDirectory
 
 findLibexecExe :: String -> IO FilePath
 findLibexecExe "cabal-helper-wrapper" = do
-    libexecdir <- getLibexecDir
-    let exeName = "cabal-helper-wrapper"
-        exe = libexecdir </> exeName
+  libexecdir <- getLibexecDir
+  let exeName = "cabal-helper-wrapper"
+      exe = libexecdir </> exeName
 
-    exists <- doesFileExist exe
+  exists <- doesFileExist exe
 
-    if exists
-       then return exe
-       else do
-         mdir <- tryFindGhcModTreeDataDir
-         case mdir of
-           Nothing ->
-               error $ libexecNotExitsError exeName libexecdir
-           Just dir ->
-               return $ dir </> "dist" </> "build" </> exeName </> exeName
+  if exists
+  then return exe
+  else do
+    mdir <- tryFindGhcModTreeDataDir
+    case mdir of
+      Nothing ->
+        error $ libexecNotExitsError exeName libexecdir
+      Just dir ->
+        return $ dir </> "dist" </> "build" </> exeName </> exeName
 findLibexecExe exe = error $ "findLibexecExe: Unknown executable: " ++ exe
 
 libexecNotExitsError :: String -> FilePath -> String
@@ -131,22 +122,20 @@ tryFindGhcModTreeLibexecDir :: IO (Maybe FilePath)
 tryFindGhcModTreeLibexecDir  = do
   exe <- getExecutablePath'
   dir <- case takeFileName exe of
-    "ghc" -> do -- we're probably in ghci; try CWD
-        getCurrentDirectory
-    _ ->
-        return $ (!!4) $ iterate takeDirectory exe
+    "ghc" -> getCurrentDirectory -- we're probably in ghci; try CWD
+    _     -> return $ (!!4) $ iterate takeDirectory exe
   exists <- doesFileExist $ dir </> "ghc-mod.cabal"
   return $ if exists
-             then Just dir
-             else Nothing
+           then Just dir
+           else Nothing
 
 tryFindGhcModTreeDataDir :: IO (Maybe FilePath)
 tryFindGhcModTreeDataDir  = do
   dir <- (!!4) . iterate takeDirectory <$> getExecutablePath'
   exists <- doesFileExist $ dir </> "ghc-mod.cabal"
   return $ if exists
-             then Just dir
-             else Nothing
+           then Just dir
+           else Nothing
 
 readLibExecProcess' :: (MonadIO m, ExceptionMonad m)
                     => String -> [String] -> m String

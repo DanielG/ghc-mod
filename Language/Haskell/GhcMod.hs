@@ -17,7 +17,7 @@ module Language.Haskell.GhcMod (
   , gmLog
   -- * Types
   , ModuleString
-  , Expression
+  , Expression(..)
   , GhcPkgDb
   , Symbol
   , SymbolDb

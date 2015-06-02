@@ -34,17 +34,17 @@ spec = do
     describe "info" $ do
         it "works for non exported functions" $ do
             let tdir = "test/data/non-exported"
-            res <- runD' tdir $ info "Fib.hs" "fib"
+            res <- runD' tdir $ info "Fib.hs" $ Expression "fib"
             res `shouldSatisfy` ("fib :: Int -> Int" `isPrefixOf`)
 
         it "works with a module using TemplateHaskell" $ do
             let tdir = "test/data/template-haskell"
-            res <- runD' tdir $ info "Bar.hs" "foo"
+            res <- runD' tdir $ info "Bar.hs" $ Expression "foo"
             res `shouldSatisfy` ("foo :: ExpQ" `isPrefixOf`)
 
         it "works with a module that imports another module using TemplateHaskell" $ do
             let tdir = "test/data/template-haskell"
-            res <- runD' tdir $ info "ImportsTH.hs" "bar"
+            res <- runD' tdir $ info "ImportsTH.hs" $ Expression "bar"
             res `shouldSatisfy` ("bar :: [Char]" `isPrefixOf`)
 
 getDistDir :: IO FilePath

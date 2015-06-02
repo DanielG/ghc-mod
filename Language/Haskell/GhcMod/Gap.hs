@@ -103,6 +103,8 @@ import Parser
 import SrcLoc
 import Packages
 
+import Language.Haskell.GhcMod.Types (Expression(..))
+
 ----------------------------------------------------------------
 ----------------------------------------------------------------
 --
@@ -325,8 +327,8 @@ filterOutChildren get_thing xs
   where
     implicits = mkNameSet [getName t | x <- xs, t <- implicitTyThings (get_thing x)]
 
-infoThing :: GhcMonad m => String -> m SDoc
-infoThing str = do
+infoThing :: GhcMonad m => Expression -> m SDoc
+infoThing (Expression str) = do
     names <- parseName str
 #if __GLASGOW_HASKELL__ >= 708
     mb_stuffs <- mapM (getInfo False) names
