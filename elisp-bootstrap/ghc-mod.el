@@ -3,7 +3,8 @@
 "*The command name of \"ghc-mod\"")
 (defvar ghc-bootstrapped nil)
 
-(defun ghc-bootstrap ()
+;;;###autoload
+(defun ghc-mod-init ()
   (unless ghc-bootstrapped
     (dolist (path (process-lines ghc-module-command "elispPath"))
       (add-to-list 'load-path path)
