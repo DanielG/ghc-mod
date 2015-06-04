@@ -1,4 +1,4 @@
-;;; ghc.el --- ghc-mod front-end for haskell-mode
+;;; ghc-mod-internal.el --- ghc-mod front-end for haskell-mode
 
 ;; Author:  Kazu Yamamoto <Kazu@Mew.org>
 ;; Created: Sep 25, 2009
@@ -6,9 +6,9 @@
 
 ;; Put the following code to your "~/.emacs".
 ;;
-;; (autoload 'ghc-init "ghc" nil t)
-;; (autoload 'ghc-debug "ghc" nil t)
-;; (add-hook 'haskell-mode-hook (lambda () (ghc-init)))
+;; (autoload 'ghc-mod-internal-init "ghc" nil t)
+;; (autoload 'ghc-mod-internal-debug "ghc" nil t)
+;; (add-hook 'haskell-mode-hook (lambda () (ghc-mod-internal-init)))
 ;;
 ;; Or if you wish to display error each goto next/prev error,
 ;; set ghc-display-error valiable.
@@ -28,7 +28,7 @@
 	       (< emacs-minor-version minor)))
       (error "ghc-mod requires at least Emacs %d.%d" major minor)))
 
-(defconst ghc-version "0")
+(defconst ghc-mod-version "0")
 
 ;; (eval-when-compile
 ;;  (require 'haskell-mode))
@@ -86,7 +86,7 @@
 (defvar ghc-initialized nil)
 
 ;;;###autoload
-(defun ghc-init ()
+(defun ghc-mod-internal-init ()
   (ghc-abbrev-init)
   (ghc-type-init)
   (unless ghc-initialized
@@ -125,28 +125,26 @@
   (set (make-local-variable 'dabbrev-case-fold-search) nil))
 
 ;;;###autoload
-(defun ghc-debug ()
+(defun ghc-mod-internal-debug ()
   (interactive)
-  (let ((el-path (locate-file "ghc.el" load-path))
+  (let ((el-path (locate-file "ghc-mod-internal.el" load-path))
+	(bootstrap-el-path (locate-file "ghc-mod.el" load-path))
 	(ghc-path (executable-find "ghc")) ;; FIXME
 	(ghc-mod-path (executable-find ghc-module-command))
-	(ghc-modi-path (executable-find ghc-interactive-command))
-	(el-ver ghc-version)
+	(el-ver ghc-mod-version)
 	(ghc-ver (ghc-run-ghc-mod '("--version") "ghc"))
 	(ghc-mod-ver (ghc-run-ghc-mod '("version")))
-	(ghc-modi-ver (ghc-run-ghc-mod '("version") ghc-interactive-command))
 	(path (getenv "PATH")))
     (switch-to-buffer (get-buffer-create "**GHC Debug**"))
     (erase-buffer)
     (insert "Path: check if you are using intended programs.\n")
-    (insert (format "\t  ghc.el path: %s\n" el-path))
-    (insert (format "\t ghc-mod path: %s\n" ghc-mod-path))
-    (insert (format "\tghc-modi path: %s\n" ghc-modi-path))
-    (insert (format "\t     ghc path: %s\n" ghc-path))
+    (insert (format "\t           ghc-mod.el path: %s\n" bootstrap-el-path))
+    (insert (format "\t  ghc-mod-internal.el path: %s\n" el-path))
+    (insert (format "\t              ghc-mod path: %s\n" ghc-mod-path))
+    (insert (format "\t                  ghc path: %s\n" ghc-path))
     (insert "\nVersion: all versions must be the same.\n")
-    (insert (format "\t  ghc.el version %s\n" el-ver))
-    (insert (format "\t %s\n" ghc-mod-ver))
-    (insert (format "\t%s\n" ghc-modi-ver))
+    (insert (format "\tghc-mod-internal.el version %s\n" el-ver))
+    (insert (format "\t            %s\n" ghc-mod-ver))
     (insert (format "\t%s\n" ghc-ver))
     (insert "\nEnvironment variables:\n")
     (insert (format "\tPATH=%s\n" path))))
@@ -157,4 +155,4 @@
       (ghc-initial-code-from-signature)
     (ghc-insert-template)))
 
-(provide 'ghc)
+(provide 'ghc-mod-internal)

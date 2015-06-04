@@ -1,5 +1,6 @@
 dist/
 elisp/*.elc
+elisp-internal/*.elc
 *~
 /.cabal-sandbox/
 add-source-timestamps
