@@ -1,3 +1,4 @@
+(defconst ghc-version "0")
 (defvar ghc-module-command "ghc-mod"
 "*The command name of \"ghc-mod\"")
 (defvar ghc-bootstrapped nil)
