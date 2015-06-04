@@ -14,11 +14,11 @@ fi
 
 cd $(dirname $0)/..
 
-sed -i 's/(defconst ghc-version ".*")/(defconst ghc-version "'"$VERSION"'")/' \
-    elisp/ghc.el
+sed -i 's/(defconst ghc-mod-version ".*")/(defconst ghc-mod-version "'"$VERSION"'")/' \
+    elisp/ghc-mod.el
 
-sed -i 's/(defconst ghc-version ".*")/(defconst ghc-version "'"$VERSION"'")/' \
-    elisp-bootstrap/ghc-mod.el
+sed -i 's/(defconst ghc-mod-version ".*")/(defconst ghc-mod-version "'"$VERSION"'")/' \
+    elisp-internal/ghc-mod-internal.el
 
 sed -r -i 's/^(Version:[[:space:]]*)[0-9.]+/\1'"$VERSION"'/' ghc-mod.cabal
 
