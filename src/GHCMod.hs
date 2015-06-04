@@ -15,7 +15,7 @@ import Data.Char (isSpace)
 import Exception
 import Language.Haskell.GhcMod
 import Language.Haskell.GhcMod.Internal
-import Paths_ghc_mod
+import Paths_ghc_mod (version, getDataFileName)
 import System.Console.GetOpt (OptDescr(..), ArgDescr(..), ArgOrder(..))
 import qualified System.Console.GetOpt as O
 import System.Directory (setCurrentDirectory)
@@ -185,6 +185,9 @@ usage =
  \        Debugging information related to cabal component resolution.\n\
  \\n\
  \    - boot\n\
+ \         Internal command used by the emacs frontend.\n\
+ \\n\
+ \    - elispPath\n\
  \         Internal command used by the emacs frontend.\n\
  \\n\
  \    - legacy-interactive\n\
@@ -401,6 +404,7 @@ legacyInteractiveLoop symdbreq ref world = do
         "refine" -> refineCmd args
 
         "boot"   -> bootCmd []
+        "elispPath" -> elispPathCmd []
         "browse" -> browseCmd args
 
         "quit"   -> liftIO $ exitSuccess
@@ -409,6 +413,9 @@ legacyInteractiveLoop symdbreq ref world = do
 
     liftIO $ putStr res >> putStrLn "OK" >> hFlush stdout
     legacyInteractiveLoop symdbreq ref world
+
+elispPath :: IOish m => GhcModT m String
+elispPath = liftIO $ getDataFileName "elisp"
 
 globalCommands :: [String] -> Maybe String
 globalCommands []      = Nothing
@@ -443,6 +450,7 @@ ghcCommands (cmd:args) = do
      "doc"     -> pkgDocCmd
      "dumpsym" -> dumpSymbolCmd
      "boot"    -> bootCmd
+     "elispPath" -> elispPathCmd
      "legacy-interactive" -> legacyInteractiveCmd
      _         -> fatalError $ "unknown command: `" ++ cmd ++ "'"
 
@@ -487,7 +495,7 @@ catchArgs cmd action =
 modulesCmd, languagesCmd, flagsCmd, browseCmd, checkSyntaxCmd, expandTemplateCmd,
   debugInfoCmd, componentInfoCmd, infoCmd, typesCmd, splitsCmd, sigCmd,
   refineCmd, autoCmd, findSymbolCmd, lintCmd, rootInfoCmd, pkgDocCmd,
-  dumpSymbolCmd, bootCmd, legacyInteractiveCmd
+  dumpSymbolCmd, bootCmd, legacyInteractiveCmd, elispPathCmd
   :: IOish m => [String] -> GhcModT m String
 
 modulesCmd    = withParseCmd' "modules" s $ \[] -> modules
@@ -499,6 +507,7 @@ rootInfoCmd   = withParseCmd' "root"    [] $ \[] -> rootInfo
 componentInfoCmd = withParseCmd' "debugComponent" [] $ \ts -> componentInfo ts
 -- internal
 bootCmd       = withParseCmd' "boot" [] $ \[] -> boot
+elispPathCmd  = withParseCmd' "elispPath" [] $ \[] -> elispPath
 
 dumpSymbolCmd     = withParseCmd' "dump" [] $ \[tmpdir] -> dumpSymbol tmpdir
 findSymbolCmd     = withParseCmd' "find" [] $ \[sym]  -> findSymbol sym

@@ -31,6 +31,8 @@ Data-Files:             elisp/Makefile
 Data-Files:             LICENSE COPYING.BSD3 COPYING.AGPL3
 Extra-Source-Files:     ChangeLog
                         SetupCompat.hs
+                        elisp-bootstrap/Makefile
+                        elisp-bootstrap/*.el
                         NotCPP/*.hs
                         test/data/annotations/*.hs
                         test/data/broken-cabal/*.cabal
