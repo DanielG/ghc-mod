@@ -26,13 +26,13 @@ Description:
 Category:               GHC, Development
 Cabal-Version:          >= 1.14
 Build-Type:             Custom
-Data-Files:             elisp/Makefile
-                        elisp/*.el
+Data-Files:             elisp-internal/Makefile
+                        elisp-internal/*.el
 Data-Files:             LICENSE COPYING.BSD3 COPYING.AGPL3
 Extra-Source-Files:     ChangeLog
                         SetupCompat.hs
-                        elisp-bootstrap/Makefile
-                        elisp-bootstrap/*.el
+                        elisp/Makefile
+                        elisp/*.el
                         NotCPP/*.hs
                         test/data/annotations/*.hs
                         test/data/broken-cabal/*.cabal

@@ -415,7 +415,7 @@ legacyInteractiveLoop symdbreq ref world = do
     legacyInteractiveLoop symdbreq ref world
 
 elispPath :: IOish m => GhcModT m String
-elispPath = liftIO $ getDataFileName "elisp"
+elispPath = liftIO $ getDataFileName "elisp-internal"
 
 globalCommands :: [String] -> Maybe String
 globalCommands []      = Nothing

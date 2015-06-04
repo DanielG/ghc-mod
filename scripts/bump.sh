@@ -29,6 +29,6 @@ mv ChangeLog.tmp ChangeLog
 
 emacs -q -nw ChangeLog
 
-git add ChangeLog elisp/ghc.el elisp-bootstrap/ghc-mod.el ghc-mod.cabal
+git add ChangeLog elisp-internal/ghc.el elisp/ghc-mod.el ghc-mod.cabal
 git commit -m "Bump version to $VERSION"
 git tag "v$VERSION"
