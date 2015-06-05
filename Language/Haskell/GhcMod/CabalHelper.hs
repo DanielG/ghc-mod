@@ -17,7 +17,7 @@
 {-# LANGUAGE CPP #-}
 module Language.Haskell.GhcMod.CabalHelper (
     getComponents
-  , getGhcPkgOptions
+  , getGhcMergedPkgOptions
   ) where
 
 import Control.Applicative
@@ -38,9 +38,14 @@ import Paths_ghc_mod as GhcMod
 
 -- | Only package related GHC options, sufficient for things that don't need to
 -- access home modules
-getGhcPkgOptions :: (Applicative m, MonadIO m, GmEnv m, GmLog m)
-                 => m [(ChComponentName, [GHCOption])]
-getGhcPkgOptions = map (\c -> (gmcName c, gmcGhcPkgOpts c)) `liftM` getComponents
+getGhcMergedPkgOptions :: (Applicative m, MonadIO m, GmEnv m, GmLog m)
+                 => m [GHCOption]
+getGhcMergedPkgOptions = chCached Cached {
+  cacheFile = mergedPkgOptsCacheFile,
+  cachedAction = \ _ (progs, root, _) _ -> do
+    opts <- withCabal $ runQuery' progs root $ ghcMergedPkgOptions
+    return ([setupConfigPath], opts)
+ }
 
 helperProgs :: Options -> Programs
 helperProgs opts = Programs {
@@ -56,16 +61,22 @@ helperProgs opts = Programs {
 -- 'resolveGmComponents'.
 getComponents :: (Applicative m, MonadIO m, GmEnv m, GmLog m)
               => m [GmComponent GMCRaw ChEntrypoint]
-getComponents = do
-  opt <- options
-  Cradle {..} <- cradle
-  let gmVer = GhcMod.version
-      chVer = VERSION_cabal_helper
-      d = (helperProgs opt
-          , cradleRootDir </> "dist"
-          , (gmVer, chVer)
-          )
-  withCabal $ cached cradleRootDir cabalHelperCache d
+getComponents = chCached cabalHelperCache
+
+chCached c = do
+  root <- cradleRootDir <$> cradle
+  d <- cacheInputData root
+  withCabal $ cached root c d
+ where
+   cacheInputData root = do
+               opt <- options
+               return $ ( helperProgs opt
+                        , root </> "dist"
+                        , (gmVer, chVer)
+                        )
+
+   gmVer = GhcMod.version
+   chVer = VERSION_cabal_helper
 
 cabalHelperCache
   :: (Functor m, Applicative m, MonadIO m)

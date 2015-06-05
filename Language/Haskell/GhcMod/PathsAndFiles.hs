@@ -205,7 +205,10 @@ resolvedComponentsCacheFile :: String
 resolvedComponentsCacheFile = setupConfigPath <.> "ghc-mod.resolved-components"
 
 cabalHelperCacheFile :: String
-cabalHelperCacheFile = setupConfigPath <.> "ghc-mod.cabal-helper"
+cabalHelperCacheFile = setupConfigPath <.> "ghc-mod.cabal-components"
+
+mergedPkgOptsCacheFile :: String
+mergedPkgOptsCacheFile = setupConfigPath <.> "ghc-mod.package-options"
 
 -- | @findCradleFile dir@. Searches for a @.ghc-mod.cradle@ file in @dir@.
 -- If it exists in the given directory it is returned otherwise @findCradleFile@ returns @Nothing@

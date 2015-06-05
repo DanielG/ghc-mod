@@ -121,7 +121,7 @@ Library
                       , bytestring
                       , cereal >= 0.4
                       , containers
-                      , cabal-helper >= 0.3.3.0
+                      , cabal-helper >= 0.3.5.0
                       , deepseq
                       , directory
                       , filepath

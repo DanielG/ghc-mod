@@ -30,11 +30,16 @@ debugInfo = do
           Just _ -> cabalDebug
           Nothing -> return []
 
+    pkgOpts <- packageGhcOptions
+
     return $ unlines $
       [ "Root directory:       " ++ cradleRootDir
       , "Current directory:    " ++ cradleCurrentDir
+      , "GHC Package flags:\n"   ++ render (nest 4 $
+              fsep $ map text pkgOpts)
       , "GHC System libraries: " ++ ghcLibDir
-      , "GHC user options:     " ++ render (fsep $ map text ghcUserOptions)
+      , "GHC user options:\n"    ++ render (nest 4 $
+              fsep $ map text ghcUserOptions)
       ] ++ cabal
 
 cabalDebug :: IOish m => GhcModT m [String]

@@ -73,8 +73,8 @@ withLightHscEnv opts action = gbracket initEnv teardownEnv action
      dflags' <- runLightGhc env $ do
          -- HomeModuleGraph and probably all other clients get into all sorts of
          -- trouble if the package state isn't initialized here
-         _ <- setSessionDynFlags =<< getSessionDynFlags
-         addCmdOpts opts =<< getSessionDynFlags
+         _ <- setSessionDynFlags =<< addCmdOpts opts =<< getSessionDynFlags
+         getSessionDynFlags
      newHscEnv dflags'
 
 runLightGhc :: HscEnv -> LightGhc a -> IO a
@@ -263,8 +263,7 @@ packageGhcOptions :: (Applicative m, MonadIO m, GmEnv m, GmLog m) => m [GHCOptio
 packageGhcOptions = do
     crdl <- cradle
     case cradleCabalFile crdl of
-      Just _ ->
-        (Set.toList . Set.fromList . concat . map snd) `liftM` getGhcPkgOptions
+      Just _ -> getGhcMergedPkgOptions
       Nothing -> sandboxOpts crdl
 
 sandboxOpts :: Monad m => Cradle -> m [String]
