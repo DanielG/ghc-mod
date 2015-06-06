@@ -321,7 +321,9 @@ resolveModule env srcDirs (Left fn') = liftIO $ do
           fn <- canonicalizePath fn''
           emn <- fileModuleName env fn
           return $ case emn of
-              Left _ -> Nothing
+              Left _ -> Nothing -- TODO: should expose these errors otherwise
+                                -- modules with preprocessor/parse errors are
+                                -- going to be missing
               Right mmn -> Just $
                   case mmn of
                     Nothing -> mkMainModulePath fn
