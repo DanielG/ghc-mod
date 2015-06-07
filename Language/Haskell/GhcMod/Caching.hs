@@ -10,19 +10,47 @@ import Utils (TimedFile(..), timeMaybe, mightExist)
 import Language.Haskell.GhcMod.Monad.Types
 import Language.Haskell.GhcMod.Logging
 
-data Cached m d a =
-     Cached { cacheFile       :: FilePath,
-              cachedAction    :: TimedCacheFiles -> d -> Maybe a -> m ([FilePath], a)
-              -- ^ The cached action, will only run if
-              -- * The cache doesn\'t exist yet
-              -- * The cache exists and 'inputData' changed
-              -- * any files in 'inputFiles' are older than 'cacheFile'.
-            }
+data Cached m d a = Cached {
+  cacheFile       :: FilePath,
 
-data TimedCacheFiles =
-     TimedCacheFiles { tcCacheFile :: Maybe TimedFile,
-                       tcFiles     :: [TimedFile]
-                     }
+
+  cachedAction    :: TimedCacheFiles
+                  -> d
+                  -> Maybe a
+                  -> m ([FilePath], a)
+
+  -- ^ @cachedAction tcf data ma@
+  --
+  -- * @tcf@: Input file timestamps. Not technically necessary, just an
+  -- optimizazion when knowing which input files changed can make updating the
+  -- cache faster
+  --
+  -- * @data@: Arbitrary static input data can be used to invalidate the cache
+  -- using something other than file timestamps i.e. environment tool version
+  -- numbers
+  --
+  -- * @ma@: Cached data if it existed
+  --
+  -- Returns:
+  --
+  -- * @fst@: Input files used in generating the cache
+  --
+  -- * @snd@: Cache data, will be stored alongside the static input data in the
+  --   'cacheFile'
+  --
+  -- The cached action, will only run if one of the following is true:
+  --
+  -- * 'cacheFile' doesn\'t exist yet
+  -- * 'cacheFile' exists and 'inputData' changed
+  -- * any files returned by the cached action changed
+ }
+
+data TimedCacheFiles = TimedCacheFiles {
+  tcCacheFile :: Maybe TimedFile,
+  -- ^ 'cacheFile' timestamp
+  tcFiles     :: [TimedFile]
+  -- ^ Timestamped files returned by the cached action
+ }
 
 -- | Cache a MonadIO action with proper invalidation.
 cached :: forall m a d. (MonadIO m, GmLog m, Serialize a, Eq d, Serialize d)
@@ -33,20 +61,18 @@ cached :: forall m a d. (MonadIO m, GmLog m, Serialize a, Eq d, Serialize d)
 cached dir cd d = do
     mcc <- readCache
     tcfile <- liftIO $ timeMaybe (cacheFile cd)
-    let defTcf = TimedCacheFiles tcfile []
-
     case mcc of
-      Nothing -> writeCache defTcf Nothing "cache missing"
+      Nothing ->
+          writeCache (TimedCacheFiles tcfile []) Nothing "cache missing"
       Just (ifs, d', a) | d /= d' -> do
           tcf <- timeCacheInput dir (cacheFile cd) ifs
           writeCache tcf (Just a) "input data changed"
       Just (ifs, _, a) -> do
-                    tcf <- timeCacheInput dir (cacheFile cd) ifs
-                    let invifs = invalidatingInputFiles tcf
-                    case invifs of
-                      Nothing -> writeCache tcf (Just a) "cache missing, existed a sec ago WTF?"
-                      Just [] -> return a
-                      Just _ -> writeCache tcf (Just a) "input files changed"
+          tcf <- timeCacheInput dir (cacheFile cd) ifs
+          case invalidatingInputFiles tcf of
+            Just [] -> return a
+            Just _  -> writeCache tcf (Just a) "input files changed"
+            Nothing -> writeCache tcf (Just a) "cache missing, existed a sec ago WTF?"
 
  where
    writeCache tcf ma cause = do
