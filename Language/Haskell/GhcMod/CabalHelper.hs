@@ -24,6 +24,7 @@ import Control.Applicative
 import Control.Monad
 import Data.Monoid
 import Data.Version
+import Data.Serialize (Serialize)
 import Distribution.Helper
 import qualified Language.Haskell.GhcMod.Types as T
 import Language.Haskell.GhcMod.Types hiding (ghcProgram, ghcPkgProgram,
@@ -63,6 +64,8 @@ getComponents :: (Applicative m, MonadIO m, GmEnv m, GmLog m)
               => m [GmComponent GMCRaw ChEntrypoint]
 getComponents = chCached cabalHelperCache
 
+chCached :: (Applicative m, MonadIO m, GmEnv m, GmLog m, Serialize a)
+         => Cached m (Programs, FilePath, (Version, [Char])) a -> m a
 chCached c = do
   root <- cradleRootDir <$> cradle
   d <- cacheInputData root
