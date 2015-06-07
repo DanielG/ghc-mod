@@ -14,7 +14,7 @@ import Data.Char (isSpace)
 import Data.Maybe
 import Exception
 import Language.Haskell.GhcMod
-import Language.Haskell.GhcMod.Internal
+import Language.Haskell.GhcMod.Internal hiding (MonadIO,liftIO)
 import Paths_ghc_mod
 import System.Console.GetOpt (OptDescr(..), ArgDescr(..), ArgOrder(..))
 import qualified System.Console.GetOpt as O

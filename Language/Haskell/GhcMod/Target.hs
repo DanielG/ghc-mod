@@ -184,11 +184,9 @@ targetGhcOptions crdl sefnmn = do
 
    cabalOpts :: Cradle -> GhcModT m [String]
    cabalOpts Cradle{..} = do
-       comps <- mapM (resolveEntrypoint crdl) =<< getComponents
-       mcs <- cached cradleRootDir resolvedComponentsCache comps
+       mcs <- cabalResolvedComponents
 
        let mdlcs = moduleComponents mcs `zipMap` Set.toList sefnmn
-           cns = map gmcName comps
            candidates = findCandidates $ map snd mdlcs
 
        let noCandidates = Set.null candidates
@@ -196,7 +194,10 @@ targetGhcOptions crdl sefnmn = do
 
        if noCandidates && noModuleHasAnyAssignment
           then do
-            gmLog GmWarning "" $ strDoc $ "Could not find a component assignment, falling back to picking first component in cabal file."
+            -- First component should be ChLibName, if no lib will take lexically first exe.
+            let cns = filter (/= ChSetupHsName) $ Map.keys mcs
+
+            gmLog GmWarning "" $ strDoc $ "Could not find a component assignment, falling back to picking library component in cabal file."
             return $ gmcGhcOpts $ fromJust $ Map.lookup (head cns) mcs
           else do
             when noCandidates $
@@ -476,3 +477,10 @@ needsFallback = any $ \ms ->
 #if __GLASGOW_HASKELL__ >= 708
                 || (Opt_PatternSynonyms `xopt` df)
 #endif
+
+cabalResolvedComponents :: (IOish m) =>
+   GhcModT m (Map ChComponentName (GmComponent 'GMCResolved (Set ModulePath)))
+cabalResolvedComponents = do
+    crdl@(Cradle{..}) <- cradle
+    comps <- mapM (resolveEntrypoint crdl) =<< getComponents
+    cached cradleRootDir resolvedComponentsCache comps

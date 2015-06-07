@@ -12,7 +12,6 @@ import Language.Haskell.GhcMod.Convert
 import Language.Haskell.GhcMod.Monad
 import Language.Haskell.GhcMod.Types
 import Language.Haskell.GhcMod.Internal
-import Language.Haskell.GhcMod.CabalHelper
 import Language.Haskell.GhcMod.Target
 import Language.Haskell.GhcMod.Pretty
 import Language.Haskell.GhcMod.Utils
@@ -44,8 +43,8 @@ debugInfo = do
 
 cabalDebug :: IOish m => GhcModT m [String]
 cabalDebug = do
-    crdl@Cradle {..} <- cradle
-    mcs <- resolveGmComponents Nothing =<< mapM (resolveEntrypoint crdl) =<< getComponents
+    Cradle {..} <- cradle
+    mcs <- cabalResolvedComponents
     let entrypoints = Map.map gmcEntrypoints mcs
         graphs      = Map.map gmcHomeModuleGraph mcs
         opts        = Map.map gmcGhcOpts mcs
@@ -69,8 +68,7 @@ componentInfo ts = do
     -- useful function from there.
     crdl <- cradle
     sefnmn <- Set.fromList `liftM` mapM guessModuleFile ts
-    comps <- mapM (resolveEntrypoint crdl) =<< getComponents
-    mcs <- resolveGmComponents Nothing comps
+    mcs <- cabalResolvedComponents
     let
         mdlcs = moduleComponents mcs `zipMap` Set.toList sefnmn
         candidates = findCandidates $ map snd mdlcs
