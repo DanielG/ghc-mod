@@ -1,7 +1,7 @@
 module Language.Haskell.GhcMod.FileMapping
     ( loadMappedFile
     , loadMappedFiles
-    , delMMappedFile
+    , unloadMappedFile
     , mapFile
     ) where
 
@@ -60,3 +60,6 @@ mkMappedTarget tid taoc (Just (MemoryMapping (Just src))) = do
   ct <- liftIO getCurrentTime
   return $ mkTarget tid taoc $ Just (sb, ct)
 mkMappedTarget tid taoc _ = return $ mkTarget tid taoc Nothing
+
+unloadMappedFile :: IOish m => FilePath -> GhcModT m ()
+unloadMappedFile = delMMappedFile

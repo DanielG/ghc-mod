@@ -441,7 +441,7 @@ legacyInteractiveLoop symdbreq world = do
         "load"   -> loadMappedFile arg (MemoryMapping Nothing)
                  >> return ""
 
-        "unload" -> delMMappedFile arg
+        "unload" -> unloadMappedFile arg
                  >> return ""
 
         "quit"   -> liftIO $ exitSuccess
