@@ -342,8 +342,9 @@ instance (MonadBaseControl IO m) => MonadBaseControl IO (GhcModT m) where
                 (ErrorT GhcModError
                   (JournalT GhcModLog
                     (ReaderT GhcModEnv m) ) ) ) a
-    liftBaseWith f = GhcModT . liftBaseWith $ \runInBase ->
-        f $ runInBase . unGhcModT
+
+    liftBaseWith f = GhcModT (liftBaseWith $ \runInBase ->
+        f $ runInBase . unGhcModT)
 
     restoreM = GhcModT . restoreM
     {-# INLINE liftBaseWith #-}
