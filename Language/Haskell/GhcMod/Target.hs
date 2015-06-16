@@ -53,6 +53,8 @@ import Data.Map (Map)
 import qualified Data.Map  as Map
 import Data.Set (Set)
 import qualified Data.Set as Set
+import Data.List (nubBy)
+import Data.Function (on)
 import Distribution.Helper
 import Prelude hiding ((.))
 
@@ -163,12 +165,15 @@ runGmlTWith efnmns' mdf wrapper action = do
     initSession opts' $
         setModeSimple >>> setEmptyLogger >>> mdf
 
+    mappedStrs <- getMMappedFilePaths
+    let targetStrs = mappedStrs ++ map moduleNameString mns ++ cfns
+
     unGmlT $ wrapper $ do
       targets <-
         withLightHscEnv opts $ \env ->
-                mapM (`guessTarget` Nothing) (map moduleNameString mns ++ cfns)
-            >>= mapM (mapFile env)
-            >>= mapM relativize
+                liftM (nubBy ((==) `on` targetId))
+                  (mapM ((`guessTarget` Nothing) >=> mapFile env) targetStrs)
+              >>= mapM relativize
       loadTargets targets
       action
   where

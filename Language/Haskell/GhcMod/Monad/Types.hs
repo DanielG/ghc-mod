@@ -53,6 +53,7 @@ module Language.Haskell.GhcMod.Monad.Types (
   , addMMappedFile
   , delMMappedFile
   , lookupMMappedFile
+  , getMMappedFilePaths
   -- * Re-exporting convenient stuff
   , MonadIO
   , liftIO
@@ -463,6 +464,9 @@ delMMappedFile t =
 lookupMMappedFile  :: GmState m => FilePath -> m (Maybe FileMapping)
 lookupMMappedFile t =
   M.lookup t `liftM` getMMappedFiles
+
+getMMappedFilePaths :: GmState m => m [FilePath]
+getMMappedFilePaths = M.keys `liftM` getMMappedFiles
 
 withOptions :: GmEnv m => (Options -> Options) -> m a -> m a
 withOptions changeOpt action = gmeLocal changeEnv action
