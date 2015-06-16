@@ -15,6 +15,7 @@ import System.FilePath
 
 import Data.Time
 
+import Control.Monad.Trans.Maybe
 import GHC
 
 loadMappedFiles :: IOish m => GhcModT m ()
@@ -47,8 +48,9 @@ mapFile _ (Target tid@(TargetFile filePath _) taoc _) = do
   mapping <- lookupMMappedFile filePath
   mkMappedTarget tid taoc mapping
 mapFile env (Target tid@(TargetModule moduleName) taoc _) = do
-  filePath <- liftIO $ findModulePath env moduleName
-  mapping <- maybe (return Nothing) lookupMMappedFile $ fmap mpPath filePath
+  mapping <- runMaybeT $ do
+    filePath <- MaybeT $ liftIO $ findModulePath env moduleName
+    MaybeT $ lookupMMappedFile $ mpPath filePath
   mkMappedTarget tid taoc mapping
 
 mkMappedTarget :: (IOish m, GmState m, GhcMonad m) =>
