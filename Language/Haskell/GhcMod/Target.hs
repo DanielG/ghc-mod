@@ -382,7 +382,7 @@ chModToMod :: ChModuleName -> ModuleName
 chModToMod (ChModuleName mn) = mkModuleName mn
 
 
-resolveModule :: (MonadIO m, GmEnv m, GmLog m, GmState m) =>
+resolveModule :: (IOish m, GmEnv m, GmLog m, GmState m) =>
   HscEnv -> [FilePath] -> CompilationUnit -> m (Maybe ModulePath)
 resolveModule env _srcDirs (Right mn) =
     liftIO $ traverse canonicalizeModulePath =<< findModulePath env mn
@@ -392,7 +392,7 @@ resolveModule env srcDirs (Left fn') = do
       Nothing -> return Nothing
       Just fn'' -> do
           fn <-  liftIO $ canonicalizePath fn''
-          emn <-  liftIO $ fileModuleName env fn
+          emn <- fileModuleName env fn
           case emn of
               Left errs -> do
                 gmLog GmWarning ("resolveModule " ++ show fn) $

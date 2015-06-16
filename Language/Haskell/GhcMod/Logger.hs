@@ -9,9 +9,11 @@ module Language.Haskell.GhcMod.Logger (
 import Control.Arrow
 import Control.Applicative
 import Data.List (isPrefixOf)
-import Data.Maybe (fromMaybe)
+import qualified Data.Map as Map
+import Data.Maybe (fromMaybe, mapMaybe)
+import Control.Monad.Reader (Reader, asks, runReader)
 import Data.IORef (IORef, newIORef, readIORef, writeIORef, modifyIORef)
-import System.FilePath (normalise)
+import System.FilePath (normalise, makeRelative)
 import Text.PrettyPrint
 
 import ErrUtils (ErrMsg, errMsgShortDoc, errMsgExtraInfo)
@@ -26,6 +28,7 @@ import Language.Haskell.GhcMod.Doc (showPage)
 import Language.Haskell.GhcMod.DynFlags (withDynFlags)
 import Language.Haskell.GhcMod.Monad.Types
 import Language.Haskell.GhcMod.Error
+import Language.Haskell.GhcMod.Types
 import qualified Language.Haskell.GhcMod.Gap as Gap
 import Prelude
 
@@ -34,6 +37,13 @@ type Builder = [String] -> [String]
 data Log = Log [String] Builder
 
 newtype LogRef = LogRef (IORef Log)
+
+data ReaderState = ReaderState { rsDynFlags :: DynFlags
+                               , rsPprStyle :: PprStyle
+                               , rsMapFile :: FilePath -> FilePath
+                               }
+
+type ReaderM a = Reader ReaderState a
 
 emptyLog :: Log
 emptyLog = Log [] id
@@ -47,10 +57,10 @@ readAndClearLogRef (LogRef ref) = do
     writeIORef ref emptyLog
     return $ b []
 
-appendLogRef :: DynFlags -> LogRef -> DynFlags -> Severity -> SrcSpan -> PprStyle -> SDoc -> IO ()
-appendLogRef df (LogRef ref) _ sev src st msg = modifyIORef ref update
+appendLogRef :: ReaderState -> DynFlags -> LogRef -> DynFlags -> Severity -> SrcSpan -> PprStyle -> SDoc -> IO ()
+appendLogRef rs df (LogRef ref) _ sev src st msg = modifyIORef ref update
   where
-    l = ppMsg src sev df st msg
+    l = runReader (ppMsg src sev msg) rs{rsDynFlags=df, rsPprStyle=st}
     update lg@(Log ls b)
       | l `elem` ls = lg
       | otherwise   = Log (l:ls) (b . (l:))
@@ -60,7 +70,7 @@ appendLogRef df (LogRef ref) _ sev src st msg = modifyIORef ref update
 -- | Set the session flag (e.g. "-Wall" or "-w:") then
 --   executes a body. Logged messages are returned as 'String'.
 --   Right is success and Left is failure.
-withLogger :: (GmGhc m, GmEnv m)
+withLogger :: (GmGhc m, GmEnv m, GmState m)
            => (DynFlags -> DynFlags)
            -> m a
            -> m (Either String (String, a))
@@ -72,74 +82,97 @@ withLogger f action = do
       withDynFlags (f . setDf) action
   return $ either (Left . conv) (Right . first conv) eres
 
-withLogger' :: IOish m
+withLogger' :: (IOish m, GmState m, GmEnv m)
     => HscEnv -> ((DynFlags -> DynFlags) -> m a) -> m (Either [String] ([String], a))
 withLogger' env action = do
     logref <- liftIO $ newLogRef
 
+    rfm <- do
+      mm <- Map.toList <$> getMMappedFiles
+      let
+          mf :: FilePath -> FileMapping -> Maybe (FilePath, FilePath)
+          mf from (RedirectedMapping to)
+                 = Just (to, from)
+          mf _ _ = Nothing
+      return $ Map.fromList $ mapMaybe (uncurry mf) mm
+
+    crdl <- cradle
+
     let dflags = hsc_dflags env
         pu = icPrintUnqual dflags (hsc_IC env)
-        st = mkUserStyle pu AllTheWay
+        stl = mkUserStyle pu AllTheWay
+        st = ReaderState {
+                rsDynFlags = dflags
+              , rsPprStyle = stl
+              , rsMapFile = \key ->
+                              fromMaybe key
+                              $ makeRelative (cradleRootDir crdl)
+                              <$> Map.lookup key rfm
+        }
 
-        fn df  = setLogger logref df
+        setLogger df = Gap.setLogAction df $ appendLogRef st df logref
+        handlers = [
+            GHandler $ \ex -> return $ Left $ runReader (sourceError ex) st,
+            GHandler $ \ex -> return $ Left [render $ ghcExceptionDoc ex]
+         ]
 
-    a <- gcatches (Right <$> action fn) (handlers dflags st)
+    a <- gcatches (Right <$> action setLogger) handlers
     ls <- liftIO $ readAndClearLogRef logref
 
-    return $ ((,) ls <$> a)
-
-  where
-    setLogger logref df = Gap.setLogAction df $ appendLogRef df logref
-    handlers df st = [
-        GHandler $ \ex -> return $ Left $ sourceError df st ex,
-        GHandler $ \ex -> return $ Left [render $ ghcExceptionDoc ex]
-     ]
+    return ((,) ls <$> a)
 
 errBagToStrList :: HscEnv -> Bag ErrMsg -> [String]
 errBagToStrList env errs = let
     dflags = hsc_dflags env
     pu = icPrintUnqual dflags (hsc_IC env)
     st = mkUserStyle pu AllTheWay
- in errsToStr dflags st $ bagToList errs
+ in runReader (errsToStr (bagToList errs)) ReaderState{rsDynFlags=dflags, rsPprStyle=st}
 
 ----------------------------------------------------------------
 
 -- | Converting 'SourceError' to 'String'.
-sourceError :: DynFlags -> PprStyle -> SourceError -> [String]
-sourceError df st src_err = errsToStr df st $ reverse $ bagToList $ srcErrorMessages src_err
+sourceError :: SourceError -> ReaderM [String]
+sourceError = errsToStr . reverse . bagToList . srcErrorMessages
 
-errsToStr :: DynFlags -> PprStyle -> [ErrMsg] -> [String]
-errsToStr df st = map (ppErrMsg df st)
+errsToStr :: [ErrMsg] -> ReaderM [String]
+errsToStr = mapM ppErrMsg
 
 ----------------------------------------------------------------
 
-ppErrMsg :: DynFlags -> PprStyle -> ErrMsg -> String
-ppErrMsg dflag st err =
-    ppMsg spn SevError dflag st msg ++ (if null ext then "" else "\n" ++ ext)
+ppErrMsg :: ErrMsg -> ReaderM String
+ppErrMsg err = do
+    dflag <- asks rsDynFlags
+    st <- asks rsPprStyle
+    let ext = showPage dflag st (errMsgExtraInfo err)
+    m <- ppMsg spn SevError msg
+    return $ m ++ (if null ext then "" else "\n" ++ ext)
    where
      spn = Gap.errorMsgSpan err
      msg = errMsgShortDoc err
-     ext = showPage dflag st (errMsgExtraInfo err)
 
-ppMsg :: SrcSpan -> Severity-> DynFlags -> PprStyle -> SDoc -> String
-ppMsg spn sev dflag st msg = prefix ++ cts
-  where
-    cts  = showPage dflag st msg
-    prefix = ppMsgPrefix spn sev dflag st cts
+ppMsg :: SrcSpan -> Severity-> SDoc -> ReaderM String
+ppMsg spn sev msg = do
+  dflag <- asks rsDynFlags
+  st <- asks rsPprStyle
+  let cts  = showPage dflag st msg
+  prefix <- ppMsgPrefix spn sev cts
+  return $ prefix ++ cts
 
-ppMsgPrefix :: SrcSpan -> Severity-> DynFlags -> PprStyle -> String -> String
-ppMsgPrefix spn sev dflag _st cts =
+ppMsgPrefix :: SrcSpan -> Severity -> String -> ReaderM String
+ppMsgPrefix spn sev cts = do
+  dflag <- asks rsDynFlags
+  mr <- asks rsMapFile
   let defaultPrefix
         | Gap.isDumpSplices dflag = ""
         | otherwise               = checkErrorPrefix
-   in fromMaybe defaultPrefix $ do
-        (line,col,_,_) <- Gap.getSrcSpan spn
-        file <- normalise <$> Gap.getSrcFile spn
-        let severityCaption = Gap.showSeverityCaption sev
-            pref0 | or (map (\x -> x `isPrefixOf` cts) warningAsErrorPrefixes)
-                              = file ++ ":" ++ show line ++ ":" ++ show col ++ ":"
-                  | otherwise = file ++ ":" ++ show line ++ ":" ++ show col ++ ":" ++ severityCaption
-        return pref0
+  return $ fromMaybe defaultPrefix $ do
+    (line,col,_,_) <- Gap.getSrcSpan spn
+    file <- mr <$> normalise <$> Gap.getSrcFile spn
+    let severityCaption = Gap.showSeverityCaption sev
+        pref0 | or (map (\x -> x `isPrefixOf` cts) warningAsErrorPrefixes)
+                          = file ++ ":" ++ show line ++ ":" ++ show col ++ ":"
+              | otherwise = file ++ ":" ++ show line ++ ":" ++ show col ++ ":" ++ severityCaption
+    return pref0
 
 checkErrorPrefix :: String
 checkErrorPrefix = "Dummy:0:0:Error:"
