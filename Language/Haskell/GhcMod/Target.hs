@@ -312,6 +312,9 @@ resolveEntrypoint Cradle {..} c@GmComponent {..} = do
       rms <- resolveModule env srcDirs `mapM` eps
       return c { gmcEntrypoints = Set.fromList $ catMaybes rms }
 
+-- TODO: remember that he file from `main-is:` is always module `Main` and let
+-- ghc do the warning about it. Right now we run that module through
+-- resolveModule like any other
 resolveChEntrypoints :: FilePath -> ChEntrypoint -> IO [CompilationUnit]
 resolveChEntrypoints _ (ChLibEntrypoint em om) =
     return $ map (Right . chModToMod) (em ++ om)
