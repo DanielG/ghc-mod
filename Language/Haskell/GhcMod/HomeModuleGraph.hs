@@ -214,9 +214,7 @@ updateHomeModuleGraph' env smp0 = do
       preprocess' :: m (Maybe (DynFlags, FilePath))
       preprocess' = do
         let fn = mpPath mp
-        ep <- liftIO $ withLogger' env $ \setDf -> let
-              env' = env { hsc_dflags = setDf (hsc_dflags env) }
-           in preprocess env' (fn, Nothing)
+        ep <- preprocessFile env fn
         case ep of
           Right (_, x) -> return $ Just x
           Left errs -> do
@@ -240,13 +238,25 @@ updateHomeModuleGraph' env smp0 = do
                    $ map unLoc hsmodImports
            liftIO $ Set.fromList . catMaybes <$> mapM (findModulePath env) mns
 
-fileModuleName :: HscEnv
-               -> FilePath
-               -> IO (Either ErrorMessages (Maybe ModuleName))
+preprocessFile :: MonadIO m =>
+  HscEnv -> FilePath -> m (Either [String] ([String], (DynFlags, FilePath)))
+preprocessFile env file =
+  liftIO $ withLogger' env $ \setDf -> do
+    let env' = env { hsc_dflags = setDf (hsc_dflags env) }
+    preprocess env' (file, Nothing)
+
+fileModuleName ::
+  HscEnv -> FilePath -> IO (Either [String] (Maybe ModuleName))
 fileModuleName env fn = handle (\(_ :: SomeException) -> return $ Right Nothing) $ do
-    src <- readFile fn
-    case parseModuleHeader src (hsc_dflags env) fn of
-      Left errs -> return (Left errs)
-      Right (_, lmdl) -> do
-        let HsModule {..} = unLoc lmdl
-        return $ Right $ unLoc <$> hsmodName
+    ep <- preprocessFile env fn
+    case ep of
+      Left errs -> do
+        return $ Left errs
+      Right (_warns, (dflags, procdFile)) -> do
+        src <- readFile procdFile
+        case parseModuleHeader src dflags procdFile of
+          Left errs -> do
+            return $ Left $ errBagToStrList env errs
+          Right (_, lmdl) -> do
+            let HsModule {..} = unLoc lmdl
+            return $ Right $ unLoc <$> hsmodName

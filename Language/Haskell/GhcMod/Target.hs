@@ -27,6 +27,7 @@ import SysTools
 import DynFlags
 import HscMain
 import HscTypes
+import Bag (bagToList)
 
 import Language.Haskell.GhcMod.DynFlags
 import Language.Haskell.GhcMod.Monad.Types
@@ -36,8 +37,10 @@ import Language.Haskell.GhcMod.PathsAndFiles
 import Language.Haskell.GhcMod.GhcPkg
 import Language.Haskell.GhcMod.Error
 import Language.Haskell.GhcMod.Logging
+import Language.Haskell.GhcMod.Logger
 import Language.Haskell.GhcMod.Types
 import Language.Haskell.GhcMod.Utils
+
 
 import Data.Maybe
 import Data.Monoid
@@ -274,7 +277,7 @@ sandboxOpts crdl =
     (wdir, rdir) = (cradleCurrentDir crdl, cradleRootDir crdl)
 
 resolveGmComponent :: (IOish m, GmLog m, GmEnv m)
-    => Maybe [Either FilePath ModuleName] -- ^ Updated modules
+    => Maybe [CompilationUnit] -- ^ Updated modules
     -> GmComponent GMCRaw (Set ModulePath)
     -> m (GmComponent GMCResolved (Set ModulePath))
 resolveGmComponent mums c@GmComponent {..} = do
@@ -298,42 +301,18 @@ resolveGmComponent mums c@GmComponent {..} = do
            [ "-optP-include", "-optP" ++ macrosHeaderPath ]
         ]
 
-resolveEntrypoint :: IOish m
+resolveEntrypoint :: (IOish m, GmLog m)
     => Cradle
     -> GmComponent GMCRaw ChEntrypoint
     -> m (GmComponent GMCRaw (Set ModulePath))
-resolveEntrypoint Cradle {..} c@GmComponent {..} =
+resolveEntrypoint Cradle {..} c@GmComponent {..} = do
     withLightHscEnv gmcGhcSrcOpts $ \env -> do
       let srcDirs = if null gmcSourceDirs then [""] else gmcSourceDirs
       eps <- liftIO $ resolveChEntrypoints cradleRootDir gmcEntrypoints
       rms <- resolveModule env srcDirs `mapM` eps
       return c { gmcEntrypoints = Set.fromList $ catMaybes rms }
 
-resolveModule :: MonadIO m =>
-    HscEnv -> [FilePath] -> Either FilePath ModuleName -> m (Maybe ModulePath)
-resolveModule env _srcDirs (Right mn) =
-    liftIO $ traverse canonicalizeModulePath =<< findModulePath env mn
-resolveModule env srcDirs (Left fn') = liftIO $ do
-    mfn <- findFile' srcDirs fn'
-    case mfn of
-      Nothing -> return Nothing
-      Just fn'' -> do
-          fn <- canonicalizePath fn''
-          emn <- fileModuleName env fn
-          return $ case emn of
-              Left _ -> Nothing -- TODO: should expose these errors otherwise
-                                -- modules with preprocessor/parse errors are
-                                -- going to be missing
-              Right mmn -> Just $
-                  case mmn of
-                    Nothing -> mkMainModulePath fn
-                    Just mn -> ModulePath mn fn
- where
-   findFile' dirs file =
-       getFirst . mconcat <$> mapM (fmap First . mightExist . (</>file)) dirs
-
-resolveChEntrypoints ::
-  FilePath -> ChEntrypoint -> IO [Either FilePath ModuleName]
+resolveChEntrypoints :: FilePath -> ChEntrypoint -> IO [CompilationUnit]
 resolveChEntrypoints _ (ChLibEntrypoint em om) =
     return $ map (Right . chModToMod) (em ++ om)
 
@@ -351,8 +330,40 @@ resolveChEntrypoints srcDir ChSetupEntrypoint = do
 chModToMod :: ChModuleName -> ModuleName
 chModToMod (ChModuleName mn) = mkModuleName mn
 
-resolveGmComponents :: (IOish m, GmState m, GmLog m, GmEnv m) =>
-    Maybe [Either FilePath ModuleName]
+resolveModule :: (MonadIO m, GmLog m) =>
+  HscEnv -> [FilePath] -> CompilationUnit -> m (Maybe ModulePath)
+resolveModule env _srcDirs (Right mn) =
+    liftIO $ traverse canonicalizeModulePath =<< findModulePath env mn
+resolveModule env srcDirs (Left fn') = do
+    mfn <-  liftIO $ findFile' srcDirs fn'
+    case mfn of
+      Nothing -> return Nothing
+      Just fn'' -> do
+          fn <-  liftIO $ canonicalizePath fn''
+          emn <-  liftIO $ fileModuleName env fn
+          case emn of
+              Left errs -> do
+                gmLog GmWarning ("resolveModule " ++ show fn) $
+                  empty $+$ (vcat $ map text errs)
+                return Nothing -- TODO: should expose these errors otherwise
+                               -- modules with preprocessor/parse errors are
+                               -- going to be missing
+              Right mmn -> return $ Just $
+                  case mmn of
+                    Nothing -> mkMainModulePath fn
+                    Just mn -> ModulePath mn fn
+ where
+   -- needed for ghc 7.4
+   findFile' dirs file =
+       getFirst . mconcat <$> mapM (fmap First . mightExist . (</>file)) dirs
+
+   -- fileModuleName fn (dir:dirs)
+   --     | makeRelative dir fn /= fn
+
+type CompilationUnit = Either FilePath ModuleName
+
+resolveGmComponents :: (IOish m, GmState m, GmLog m, GmEnv m)
+    => Maybe [CompilationUnit]
         -- ^ Updated modules
     -> [GmComponent GMCRaw (Set ModulePath)]
     -> m (Map ChComponentName (GmComponent GMCResolved (Set ModulePath)))

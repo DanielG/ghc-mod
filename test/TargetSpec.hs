@@ -10,6 +10,8 @@ import TestUtils
 import GHC
 import Data.List
 import Data.Maybe
+import System.Directory
+import System.FilePath
 
 spec :: Spec
 spec = do
@@ -33,3 +35,13 @@ spec = do
                 mdl <- findModule "Data.List" Nothing
                 mmi <- getModuleInfo mdl
                 liftIO $ isJust mmi `shouldBe` True
+
+
+    describe "resolveModule" $ do
+        it "Works when a module given as path uses CPP" $ do
+            dir <- getCurrentDirectory
+            print dir
+            let srcDirs = [dir </> "test/data/target/src"]
+            withLightHscEnv [] $ \env -> runNullLog $ do
+                Just _ <- resolveModule env srcDirs (Left $ dir </> "test/data/target/src/A/B/C/D/E.hs")
+                return ()
