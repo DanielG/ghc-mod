@@ -38,12 +38,12 @@ data Log = Log [String] Builder
 
 newtype LogRef = LogRef (IORef Log)
 
-data ReaderState = ReaderState { rsDynFlags :: DynFlags
-                               , rsPprStyle :: PprStyle
-                               , rsMapFile :: FilePath -> FilePath
-                               }
+data GmPprEnv = GmPprEnv { rsDynFlags :: DynFlags
+                         , rsPprStyle :: PprStyle
+                         , rsMapFile :: FilePath -> FilePath
+                         }
 
-type ReaderM a = Reader ReaderState a
+type GmPprEnvM a = Reader GmPprEnv a
 
 emptyLog :: Log
 emptyLog = Log [] id
@@ -57,7 +57,7 @@ readAndClearLogRef (LogRef ref) = do
     writeIORef ref emptyLog
     return $ b []
 
-appendLogRef :: ReaderState -> DynFlags -> LogRef -> DynFlags -> Severity -> SrcSpan -> PprStyle -> SDoc -> IO ()
+appendLogRef :: GmPprEnv -> DynFlags -> LogRef -> DynFlags -> Severity -> SrcSpan -> PprStyle -> SDoc -> IO ()
 appendLogRef rs df (LogRef ref) _ sev src st msg = modifyIORef ref update
   where
     l = runReader (ppMsg src sev msg) rs{rsDynFlags=df, rsPprStyle=st}
@@ -101,7 +101,7 @@ withLogger' env action = do
     let dflags = hsc_dflags env
         pu = icPrintUnqual dflags (hsc_IC env)
         stl = mkUserStyle pu AllTheWay
-        st = ReaderState {
+        st = GmPprEnv {
                 rsDynFlags = dflags
               , rsPprStyle = stl
               , rsMapFile = \key ->
@@ -131,15 +131,15 @@ errBagToStrList env errs = let
 ----------------------------------------------------------------
 
 -- | Converting 'SourceError' to 'String'.
-sourceError :: SourceError -> ReaderM [String]
+sourceError :: SourceError -> GmPprEnvM [String]
 sourceError = errsToStr . reverse . bagToList . srcErrorMessages
 
-errsToStr :: [ErrMsg] -> ReaderM [String]
+errsToStr :: [ErrMsg] -> GmPprEnvM [String]
 errsToStr = mapM ppErrMsg
 
 ----------------------------------------------------------------
 
-ppErrMsg :: ErrMsg -> ReaderM String
+ppErrMsg :: ErrMsg -> GmPprEnvM String
 ppErrMsg err = do
     dflag <- asks rsDynFlags
     st <- asks rsPprStyle
@@ -150,7 +150,7 @@ ppErrMsg err = do
      spn = Gap.errorMsgSpan err
      msg = errMsgShortDoc err
 
-ppMsg :: SrcSpan -> Severity-> SDoc -> ReaderM String
+ppMsg :: SrcSpan -> Severity-> SDoc -> GmPprEnvM String
 ppMsg spn sev msg = do
   dflag <- asks rsDynFlags
   st <- asks rsPprStyle
@@ -158,7 +158,7 @@ ppMsg spn sev msg = do
   prefix <- ppMsgPrefix spn sev cts
   return $ prefix ++ cts
 
-ppMsgPrefix :: SrcSpan -> Severity -> String -> ReaderM String
+ppMsgPrefix :: SrcSpan -> Severity -> String -> GmPprEnvM String
 ppMsgPrefix spn sev cts = do
   dflag <- asks rsDynFlags
   mr <- asks rsMapFile
