@@ -126,7 +126,7 @@ errBagToStrList env errs = let
     dflags = hsc_dflags env
     pu = icPrintUnqual dflags (hsc_IC env)
     st = mkUserStyle pu AllTheWay
- in runReader (errsToStr (bagToList errs)) ReaderState{rsDynFlags=dflags, rsPprStyle=st}
+ in runReader (errsToStr (bagToList errs)) GmPprEnv{rsDynFlags=dflags, rsPprStyle=st}
 
 ----------------------------------------------------------------
 
