@@ -438,11 +438,11 @@ legacyInteractiveLoop symdbreq world = do
         "boot"   -> bootCmd []
         "browse" -> browseCmd args
 
-        "load"   -> loadMappedFile arg (MemoryMapping Nothing)
-                 >> return ""
+        "map-file"   -> loadMappedFile arg (MemoryMapping Nothing)
+                     >> return ""
 
-        "unload" -> unloadMappedFile arg
-                 >> return ""
+        "unmap-file" -> unloadMappedFile arg
+                     >> return ""
 
         "quit"   -> liftIO $ exitSuccess
         ""       -> liftIO $ exitSuccess
