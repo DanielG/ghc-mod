@@ -271,7 +271,7 @@ globalArgSpec =
                reqArg "OPT" $ \g o -> Right $
                    o { ghcUserOptions = g : ghcUserOptions o }
 
-      , option "" ["file-map"] "Redirect one file to another, --file-map \"file1.hs=file2.hs\"" $
+      , option "" ["map-file"] "Redirect one file to another, --map-file \"file1.hs=file2.hs\"" $
                reqArg "OPT" $ \g o ->
                   let m = case second (drop 1) $ span (/='=') g of
                             (s,"") -> (s, MemoryMapping Nothing)
