@@ -179,7 +179,8 @@ runGmlTWith efnmns' mdf wrapper action = do
   where
     relativize (Target (TargetFile filePath phase) taoc src) = do
       crdl <- cradle
-      let tid = makeRelative (cradleRootDir crdl) filePath `TargetFile` phase
+      let tid = TargetFile relativeFilePath phase
+          relativeFilePath = makeRelative (cradleRootDir crdl) filePath
       return $ Target tid taoc src
     relativize tgt = return tgt
 
