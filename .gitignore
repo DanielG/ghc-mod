@@ -5,6 +5,7 @@ elisp/*.elc
 add-source-timestamps
 package.cache
 cabal.sandbox.config
+.stack-work/
 # Mac OS generates
 # .DS_Store
 *.o
