@@ -21,22 +21,10 @@ import GHC
 loadMappedFiles :: IOish m => GhcModT m ()
 loadMappedFiles = do
   Options {fileMappings} <- options
-  mapM_ (uncurry loadMappedFile) $ reverse fileMappings
+  mapM_ (uncurry loadMappedFile) fileMappings
 
 loadMappedFile :: IOish m => FilePath -> FileMapping -> GhcModT m ()
-loadMappedFile from fm@(RedirectedMapping _) =
-  addToState from fm
-loadMappedFile from (MemoryMapping _) = do
-  let loop' acc = do
-        line <- getLine
-        if not (null line) && last line == '\EOT'
-        then return $ acc ++ init line
-        else loop' (acc++line++"\n")
-  src <- liftIO $ loop' ""
-  addToState from (MemoryMapping $ Just src)
-
-addToState :: IOish m => FilePath -> FileMapping -> GhcModT m ()
-addToState from fm = do
+loadMappedFile from fm = do
   crdl <- cradle
   let ccfn = cradleCurrentDir crdl </> from
   cfn <- liftIO $ canonicalizePath ccfn

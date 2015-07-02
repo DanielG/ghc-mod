@@ -438,11 +438,12 @@ legacyInteractiveLoop symdbreq world = do
         "boot"   -> bootCmd []
         "browse" -> browseCmd args
 
-        "map-file"   -> loadMappedFile arg (MemoryMapping Nothing)
-                     >> return ""
+        "map-file"   ->  liftIO getFileSourceFromStdin
+                     >>= loadMappedFile arg . MemoryMapping . Just
+                     >>  return ""
 
-        "unmap-file" -> unloadMappedFile arg
-                     >> return ""
+        "unmap-file" ->  unloadMappedFile arg
+                     >>  return ""
 
         "quit"   -> liftIO $ exitSuccess
         ""       -> liftIO $ exitSuccess
@@ -455,6 +456,15 @@ legacyInteractiveLoop symdbreq world = do
           [ GHandler $ \e@(FatalError _) -> throw e
           , GHandler $ \(SomeException e) -> gmErrStrLn (show e) >> return ""
           ]
+
+getFileSourceFromStdin :: IO String
+getFileSourceFromStdin = do
+  let loop' acc = do
+        line <- getLine
+        if not (null line) && last line == '\EOT'
+        then return $ acc ++ init line
+        else loop' (acc++line++"\n")
+  loop' ""
 
 ghcCommands :: IOish m => [String] -> GhcModT m ()
 ghcCommands []         = fatalError "No command given (try --help)"
