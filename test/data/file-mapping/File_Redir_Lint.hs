@@ -1,4 +1,4 @@
-module File_Redir_Lint where
+module File where
 
 func :: Num a => a -> a -> a
 func a b = (*) a b
