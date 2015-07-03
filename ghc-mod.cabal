@@ -81,6 +81,7 @@ Extra-Source-Files:     ChangeLog
                         test/data/cabal-preprocessors/*.cabal
                         test/data/cabal-preprocessors/*.hs
                         test/data/cabal-preprocessors/*.hsc
+                        test/data/file-mapping/*.hs
 
 Library
   Default-Language:     Haskell2010
@@ -237,6 +238,7 @@ Test-Suite spec
                         MonadSpec
                         PathsAndFilesSpec
                         HomeModuleGraphSpec
+                        FileMappingSpec
 
   Build-Depends:        hspec >= 2.0.0
   if impl(ghc == 7.4.*)
