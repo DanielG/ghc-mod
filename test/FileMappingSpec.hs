@@ -88,7 +88,7 @@ spec = do
             res <- run defaultOptions {fileMappings = fm} $ do
               loadMappedFiles
               checkSyntax ["File.hs"]
-            res `shouldBe` "File.hs:1:1:Warning: Top-level binding with no type signature: main :: forall t. t\n"
+            res `shouldBe` "File.hs:1:1:Warning: Top-level binding with no type signature: main :: IO ()\n"
         it "checks in-memory file if one is specified and outputs original filename" $ do
           withDirectory_ "test/data/file-mapping" $ do
             let fm = [("File.hs", MemoryMapping $ Just "main = putStrLn \"Hello World!\"\n")]
