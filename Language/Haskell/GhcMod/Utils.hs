@@ -174,3 +174,12 @@ withMappedFile file action = lookupMMappedFile file >>= runWithFile
       liftIO $ removeFile fp
       return result
     runWithFile _ = action file
+
+getCanonicalFileNameSafe :: IOish m => FilePath -> GhcModT m FilePath
+getCanonicalFileNameSafe fn = do
+  crdl <- cradle
+  let ccfn = cradleCurrentDir crdl </> fn
+  fex <- liftIO $ doesFileExist ccfn
+  if fex
+    then liftIO $ canonicalizePath ccfn
+    else return ccfn

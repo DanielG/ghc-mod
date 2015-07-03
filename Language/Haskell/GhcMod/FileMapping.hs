@@ -9,9 +9,7 @@ import Language.Haskell.GhcMod.Types
 import Language.Haskell.GhcMod.Monad.Types
 import Language.Haskell.GhcMod.Gap
 import Language.Haskell.GhcMod.HomeModuleGraph
-
-import System.Directory
-import System.FilePath
+import Language.Haskell.GhcMod.Utils
 
 import Data.Time
 
@@ -25,7 +23,7 @@ loadMappedFiles = do
 
 loadMappedFile :: IOish m => FilePath -> FileMapping -> GhcModT m ()
 loadMappedFile from fm =
-  getCanonicalFileName from >>= (`addMMappedFile` fm)
+  getCanonicalFileNameSafe from >>= (`addMMappedFile` fm)
 
 mapFile :: (IOish m, GmState m, GhcMonad m) =>
             HscEnv -> Target -> m Target
@@ -48,14 +46,5 @@ mkMappedTarget tid taoc (Just (MemoryMapping (Just src))) = do
   return $ mkTarget tid taoc $ Just (sb, ct)
 mkMappedTarget tid taoc _ = return $ mkTarget tid taoc Nothing
 
-getCanonicalFileName :: IOish m => FilePath -> GhcModT m FilePath
-getCanonicalFileName fn = do
-  crdl <- cradle
-  let ccfn = cradleCurrentDir crdl </> fn
-  fex <- liftIO $ doesFileExist ccfn
-  if fex
-    then liftIO $ canonicalizePath ccfn
-    else return ccfn
-
 unloadMappedFile :: IOish m => FilePath -> GhcModT m ()
-unloadMappedFile = (delMMappedFile =<<) . getCanonicalFileName
+unloadMappedFile = (delMMappedFile =<<) . getCanonicalFileNameSafe
