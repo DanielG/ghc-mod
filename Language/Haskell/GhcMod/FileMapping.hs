@@ -52,7 +52,10 @@ getCanonicalFileName :: IOish m => FilePath -> GhcModT m FilePath
 getCanonicalFileName fn = do
   crdl <- cradle
   let ccfn = cradleCurrentDir crdl </> fn
-  liftIO $ canonicalizePath ccfn
+  fex <- liftIO $ doesFileExist ccfn
+  if fex
+    then liftIO $ canonicalizePath ccfn
+    else return ccfn
 
 unloadMappedFile :: IOish m => FilePath -> GhcModT m ()
 unloadMappedFile = (delMMappedFile =<<) . getCanonicalFileName
