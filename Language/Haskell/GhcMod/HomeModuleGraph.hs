@@ -61,7 +61,7 @@ import Language.Haskell.GhcMod.Logger
 import Language.Haskell.GhcMod.Monad.Types
 import Language.Haskell.GhcMod.Types
 import Language.Haskell.GhcMod.Gap (parseModuleHeader)
-import Language.Haskell.GhcMod.FileMappingUtils
+import Language.Haskell.GhcMod.Utils (withMappedFile)
 
 -- | Turn module graph into a graphviz dot file
 --

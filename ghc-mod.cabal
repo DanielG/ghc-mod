@@ -106,7 +106,6 @@ Library
                         Language.Haskell.GhcMod.DynFlags
                         Language.Haskell.GhcMod.Error
                         Language.Haskell.GhcMod.FileMapping
-                        Language.Haskell.GhcMod.FileMappingUtils
                         Language.Haskell.GhcMod.FillSig
                         Language.Haskell.GhcMod.Find
                         Language.Haskell.GhcMod.Flag

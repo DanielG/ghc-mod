@@ -27,13 +27,15 @@ import Control.Applicative
 import Data.Char
 import Exception
 import Language.Haskell.GhcMod.Error
+import Language.Haskell.GhcMod.Types
 import Language.Haskell.GhcMod.Monad.Types
 import System.Directory (getCurrentDirectory, setCurrentDirectory, doesFileExist,
-                         getTemporaryDirectory, canonicalizePath)
+                         getTemporaryDirectory, canonicalizePath, removeFile)
 import System.Environment
 import System.FilePath (splitDrive, takeDirectory, takeFileName, pathSeparators,
                         (</>))
-import System.IO.Temp (createTempDirectory)
+import System.IO.Temp (createTempDirectory, openTempFile)
+import System.IO (hPutStr, hClose)
 import System.Process (readProcess)
 import Text.Printf
 
@@ -157,3 +159,18 @@ canonFilePath f = do
   e <- doesFileExist p
   when (not e) $ error $ "canonFilePath: not a file: " ++ p
   return p
+
+withMappedFile :: (IOish m, GmState m, GmEnv m) =>
+                  forall a. FilePath -> (FilePath -> m a) -> m a
+withMappedFile file action = lookupMMappedFile file >>= runWithFile
+  where
+    runWithFile (Just (RedirectedMapping to)) = action to
+    runWithFile (Just (MemoryMapping (Just src))) = do
+      crdl <- cradle
+      (fp,hndl) <- liftIO $ openTempFile (cradleTempDir crdl) (takeFileName file)
+      liftIO $ hPutStr hndl src
+      liftIO $ hClose hndl
+      result <- action fp
+      liftIO $ removeFile fp
+      return result
+    runWithFile _ = action file

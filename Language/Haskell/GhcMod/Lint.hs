@@ -8,7 +8,7 @@ import Language.Haskell.GhcMod.Monad
 import Language.Haskell.GhcMod.Types
 import Language.Haskell.HLint (hlint)
 
-import Language.Haskell.GhcMod.FileMappingUtils
+import Language.Haskell.GhcMod.Utils (withMappedFile)
 
 import Data.List (stripPrefix)
 
