@@ -3,6 +3,7 @@ module Language.Haskell.GhcMod.FileMapping
     , loadMappedFiles
     , unloadMappedFile
     , mapFile
+    , fileModSummaryWithMapping
     ) where
 
 import Language.Haskell.GhcMod.Types
@@ -48,3 +49,11 @@ mkMappedTarget tid taoc _ = return $ mkTarget tid taoc Nothing
 
 unloadMappedFile :: IOish m => FilePath -> GhcModT m ()
 unloadMappedFile = (delMMappedFile =<<) . getCanonicalFileNameSafe
+
+fileModSummaryWithMapping :: (IOish m, GmState m, GhcMonad m, GmEnv m) =>
+                            FilePath -> m ModSummary
+fileModSummaryWithMapping fn = do
+  mmf <- getCanonicalFileNameSafe fn >>= lookupMMappedFile
+  case mmf of
+    Just (RedirectedMapping to) -> fileModSummary to
+    _                           -> fileModSummary fn

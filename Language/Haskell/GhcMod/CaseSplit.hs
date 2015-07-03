@@ -26,6 +26,7 @@ import Language.Haskell.GhcMod.SrcUtils
 import Language.Haskell.GhcMod.Doc
 import Language.Haskell.GhcMod.Logging
 import Language.Haskell.GhcMod.Types
+import Language.Haskell.GhcMod.FileMapping (fileModSummaryWithMapping)
 
 ----------------------------------------------------------------
 -- CASE SPLITTING
@@ -51,7 +52,7 @@ splits file lineNo colNo =
       crdl <- cradle
       style <- getStyle
       dflag <- G.getSessionDynFlags
-      modSum <- Gap.fileModSummary (cradleCurrentDir crdl </> file)
+      modSum <- fileModSummaryWithMapping (cradleCurrentDir crdl </> file)
       whenFound' opt (getSrcSpanTypeForSplit modSum lineNo colNo) $ \x -> case x of
         (SplitInfo varName bndLoc (varLoc,varT) _matches) -> do
           let varName' = showName dflag style varName  -- Convert name to string

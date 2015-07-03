@@ -27,6 +27,7 @@ import Language.Haskell.GhcMod.Logging (gmLog)
 import Language.Haskell.GhcMod.Pretty (showDoc)
 import Language.Haskell.GhcMod.Doc
 import Language.Haskell.GhcMod.Types
+import Language.Haskell.GhcMod.FileMapping (fileModSummaryWithMapping)
 import Outputable (PprStyle)
 import qualified Type as Ty
 import qualified HsBinds as Ty
@@ -76,7 +77,7 @@ sig file lineNo colNo =
       opt <- options
       style <- getStyle
       dflag <- G.getSessionDynFlags
-      modSum <- Gap.fileModSummary file
+      modSum <- fileModSummaryWithMapping file
       whenFound opt (getSignature modSum lineNo colNo) $ \s ->
         case s of
           Signature loc names ty ->
@@ -345,7 +346,7 @@ refine file lineNo colNo (Expression expr) =
       opt <- options
       style <- getStyle
       dflag <- G.getSessionDynFlags
-      modSum <- Gap.fileModSummary file
+      modSum <- fileModSummaryWithMapping file
       p <- G.parseModule modSum
       tcm@TypecheckedModule{tm_typechecked_source = tcs} <- G.typecheckModule p
       ety <- G.exprType expr
@@ -422,7 +423,7 @@ auto file lineNo colNo =
         opt <- options
         style <- getStyle
         dflag <- G.getSessionDynFlags
-        modSum <- Gap.fileModSummary file
+        modSum <- fileModSummaryWithMapping file
         p <- G.parseModule modSum
         tcm@TypecheckedModule {
                  tm_typechecked_source = tcs

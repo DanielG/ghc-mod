@@ -22,6 +22,7 @@ import Language.Haskell.GhcMod.Logging
 import Language.Haskell.GhcMod.Monad
 import Language.Haskell.GhcMod.SrcUtils
 import Language.Haskell.GhcMod.Types
+import Language.Haskell.GhcMod.FileMapping (fileModSummaryWithMapping)
 
 ----------------------------------------------------------------
 
@@ -60,7 +61,7 @@ types file lineNo colNo =
     runGmlT' [Left file] deferErrors $
       withContext $ do
         crdl         <- cradle
-        modSum       <- Gap.fileModSummary (cradleCurrentDir crdl </> file)
+        modSum       <- fileModSummaryWithMapping (cradleCurrentDir crdl </> file)
         srcSpanTypes <- getSrcSpanType modSum lineNo colNo
         dflag        <- G.getSessionDynFlags
         st           <- getStyle
