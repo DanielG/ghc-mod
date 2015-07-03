@@ -24,11 +24,8 @@ loadMappedFiles = do
   mapM_ (uncurry loadMappedFile) fileMappings
 
 loadMappedFile :: IOish m => FilePath -> FileMapping -> GhcModT m ()
-loadMappedFile from fm = do
-  crdl <- cradle
-  let ccfn = cradleCurrentDir crdl </> from
-  cfn <- liftIO $ canonicalizePath ccfn
-  addMMappedFile cfn fm
+loadMappedFile from fm =
+  getCanonicalFileName from >>= (`addMMappedFile` fm)
 
 mapFile :: (IOish m, GmState m, GhcMonad m) =>
             HscEnv -> Target -> m Target
@@ -51,5 +48,11 @@ mkMappedTarget tid taoc (Just (MemoryMapping (Just src))) = do
   return $ mkTarget tid taoc $ Just (sb, ct)
 mkMappedTarget tid taoc _ = return $ mkTarget tid taoc Nothing
 
+getCanonicalFileName :: IOish m => FilePath -> GhcModT m FilePath
+getCanonicalFileName fn = do
+  crdl <- cradle
+  let ccfn = cradleCurrentDir crdl </> fn
+  liftIO $ canonicalizePath ccfn
+
 unloadMappedFile :: IOish m => FilePath -> GhcModT m ()
-unloadMappedFile = delMMappedFile
+unloadMappedFile = (delMMappedFile =<<) . getCanonicalFileName
