@@ -162,7 +162,7 @@ canonFilePath f = do
 
 withMappedFile :: (IOish m, GmState m, GmEnv m) =>
                   forall a. FilePath -> (FilePath -> m a) -> m a
-withMappedFile file action = lookupMMappedFile file >>= runWithFile
+withMappedFile file action = getCanonicalFileNameSafe file >>= lookupMMappedFile >>= runWithFile
   where
     runWithFile (Just (RedirectedMapping to)) = action to
     runWithFile (Just (MemoryMapping (Just src))) = do
@@ -175,7 +175,7 @@ withMappedFile file action = lookupMMappedFile file >>= runWithFile
       return result
     runWithFile _ = action file
 
-getCanonicalFileNameSafe :: IOish m => FilePath -> GhcModT m FilePath
+getCanonicalFileNameSafe :: (IOish m, GmEnv m) => FilePath -> m FilePath
 getCanonicalFileNameSafe fn = do
   crdl <- cradle
   let ccfn = cradleCurrentDir crdl </> fn
