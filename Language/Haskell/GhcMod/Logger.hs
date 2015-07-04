@@ -9,11 +9,10 @@ module Language.Haskell.GhcMod.Logger (
 import Control.Arrow
 import Control.Applicative
 import Data.List (isPrefixOf)
-import qualified Data.Map as Map
-import Data.Maybe (fromMaybe, mapMaybe)
+import Data.Maybe (fromMaybe)
 import Control.Monad.Reader (Reader, asks, runReader)
 import Data.IORef (IORef, newIORef, readIORef, writeIORef, modifyIORef)
-import System.FilePath (normalise, makeRelative)
+import System.FilePath (normalise)
 import Text.PrettyPrint
 
 import ErrUtils (ErrMsg, errMsgShortDoc, errMsgExtraInfo)
@@ -28,7 +27,7 @@ import Language.Haskell.GhcMod.Doc (showPage)
 import Language.Haskell.GhcMod.DynFlags (withDynFlags)
 import Language.Haskell.GhcMod.Monad.Types
 import Language.Haskell.GhcMod.Error
-import Language.Haskell.GhcMod.Types
+import Language.Haskell.GhcMod.Utils (mkRevRedirMapFunc)
 import qualified Language.Haskell.GhcMod.Gap as Gap
 import Prelude
 
@@ -87,16 +86,7 @@ withLogger' :: (IOish m, GmState m, GmEnv m)
 withLogger' env action = do
     logref <- liftIO $ newLogRef
 
-    rfm <- do
-      mm <- Map.toList <$> getMMappedFiles
-      let
-          mf :: FilePath -> FileMapping -> Maybe (FilePath, FilePath)
-          mf from (RedirectedMapping to)
-                 = Just (to, from)
-          mf _ _ = Nothing
-      return $ Map.fromList $ mapMaybe (uncurry mf) mm
-
-    crdl <- cradle
+    rfm <- mkRevRedirMapFunc
 
     let dflags = hsc_dflags env
         pu = icPrintUnqual dflags (hsc_IC env)
@@ -104,10 +94,7 @@ withLogger' env action = do
         st = GmPprEnv {
                 rsDynFlags = dflags
               , rsPprStyle = stl
-              , rsMapFile = \key ->
-                              fromMaybe key
-                              $ makeRelative (cradleRootDir crdl)
-                              <$> Map.lookup key rfm
+              , rsMapFile = rfm
         }
 
         setLogger df = Gap.setLogAction df $ appendLogRef st df logref

@@ -22,6 +22,7 @@ import Language.Haskell.GhcMod.Logging
 import Language.Haskell.GhcMod.Monad
 import Language.Haskell.GhcMod.SrcUtils
 import Language.Haskell.GhcMod.Types
+import Language.Haskell.GhcMod.Utils (mkRevRedirMapFunc)
 import Language.Haskell.GhcMod.FileMapping (fileModSummaryWithMapping)
 
 ----------------------------------------------------------------
@@ -41,9 +42,10 @@ info file expr =
       gmLog GmException "info" $ text "" $$ nest 4 (showDoc ex)
       convert' "Cannot show info"
 
-    body :: GhcMonad m => m String
+    body :: (GhcMonad m, GmState m, GmEnv m) => m String
     body = do
-      sdoc  <- Gap.infoThing expr
+      m <- mkRevRedirMapFunc
+      sdoc  <- Gap.infoThing m expr
       st    <- getStyle
       dflag <- G.getSessionDynFlags
       return $ showPage dflag st sdoc

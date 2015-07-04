@@ -25,6 +25,8 @@ module Language.Haskell.GhcMod.Utils (
 
 import Control.Applicative
 import Data.Char
+import qualified Data.Map as M
+import Data.Maybe (mapMaybe, fromMaybe)
 import Exception
 import Language.Haskell.GhcMod.Error
 import Language.Haskell.GhcMod.Types
@@ -33,7 +35,7 @@ import System.Directory (getCurrentDirectory, setCurrentDirectory, doesFileExist
                          getTemporaryDirectory, canonicalizePath, removeFile)
 import System.Environment
 import System.FilePath (splitDrive, takeDirectory, takeFileName, pathSeparators,
-                        (</>))
+                        (</>), makeRelative)
 import System.IO.Temp (createTempDirectory, openTempFile)
 import System.IO (hPutStr, hClose)
 import System.Process (readProcess)
@@ -183,3 +185,17 @@ getCanonicalFileNameSafe fn = do
   if fex
     then liftIO $ canonicalizePath ccfn
     else return ccfn
+
+mkRevRedirMapFunc :: (Functor m, GmState m, GmEnv m) => m (FilePath -> FilePath)
+mkRevRedirMapFunc = do
+  rm <- M.fromList <$> mapMaybe (uncurry mf) <$> M.toList <$> getMMappedFiles
+  crdl <- cradle
+  return $ \key ->
+    fromMaybe key
+    $ makeRelative (cradleRootDir crdl)
+    <$> M.lookup key rm
+  where
+    mf :: FilePath -> FileMapping -> Maybe (FilePath, FilePath)
+    mf from (RedirectedMapping to)
+           = Just (to, from)
+    mf _ _ = Nothing
