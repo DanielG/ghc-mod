@@ -3,13 +3,15 @@
 ;;; ghc-comp.el
 ;;;
 
-;; Author:  Kazu Yamamoto <Kazu@Mew.org>
+;; Author:  Kazu Yamamoto <Kazu@Mew.org>, Daniel Gröber <dxld@darkboxed.org>
 ;; Created: Sep 25, 2009
+;; Revised: Aug 16, 2014
 
 ;;; Code:
 
 (require 'ghc-func)
 (require 'ghc-rewrite)
+(require 'ghc-process)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -66,21 +68,24 @@ unloaded modules are loaded")
 
 (defvar ghc-loaded-module nil)
 
+
+(defvar ghc-mod-comp-syms '(ghc-module-names
+                            ghc-language-extensions
+                            ghc-option-flags
+                            ;; hard coded in GHCMod.hs
+                            ghc-keyword-Prelude
+                            ghc-keyword-Control.Applicative
+                            ghc-keyword-Control.Exception
+                            ghc-keyword-Control.Monad
+                            ghc-keyword-Data.Char
+                            ghc-keyword-Data.List
+                            ghc-keyword-Data.Maybe
+                            ghc-keyword-System.IO) )
+
 (defun ghc-comp-init ()
-  (let* ((syms '(ghc-module-names
-		 ghc-language-extensions
-		 ghc-option-flags
-		 ;; hard coded in GHCMod.hs
-		 ghc-keyword-Prelude
-		 ghc-keyword-Control.Applicative
-		 ghc-keyword-Control.Exception
-		 ghc-keyword-Control.Monad
-		 ghc-keyword-Data.Char
-		 ghc-keyword-Data.List
-		 ghc-keyword-Data.Maybe
-		 ghc-keyword-System.IO))
-	 (vals (ghc-boot (length syms))))
-    (ghc-set syms vals))
+  (let* ((vals (ghc-boot (length ghc-mod-comp-syms))))
+    (ghc-set ghc-mod-comp-syms vals))
+
   (ghc-add ghc-module-names "qualified")
   (ghc-add ghc-module-names "hiding")
   ;; hard coded in GHCMod.hs
@@ -91,7 +96,14 @@ unloaded modules are loaded")
 			"Data.Char"
 			"Data.List"
 			"Data.Maybe"
-			"System.IO")))
+			"System.IO"))
+  (ghc-import-module) )
+
+(defun ghc-comp-deinit ()
+  (mapcar (lambda (s) (set s nil)) ghc-mod-comp-syms)
+  (setq ghc-loaded-module nil)
+  (setq ghc-merged-keyword nil) )
+
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;

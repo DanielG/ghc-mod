@@ -1,15 +1,41 @@
-;;; ghc.el --- ghc-mod front-end for haskell-mode
+;;; ghc.el --- ghc-mod front-end for haskell-mode   -*- coding: utf-8-emacs; -*-
+
+;; Copyright (C) 2009-2014  Kazu Yamamoto, Daniel Gröber
 
 ;; Author:  Kazu Yamamoto <Kazu@Mew.org>
+;;          Daniel Gröber <dxld@darkboxed.org>
+;; URL: https://github.com/kazu-yamamoto/
 ;; Created: Sep 25, 2009
-;; Revised:
+;; Revised: Aug 13, 2014
+;; Package-Requires: ((emacs "24.3") (cl-lib "0.5"))
 
-;; Put the following code to your "~/.emacs".
+
+;;; Commentary:
+
+;; Installation:
 ;;
-;; (autoload 'ghc-init "ghc" nil t)
-;; (autoload 'ghc-debug "ghc" nil t)
-;; (add-hook 'haskell-mode-hook (lambda () (ghc-init)))
+;; To install ghc-mod-mode put the elisp/ directory of the ghc-mod source
+;; distribution somewhere on your `load-path'. If you installed ghc-mod through
+;; ELPA/package.el or a distribution package this will already be taken care
+;; of. Please note that installation through ELPA/package.el is discouraged
+;; since `ghc-mod-mode' depends on the "ghc-mod" executable which is not
+;; distributed as part of the ELPA package and installing if from another source
+;; could lead to version incompatibilities between `ghc-mod-mode' and the
+;; executable.
+
+
+;; Initialization:
 ;;
+;; To initialize `ghc-mod-mode' you should either call `global-ghc-mod-mode' to
+;; have `ghc-mod-mode' enabled in all `haskell-mode' buffers automatically or
+;; type `M-x ghc-mod-mode RET' whenever you want to enable it manually.
+;;
+;; (autoload 'ghc-mod-mode "ghc" nil t)
+;; (autoload 'ghc-mod-debug "ghc" nil t)
+;; (add-hook 'haskell-mode-hook (lambda () (ghc-mod-mode)))
+;;
+
+;; TODO?:
 ;; Or if you wish to display error each goto next/prev error,
 ;; set ghc-display-error valiable.
 ;;
@@ -43,9 +69,10 @@
 (require 'ghc-rewrite)
 (require 'dabbrev)
 
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; Customize Variables
+;;; Deprecated customization variables
 ;;;
 
 (defun ghc-find-C-h ()
@@ -54,78 +81,184 @@
      (aref keyboard-translate-table ?\C-h))
    ?\C-h))
 
-(defvar ghc-completion-key  "\e\t")
-(defvar ghc-document-key    "\e\C-d")
-(defvar ghc-import-key      "\e\C-m")
-(defvar ghc-previous-key    "\ep")
-(defvar ghc-next-key        "\en")
-(defvar ghc-help-key        "\e?")
-(defvar ghc-insert-key      "\et")
-(defvar ghc-sort-key        "\es")
-(defvar ghc-type-key        "\C-c\C-t")
-(defvar ghc-info-key        "\C-c\C-i")
-(defvar ghc-toggle-key      "\C-c\C-c")
-(defvar ghc-jump-key        "\C-c\C-j")
-(defvar ghc-module-key      "\C-c\C-m")
-(defvar ghc-expand-key      "\C-c\C-e")
-(defvar ghc-kill-key        "\C-c\C-k")
-(defvar ghc-hoogle-key      (format "\C-c%c" (ghc-find-C-h)))
-(defvar ghc-shallower-key   "\C-c<")
-(defvar ghc-deeper-key      "\C-c>")
-;(defvar ghc-case-split-key  "\C-c\C-s")
-(defvar ghc-refine-key      "\C-c\C-f")
-(defvar ghc-auto-key        "\C-c\C-a")
-(defvar ghc-prev-hole-key   "\C-c\ep")
-(defvar ghc-next-hole-key   "\C-c\en")
+(defvar ghc-mod-key-varaibles-depricated-notice
+  "Since ghc-mod 5.1.0.0 using ghc-*-key variables to change
+keybindings is deprecated, setting them will be ignored. Use the
+`define-key' function to change `ghc-mod-mode-map' in a
+`ghc-mod-mode-hook' instead.")
+
+(eval
+ (let ((msg-var 'ghc-mod-key-varaibles-depricated-notice))
+   `(progn
+      (defvar ghc-completion-key  "\e\t" ,msg-var)
+      (defvar ghc-document-key    "\e\C-d" ,msg-var)
+      (defvar ghc-import-key      "\e\C-m" ,msg-var)
+      (defvar ghc-previous-key    "\ep" ,msg-var)
+      (defvar ghc-next-key        "\en" ,msg-var)
+      (defvar ghc-help-key        "\e?" ,msg-var)
+      (defvar ghc-insert-key      "\et" ,msg-var)
+      (defvar ghc-sort-key        "\es" ,msg-var)
+      (defvar ghc-type-key        "\C-c\C-t" ,msg-var)
+      (defvar ghc-info-key        "\C-c\C-i" ,msg-var)
+      (defvar ghc-toggle-key      "\C-c\C-c" ,msg-var)
+      (defvar ghc-jump-key        "\C-c\C-j" ,msg-var)
+      (defvar ghc-module-key      "\C-c\C-m" ,msg-var)
+      (defvar ghc-expand-key      "\C-c\C-e" ,msg-var)
+      (defvar ghc-kill-key        "\C-c\C-k" ,msg-var)
+      (defvar ghc-hoogle-key      (format "\C-c%c" (ghc-find-C-h)) ,msg-var)
+      (defvar ghc-shallower-key   "\C-c<" ,msg-var)
+      (defvar ghc-deeper-key      "\C-c>" ,msg-var)
+      ;;(defvar ghc-case-split-key  "\C-c\C-s"  ,msg-var)
+      (defvar ghc-refine-key      "\C-c\C-f" ,msg-var)
+      (defvar ghc-auto-key        "\C-c\C-a" ,msg-var)
+      (defvar ghc-prev-hole-key   "\C-c\ep" ,msg-var)
+      (defvar ghc-next-hole-key   "\C-c\en" ,msg-var)
+      )))
+
+(defvar ghc-mod-depricated-key-vars
+  (let ((vs '(completion document import previous next help insert sort type
+             info toggle jump module expand kill hoogle shallower deeper refine
+             auto prev-hole next-hole)))
+    (mapcar (lambda (n) (intern (concat "ghc-" (symbol-name n) "-key"))) vs)) )
+
+(defun ghc-mod-depricated-key-values ()
+  (mapcar (lambda (s) (symbol-value s)) ghc-mod-depricated-key-vars) )
+
+(defvar ghc-mod-initial-key-values (ghc-mod-depricated-key-values) )
+(defvar ghc-mod-key-vars-depricated-warning-was-displayed nil)
+
+(defun ghc-mod-display-key-vars-deprecated-warning-if-appropriate ()
+  (when (not (equal
+              (ghc-mod-depricated-key-values)
+              ghc-mod-initial-key-values))
+    (unless ghc-mod-key-vars-depricated-warning-was-displayed
+      (let ((buf (get-buffer-create "*ghc-mod warnings*")))
+        (with-current-buffer buf
+          (insert "Warning: ")
+          (insert ghc-mod-key-varaibles-depricated-notice)
+          (insert "\n\nYou are getting this warning because:\n\n")
+          (insert (ghc-mod-key-vars-explain) "\n")
+          (setq buffer-read-only t))
+        (display-buffer buf)
+        (setq ghc-mod-key-vars-depricated-warning-was-displayed t)))))
+
+
+(defun ghc-mod-key-vars-explain ()
+  "Explain which variable is triggering the deprecation warning
+  for the user."
+  (mapconcat 'identity
+             (loop
+              for key     in ghc-mod-depricated-key-vars
+              for initial in ghc-mod-initial-key-values
+              for current in (ghc-mod-depricated-key-values)
+              when (not (equal initial current))
+              collect
+              (format " - %s is set to \"%s\" instead of its default value"
+                      (symbol-name key) current))
+             "\n"))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; Initializer
+;;; global ghc-mod Minor mode
 ;;;
 
-(defvar ghc-initialized nil)
+(define-globalized-minor-mode global-ghc-mod-mode
+  ghc-mod-mode
+  (lambda () (when (eq major-mode 'haskell-mode) (ghc-mod-mode 1)))
+  turn-on-ghc-mod-mode)
 
-;;;###autoload
-(defun ghc-init ()
+;; (defmacro with-all-haskell-mode-buffers (&rest body)
+;;   `(loop for b in (buffer-list) do
+;;          (with-current-buffer b
+;;            (when (eq major-mode 'haskell-mode)
+;;              ,@body)
+;;            )))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;
+;;; ghc-mod Minor mode
+;;;
+
+(defvar ghc-mod-mode-map
+  (let ((keymap (make-sparse-keymap)))
+    (define-key keymap (kbd "ESC t")      'ghc-complete)
+    (define-key keymap (kbd "ESC C-d")    'ghc-browse-document)
+    (define-key keymap (kbd "C-c C-t")    'ghc-show-type)
+    (define-key keymap (kbd "C-c C-i")    'ghc-show-info)
+    (define-key keymap (kbd "C-c C-e")    'ghc-expand-th)
+    (define-key keymap (kbd "ESC C-m")    'ghc-import-module)
+    (define-key keymap (kbd "ESC p")      'ghc-goto-prev-error)
+    (define-key keymap (kbd "ESC n")      'ghc-goto-next-error)
+    (define-key keymap (kbd "ESC ?")      'ghc-display-errors)
+    (define-key keymap (kbd "ESC t")      'ghc-mod-insert-template-or-signature)
+    (define-key keymap (kbd "ESC s")      'ghc-sort-lines)
+    (define-key keymap (kbd "C-x C-s")    'ghc-save-buffer)
+    (define-key keymap (kbd "C-c C-c")    'ghc-toggle-check-command)
+    (define-key keymap (kbd "C-c C-j")    'ghc-jump-file)
+    (define-key keymap (kbd "C-c C-m")    'ghc-insert-module)
+    (define-key keymap (kbd "C-c C-k")    'ghc-kill-process)
+    (define-key keymap (format "\C-c%c" (ghc-find-C-h))  'haskell-hoogle)
+    (define-key keymap (kbd "C-c <")      'ghc-make-indent-shallower)
+    (define-key keymap (kbd "C-c >")      'ghc-make-indent-deeper)
+    ;(define-key keymap (kbd "C-c C-f")   'ghc-case-split)
+    (define-key keymap (kbd "C-c C-f")    'ghc-refine)
+    (define-key keymap (kbd "C-c C-a")    'ghc-auto)
+    (define-key keymap (kbd "C-c ESC p")  'ghc-goto-prev-hole)
+    (define-key keymap (kbd "C-c ESC n")  'ghc-goto-next-hole)
+    keymap))
+
+(defadvice save-buffer (after ghc-mod-check-syntax-on-save disable)
+    "Check syntax with GHC when a haskell-mode buffer is saved."
+    (when ghc-mod-mode
+      (ghc-check-syntax)))
+
+(defun ghc-mod-init ()
+  (ghc-mod-display-key-vars-deprecated-warning-if-appropriate)
   (ghc-abbrev-init)
   (ghc-type-init)
-  (unless ghc-initialized
-    (define-key haskell-mode-map ghc-completion-key  'ghc-complete)
-    (define-key haskell-mode-map ghc-document-key    'ghc-browse-document)
-    (define-key haskell-mode-map ghc-type-key        'ghc-show-type)
-    (define-key haskell-mode-map ghc-info-key        'ghc-show-info)
-    (define-key haskell-mode-map ghc-expand-key      'ghc-expand-th)
-    (define-key haskell-mode-map ghc-import-key      'ghc-import-module)
-    (define-key haskell-mode-map ghc-previous-key    'ghc-goto-prev-error)
-    (define-key haskell-mode-map ghc-next-key        'ghc-goto-next-error)
-    (define-key haskell-mode-map ghc-help-key        'ghc-display-errors)
-    (define-key haskell-mode-map ghc-insert-key      'ghc-insert-template-or-signature)
-    (define-key haskell-mode-map ghc-sort-key        'ghc-sort-lines)
-    (define-key haskell-mode-map ghc-toggle-key      'ghc-toggle-check-command)
-    (define-key haskell-mode-map ghc-jump-key        'ghc-jump-file)
-    (define-key haskell-mode-map ghc-module-key      'ghc-insert-module)
-    (define-key haskell-mode-map ghc-kill-key        'ghc-kill-process)
-    (define-key haskell-mode-map ghc-hoogle-key      'haskell-hoogle)
-    (define-key haskell-mode-map ghc-shallower-key   'ghc-make-indent-shallower)
-    (define-key haskell-mode-map ghc-deeper-key      'ghc-make-indent-deeper)
-    ;(define-key haskell-mode-map ghc-case-split-key  'ghc-case-split)
-    (define-key haskell-mode-map ghc-refine-key      'ghc-refine)
-    (define-key haskell-mode-map ghc-auto-key        'ghc-auto)
-    (define-key haskell-mode-map ghc-prev-hole-key   'ghc-goto-prev-hole)
-    (define-key haskell-mode-map ghc-next-hole-key   'ghc-goto-next-hole)
-    (ghc-comp-init)
-    (setq ghc-initialized t)
-    (defadvice save-buffer (after ghc-check-syntax-on-save activate)
-      "Check syntax with GHC when a haskell-mode buffer is saved."
-      (when (eq 'haskell-mode major-mode) (ghc-check-syntax))))
-  (ghc-import-module)
-  (ghc-check-syntax))
+  (ghc-comp-init)
+  (ghc-check-syntax)
+  (ad-enable-advice 'save-buffer 'after 'ghc-mod-check-syntax-on-save)
+  )
+
+(defun ghc-mod-deinit ()
+  (ad-disable-advice 'save-buffer 'after 'ghc-mod-check-syntax-on-save)
+  (ghc-comp-deinit)
+  (ghc-type-deinit)
+  (ghc-abbrev-deinit)
+  )
+
+(defvar ghc-mod-default-lighter " Gᷟ")
+(defvar-local ghc-mod-lighter ghc-mod-default-lighter)
 
 (defun ghc-abbrev-init ()
   (set (make-local-variable 'dabbrev-case-fold-search) nil))
 
+(defun ghc-abbrev-deinit ()
+  (kill-local-variable 'dabbrev-case-fold-search) )
+
 ;;;###autoload
-(defun ghc-debug ()
+(define-minor-mode ghc-mod-mode
+  "Toggle ghc-mod mode on or off.
+With a prefix argument ARG, enable ghc-mod mode if ARG is
+positive, and disable it otherwise.  If called from Lisp, enable
+the mode if ARG is omitted or nil, and toggle it if ARG is `toggle'."
+  :init-value nil
+  :lighter ghc-mod-lighter
+  :keymap ghc-mod-mode-map
+  :group 'ghc-mod
+
+  (if ghc-mod-mode
+      (ghc-mod-init)
+    (ghc-mod-deinit)))
+
+;;;###autoload
+(defun ghc-init ()
+  "Deprecated: use `ghc-mod-mode' instead."
+  (unless ghc-mod-mode (ghc-mod-mode)))
+
+;;;###autoload
+(defun ghc-mod-debug ()
   (interactive)
   (let ((el-path (locate-file "ghc.el" load-path))
 	(ghc-path (executable-find "ghc")) ;; FIXME
@@ -158,3 +291,4 @@
     (ghc-insert-template)))
 
 (provide 'ghc)
+;;; ghc.el ends here
