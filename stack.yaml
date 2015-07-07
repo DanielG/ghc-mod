@@ -3,4 +3,4 @@ packages:
 - '.'
 extra-deps:
 - 'cabal-helper-0.3.6.0'
-resolver: lts-2.16
+resolver: lts-2.17
