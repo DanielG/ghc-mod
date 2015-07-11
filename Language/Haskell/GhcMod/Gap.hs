@@ -14,6 +14,7 @@ module Language.Haskell.GhcMod.Gap (
   , setCabalPkg
   , setHideAllPackages
   , setDeferTypeErrors
+  , setDeferTypedHoles
   , setWarnTypedHoles
   , setDumpSplices
   , isDumpSplices
@@ -292,6 +293,13 @@ setDeferTypeErrors dflag = gopt_set dflag Opt_DeferTypeErrors
 setDeferTypeErrors dflag = dopt_set dflag Opt_DeferTypeErrors
 #else
 setDeferTypeErrors = id
+#endif
+
+setDeferTypedHoles :: DynFlags -> DynFlags
+#if __GLASGOW_HASKELL__ >= 708
+setDeferTypedHoles dflag = gopt_set dflag Opt_DeferTypedHoles
+#else
+setDeferTypedHoles = id
 #endif
 
 setWarnTypedHoles :: DynFlags -> DynFlags
