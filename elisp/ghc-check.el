@@ -64,9 +64,14 @@ nil            does not display errors/warnings.
 
 (defun ghc-check-syntax ()
   (interactive)
-  (ghc-with-process (ghc-check-send)
-		    'ghc-check-callback
-		    (lambda () (setq mode-line-process " -:-"))))
+  ;; Only check syntax of visible buffers
+  (when (get-buffer-window (current-buffer) t)
+    (with-timeout
+        (10 (error "ghc process may have hung or exited with an error"))
+      (while ghc-process-running (sleep-for 0.1)))
+    (ghc-with-process (ghc-check-send)
+                      'ghc-check-callback
+                      (lambda () (setq mode-line-process " -:-")))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
