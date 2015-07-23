@@ -163,7 +163,7 @@ usage =
  \    - lint FILE\n\
  \        Check files using `hlint'.\n\
  \      Flags:\n\
- \        -l\n\
+ \        -h\n\
  \            Option to be passed to hlint.\n\
  \\n\
  \    - root\n\
