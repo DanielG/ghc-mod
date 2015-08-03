@@ -25,9 +25,9 @@ data Cached m d a = Cached {
   -- optimizazion when knowing which input files changed can make updating the
   -- cache faster
   --
-  -- * @data@: Arbitrary static input data can be used to invalidate the cache
-  -- using something other than file timestamps i.e. environment tool version
-  -- numbers
+  -- * @data@: Arbitrary static input data to cache action. Can be used to
+  -- invalidate the cache using something other than file timestamps
+  -- i.e. environment tool version numbers
   --
   -- * @ma@: Cached data if it existed
   --
@@ -53,7 +53,7 @@ data TimedCacheFiles = TimedCacheFiles {
  }
 
 -- | Cache a MonadIO action with proper invalidation.
-cached :: forall m a d. (MonadIO m, GmLog m, Serialize a, Eq d, Serialize d)
+cached :: forall m a d. (MonadIO m, GmLog m, Serialize a, Eq d, Serialize d, Show d)
        => FilePath -- ^ Directory to prepend to 'cacheFile'
        -> Cached m d a -- ^ Cache descriptor
        -> d
@@ -66,7 +66,7 @@ cached dir cd d = do
           writeCache (TimedCacheFiles tcfile []) Nothing "cache missing"
       Just (ifs, d', a) | d /= d' -> do
           tcf <- timeCacheInput dir (cacheFile cd) ifs
-          writeCache tcf (Just a) "input data changed"
+          writeCache tcf (Just a) $ "input data changed" -- ++ "   was: " ++ show d ++ "  is: " ++ show d'
       Just (ifs, _, a) -> do
           tcf <- timeCacheInput dir (cacheFile cd) ifs
           case invalidatingInputFiles tcf of
