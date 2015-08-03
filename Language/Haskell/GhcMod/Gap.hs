@@ -49,7 +49,7 @@ import CoreSyn (CoreExpr)
 import Data.List (intersperse)
 import Data.Maybe (catMaybes)
 import Data.Time.Clock (UTCTime)
-import Data.Traversable
+import Data.Traversable hiding (mapM)
 import DataCon (dataConRepType)
 import Desugar (deSugarExpr)
 import DynFlags

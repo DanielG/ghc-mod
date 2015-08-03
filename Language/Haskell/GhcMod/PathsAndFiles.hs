@@ -25,7 +25,7 @@ import Control.Monad
 import Data.List
 import Data.Char
 import Data.Maybe
-import Data.Traversable
+import Data.Traversable hiding (mapM)
 import Distribution.Helper (buildPlatform)
 import System.Directory
 import System.FilePath

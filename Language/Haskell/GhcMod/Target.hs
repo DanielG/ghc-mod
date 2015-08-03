@@ -44,7 +44,7 @@ import Data.Maybe
 import Data.Monoid as Monoid
 import Data.Either
 import Data.Foldable (foldrM)
-import Data.Traversable
+import Data.Traversable hiding (mapM, forM)
 import Data.IORef
 import Data.Map (Map)
 import qualified Data.Map  as Map

@@ -7,7 +7,7 @@ import Language.Haskell.GhcMod.Utils
 
 import Control.Applicative
 import Data.Maybe
-import Data.Traversable
+import Data.Traversable hiding (mapM)
 import System.FilePath ((</>))
 
 import GHC.Paths (libdir)
