@@ -201,8 +201,9 @@ resolvedComponentsCache = Cached {
     cacheFile  = resolvedComponentsCacheFile,
     cachedAction = \tcfs comps ma -> do
         Cradle {..} <- cradle
-        let mums =
-              case invalidatingInputFiles tcfs of
+        let iifsM = invalidatingInputFiles tcfs
+            mums =
+              case iifsM of
                 Nothing -> Nothing
                 Just iifs ->
                   let
@@ -212,10 +213,12 @@ resolvedComponentsCache = Cached {
                   in if null changedFiles
                        then Nothing
                        else Just $ map Left changedFiles
-
-        case ma of
-          Just mcs -> gmsGet >>= \s -> gmsPut s { gmComponents = mcs }
-          Nothing -> return ()
+            setupChanged = maybe False
+                                 (elem $ cradleRootDir </> setupConfigPath)
+                                 iifsM
+        case (setupChanged, ma) of
+          (False, Just mcs) -> gmsGet >>= \s -> gmsPut s { gmComponents = mcs }
+          _ -> return ()
 
 --        liftIO $ print ("changed files", mums :: Maybe [Either FilePath ()])
 
