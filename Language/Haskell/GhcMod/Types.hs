@@ -170,6 +170,7 @@ data GmLogLevel =
   | GmWarning
   | GmInfo
   | GmDebug
+  | GmVomit
     deriving (Eq, Ord, Enum, Bounded, Show, Read)
 
 -- | Collection of packages

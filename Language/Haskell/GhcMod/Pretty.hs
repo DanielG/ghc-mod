@@ -45,6 +45,7 @@ gmLogLevelDoc GmError     = text "ERROR"
 gmLogLevelDoc GmWarning   = text "Warning"
 gmLogLevelDoc GmInfo      = text "info"
 gmLogLevelDoc GmDebug     = text "DEBUG"
+gmLogLevelDoc GmVomit     = text "VOMIT"
 
 infixl 6 <+>:
 (<+>:) :: Doc -> Doc -> Doc

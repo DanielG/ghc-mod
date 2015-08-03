@@ -150,6 +150,11 @@ runGmlTWith efnmns' mdf wrapper action = do
     opts <- targetGhcOptions crdl serfnmn
     let opts' = opts ++ ["-O0"] ++ ghcUserOptions
 
+    gmVomit
+      "session-ghc-options"
+      (strDoc "Initializing GHC session with following options")
+      (show opts')
+
     initSession opts' $
         setModeSimple >>> setEmptyLogger >>> mdf
 
@@ -220,7 +225,8 @@ resolvedComponentsCache = Cached {
           (False, Just mcs) -> gmsGet >>= \s -> gmsPut s { gmComponents = mcs }
           _ -> return ()
 
---        liftIO $ print ("changed files", mums :: Maybe [Either FilePath ()])
+        gmLog GmDebug "resolvedComponentsCache" $
+              strDoc "files changed" <+>: text (show (mums :: Maybe [Either FilePath ()]))
 
         mcs <- resolveGmComponents mums comps
         return (setupConfigPath:flatten mcs , mcs)

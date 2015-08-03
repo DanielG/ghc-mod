@@ -112,14 +112,15 @@ data GhcModEnv = GhcModEnv {
     }
 
 data GhcModLog = GhcModLog {
-      gmLogLevel    :: Maybe GmLogLevel,
-      gmLogMessages :: [(GmLogLevel, String, Doc)]
+      gmLogLevel     :: Maybe GmLogLevel,
+      gmLogVomitDump :: Last Bool,
+      gmLogMessages  :: [(GmLogLevel, String, Doc)]
     } deriving (Show)
 
 instance Monoid GhcModLog where
-    mempty = GhcModLog (Just GmPanic) mempty
-    GhcModLog ml a `mappend` GhcModLog ml' b =
-        GhcModLog (ml' `mplus` ml) (a `mappend` b)
+    mempty = GhcModLog (Just GmPanic) (Last Nothing) mempty
+    GhcModLog ml vd ls `mappend` GhcModLog ml' vd' ls' =
+        GhcModLog (ml' `mplus` ml) (vd `mappend` vd') (ls `mappend` ls')
 
 data GmGhcSession = GmGhcSession {
       gmgsOptions :: ![GHCOption],

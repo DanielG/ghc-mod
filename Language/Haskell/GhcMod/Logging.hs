@@ -29,17 +29,25 @@ import Control.Monad
 import Control.Monad.Trans.Class
 import Data.List
 import Data.Char
-import Data.Monoid (mempty, mappend, mconcat, (<>))
+import Data.Monoid
+import Data.Maybe
 import System.IO
+import System.FilePath
 import Text.PrettyPrint hiding (style, (<>))
 import Prelude
 
 import Language.Haskell.GhcMod.Monad.Types
+import Language.Haskell.GhcMod.Types
 import Language.Haskell.GhcMod.Pretty
 
 gmSetLogLevel :: GmLog m => GmLogLevel -> m ()
 gmSetLogLevel level =
-    gmlJournal $ GhcModLog (Just level) []
+    gmlJournal $ GhcModLog (Just level) (Last Nothing) []
+
+gmSetDumpLevel :: GmLog m => Bool -> m ()
+gmSetDumpLevel level =
+    gmlJournal $ GhcModLog Nothing (Last (Just level)) []
+
 
 increaseLogLevel :: GmLogLevel -> GmLogLevel
 increaseLogLevel l | l == maxBound = l
@@ -67,7 +75,19 @@ gmLog level loc' doc = do
 
   when (level <= level') $ liftIO $ hPutStrLn stderr msg
 
-  gmlJournal (GhcModLog Nothing [(level, loc', msgDoc)])
+  gmlJournal (GhcModLog Nothing (Last Nothing) [(level, loc', msgDoc)])
+
+gmVomit :: (MonadIO m, GmLog m, GmEnv m) => String -> Doc -> String -> m ()
+gmVomit filename doc content = do
+  gmLog GmVomit "" $ doc <+> text content
+
+  GhcModLog { gmLogVomitDump = Last mdump }
+      <- gmlHistory
+
+  dir <- cradleTempDir `liftM` cradle
+  when (fromMaybe False mdump) $
+       liftIO $ writeFile (dir </> filename) content
+
 
 newtype LogDiscardT m a = LogDiscardT { runLogDiscard :: m a }
     deriving (Functor, Applicative, Monad)

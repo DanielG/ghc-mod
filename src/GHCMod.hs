@@ -237,7 +237,7 @@ intToLogLevel = toEnum
 
 globalArgSpec :: [OptDescr (Options -> Options)]
 globalArgSpec =
-      [ option "v" ["verbose"] "Increase or set log level. (0-6)" $
+      [ option "v" ["verbose"] "Increase or set log level. (0-7)" $
                optArg "LEVEL" $ \ml o -> o {
                    logLevel = case ml of
                                 Nothing -> increaseLogLevel (logLevel o)
