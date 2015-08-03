@@ -261,7 +261,7 @@ findCandidates scns = foldl1 Set.intersection scns
 pickComponent :: Set ChComponentName -> ChComponentName
 pickComponent scn = Set.findMin scn
 
-packageGhcOptions :: (Applicative m, MonadIO m, GmEnv m, GmLog m) => m [GHCOption]
+packageGhcOptions :: (Applicative m, IOish m, GmEnv m, GmLog m) => m [GHCOption]
 packageGhcOptions = do
     crdl <- cradle
     case cradleCabalFile crdl of

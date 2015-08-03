@@ -70,7 +70,7 @@ newTempDir :: FilePath -> IO FilePath
 newTempDir dir =
   flip createTempDirectory (uniqTempDirName dir) =<< getTemporaryDirectory
 
-whenM :: IO Bool -> IO () -> IO ()
+whenM :: Monad m => m Bool -> m () -> m ()
 whenM mb ma = mb >>= flip when ma
 
 -- | Returns the path to the currently running ghc-mod executable. With ghc<7.6

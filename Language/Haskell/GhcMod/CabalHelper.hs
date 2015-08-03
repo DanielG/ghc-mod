@@ -33,6 +33,7 @@ import Language.Haskell.GhcMod.Monad.Types
 import Language.Haskell.GhcMod.Utils
 import Language.Haskell.GhcMod.World
 import Language.Haskell.GhcMod.PathsAndFiles
+import Language.Haskell.GhcMod.Logging
 import System.FilePath
 import Prelude
 
@@ -40,11 +41,11 @@ import Paths_ghc_mod as GhcMod
 
 -- | Only package related GHC options, sufficient for things that don't need to
 -- access home modules
-getGhcMergedPkgOptions :: (Applicative m, MonadIO m, GmEnv m, GmLog m)
+getGhcMergedPkgOptions :: (Applicative m, IOish m, GmEnv m, GmLog m)
                  => m [GHCOption]
 getGhcMergedPkgOptions = chCached Cached {
   cacheFile = mergedPkgOptsCacheFile,
-  cachedAction = \ _ (progs, root, _) _ -> do
+  cachedAction = \ _tcf (progs, root, _) _ma -> do
     opts <- withCabal $ runQuery' progs root $ ghcMergedPkgOptions
     return ([setupConfigPath], opts)
  }
@@ -61,11 +62,11 @@ helperProgs opts = Programs {
 --
 -- The Component\'s 'gmcHomeModuleGraph' will be empty and has to be resolved by
 -- 'resolveGmComponents'.
-getComponents :: (Applicative m, MonadIO m, GmEnv m, GmLog m)
+getComponents :: (Applicative m, IOish m, GmEnv m, GmLog m)
               => m [GmComponent 'GMCRaw ChEntrypoint]
 getComponents = chCached cabalHelperCache
 
-chCached :: (Applicative m, MonadIO m, GmEnv m, GmLog m, Serialize a)
+chCached :: (Applicative m, IOish m, GmEnv m, GmLog m, Serialize a)
          => Cached m (Programs, FilePath, (Version, [Char])) a -> m a
 chCached c = do
   root <- cradleRootDir <$> cradle
@@ -87,7 +88,7 @@ cabalHelperCache
   => Cached m (Programs, FilePath, (Version, String)) [GmComponent 'GMCRaw ChEntrypoint]
 cabalHelperCache = Cached {
     cacheFile = cabalHelperCacheFile,
-    cachedAction = \ _ (progs, root, _) _ ->
+    cachedAction = \ _tcf (progs, root, _vers) _ma ->
       runQuery' progs root $ do
         q <- join7
                <$> ghcOptions
@@ -111,11 +112,11 @@ cabalHelperCache = Cached {
                  , a == a'
                  ]
 
-withCabal :: (MonadIO m, GmEnv m) => m a -> m a
+withCabal :: (IOish m, GmEnv m, GmLog m) => m a -> m a
 withCabal action = do
     crdl <- cradle
     opts <- options
-    liftIO $ whenM (isSetupConfigOutOfDate <$> getCurrentWorld crdl) $
+    whenM (liftIO $ isSetupConfigOutOfDate <$> getCurrentWorld crdl) $
         withDirectory_ (cradleRootDir crdl) $ do
             let pkgDbArgs = "--package-db=clear" : map pkgDbArg (cradlePkgDbStack crdl)
                 progOpts =
@@ -126,8 +127,10 @@ withCabal action = do
                          then [ "--with-ghc-pkg=" ++ T.ghcPkgProgram opts ]
                          else []
                     ++ pkgDbArgs
-            void $ readProcess (T.cabalProgram opts) ("configure":progOpts) ""
-            writeAutogenFiles $ cradleRootDir crdl </> "dist"
+            gmLog GmDebug "" $ strDoc $ "setup configuration is out of date, reconfiguring Cabal project."
+            liftIO $ void $ readProcess (T.cabalProgram opts) ("configure":progOpts) ""
+            gmLog GmDebug "" $ strDoc $ "writing Cabal autogen files"
+            liftIO $ writeAutogenFiles $ cradleRootDir crdl </> "dist"
     action
 
 pkgDbArg :: GhcPkgDb -> String
