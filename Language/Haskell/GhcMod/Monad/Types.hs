@@ -71,7 +71,7 @@ import DynFlags
 import Exception
 import HscTypes
 
-import Control.Applicative (Applicative, Alternative, (<$>))
+import Control.Applicative
 import Control.Monad
 
 import Control.Monad.Reader (ReaderT(..))
@@ -96,12 +96,13 @@ import Data.Monoid (Monoid)
 #endif
 
 import Data.Set (Set)
-import Data.Map (Map, empty)
+import Data.Map as Map (Map, empty)
 import Data.Maybe
 import Data.Monoid
 import Data.IORef
 import Distribution.Helper
 import Text.PrettyPrint (Doc)
+import Prelude
 
 import qualified MonadUtils as GHC (MonadIO(..))
 
@@ -127,12 +128,12 @@ data GmGhcSession = GmGhcSession {
 
 data GhcModState = GhcModState {
       gmGhcSession   :: !(Maybe GmGhcSession)
-    , gmComponents   :: !(Map ChComponentName (GmComponent GMCResolved (Set ModulePath)))
+    , gmComponents   :: !(Map ChComponentName (GmComponent 'GMCResolved (Set ModulePath)))
     , gmCompilerMode :: !CompilerMode
     }
 
 defaultGhcModState :: GhcModState
-defaultGhcModState = GhcModState Nothing empty Simple
+defaultGhcModState = GhcModState Nothing Map.empty Simple
 
 data CompilerMode = Simple | Intelligent deriving (Eq,Show,Read)
 

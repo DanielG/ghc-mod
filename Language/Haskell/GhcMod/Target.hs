@@ -18,7 +18,7 @@
 module Language.Haskell.GhcMod.Target where
 
 import Control.Arrow
-import Control.Applicative (Applicative, (<$>))
+import Control.Applicative
 import Control.Monad.Reader (runReaderT)
 import GHC
 import GHC.Paths (libdir)
@@ -27,7 +27,6 @@ import SysTools
 import DynFlags
 import HscMain
 import HscTypes
-import Bag (bagToList)
 
 import Language.Haskell.GhcMod.DynFlags
 import Language.Haskell.GhcMod.Monad.Types
@@ -37,22 +36,22 @@ import Language.Haskell.GhcMod.PathsAndFiles
 import Language.Haskell.GhcMod.GhcPkg
 import Language.Haskell.GhcMod.Error
 import Language.Haskell.GhcMod.Logging
-import Language.Haskell.GhcMod.Logger
 import Language.Haskell.GhcMod.Types
 import Language.Haskell.GhcMod.Utils
 
 
 import Data.Maybe
-import Data.Monoid
+import Data.Monoid as Monoid
 import Data.Either
 import Data.Foldable (foldrM)
-import Data.Traversable (traverse)
+import Data.Traversable
 import Data.IORef
 import Data.Map (Map)
 import qualified Data.Map  as Map
 import Data.Set (Set)
 import qualified Data.Set as Set
 import Distribution.Helper
+import Prelude
 
 import System.Directory
 import System.FilePath
@@ -196,8 +195,8 @@ targetGhcOptions crdl sefnmn = do
             return $ gmcGhcOpts $ fromJust $ Map.lookup cn mcs
 
 resolvedComponentsCache :: IOish m => Cached (GhcModT m)
-    [GmComponent GMCRaw (Set.Set ModulePath)]
-    (Map.Map ChComponentName (GmComponent GMCResolved (Set.Set ModulePath)))
+    [GmComponent 'GMCRaw (Set.Set ModulePath)]
+    (Map.Map ChComponentName (GmComponent 'GMCResolved (Set.Set ModulePath)))
 resolvedComponentsCache = Cached {
     cacheFile  = resolvedComponentsCacheFile,
     cachedAction = \tcfs comps ma -> do
@@ -278,8 +277,8 @@ sandboxOpts crdl =
 
 resolveGmComponent :: (IOish m, GmLog m, GmEnv m)
     => Maybe [CompilationUnit] -- ^ Updated modules
-    -> GmComponent GMCRaw (Set ModulePath)
-    -> m (GmComponent GMCResolved (Set ModulePath))
+    -> GmComponent 'GMCRaw (Set ModulePath)
+    -> m (GmComponent 'GMCResolved (Set ModulePath))
 resolveGmComponent mums c@GmComponent {..} = do
   withLightHscEnv ghcOpts $ \env -> do
     let srcDirs = if null gmcSourceDirs then [""] else gmcSourceDirs
@@ -303,8 +302,8 @@ resolveGmComponent mums c@GmComponent {..} = do
 
 resolveEntrypoint :: (IOish m, GmLog m)
     => Cradle
-    -> GmComponent GMCRaw ChEntrypoint
-    -> m (GmComponent GMCRaw (Set ModulePath))
+    -> GmComponent 'GMCRaw ChEntrypoint
+    -> m (GmComponent 'GMCRaw (Set ModulePath))
 resolveEntrypoint Cradle {..} c@GmComponent {..} = do
     withLightHscEnv gmcGhcSrcOpts $ \env -> do
       let srcDirs = if null gmcSourceDirs then [""] else gmcSourceDirs
@@ -347,7 +346,7 @@ resolveModule env srcDirs (Left fn') = do
           case emn of
               Left errs -> do
                 gmLog GmWarning ("resolveModule " ++ show fn) $
-                  empty $+$ (vcat $ map text errs)
+                  Monoid.mempty $+$ (vcat $ map text errs)
                 return Nothing -- TODO: should expose these errors otherwise
                                -- modules with preprocessor/parse errors are
                                -- going to be missing
@@ -368,8 +367,8 @@ type CompilationUnit = Either FilePath ModuleName
 resolveGmComponents :: (IOish m, GmState m, GmLog m, GmEnv m)
     => Maybe [CompilationUnit]
         -- ^ Updated modules
-    -> [GmComponent GMCRaw (Set ModulePath)]
-    -> m (Map ChComponentName (GmComponent GMCResolved (Set ModulePath)))
+    -> [GmComponent 'GMCRaw (Set ModulePath)]
+    -> m (Map ChComponentName (GmComponent 'GMCResolved (Set ModulePath)))
 resolveGmComponents mumns cs = do
     s <- gmsGet
     m' <- foldrM' (gmComponents s) cs $ \c m -> do

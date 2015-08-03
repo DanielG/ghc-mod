@@ -10,6 +10,8 @@ import Data.Time (UTCTime)
 #else
 import System.Time (ClockTime)
 #endif
+import Prelude
+
 
 #if MIN_VERSION_directory(1,2,0)
 type ModTime = UTCTime

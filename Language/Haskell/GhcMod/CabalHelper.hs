@@ -34,6 +34,7 @@ import Language.Haskell.GhcMod.Utils
 import Language.Haskell.GhcMod.World
 import Language.Haskell.GhcMod.PathsAndFiles
 import System.FilePath
+import Prelude
 
 import Paths_ghc_mod as GhcMod
 
@@ -61,7 +62,7 @@ helperProgs opts = Programs {
 -- The Component\'s 'gmcHomeModuleGraph' will be empty and has to be resolved by
 -- 'resolveGmComponents'.
 getComponents :: (Applicative m, MonadIO m, GmEnv m, GmLog m)
-              => m [GmComponent GMCRaw ChEntrypoint]
+              => m [GmComponent 'GMCRaw ChEntrypoint]
 getComponents = chCached cabalHelperCache
 
 chCached :: (Applicative m, MonadIO m, GmEnv m, GmLog m, Serialize a)
@@ -83,7 +84,7 @@ chCached c = do
 
 cabalHelperCache
   :: (Functor m, Applicative m, MonadIO m)
-  => Cached m (Programs, FilePath, (Version, String)) [GmComponent GMCRaw ChEntrypoint]
+  => Cached m (Programs, FilePath, (Version, String)) [GmComponent 'GMCRaw ChEntrypoint]
 cabalHelperCache = Cached {
     cacheFile = cabalHelperCacheFile,
     cachedAction = \ _ (progs, root, _) _ ->

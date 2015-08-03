@@ -3,7 +3,7 @@
 
 module Language.Haskell.GhcMod.SrcUtils where
 
-import Control.Applicative ((<$>))
+import Control.Applicative
 import CoreUtils (exprType)
 import Data.Generics
 import Data.Maybe (fromMaybe)
@@ -19,6 +19,7 @@ import qualified Language.Haskell.GhcMod.Gap as Gap
 import OccName (OccName)
 import Outputable (PprStyle)
 import TcHsSyn (hsPatType)
+import Prelude
 
 ----------------------------------------------------------------
 

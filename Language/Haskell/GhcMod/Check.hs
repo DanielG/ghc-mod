@@ -5,7 +5,8 @@ module Language.Haskell.GhcMod.Check (
   , expand
   ) where
 
-import Control.Applicative ((<$>))
+import Control.Applicative
+import Prelude
 import Language.Haskell.GhcMod.DynFlags
 import qualified Language.Haskell.GhcMod.Gap as Gap
 import Language.Haskell.GhcMod.Logger

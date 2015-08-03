@@ -25,7 +25,7 @@ import Control.Monad
 import Data.List
 import Data.Char
 import Data.Maybe
-import Data.Traversable (traverse)
+import Data.Traversable
 import Distribution.Helper (buildPlatform)
 import System.Directory
 import System.FilePath
@@ -36,6 +36,7 @@ import Language.Haskell.GhcMod.Error
 import Language.Haskell.GhcMod.Caching
 import qualified Language.Haskell.GhcMod.Utils as U
 import Utils (mightExist)
+import Prelude
 
 -- | Guaranteed to be a path to a directory with no trailing slash.
 type DirPath = FilePath

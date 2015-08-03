@@ -46,6 +46,7 @@ import Control.Monad.Trans.Journal (runJournalT)
 import Exception (ExceptionMonad(..))
 
 import System.Directory
+import Prelude
 
 withCradle :: IOish m => FilePath -> (Cradle -> m a) -> m a
 withCradle cradledir f =

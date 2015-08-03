@@ -41,19 +41,20 @@ import GHC
 import HscTypes
 
 import Control.Arrow ((&&&))
-import Control.Applicative ((<$>))
+import Control.Applicative
 import Control.Monad
 import Control.Monad.Trans.Maybe (MaybeT(..), runMaybeT)
 import Control.Monad.State.Strict (execStateT)
 import Control.Monad.State.Class
 import Data.Maybe
-import Data.Monoid
+import Data.Monoid as Monoid
 import Data.Map  (Map)
 import qualified Data.Map  as Map
 import Data.Set (Set)
 import qualified Data.Set as Set
 import System.FilePath
 import System.Directory
+import Prelude
 
 import Language.Haskell.GhcMod.Logging
 import Language.Haskell.GhcMod.Logger
@@ -220,7 +221,7 @@ updateHomeModuleGraph' env smp0 = do
           Left errs -> do
             -- TODO: Remember these and present them as proper errors if this is
             -- the file the user is looking at.
-            gmLog GmWarning ("preprocess " ++ show fn) $ empty $+$ (vcat $ map text errs)
+            gmLog GmWarning ("preprocess " ++ show fn) $ Monoid.mempty $+$ (vcat $ map text errs)
             return Nothing
 
    imports :: ModulePath -> String -> DynFlags -> MaybeT m (Set ModulePath)

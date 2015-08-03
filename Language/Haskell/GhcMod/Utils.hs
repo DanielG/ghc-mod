@@ -39,6 +39,7 @@ import Text.Printf
 
 import Paths_ghc_mod (getLibexecDir)
 import Utils
+import Prelude
 
 -- dropWhileEnd is not provided prior to base 4.5.0.0.
 dropWhileEnd :: (a -> Bool) -> [a] -> [a]

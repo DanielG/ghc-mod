@@ -16,6 +16,7 @@ import Control.Monad.Trans.Maybe
 import Data.Maybe
 import System.Directory
 import System.FilePath
+import Prelude
 
 ----------------------------------------------------------------
 

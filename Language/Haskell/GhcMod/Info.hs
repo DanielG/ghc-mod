@@ -10,6 +10,7 @@ import Data.Maybe (catMaybes)
 import System.FilePath
 import Exception (ghandle, SomeException(..))
 import GHC (GhcMonad, LHsBind, LHsExpr, LPat, Id, TypecheckedModule(..), SrcSpan, Type)
+import Prelude
 import qualified GHC as G
 import qualified Language.Haskell.GhcMod.Gap as Gap
 

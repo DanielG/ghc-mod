@@ -2,7 +2,7 @@ module Language.Haskell.GhcMod.Browse (
     browse
   ) where
 
-import Control.Applicative ((<$>))
+import Control.Applicative
 import Control.Exception (SomeException(..))
 import Data.Char
 import Data.List
@@ -20,6 +20,7 @@ import Outputable
 import TyCon (isAlgTyCon)
 import Type (dropForAlls, splitFunTy_maybe, mkFunTy, isPredTy)
 import Exception (ExceptionMonad, ghandle)
+import Prelude
 
 ----------------------------------------------------------------
 

@@ -5,12 +5,13 @@ import Language.Haskell.GhcMod.PathsAndFiles
 import Language.Haskell.GhcMod.Types
 import Language.Haskell.GhcMod.Utils
 
-import Control.Applicative ((<$>))
+import Control.Applicative
 import Data.Maybe
-import Data.Traversable (traverse)
+import Data.Traversable
 import System.FilePath ((</>))
 
 import GHC.Paths (libdir)
+import Prelude
 
 data World = World {
     worldPackageCaches :: [TimedFile]

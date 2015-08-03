@@ -8,13 +8,14 @@ module Language.Haskell.GhcMod.GhcPkg (
   ) where
 
 import Config (cProjectVersion, cTargetPlatformString, cProjectVersionInt)
-import Control.Applicative ((<$>))
+import Control.Applicative
 import Data.List.Split (splitOn)
 import Data.Maybe
 import Exception (handleIO)
 import Language.Haskell.GhcMod.Types
 import System.Directory (doesDirectoryExist, getAppUserDataDirectory)
 import System.FilePath ((</>))
+import Prelude
 
 ghcVersion :: Int
 ghcVersion = read cProjectVersionInt

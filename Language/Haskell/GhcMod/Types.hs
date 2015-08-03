@@ -31,6 +31,7 @@ import qualified MonadUtils as GHC (MonadIO(..))
 import GHC (ModuleName, moduleNameString, mkModuleName)
 import PackageConfig (PackageConfig)
 import GHC.Generics
+import Prelude
 
 -- | A constraint alias (-XConstraintKinds) to make functions dealing with
 -- 'GhcModT' somewhat cleaner.

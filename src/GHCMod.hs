@@ -23,6 +23,7 @@ import System.Exit (exitFailure)
 import System.IO (hPutStrLn, stdout, stderr, hSetEncoding, utf8, hFlush)
 import System.Exit (exitSuccess)
 import Text.PrettyPrint
+import Prelude
 
 import Misc
 

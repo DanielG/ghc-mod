@@ -1,6 +1,7 @@
 module Language.Haskell.GhcMod.Boot where
 
 import Control.Applicative
+import Prelude
 import Language.Haskell.GhcMod.Browse
 import Language.Haskell.GhcMod.Flag
 import Language.Haskell.GhcMod.Lang

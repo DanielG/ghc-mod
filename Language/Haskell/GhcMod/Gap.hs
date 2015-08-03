@@ -49,7 +49,7 @@ import CoreSyn (CoreExpr)
 import Data.List (intersperse)
 import Data.Maybe (catMaybes)
 import Data.Time.Clock (UTCTime)
-import Data.Traversable (traverse)
+import Data.Traversable
 import DataCon (dataConRepType)
 import Desugar (deSugarExpr)
 import DynFlags
@@ -104,6 +104,7 @@ import SrcLoc
 import Packages
 
 import Language.Haskell.GhcMod.Types (Expression(..))
+import Prelude
 
 ----------------------------------------------------------------
 ----------------------------------------------------------------

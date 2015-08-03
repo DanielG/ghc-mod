@@ -5,7 +5,8 @@ module Language.Haskell.GhcMod.Convert (convert, convert', emptyResult, whenFoun
 import Language.Haskell.GhcMod.Monad.Types
 import Language.Haskell.GhcMod.Types
 
-import Control.Applicative ((<$>))
+import Control.Applicative
+import Prelude
 
 type Builder = String -> String
 

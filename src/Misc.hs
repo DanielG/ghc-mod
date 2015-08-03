@@ -13,12 +13,13 @@ module Misc (
   , checkDb
   ) where
 
-import Control.Applicative ((<$>))
+import Control.Applicative
 import Control.Concurrent.Async (Async, async, wait)
 import Control.Exception (Exception)
 import CoreMonad (liftIO)
 import Data.IORef (IORef, newIORef, readIORef, writeIORef)
 import Data.Typeable (Typeable)
+import Prelude
 
 import Language.Haskell.GhcMod
 import Language.Haskell.GhcMod.Internal

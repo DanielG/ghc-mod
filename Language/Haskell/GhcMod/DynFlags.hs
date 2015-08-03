@@ -2,7 +2,7 @@
 
 module Language.Haskell.GhcMod.DynFlags where
 
-import Control.Applicative ((<$>))
+import Control.Applicative
 import Control.Monad (void)
 import GHC (DynFlags(..), GhcMode(..), GhcLink(..), HscTarget(..))
 import qualified GHC as G
@@ -11,6 +11,7 @@ import GhcMonad
 import qualified Language.Haskell.GhcMod.Gap as Gap
 import Language.Haskell.GhcMod.Types
 import System.IO.Unsafe (unsafePerformIO)
+import Prelude
 
 setEmptyLogger :: DynFlags -> DynFlags
 setEmptyLogger df = Gap.setLogAction df $ \_ _ _ _ _ -> return ()

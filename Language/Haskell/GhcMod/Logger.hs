@@ -7,7 +7,7 @@ module Language.Haskell.GhcMod.Logger (
   ) where
 
 import Control.Arrow
-import Control.Applicative ((<$>))
+import Control.Applicative
 import Data.List (isPrefixOf)
 import Data.Maybe (fromMaybe)
 import Data.IORef (IORef, newIORef, readIORef, writeIORef, modifyIORef)
@@ -27,6 +27,7 @@ import Language.Haskell.GhcMod.DynFlags (withDynFlags)
 import Language.Haskell.GhcMod.Monad.Types
 import Language.Haskell.GhcMod.Error
 import qualified Language.Haskell.GhcMod.Gap as Gap
+import Prelude
 
 type Builder = [String] -> [String]
 

@@ -14,7 +14,7 @@ module Language.Haskell.GhcMod.Find
 #endif
   where
 
-import Control.Applicative ((<$>))
+import Control.Applicative
 import Control.Monad (when, void, (<=<))
 import Data.Function (on)
 import Data.List (groupBy, sort)
@@ -31,6 +31,7 @@ import Module (moduleName)
 import System.Directory (doesFileExist, getModificationTime)
 import System.FilePath ((</>))
 import System.IO
+import Prelude
 
 import Data.Map (Map)
 import qualified Data.Map as M

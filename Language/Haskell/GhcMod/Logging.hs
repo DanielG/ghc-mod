@@ -32,6 +32,7 @@ import Data.Char
 import Data.Monoid (mempty, mappend, mconcat, (<>))
 import System.IO
 import Text.PrettyPrint hiding (style, (<>))
+import Prelude
 
 import Language.Haskell.GhcMod.Monad.Types
 import Language.Haskell.GhcMod.Pretty

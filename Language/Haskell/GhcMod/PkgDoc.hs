@@ -5,7 +5,8 @@ import Language.Haskell.GhcMod.GhcPkg
 import Language.Haskell.GhcMod.Monad
 import Language.Haskell.GhcMod.Utils
 
-import Control.Applicative ((<$>))
+import Control.Applicative
+import Prelude
 
 -- | Obtaining the package name and the doc path of a module.
 pkgDoc :: IOish m => String -> GhcModT m String
