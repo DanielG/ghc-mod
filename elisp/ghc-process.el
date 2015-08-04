@@ -34,7 +34,7 @@
   (if ghc-process-running
     (error "ghc process already running")
     (progn
-      (setq ghc-process-running t)
+      (when ghc-process-running t)
       (if hook1 (funcall hook1))
       (let* ((cbuf (current-buffer))
              (name ghc-process-process-name)
