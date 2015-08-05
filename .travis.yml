@@ -4,8 +4,23 @@ ghc:
   - 7.6
   - 7.8
 
+sudo: false
+
+addons:
+  apt:
+    packages:
+    - zlib1g-dev
+
+cache:
+  apt: true
+  directories:
+  - ~/.cabal
+  - ~/.ghc
+
+before_cache:
+  - rm -f $HOME/.cabal/logs $HOME/.cabal/packages/*/build-reports.log
+
 install:
-  - sudo apt-get install zlib1g-dev
   - cabal update
 #  - ( $CABAL122 && cabal install cabal-install --constraint "Cabal >= 1.22" && ghc-pkg unregister Cabal ) || true
   - echo $PATH
@@ -13,6 +28,8 @@ install:
   - if [ -n "$(cabal --version | grep 'Cabal library' | awk '{ print $3 }' | tail -n1 | sed -n '/^1.18/p')" ]; then cabal install cabal-install --constraint "Cabal == 1.18.* && > 1.18.0"; fi
   - cabal install happy
   - happy --version
+  - ls -lR ~/.ghc
+  - ls -lR ~/.cabal
   - cabal install -j --only-dependencies --enable-tests
 
 script:
