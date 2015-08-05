@@ -28,8 +28,8 @@ install:
   - if [ -n "$(cabal --version | grep 'Cabal library' | awk '{ print $3 }' | tail -n1 | sed -n '/^1.18/p')" ]; then cabal install cabal-install --constraint "Cabal == 1.18.* && > 1.18.0"; fi
   - cabal install happy
   - happy --version
-  - ls -lR ~/.ghc
-  - ls -lR ~/.cabal
+#  - ls -lR ~/.ghc
+#  - ls -lR ~/.cabal
   - cabal install -j --only-dependencies --enable-tests
 
 script:
