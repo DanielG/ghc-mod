@@ -30,6 +30,10 @@ import Distribution.Helper (buildPlatform)
 import System.Directory
 import System.FilePath
 import System.IO.Unsafe
+import System.Environment (getEnvironment)
+
+-- import System.Directory (getCurrentDirectory, removeDirectoryRecursive, findExecutable)
+import System.Process (readProcess)
 
 import Language.Haskell.GhcMod.Types
 import Language.Haskell.GhcMod.Error
@@ -149,6 +153,20 @@ parents dir' =
    parents' dir = [joinPath dir] ++ parents' (init dir)
 
 ----------------------------------------------------------------
+
+-- | Get stack package db list
+getStackDbList ::IO [GhcPkgDb]
+getStackDbList = do
+  mstack <- findExecutable "stack"
+  case mstack of
+    Nothing -> return []
+    Just stack -> do
+      snapshotDb <- readProcess stack ["path", "--snapshot-pkg-db"] ""
+      localDb <- readProcess stack ["path", "--local-pkg-db"] ""
+      return (map (PackageDb . stripNewlines) [snapshotDb, localDb])
+  where
+      stripNewlines = reverse . dropWhile (=='\n') . reverse
+
 
 -- | Get path to sandbox config file
 getSandboxDb :: FilePath -- ^ Path to the cabal package root directory
