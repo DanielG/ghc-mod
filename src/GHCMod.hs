@@ -241,7 +241,7 @@ globalArgSpec =
                optArg "LEVEL" $ \ml o -> o {
                    logLevel = case ml of
                                 Nothing -> increaseLogLevel (logLevel o)
-                                Just l -> toEnum $ min 6 $ read l
+                                Just l -> toEnum $ min 7 $ read l
                  }
 
       , option "s" [] "Be silent, set log level to 0" $
