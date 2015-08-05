@@ -40,8 +40,8 @@ spec = do
     describe "resolveModule" $ do
         it "Works when a module given as path uses CPP" $ do
             dir <- getCurrentDirectory
-            print dir
             let srcDirs = [dir </> "test/data/target/src"]
             withLightHscEnv [] $ \env -> runNullLog $ do
-                Just _ <- resolveModule env srcDirs (Left $ dir </> "test/data/target/src/A/B/C/D/E.hs")
+                x <- resolveModule env srcDirs (Left $ dir </> "test/data/target/Cpp.hs")
+                x `shouldBe` Just (ModulePath "test/data/target/Cpp.hs" "Cpp")
                 return ()
