@@ -341,12 +341,11 @@ progMain (globalOptions,cmdArgs) = do
 
 -- ghc-modi
 legacyInteractive :: IOish m => GhcModT m ()
-legacyInteractive =
-  liftIO emptyNewUnGetLine >>= \ref -> do
+legacyInteractive = do
     opt <- options
     symdbreq <- liftIO $ newSymDbReq opt
     world <- liftIO . getCurrentWorld =<< cradle
-    legacyInteractiveLoop symdbreq ref world
+    legacyInteractiveLoop symdbreq world
 
 bug :: String -> IO ()
 bug msg = do
@@ -363,19 +362,18 @@ replace :: String -> String -> String -> String
 replace needle replacement = intercalate replacement . splitOn needle
 
 legacyInteractiveLoop :: IOish m
-                      => SymDbReq -> UnGetLine -> World -> GhcModT m ()
-legacyInteractiveLoop symdbreq ref world = do
+                      => SymDbReq -> World -> GhcModT m ()
+legacyInteractiveLoop symdbreq world = do
     liftIO . setCurrentDirectory =<< cradleRootDir <$> cradle
 
     -- blocking
-    cmdArg <- liftIO $ getCommand ref
+    cmdArg <- liftIO $ getLine
 
     -- after blocking, we need to see if the world has changed.
 
     changed <- liftIO . didWorldChange world =<< cradle
     when changed $ do
-        liftIO $ ungetCommand ref cmdArg
-        throw Restart
+        dropSession
 
     let (cmd':args') = split (keepDelimsR $ condense $ whenElt isSpace) cmdArg
         arg = concat args'
@@ -405,7 +403,7 @@ legacyInteractiveLoop symdbreq ref world = do
         _        -> fatalError $ "unknown command: `" ++ cmd ++ "'"
 
     liftIO $ putStr res >> putStrLn "OK" >> hFlush stdout
-    legacyInteractiveLoop symdbreq ref world
+    legacyInteractiveLoop symdbreq world
 
 globalCommands :: [String] -> Maybe String
 globalCommands []      = Nothing

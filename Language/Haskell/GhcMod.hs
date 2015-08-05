@@ -28,6 +28,7 @@ module Language.Haskell.GhcMod (
   -- * Monad utilities
   , runGhcModT
   , withOptions
+  , dropSession
   -- * 'GhcMod' utilities
   , boot
   , browse
@@ -73,3 +74,4 @@ import Language.Haskell.GhcMod.Modules
 import Language.Haskell.GhcMod.Monad
 import Language.Haskell.GhcMod.PkgDoc
 import Language.Haskell.GhcMod.Types
+import Language.Haskell.GhcMod.Target

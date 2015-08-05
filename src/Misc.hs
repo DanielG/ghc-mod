@@ -1,13 +1,7 @@
 {-# LANGUAGE DeriveDataTypeable, CPP #-}
 
 module Misc (
-    GHCModiError(..)
-  , Restart(..)
-  , UnGetLine
-  , emptyNewUnGetLine
-  , ungetCommand
-  , getCommand
-  , SymDbReq
+    SymDbReq
   , newSymDbReq
   , getDb
   , checkDb
@@ -23,37 +17,6 @@ import Prelude
 
 import Language.Haskell.GhcMod
 import Language.Haskell.GhcMod.Internal
-
-----------------------------------------------------------------
-
-data GHCModiError = CmdArg [String] deriving (Show, Typeable)
-
-instance Exception GHCModiError
-
-----------------------------------------------------------------
-
-data Restart = Restart deriving (Show, Typeable)
-
-instance Exception Restart
-
-----------------------------------------------------------------
-
-newtype UnGetLine = UnGetLine (IORef (Maybe String))
-
-emptyNewUnGetLine :: IO UnGetLine
-emptyNewUnGetLine = UnGetLine <$> newIORef Nothing
-
-ungetCommand :: UnGetLine -> String -> IO ()
-ungetCommand (UnGetLine ref) cmd = writeIORef ref (Just cmd)
-
-getCommand :: UnGetLine -> IO String
-getCommand (UnGetLine ref) = do
-    mcmd <- readIORef ref
-    case mcmd of
-        Nothing -> getLine
-        Just cmd -> do
-            writeIORef ref Nothing
-            return cmd
 
 ----------------------------------------------------------------
 

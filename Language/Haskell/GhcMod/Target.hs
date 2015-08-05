@@ -110,6 +110,8 @@ initSession opts mdf = do
        _ <- setSessionDynFlags =<< setDf =<< getSessionDynFlags
        getSession
 
+-- | Drop the currently active GHC session, the next that requires a GHC session
+-- will initialize a new one.
 dropSession :: IOish m => GhcModT m ()
 dropSession = do
   s <- gmsGet
@@ -120,10 +122,10 @@ dropSession = do
       liftIO $ writeIORef ref (error "HscEnv: session was dropped")
       -- Not available on ghc<7.8; didn't really help anyways
       -- liftIO $ setUnsafeGlobalDynFlags (error "DynFlags: session was dropped")
-
+      gmsPut s { gmGhcSession = Nothing }
 
     Nothing -> return ()
-  gmsPut s { gmGhcSession = Nothing }
+
 
 runGmlT :: IOish m => [Either FilePath ModuleName] -> GmlT m a -> GhcModT m a
 runGmlT fns action = runGmlT' fns return action
