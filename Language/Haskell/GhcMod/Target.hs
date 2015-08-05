@@ -43,9 +43,10 @@ import Language.Haskell.GhcMod.Utils
 import Data.Maybe
 import Data.Monoid as Monoid
 import Data.Either
-import Data.Foldable (foldrM)
+import Data.Foldable as Foldable (foldrM, concat)
 import Data.Traversable hiding (mapM, forM)
 import Data.IORef
+import Data.List
 import Data.Map (Map)
 import qualified Data.Map  as Map
 import Data.Set (Set)
@@ -152,8 +153,8 @@ runGmlTWith efnmns' mdf wrapper action = do
 
     gmVomit
       "session-ghc-options"
-      (strDoc "Initializing GHC session with following options")
-      (show opts')
+      (text "Initializing GHC session with following options")
+      (intercalate " " $ map (("\""++) . (++"\"")) opts')
 
     initSession opts' $
         setModeSimple >>> setEmptyLogger >>> mdf
@@ -207,6 +208,7 @@ resolvedComponentsCache = Cached {
     cachedAction = \tcfs comps ma -> do
         Cradle {..} <- cradle
         let iifsM = invalidatingInputFiles tcfs
+            mums :: Maybe [Either FilePath ModuleName]
             mums =
               case iifsM of
                 Nothing -> Nothing
@@ -225,8 +227,15 @@ resolvedComponentsCache = Cached {
           (False, Just mcs) -> gmsGet >>= \s -> gmsPut s { gmComponents = mcs }
           _ -> return ()
 
+        let mdesc (Left f) = "file:" ++ f
+            mdesc (Right mn) = "module:" ++ moduleNameString mn
+
+            changed = map (text . mdesc) $ Foldable.concat mums
+            changedDoc | [] <- changed = text "none"
+                       | otherwise = sep changed
+
         gmLog GmDebug "resolvedComponentsCache" $
-              strDoc "files changed" <+>: text (show (mums :: Maybe [Either FilePath ()]))
+              text "files changed" <+>: changedDoc
 
         mcs <- resolveGmComponents mums comps
         return (setupConfigPath:flatten mcs , mcs)

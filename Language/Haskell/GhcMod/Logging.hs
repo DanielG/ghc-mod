@@ -79,7 +79,7 @@ gmLog level loc' doc = do
 
 gmVomit :: (MonadIO m, GmLog m, GmEnv m) => String -> Doc -> String -> m ()
 gmVomit filename doc content = do
-  gmLog GmVomit "" $ doc <+> text content
+  gmLog GmVomit "" $ doc <+>: text content
 
   GhcModLog { gmLogVomitDump = Last mdump }
       <- gmlHistory
