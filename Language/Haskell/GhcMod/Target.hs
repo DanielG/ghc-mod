@@ -43,7 +43,8 @@ import Language.Haskell.GhcMod.Utils
 import Data.Maybe
 import Data.Monoid as Monoid
 import Data.Either
-import Data.Foldable as Foldable (foldrM, concat)
+import Data.Foldable as Foldable (foldrM)
+import qualified Data.Foldable as Foldable
 import Data.Traversable hiding (mapM, forM)
 import Data.IORef
 import Data.List
@@ -435,6 +436,7 @@ loadTargets filesOrModules = do
   where
     loadTargets' Simple = do
         void $ load LoadAllTargets
+        mapM_ (parseModule >=> typecheckModule >=> desugarModule) =<< getModuleGraph
 
     loadTargets' Intelligent = do
         df <- getSessionDynFlags
