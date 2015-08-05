@@ -52,3 +52,8 @@ spec = do
                 withDirectory_ "test/data/ghc-mod-check/lib/Data" $ do
                     res <- runD $ checkSyntax ["Foo.hs"]
                     res `shouldBe` ""
+
+        it "emits warnings generated in GHC's desugar stage" $ do
+            withDirectory_ "test/data/check-missing-warnings" $ do
+                res <- runD $ checkSyntax ["DesugarWarnings.hs"]
+                res `shouldBe` "test/data/check-missing-warnings/DesugarWarnings.hs:5:9:Warning: Pattern match(es) are non-exhaustiveIn a case alternative: Patterns not matched: _ : _"
