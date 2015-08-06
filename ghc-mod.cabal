@@ -71,6 +71,7 @@ Extra-Source-Files:     ChangeLog
                         test/data/pattern-synonyms/*.hs
                         test/data/quasi-quotes/*.hs
                         test/data/template-haskell/*.hs
+                        test/data/target/*.hs
                         test/data/check-missing-warnings/*.hs
 
 Library
