@@ -41,7 +41,6 @@ spec = do
         it "Works when a module given as path uses CPP" $ do
             dir <- getCurrentDirectory
             let srcDirs = [dir </> "test/data/target/src"]
-            withLightHscEnv [] $ \env -> runNullLog $ do
-                x <- resolveModule env srcDirs (Left $ dir </> "test/data/target/Cpp.hs")
-                x `shouldBe` Just (ModulePath "test/data/target/Cpp.hs" "Cpp")
-                return ()
+            x <- withLightHscEnv [] $ \env -> runNullLog $ do
+                resolveModule env srcDirs (Left $ dir </> "test/data/target/Cpp.hs")
+            liftIO $ x `shouldBe` Just (ModulePath "Cpp" $ dir </> "test/data/target/Cpp.hs")
