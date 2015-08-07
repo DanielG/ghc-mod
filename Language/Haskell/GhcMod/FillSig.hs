@@ -12,6 +12,7 @@ import Data.Function (on)
 import Data.List (find, nub, sortBy)
 import qualified Data.Map as M
 import Data.Maybe (catMaybes)
+import Text.PrettyPrint (($$), text, nest)
 import Exception (ghandle, SomeException(..))
 import GHC (GhcMonad, Id, ParsedModule(..), TypecheckedModule(..), DynFlags,
             SrcSpan, Type, GenLocated(L))
@@ -22,6 +23,8 @@ import Language.Haskell.GhcMod.Convert
 import Language.Haskell.GhcMod.DynFlags
 import Language.Haskell.GhcMod.Monad
 import Language.Haskell.GhcMod.SrcUtils
+import Language.Haskell.GhcMod.Logging (gmLog)
+import Language.Haskell.GhcMod.Pretty (showDoc)
 import Language.Haskell.GhcMod.Doc
 import Language.Haskell.GhcMod.Types
 import Outputable (PprStyle)
@@ -356,7 +359,10 @@ refine file lineNo colNo (Expression expr) =
                 text = initialHead1 expr iArgs (infinitePrefixSupply name)
              in (fourInts loc, doParen paren text)
   where
-    handler (SomeException _) = emptyResult =<< options
+   handler (SomeException ex) = do
+     gmLog GmDebug "refining" $
+           text "" $$ nest 4 (showDoc ex)
+     emptyResult =<< options
 
 -- Look for the variable in the specified position
 findVar
@@ -442,7 +448,10 @@ auto file lineNo colNo =
           return ( fourInts loc
                  , map (doParen paren) $ nub (djinnsEmpty ++ djinns))
  where
-   handler (SomeException _) = emptyResult =<< options
+   handler (SomeException ex) = do
+     gmLog GmDebug "auto-refining" $
+           text "" $$ nest 4 (showDoc ex)
+     emptyResult =<< options
 
 -- Functions we do not want in completions
 notWantedFuns :: [String]
