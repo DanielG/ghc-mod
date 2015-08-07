@@ -356,8 +356,8 @@ refine file lineNo colNo (Expression expr) =
                 diffArgs' = length eArgs - length rArgs
                 diffArgs  = if diffArgs' < 0 then 0 else diffArgs'
                 iArgs = take diffArgs eArgs
-                text = initialHead1 expr iArgs (infinitePrefixSupply name)
-             in (fourInts loc, doParen paren text)
+                txt = initialHead1 expr iArgs (infinitePrefixSupply name)
+             in (fourInts loc, doParen paren txt)
   where
    handler (SomeException ex) = do
      gmLog GmDebug "refining" $
