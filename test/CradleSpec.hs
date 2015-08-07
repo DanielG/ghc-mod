@@ -9,7 +9,6 @@ import System.FilePath (pathSeparator)
 import Test.Hspec
 
 import Dir
-import TestUtils
 
 clean_ :: IO Cradle -> IO Cradle
 clean_ f = do
@@ -40,10 +39,8 @@ spec = do
                 cradleCurrentDir res `shouldBe` curDir
                 cradleRootDir    res `shouldBe` curDir
                 cradleCabalFile  res `shouldBe` Nothing
-                cradlePkgDbStack res `shouldBe` [GlobalDb,UserDb]
 
         it "finds a cabal file and a sandbox" $ do
-            cwd <- getCurrentDirectory
             withDirectory "test/data/cabal-project/subdir1/subdir2" $ \dir -> do
                 res <- relativeCradle dir <$> clean_ findCradle
 
@@ -54,10 +51,6 @@ spec = do
 
                 cradleCabalFile  res `shouldBe`
                     Just ("test/data/cabal-project/cabalapi.cabal")
-
-                let [GlobalDb, sb] = cradlePkgDbStack res
-                sb `shouldSatisfy`
-                   isPkgDbAt (cwd </> "test/data/cabal-project/.cabal-sandbox")
 
         it "works even if a sandbox config file is broken" $ do
             withDirectory "test/data/broken-sandbox" $ \dir -> do
@@ -70,13 +63,3 @@ spec = do
 
                 cradleCabalFile  res `shouldBe`
                   Just ("test" </> "data" </> "broken-sandbox" </> "dummy.cabal")
-
-                cradlePkgDbStack res `shouldBe` [GlobalDb, UserDb]
-
-        it "uses the custom cradle file if present" $ do
-            withDirectory "test/data/custom-cradle" $ \dir -> do
-                res <- relativeCradle dir <$> findCradle
-                cradleCurrentDir res `shouldBe` "test" </> "data" </> "custom-cradle"
-                cradleRootDir res    `shouldBe` "test" </> "data" </> "custom-cradle"
-                cradleCabalFile res  `shouldBe` Just ("test" </> "data" </> "custom-cradle" </> "dummy.cabal")
-                cradlePkgDbStack res `shouldBe` [PackageDb "a/packages", GlobalDb, PackageDb "b/packages", UserDb, PackageDb "c/packages"]

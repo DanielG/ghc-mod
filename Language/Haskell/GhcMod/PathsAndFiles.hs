@@ -71,6 +71,33 @@ findCabalFile dir = do
    appendDir :: DirPath -> [FileName] -> [FilePath]
    appendDir d fs = (d </>) `map` fs
 
+-- | Get path to sandbox config file
+getSandboxDb :: FilePath
+             -- ^ Path to the cabal package root directory (containing the
+             -- @cabal.sandbox.config@ file)
+             -> IO (Maybe GhcPkgDb)
+getSandboxDb d = do
+  mConf <- traverse readFile =<< mightExist (d </> "cabal.sandbox.config")
+  return $ PackageDb . fixPkgDbVer <$> (extractSandboxDbDir =<< mConf)
+
+ where
+   fixPkgDbVer dir =
+       case takeFileName dir == ghcSandboxPkgDbDir of
+         True -> dir
+         False -> takeDirectory dir </> ghcSandboxPkgDbDir
+
+-- | Extract the sandbox package db directory from the cabal.sandbox.config
+-- file. Exception is thrown if the sandbox config file is broken.
+extractSandboxDbDir :: String -> Maybe FilePath
+extractSandboxDbDir conf = extractValue <$> parse conf
+  where
+    key = "package-db:"
+    keyLen = length key
+
+    parse = listToMaybe . filter (key `isPrefixOf`) . lines
+    extractValue = U.dropWhileEnd isSpace . dropWhile isSpace . drop keyLen
+
+
 -- |
 -- >>> isCabalFile "/home/user/.cabal"
 -- False
@@ -117,7 +144,7 @@ findCabalSandboxDir dir = do
              _ -> Nothing
 
  where
-   isSandboxConfig = (=="cabal.sandbox.config")
+   isSandboxConfig = (==sandboConfigFile)
 
 zipMapM :: Monad m => (a -> m c) -> [a] -> m [(a,c)]
 zipMapM f as = mapM (\a -> liftM ((,) a) $ f a) as
@@ -150,33 +177,11 @@ parents dir' =
 
 ----------------------------------------------------------------
 
--- | Get path to sandbox config file
-getSandboxDb :: FilePath -- ^ Path to the cabal package root directory
-                         -- (containing the @cabal.sandbox.config@ file)
-             -> IO (Maybe GhcPkgDb)
-getSandboxDb d = do
-  mConf <- traverse readFile =<< U.mightExist (d </> "cabal.sandbox.config")
-  return $ PackageDb . fixPkgDbVer <$> (extractSandboxDbDir =<< mConf)
-
- where
-   fixPkgDbVer dir =
-       case takeFileName dir == ghcSandboxPkgDbDir of
-         True -> dir
-         False -> takeDirectory dir </> ghcSandboxPkgDbDir
-
--- | Extract the sandbox package db directory from the cabal.sandbox.config file.
---   Exception is thrown if the sandbox config file is broken.
-extractSandboxDbDir :: String -> Maybe FilePath
-extractSandboxDbDir conf = extractValue <$> parse conf
-  where
-    key = "package-db:"
-    keyLen = length key
-
-    parse = listToMaybe . filter (key `isPrefixOf`) . lines
-    extractValue = U.dropWhileEnd isSpace . dropWhile isSpace . drop keyLen
-
 setupConfigFile :: Cradle -> FilePath
 setupConfigFile crdl = cradleRootDir crdl </> setupConfigPath
+
+sandboConfigFile :: FilePath
+sandboConfigFile = "cabal.sandbox.config"
 
 -- | Path to 'LocalBuildInfo' file, usually @dist/setup-config@
 setupConfigPath :: FilePath
@@ -211,9 +216,12 @@ cabalHelperCacheFile = setupConfigPath <.> "ghc-mod.cabal-components"
 mergedPkgOptsCacheFile :: String
 mergedPkgOptsCacheFile = setupConfigPath <.> "ghc-mod.package-options"
 
--- | @findCradleFile dir@. Searches for a @.ghc-mod.cradle@ file in @dir@.
+pkgDbStackCacheFile :: String
+pkgDbStackCacheFile = setupConfigPath <.> "ghc-mod.package-db-stack"
+
+-- | @findCustomPackageDbFile dir@. Searches for a @.ghc-mod.cradle@ file in @dir@.
 -- If it exists in the given directory it is returned otherwise @findCradleFile@ returns @Nothing@
-findCradleFile :: FilePath -> IO (Maybe FilePath)
-findCradleFile directory = do
-    let path = directory </> "ghc-mod.cradle"
+findCustomPackageDbFile :: FilePath -> IO (Maybe FilePath)
+findCustomPackageDbFile directory = do
+    let path = directory </> "ghc-mod.package-db-stack"
     mightExist path

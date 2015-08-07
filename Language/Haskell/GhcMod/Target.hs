@@ -37,7 +37,7 @@ import Language.Haskell.GhcMod.GhcPkg
 import Language.Haskell.GhcMod.Error
 import Language.Haskell.GhcMod.Logging
 import Language.Haskell.GhcMod.Types
-import Language.Haskell.GhcMod.Utils
+import Language.Haskell.GhcMod.Utils as U
 
 
 import Data.Maybe
@@ -289,12 +289,20 @@ packageGhcOptions = do
       Just _ -> getGhcMergedPkgOptions
       Nothing -> sandboxOpts crdl
 
-sandboxOpts :: Monad m => Cradle -> m [String]
-sandboxOpts crdl =
+sandboxOpts :: MonadIO m => Cradle -> m [String]
+sandboxOpts crdl = do
+    pkgDbStack <- liftIO $ getSandboxPackageDbStack $ cradleRootDir crdl
+    let pkgOpts = ghcDbStackOpts pkgDbStack
     return $ ["-i" ++ d | d <- [wdir,rdir]] ++ pkgOpts ++ ["-Wall"]
   where
-    pkgOpts = ghcDbStackOpts $ cradlePkgDbStack crdl
     (wdir, rdir) = (cradleCurrentDir crdl, cradleRootDir crdl)
+
+    getSandboxPackageDbStack :: FilePath
+                      -- ^ Project Directory (where the cabal.sandbox.config
+                      -- file would be if it exists)
+                      -> IO [GhcPkgDb]
+    getSandboxPackageDbStack cdir =
+        ([GlobalDb] ++) . maybe [UserDb] return <$> getSandboxDb cdir
 
 resolveGmComponent :: (IOish m, GmLog m, GmEnv m)
     => Maybe [CompilationUnit] -- ^ Updated modules

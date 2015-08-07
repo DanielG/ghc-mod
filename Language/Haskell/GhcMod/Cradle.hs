@@ -57,14 +57,11 @@ customCradle :: FilePath -> MaybeT IO Cradle
 customCradle wdir = do
     cabalFile <- MaybeT $ findCabalFile wdir
     let cabalDir = takeDirectory cabalFile
-    cradleFile <- MaybeT $ findCradleFile cabalDir
-    pkgDbStack <- liftIO $ parseCradle cradleFile
     return Cradle {
         cradleCurrentDir = wdir
       , cradleRootDir    = cabalDir
       , cradleTempDir    = error "tmpDir"
       , cradleCabalFile  = Just cabalFile
-      , cradlePkgDbStack = pkgDbStack
       }
 
 cabalCradle :: FilePath -> MaybeT IO Cradle
@@ -72,26 +69,22 @@ cabalCradle wdir = do
     cabalFile <- MaybeT $ findCabalFile wdir
 
     let cabalDir = takeDirectory cabalFile
-    pkgDbStack <- liftIO $ getPackageDbStack cabalDir
 
     return Cradle {
         cradleCurrentDir = wdir
       , cradleRootDir    = cabalDir
       , cradleTempDir    = error "tmpDir"
       , cradleCabalFile  = Just cabalFile
-      , cradlePkgDbStack = pkgDbStack
       }
 
 sandboxCradle :: FilePath -> MaybeT IO Cradle
 sandboxCradle wdir = do
     sbDir <- MaybeT $ findCabalSandboxDir wdir
-    pkgDbStack <- liftIO $ getPackageDbStack sbDir
     return Cradle {
         cradleCurrentDir = wdir
       , cradleRootDir    = sbDir
       , cradleTempDir    = error "tmpDir"
       , cradleCabalFile  = Nothing
-      , cradlePkgDbStack = pkgDbStack
       }
 
 plainCradle :: FilePath -> MaybeT IO Cradle
@@ -101,23 +94,4 @@ plainCradle wdir = do
       , cradleRootDir    = wdir
       , cradleTempDir    = error "tmpDir"
       , cradleCabalFile  = Nothing
-      , cradlePkgDbStack = [GlobalDb, UserDb]
       }
-
-getPackageDbStack :: FilePath -- ^ Project Directory (where the
-                                 -- cabal.sandbox.config file would be if it
-                                 -- exists)
-                  -> IO [GhcPkgDb]
-getPackageDbStack cdir =
-    ([GlobalDb] ++) . maybe [UserDb] return <$> getSandboxDb cdir
-
-parseCradle :: FilePath -> IO [GhcPkgDb]
-parseCradle path = do
-    source <- readFile path
-    return $ parseCradle' source
-  where
-    parseCradle' source = map parsePkgDb $ filter (not . null) $ lines source
-
-    parsePkgDb "global" = GlobalDb
-    parsePkgDb "user" = UserDb
-    parsePkgDb s = PackageDb s

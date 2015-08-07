@@ -15,7 +15,7 @@ module Language.Haskell.GhcMod.Find
   where
 
 import Control.Applicative
-import Control.Monad (when, void, (<=<))
+import Control.Monad (when, void)
 import Data.Function (on)
 import Data.List (groupBy, sort)
 import qualified GHC as G
@@ -46,9 +46,9 @@ data SymbolDb = SymbolDb
   , symbolDbCachePath :: FilePath
   } deriving (Show)
 
-isOutdated :: (GmEnv m, IOish m) => SymbolDb -> m Bool
+isOutdated :: IOish m => SymbolDb -> GhcModT m Bool
 isOutdated db =
-  liftIO . (isOlderThan (symbolDbCachePath db) <=< timedPackageCaches) =<< cradle
+  (liftIO . isOlderThan (symbolDbCachePath db)) =<< timedPackageCaches
 
 ----------------------------------------------------------------
 
@@ -94,9 +94,8 @@ loadSymbolDb = do
 
 dumpSymbol :: IOish m => FilePath -> GhcModT m String
 dumpSymbol dir = do
-  crdl <- cradle
+  create <- (liftIO . isOlderThan cache) =<< timedPackageCaches
   runGmPkgGhc $ do
-    create <- liftIO $ isOlderThan cache =<< timedPackageCaches crdl
     when create $
       liftIO . writeSymbolCache cache =<< getGlobalSymbolTable
     return $ unlines [cache]

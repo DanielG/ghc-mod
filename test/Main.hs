@@ -30,7 +30,10 @@ main = do
 
   let caches = [ "setup-config"
                , "setup-config.ghc-mod.cabal-helper"
+               , "setup-config.ghc-mod.cabal-components"
                , "setup-config.ghc-mod.resolved-components"
+               , "setup-config.ghc-mod.package-options"
+               , "setup-config.ghc-mod.package-db-stack"
                , "ghc-mod.cache"
                ]
       cachesFindExp :: String

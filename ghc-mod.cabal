@@ -73,6 +73,11 @@ Extra-Source-Files:     ChangeLog
                         test/data/template-haskell/*.hs
                         test/data/target/*.hs
                         test/data/check-missing-warnings/*.hs
+                        test/data/custom-cradle/custom-cradle.cabal
+                        test/data/custom-cradle/ghc-mod.package-db-stack
+                        test/data/custom-cradle/package-db-a/.gitkeep
+                        test/data/custom-cradle/package-db-b/.gitkeep
+                        test/data/custom-cradle/package-db-c/.gitkeep
 
 Library
   Default-Language:     Haskell2010
@@ -123,7 +128,7 @@ Library
                       , bytestring
                       , cereal >= 0.4
                       , containers
-                      , cabal-helper >= 0.3.7.0
+                      , cabal-helper == 0.3.* && >= 0.3.8.0
                       , deepseq
                       , directory
                       , filepath

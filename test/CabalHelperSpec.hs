@@ -9,7 +9,7 @@ import Language.Haskell.GhcMod.Error
 import Test.Hspec
 import System.Directory
 import System.FilePath
-import System.Process (readProcess)
+import System.Process (readProcess, system)
 
 import Dir
 import TestUtils
@@ -51,8 +51,6 @@ spec = do
             -- comment in cabal-helper
             opts <- map gmcGhcOpts . filter ((/= ChSetupHsName) . gmcName) <$> runD' tdir getComponents
 
-            print opts
-
             if ghcVersion < 706
               then forM_ opts (\o -> o `shouldContain` ["-no-user-package-conf","-package-conf", cwd </> "test/data/cabal-project/.cabal-sandbox/"++ghcSandboxPkgDbDir])
               else forM_ opts (\o -> o `shouldContain` ["-no-user-package-db","-package-db",cwd </> "test/data/cabal-project/.cabal-sandbox/"++ghcSandboxPkgDbDir])
@@ -73,3 +71,25 @@ spec = do
             let ghcOpts = head opts
                 pkgs = pkgOptions ghcOpts
             pkgs `shouldBe` ["Cabal","base"]
+
+    describe "getCustomPkgDbStack" $ do
+        it "works" $ do
+            let tdir = "test/data/custom-cradle"
+            Just stack <- runD' tdir $ getCustomPkgDbStack
+            stack `shouldBe` [ GlobalDb
+                             , UserDb
+                             , PackageDb "package-db-a"
+                             , PackageDb "package-db-b"
+                             , PackageDb "package-db-c"
+                             ]
+
+    describe "getPackageDbStack'" $ do
+        it "fixes out of sync custom pkg-db stack" $ do
+            withDirectory_ "test/data/custom-cradle" $ do
+                _ <- system "cabal configure"
+                (s, s') <- runD $ do
+                    Just stack <- getCustomPkgDbStack
+                    withCabal $ do
+                        stack' <- getPackageDbStack'
+                        return (stack, stack')
+                s' `shouldBe` s

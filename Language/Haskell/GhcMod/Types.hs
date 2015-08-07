@@ -112,14 +112,17 @@ data Cradle = Cradle {
   , cradleTempDir    :: FilePath
   -- | The file name of the found cabal file.
   , cradleCabalFile  :: Maybe FilePath
-  -- | Package database stack
-  , cradlePkgDbStack :: [GhcPkgDb]
   } deriving (Eq, Show)
 
 ----------------------------------------------------------------
 
 -- | GHC package database flags.
-data GhcPkgDb = GlobalDb | UserDb | PackageDb String deriving (Eq, Show)
+data GhcPkgDb = GlobalDb
+              | UserDb
+              | PackageDb String
+                deriving (Eq, Show, Generic)
+
+instance Serialize GhcPkgDb
 
 -- | A single GHC command line option.
 type GHCOption = String

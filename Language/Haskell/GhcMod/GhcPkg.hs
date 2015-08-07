@@ -12,10 +12,13 @@ import Control.Applicative
 import Data.List.Split (splitOn)
 import Data.Maybe
 import Exception (handleIO)
-import Language.Haskell.GhcMod.Types
 import System.Directory (doesDirectoryExist, getAppUserDataDirectory)
 import System.FilePath ((</>))
 import Prelude
+
+import Language.Haskell.GhcMod.Types
+import Language.Haskell.GhcMod.Monad.Types
+import Language.Haskell.GhcMod.CabalHelper
 
 ghcVersion :: Int
 ghcVersion = read cProjectVersionInt
@@ -54,9 +57,10 @@ ghcDbOpt (PackageDb pkgDb)
 
 ----------------------------------------------------------------
 
-getPackageCachePaths :: FilePath -> Cradle -> IO [FilePath]
-getPackageCachePaths sysPkgCfg crdl =
-    catMaybes <$> resolvePackageConfig sysPkgCfg `mapM` cradlePkgDbStack crdl
+getPackageCachePaths :: IOish m => FilePath -> GhcModT m [FilePath]
+getPackageCachePaths sysPkgCfg = do
+  pkgDbStack <- getPackageDbStack
+  catMaybes <$> (liftIO . resolvePackageConfig sysPkgCfg) `mapM` pkgDbStack
 
 -- TODO: use PkgConfRef
 --- Copied from ghc module `Packages' unfortunately it's not exported :/

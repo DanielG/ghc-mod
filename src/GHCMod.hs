@@ -344,7 +344,7 @@ legacyInteractive :: IOish m => GhcModT m ()
 legacyInteractive = do
     opt <- options
     symdbreq <- liftIO $ newSymDbReq opt
-    world <- liftIO . getCurrentWorld =<< cradle
+    world <- getCurrentWorld
     legacyInteractiveLoop symdbreq world
 
 bug :: String -> IO ()
@@ -371,7 +371,7 @@ legacyInteractiveLoop symdbreq world = do
 
     -- after blocking, we need to see if the world has changed.
 
-    changed <- liftIO . didWorldChange world =<< cradle
+    changed <- didWorldChange world
     when changed $ do
         dropSession
 
