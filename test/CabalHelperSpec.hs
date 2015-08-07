@@ -2,16 +2,17 @@ module CabalHelperSpec where
 
 import Control.Arrow
 import Control.Applicative
--- import Language.Haskell.GhcMod.CabalHelper
--- import Language.Haskell.GhcMod.PathsAndFiles
+import Distribution.Helper
+import Language.Haskell.GhcMod.CabalHelper
+import Language.Haskell.GhcMod.PathsAndFiles
 import Language.Haskell.GhcMod.Error
 import Test.Hspec
--- import System.Directory
--- import System.FilePath
--- import System.Process (readProcess)
+import System.Directory
+import System.FilePath
+import System.Process (readProcess)
 
--- import Dir
--- import TestUtils
+import Dir
+import TestUtils
 import Data.List
 
 import Config (cProjectVersionInt)
@@ -36,35 +37,39 @@ idirOpts :: [(c, [String])] -> [(c, [String])]
 idirOpts = map (second $ map (drop 2) . filter ("-i"`isPrefixOf`))
 
 spec :: Spec
-spec = do return ()
-    -- describe "getGhcOptions" $ do
-    --     it "throws an exception if the cabal file is broken" $ do
-    --         let tdir = "test/data/broken-caba"
-    --         runD' tdir getGhcOptions `shouldThrow` anyIOException
+spec = do
+    describe "getComponents" $ do
+        it "throws an exception if the cabal file is broken" $ do
+            let tdir = "test/data/broken-cabal"
+            runD' tdir getComponents `shouldThrow` anyIOException
 
-    --     it "handles sandboxes correctly" $ do
-    --         let tdir = "test/data/cabal-project"
-    --         cwd <- getCurrentDirectory
+        it "handles sandboxes correctly" $ do
+            let tdir = "test/data/cabal-project"
+            cwd <- getCurrentDirectory
 
-    --         opts <- runD' tdir getGhcOptions
+            -- TODO: ChSetupHsName should also have sandbox stuff, see related
+            -- comment in cabal-helper
+            opts <- map gmcGhcOpts . filter ((/= ChSetupHsName) . gmcName) <$> runD' tdir getComponents
 
-    --         if ghcVersion < 706
-    --           then forM_ opts (\(_, o) -> o `shouldContain` ["-no-user-package-conf","-package-conf", cwd </> "test/data/cabal-project/.cabal-sandbox/"++ghcSandboxPkgDbDir])
-    --           else forM_ opts (\(_, o) -> o `shouldContain` ["-no-user-package-db","-package-db",cwd </> "test/data/cabal-project/.cabal-sandbox/"++ghcSandboxPkgDbDir])
+            print opts
 
-    --     it "extracts build dependencies" $ do
-    --         let tdir = "test/data/cabal-project"
-    --         opts <- runD' tdir getGhcOptions
-    --         let ghcOpts = snd $ head opts
-    --             pkgs = pkgOptions ghcOpts
-    --         pkgs `shouldBe` ["Cabal","base","template-haskell"]
+            if ghcVersion < 706
+              then forM_ opts (\o -> o `shouldContain` ["-no-user-package-conf","-package-conf", cwd </> "test/data/cabal-project/.cabal-sandbox/"++ghcSandboxPkgDbDir])
+              else forM_ opts (\o -> o `shouldContain` ["-no-user-package-db","-package-db",cwd </> "test/data/cabal-project/.cabal-sandbox/"++ghcSandboxPkgDbDir])
 
-    --     it "uses non default flags" $ do
-    --         let tdir = "test/data/cabal-flags"
-    --         _ <- withDirectory_ tdir $
-    --             readProcess "cabal" ["configure", "-ftest-flag"] ""
+        it "extracts build dependencies" $ do
+            let tdir = "test/data/cabal-project"
+            opts <- map gmcGhcOpts <$> runD' tdir getComponents
+            let ghcOpts = head opts
+                pkgs = pkgOptions ghcOpts
+            pkgs `shouldBe` ["Cabal","base","template-haskell"]
 
-    --         opts <- runD' tdir getGhcOptions
-    --         let ghcOpts = snd $ head opts
-    --             pkgs = pkgOptions ghcOpts
-    --         pkgs `shouldBe` ["Cabal","base"]
+        it "uses non default flags" $ do
+            let tdir = "test/data/cabal-flags"
+            _ <- withDirectory_ tdir $
+                readProcess "cabal" ["configure", "-ftest-flag"] ""
+
+            opts <- map gmcGhcOpts <$> runD' tdir getComponents
+            let ghcOpts = head opts
+                pkgs = pkgOptions ghcOpts
+            pkgs `shouldBe` ["Cabal","base"]
