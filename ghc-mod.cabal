@@ -184,15 +184,18 @@ Executable ghc-modi
   Main-Is:              GHCModi.hs
   Other-Modules:        Paths_ghc_mod
                         Misc
+                        Utils
   GHC-Options:          -Wall -threaded -fno-warn-deprecations
   if os(windows)
       Cpp-Options:      -DWINDOWS
   Default-Extensions:   ConstraintKinds, FlexibleContexts
-  HS-Source-Dirs:       src
+  HS-Source-Dirs:       src, .
   Build-Depends:        base >= 4.0 && < 5
                       , directory
                       , filepath
                       , process
+                      , time
+                      , old-time
 
 Test-Suite doctest
   Type:                 exitcode-stdio-1.0
