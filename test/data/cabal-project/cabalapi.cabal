@@ -44,7 +44,7 @@ Executable ghc-mod
                         Paths_ghc_mod
                         Types
   GHC-Options:          -Wall
-  Build-Depends:        base >= 4.0 && < 5
+  Build-Depends:        base
                       , Cabal >= 1.10
                       , template-haskell
 
@@ -59,7 +59,7 @@ Test-Suite spec
                         LangSpec
                         LintSpec
                         ListSpec
-  Build-Depends:        base >= 4.0 && < 5
+  Build-Depends:        base
                       , Cabal >= 1.10
 
 Source-Repository head

@@ -22,5 +22,5 @@ library
 executable foo
   Main-Is:              main.hs
   GHC-Options:          -Wall
-  Build-Depends:        base >= 4 && < 5
+  Build-Depends:        base
                       , ghc-mod-check
