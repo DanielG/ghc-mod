@@ -11,13 +11,16 @@ import Data.Version (showVersion)
 import Data.List
 import Data.List.Split
 import Data.Char (isSpace)
+import Data.Maybe
 import Exception
 import Language.Haskell.GhcMod
 import Language.Haskell.GhcMod.Internal
 import Paths_ghc_mod
 import System.Console.GetOpt (OptDescr(..), ArgDescr(..), ArgOrder(..))
 import qualified System.Console.GetOpt as O
-import System.Directory (setCurrentDirectory)
+import System.FilePath ((</>))
+import System.Directory (setCurrentDirectory, getAppUserDataDirectory,
+                        removeDirectoryRecursive)
 import System.Environment (getArgs)
 import System.Exit (exitFailure)
 import System.IO (hPutStrLn, stdout, stderr, hSetEncoding, utf8, hFlush)
@@ -439,9 +442,8 @@ ghcCommands (cmd:args) = do
      "dumpsym" -> dumpSymbolCmd
      "boot"    -> bootCmd
      "legacy-interactive" -> legacyInteractiveCmd
+     "nuke-caches" -> nukeCachesCmd
      _         -> fatalError $ "unknown command: `" ++ cmd ++ "'"
-
-
 
 newtype FatalError = FatalError String deriving (Show, Typeable)
 instance Exception FatalError
@@ -482,7 +484,7 @@ catchArgs cmd action =
 modulesCmd, languagesCmd, flagsCmd, browseCmd, checkSyntaxCmd, expandTemplateCmd,
   debugInfoCmd, componentInfoCmd, infoCmd, typesCmd, splitsCmd, sigCmd,
   refineCmd, autoCmd, findSymbolCmd, lintCmd, rootInfoCmd, pkgDocCmd,
-  dumpSymbolCmd, bootCmd, legacyInteractiveCmd
+  dumpSymbolCmd, bootCmd, legacyInteractiveCmd, nukeCachesCmd
   :: IOish m => [String] -> GhcModT m String
 
 modulesCmd    = withParseCmd' "modules" s $ \[] -> modules
@@ -494,6 +496,7 @@ rootInfoCmd   = withParseCmd' "root"    [] $ \[] -> rootInfo
 componentInfoCmd = withParseCmd' "debugComponent" [] $ \ts -> componentInfo ts
 -- internal
 bootCmd       = withParseCmd' "boot" [] $ \[] -> boot
+nukeCachesCmd = withParseCmd' "nuke-caches" [] $ \[] -> nukeCaches >> return ""
 
 dumpSymbolCmd     = withParseCmd' "dump" [] $ \[tmpdir] -> dumpSymbol tmpdir
 findSymbolCmd     = withParseCmd' "find" [] $ \[sym]  -> findSymbol sym
@@ -555,3 +558,16 @@ browseArgSpec =
     , option "q" ["qualified"] "Qualify symbols" $
              NoArg $ \o -> o { qualified = True }
     ]
+
+nukeCaches :: IOish m => GhcModT m ()
+nukeCaches = do
+  chdir <- liftIO $ (</> "cabal-helper") <$> getAppUserDataDirectory "ghc-mod"
+  c <- cradle
+
+  when (isJust $ cradleCabalFile c) $ do
+    let root = cradleRootDir c
+    when (isJust $ cradleCabalFile c) $
+      liftIO $ (trySome . removeDirectoryRecursive) `mapM_` [chdir, root </> "dist"]
+
+trySome :: IO a -> IO (Either SomeException a)
+trySome = try
