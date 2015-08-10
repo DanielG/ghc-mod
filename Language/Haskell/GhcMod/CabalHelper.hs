@@ -50,8 +50,8 @@ getGhcMergedPkgOptions :: (Applicative m, IOish m, GmEnv m, GmLog m)
                  => m [GHCOption]
 getGhcMergedPkgOptions = chCached Cached {
   cacheFile = mergedPkgOptsCacheFile,
-  cachedAction = \ _tcf (progs, root, _) _ma -> do
-    opts <- withCabal $ runQuery' progs root $ ghcMergedPkgOptions
+  cachedAction = \ _tcf (progs, rootdir, distdir, _) _ma -> do
+    opts <- withCabal $ runQuery' progs rootdir distdir $ ghcMergedPkgOptions
     return ([setupConfigPath], opts)
  }
 
@@ -75,8 +75,8 @@ getPackageDbStack = do
 getPackageDbStack' :: (IOish m, GmEnv m, GmLog m) => m [GhcPkgDb]
 getPackageDbStack' = chCached Cached {
   cacheFile = pkgDbStackCacheFile,
-  cachedAction = \ _tcf (progs, root, _) _ma -> do
-    dbs <- withCabal $ map chPkgToGhcPkg <$> runQuery' progs root packageDbStack
+  cachedAction = \ _tcf (progs, rootdir, distdir, _) _ma -> do
+    dbs <- withCabal $ map chPkgToGhcPkg <$> runQuery' progs rootdir distdir packageDbStack
     return ([setupConfigPath, sandboConfigFile], dbs)
  }
 
@@ -96,11 +96,11 @@ getComponents = chCached cabalHelperCache
 
 cabalHelperCache
   :: (Functor m, Applicative m, MonadIO m)
-  => Cached m (Programs, FilePath, (Version, String)) [GmComponent 'GMCRaw ChEntrypoint]
+  => Cached m (Programs, FilePath, FilePath, (Version, String)) [GmComponent 'GMCRaw ChEntrypoint]
 cabalHelperCache = Cached {
     cacheFile = cabalHelperCacheFile,
-    cachedAction = \ _tcf (progs, root, _vers) _ma ->
-      runQuery' progs root $ do
+    cachedAction = \ _tcf (progs, rootdir, distdir, _vers) _ma ->
+      runQuery' progs rootdir distdir $ do
         q <- join7
                <$> ghcOptions
                <*> ghcPkgOptions
@@ -135,7 +135,8 @@ withCabal action = do
     pkgDbStackOutOfSync <-
          case mCusPkgDbStack of
            Just cusPkgDbStack -> do
-             pkgDb <- runQuery' (helperProgs opts) (cradleRootDir crdl </> "dist") $
+             let root = cradleRootDir crdl
+             pkgDb <- runQuery' (helperProgs opts) root (root </> "dist") $
                  map chPkgToGhcPkg <$> packageDbStack
              return $ pkgDb /= cusPkgDbStack
 
@@ -194,7 +195,7 @@ helperProgs opts = Programs {
                           }
 
 chCached :: (Applicative m, IOish m, GmEnv m, GmLog m, Serialize a)
-         => Cached m (Programs, FilePath, (Version, [Char])) a -> m a
+         => Cached m (Programs, FilePath, FilePath, (Version, [Char])) a -> m a
 chCached c = do
   root <- cradleRootDir <$> cradle
   d <- cacheInputData root
@@ -203,6 +204,7 @@ chCached c = do
    cacheInputData root = do
                opt <- options
                return $ ( helperProgs opt
+                        , root
                         , root </> "dist"
                         , (gmVer, chVer)
                         )
