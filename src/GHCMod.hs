@@ -428,7 +428,7 @@ ghcCommands (cmd:args) = do
      "check"   -> checkSyntaxCmd
      "expand"  -> expandTemplateCmd
      "debug"   -> debugInfoCmd
-     "debugComponent" -> componentInfoCmd
+     "debug-component" -> componentInfoCmd
      "info"    -> infoCmd
      "type"    -> typesCmd
      "split"   -> splitsCmd
