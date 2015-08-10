@@ -30,10 +30,16 @@ import Prelude
 
 import Misc
 
-progVersion :: String
-progVersion =
-    "ghc-mod version " ++ showVersion version ++ " compiled by GHC "
-                       ++ cProjectVersion ++ "\n"
+progVersion :: String -> String
+progVersion pf =
+    "ghc-mod"++pf++" version " ++ showVersion version ++ " compiled by GHC "
+                               ++ cProjectVersion ++ "\n"
+
+ghcModVersion :: String
+ghcModVersion = progVersion ""
+
+ghcModiVersion :: String
+ghcModiVersion = progVersion "i"
 
 optionUsage :: (String -> String) -> [OptDescr a] -> [String]
 optionUsage indent opts = concatMap optUsage opts
@@ -238,43 +244,52 @@ optArg udsc dsc = OptArg dsc udsc
 intToLogLevel :: Int -> GmLogLevel
 intToLogLevel = toEnum
 
-globalArgSpec :: [OptDescr (Options -> Options)]
+globalArgSpec :: [OptDescr (Options -> Either [String] Options)]
 globalArgSpec =
       [ option "v" ["verbose"] "Increase or set log level. (0-7)" $
-               optArg "LEVEL" $ \ml o -> o {
+               optArg "LEVEL" $ \ml o -> Right $ o {
                    logLevel = case ml of
                                 Nothing -> increaseLogLevel (logLevel o)
                                 Just l -> toEnum $ min 7 $ read l
                  }
 
       , option "s" [] "Be silent, set log level to 0" $
-               NoArg $ \o -> o { logLevel = toEnum 0 }
+               NoArg $ \o -> Right $ o { logLevel = toEnum 0 }
 
       , option "l" ["tolisp"] "Format output as an S-Expression" $
-               NoArg $ \o -> o { outputStyle = LispStyle }
+               NoArg $ \o -> Right $ o { outputStyle = LispStyle }
 
       , option "b" ["boundary"] "Output line separator"$
-               reqArg "SEP" $ \s o -> o { lineSeparator = LineSeparator s }
+               reqArg "SEP" $ \s o -> Right $ o { lineSeparator = LineSeparator s }
 
       , option "g" ["ghcOpt", "ghc-option"] "Option to be passed to GHC" $
-               reqArg "OPT" $ \g o ->
+               reqArg "OPT" $ \g o -> Right $
                    o { ghcUserOptions = g : ghcUserOptions o }
 
       , option "" ["with-ghc"] "GHC executable to use" $
-               reqArg "PROG" $ \p o -> o { ghcProgram = p }
+               reqArg "PROG" $ \p o -> Right $ o { ghcProgram = p }
 
       , option "" ["with-ghc-pkg"] "ghc-pkg executable to use (only needed when guessing from GHC path fails)" $
-               reqArg "PROG" $ \p o -> o { ghcPkgProgram = p }
+               reqArg "PROG" $ \p o -> Right $ o { ghcPkgProgram = p }
 
       , option "" ["with-cabal"] "cabal-install executable to use" $
-               reqArg "PROG" $ \p o -> o { cabalProgram = p }
+               reqArg "PROG" $ \p o -> Right $ o { cabalProgram = p }
+
+      , option "" ["version"] "print version information" $
+               NoArg $ \_ -> Left ["version"]
+
+      , option "" ["help"] "print this help message" $
+               NoArg $ \_ -> Left ["help"]
+
   ]
 
 
 parseGlobalArgs :: [String] -> Either InvalidCommandLine (Options, [String])
 parseGlobalArgs argv
     = case O.getOpt' RequireOrder globalArgSpec argv of
-        (o,r,u,[]) -> Right $ (foldr id defaultOptions o, u ++ r)
+        (o,r,u,[]) -> case foldr (=<<) (Right defaultOptions) o of
+                        Right o' -> Right (o', u ++ r)
+                        Left c -> Right (defaultOptions, c)
         (_,_,u,e)  -> Left $ InvalidCommandLine $ Right $
             "Parsing command line options failed: "
                ++ concat (e ++ map errUnrec u)
@@ -282,13 +297,15 @@ parseGlobalArgs argv
    errUnrec :: String -> String
    errUnrec optStr = "unrecognized option `" ++ optStr ++ "'\n"
 
-parseCommandArgs :: [OptDescr (Options -> Options)]
+parseCommandArgs :: [OptDescr (Options -> Either [String] Options)]
                  -> [String]
                  -> Options
                  -> (Options, [String])
 parseCommandArgs spec argv opts
     = case O.getOpt RequireOrder (globalArgSpec ++ spec) argv of
-        (o,r,[])   -> (foldr id opts o, r)
+        (o,r,[])   -> case foldr (=<<) (Right opts) o of
+                        Right o' -> (o', r)
+                        Left c -> (defaultOptions, c)
         (_,_,errs) ->
             fatalError $ "Parsing command options failed: " ++ concat errs
 
@@ -411,8 +428,8 @@ legacyInteractiveLoop symdbreq world = do
 globalCommands :: [String] -> Maybe String
 globalCommands []      = Nothing
 globalCommands (cmd:_) = case cmd of
-    _ | cmd == "help"    || cmd == "--help"    -> Just usage
-    _ | cmd == "version" || cmd == "--version" -> Just progVersion
+    _ | cmd == "help"    -> Just usage
+    _ | cmd == "version" -> Just ghcModVersion
     _                                          -> Nothing
 
 ghcCommands :: IOish m => [String] -> GhcModT m ()
@@ -459,7 +476,7 @@ fatalError :: String -> a
 fatalError s = throw $ FatalError $ "ghc-mod: " ++ s
 
 withParseCmd :: IOish m
-             => [OptDescr (Options -> Options)]
+             => [OptDescr (Options -> Either [String] Options)]
              -> ([String] -> GhcModT m a)
              -> [String]
              -> GhcModT m a
@@ -469,7 +486,7 @@ withParseCmd spec action args  = do
 
 withParseCmd' :: (IOish m, ExceptionMonad m)
               => String
-              -> [OptDescr (Options -> Options)]
+              -> [OptDescr (Options -> Either [String] Options)]
               -> ([String] -> GhcModT m a)
               -> [String]
               -> GhcModT m a
@@ -519,7 +536,15 @@ infoCmd       = withParseCmd [] $ action
         action [file,expr]   = info file $ Expression expr
         action _ = throw $ InvalidCommandLine (Left "info")
 
-legacyInteractiveCmd = withParseCmd [] $ \[] -> legacyInteractive >> return ""
+legacyInteractiveCmd = withParseCmd [] go
+ where
+   go [] =
+       legacyInteractive >> return ""
+   go ("help":[]) =
+       return usage
+   go ("version":[]) =
+       return ghcModiVersion
+   go _ = throw $ InvalidCommandLine (Left "legacy-interactive")
 
 checkAction :: ([t] -> a) -> [t] -> a
 checkAction _ []         = throw $ InvalidCommandLine (Right "No files given.")
@@ -536,27 +561,27 @@ locAction' _ action [f,  line,col,expr] = action f (read line) (read col) (Expre
 locAction' cmd _ _ = throw $ InvalidCommandLine (Left cmd)
 
 
-modulesArgSpec :: [OptDescr (Options -> Options)]
+modulesArgSpec :: [OptDescr (Options -> Either [String] Options)]
 modulesArgSpec =
     [ option "d" ["detailed"] "Print package modules belong to." $
-             NoArg $ \o -> o { detailed = True }
+             NoArg $ \o -> Right $ o { detailed = True }
     ]
 
 
-hlintArgSpec :: [OptDescr (Options -> Options)]
+hlintArgSpec :: [OptDescr (Options -> Either [String] Options)]
 hlintArgSpec =
     [ option "h" ["hlintOpt"] "Option to be passed to hlint" $
-             reqArg "hlintOpt" $ \h o -> o { hlintOpts = h : hlintOpts o }
+             reqArg "hlintOpt" $ \h o -> Right $ o { hlintOpts = h : hlintOpts o }
     ]
 
-browseArgSpec :: [OptDescr (Options -> Options)]
+browseArgSpec :: [OptDescr (Options -> Either [String] Options)]
 browseArgSpec =
     [ option "o" ["operators"] "Also print operators." $
-             NoArg $ \o -> o { operators = True }
+             NoArg $ \o -> Right $ o { operators = True }
     , option "d" ["detailed"] "Print symbols with accompanying signature." $
-             NoArg $ \o -> o { detailed = True }
+             NoArg $ \o -> Right $ o { detailed = True }
     , option "q" ["qualified"] "Qualify symbols" $
-             NoArg $ \o -> o { qualified = True }
+             NoArg $ \o -> Right $ o { qualified = True }
     ]
 
 nukeCaches :: IOish m => GhcModT m ()
