@@ -1,11 +1,16 @@
+{-# LANGUAGE OverloadedStrings #-}
 module Language.Haskell.GhcMod.Caching where
 
+import Control.Arrow (first)
 import Control.Monad.Trans.Maybe
 import Data.Maybe
 import Data.Serialize
+import Data.Version
 import qualified Data.ByteString as BS
+import qualified Data.ByteString.Char8 as BS8
 import System.FilePath
 import Utils (TimedFile(..), timeMaybe, mightExist)
+import Paths_ghc_mod (version)
 
 import Language.Haskell.GhcMod.Monad.Types
 import Language.Haskell.GhcMod.Logging
@@ -63,7 +68,7 @@ cached dir cd d = do
     tcfile <- liftIO $ timeMaybe (cacheFile cd)
     case mcc of
       Nothing ->
-          writeCache (TimedCacheFiles tcfile []) Nothing "cache missing"
+          writeCache (TimedCacheFiles tcfile []) Nothing "cache missing or unreadable"
       Just (ifs, d', a) | d /= d' -> do
           tcf <- timeCacheInput dir (cacheFile cd) ifs
           writeCache tcf (Just a) $ "input data changed" -- ++ "   was: " ++ show d ++ "  is: " ++ show d'
@@ -75,11 +80,14 @@ cached dir cd d = do
             Nothing -> writeCache tcf (Just a) "cache missing, existed a sec ago WTF?"
 
  where
+   cacheHeader = BS8.pack $ "Written by ghc-mod " ++ showVersion version ++ "\n"
+
    writeCache tcf ma cause = do
      (ifs', a) <- (cachedAction cd) tcf d ma
      gmLog GmDebug "" $ (text "regenerating cache") <+>: text (cacheFile cd)
                                                     <+> parens (text cause)
-     liftIO $ BS.writeFile (dir </> cacheFile cd) $ encode (ifs', d, a)
+     liftIO $ BS.writeFile (dir </> cacheFile cd) $
+         BS.append cacheHeader $ encode (ifs', d, a)
      return a
 
    readCache :: m (Maybe ([FilePath], d, a))
@@ -90,7 +98,11 @@ cached dir cd d = do
        readCache' f = do
          gmLog GmDebug "" $ (text "reading cache") <+>: text (cacheFile cd)
          cc <- liftIO $ BS.readFile f
-         return $ either (const Nothing) Just $ decode cc
+         case first BS8.words $ BS8.span (/='\n') cc of
+           (["Written", "by", "ghc-mod", ver], rest)
+               | BS8.unpack ver == showVersion version ->
+                return $ either (const Nothing) Just $ decode $ BS.drop 1 rest
+           _ -> return Nothing
 
 timeCacheInput :: MonadIO m => FilePath -> FilePath -> [FilePath] -> m TimedCacheFiles
 timeCacheInput dir cfile ifs = liftIO $ do
