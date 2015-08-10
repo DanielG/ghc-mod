@@ -53,10 +53,13 @@ spec = do
                     res <- runD $ checkSyntax ["Foo.hs"]
                     res `shouldBe` ""
 
+#if __GLASGOW_HASKELL__ >= 708
+-- See https://github.com/kazu-yamamoto/ghc-mod/issues/507
         it "emits warnings generated in GHC's desugar stage" $ do
             withDirectory_ "test/data/check-missing-warnings" $ do
                 res <- runD $ checkSyntax ["DesugarWarnings.hs"]
                 res `shouldBe` "DesugarWarnings.hs:4:9:Warning: Pattern match(es) are non-exhaustive\NULIn a case alternative: Patterns not matched: _ : _\n"
+#endif
 
         it "works with cabal builtin preprocessors" $ do
             withDirectory_ "test/data/cabal-preprocessors" $ do
