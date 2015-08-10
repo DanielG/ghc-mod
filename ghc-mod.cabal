@@ -78,6 +78,9 @@ Extra-Source-Files:     ChangeLog
                         test/data/custom-cradle/package-db-a/.gitkeep
                         test/data/custom-cradle/package-db-b/.gitkeep
                         test/data/custom-cradle/package-db-c/.gitkeep
+                        test/data/cabal-preprocessors/*.cabal
+                        test/data/cabal-preprocessors/*.hs
+                        test/data/cabal-preprocessors/*.hsc
 
 Library
   Default-Language:     Haskell2010

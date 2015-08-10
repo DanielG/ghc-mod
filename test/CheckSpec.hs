@@ -57,3 +57,10 @@ spec = do
             withDirectory_ "test/data/check-missing-warnings" $ do
                 res <- runD $ checkSyntax ["DesugarWarnings.hs"]
                 res `shouldBe` "DesugarWarnings.hs:4:9:Warning: Pattern match(es) are non-exhaustive\NULIn a case alternative: Patterns not matched: _ : _\n"
+
+        it "works with cabal builtin preprocessors" $ do
+            withDirectory_ "test/data/cabal-preprocessors" $ do
+                _ <- system "cabal clean"
+                _ <- system "cabal build"
+                res <- runD $ checkSyntax ["Main.hs"]
+                res `shouldBe` "Preprocessed.hsc:3:1:Warning: Top-level binding with no type signature: warning :: ()\n"
