@@ -65,8 +65,8 @@ module Language.Haskell.GhcMod (
   , gmUnsafePutStrLn
   , gmUnsafeErrStrLn
   -- * FileMapping
-  , getMMappedFiles
-  , setMMappedFiles
+  , loadMappedFile
+  , unloadMappedFile
   ) where
 
 import Language.Haskell.GhcMod.Boot
@@ -88,3 +88,4 @@ import Language.Haskell.GhcMod.PkgDoc
 import Language.Haskell.GhcMod.Types
 import Language.Haskell.GhcMod.Target
 import Language.Haskell.GhcMod.Output
+import Language.Haskell.GhcMod.FileMapping
