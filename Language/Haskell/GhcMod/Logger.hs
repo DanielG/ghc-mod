@@ -37,9 +37,9 @@ data Log = Log [String] Builder
 
 newtype LogRef = LogRef (IORef Log)
 
-data GmPprEnv = GmPprEnv { rsDynFlags :: DynFlags
-                         , rsPprStyle :: PprStyle
-                         , rsMapFile :: FilePath -> FilePath
+data GmPprEnv = GmPprEnv { gpeDynFlags :: DynFlags
+                         , gpePprStyle :: PprStyle
+                         , gpeMapFile :: FilePath -> FilePath
                          }
 
 type GmPprEnvM a = Reader GmPprEnv a
@@ -59,7 +59,7 @@ readAndClearLogRef (LogRef ref) = do
 appendLogRef :: GmPprEnv -> DynFlags -> LogRef -> DynFlags -> Severity -> SrcSpan -> PprStyle -> SDoc -> IO ()
 appendLogRef rs df (LogRef ref) _ sev src st msg = modifyIORef ref update
   where
-    l = runReader (ppMsg src sev msg) rs{rsDynFlags=df, rsPprStyle=st}
+    l = runReader (ppMsg src sev msg) rs{gpeDynFlags=df, gpePprStyle=st}
     update lg@(Log ls b)
       | l `elem` ls = lg
       | otherwise   = Log (l:ls) (b . (l:))
@@ -92,9 +92,9 @@ withLogger' env action = do
         pu = icPrintUnqual dflags (hsc_IC env)
         stl = mkUserStyle pu AllTheWay
         st = GmPprEnv {
-                rsDynFlags = dflags
-              , rsPprStyle = stl
-              , rsMapFile = rfm
+                gpeDynFlags = dflags
+              , gpePprStyle = stl
+              , gpeMapFile = rfm
         }
 
         setLogger df = Gap.setLogAction df $ appendLogRef st df logref
@@ -128,8 +128,8 @@ errsToStr = mapM ppErrMsg
 
 ppErrMsg :: ErrMsg -> GmPprEnvM String
 ppErrMsg err = do
-    dflag <- asks rsDynFlags
-    st <- asks rsPprStyle
+    dflag <- asks gpeDynFlags
+    st <- asks gpePprStyle
     let ext = showPage dflag st (errMsgExtraInfo err)
     m <- ppMsg spn SevError msg
     return $ m ++ (if null ext then "" else "\n" ++ ext)
@@ -139,16 +139,16 @@ ppErrMsg err = do
 
 ppMsg :: SrcSpan -> Severity-> SDoc -> GmPprEnvM String
 ppMsg spn sev msg = do
-  dflag <- asks rsDynFlags
-  st <- asks rsPprStyle
+  dflag <- asks gpeDynFlags
+  st <- asks gpePprStyle
   let cts  = showPage dflag st msg
   prefix <- ppMsgPrefix spn sev cts
   return $ prefix ++ cts
 
 ppMsgPrefix :: SrcSpan -> Severity -> String -> GmPprEnvM String
 ppMsgPrefix spn sev cts = do
-  dflag <- asks rsDynFlags
-  mr <- asks rsMapFile
+  dflag <- asks gpeDynFlags
+  mr <- asks gpeMapFile
   let defaultPrefix
         | Gap.isDumpSplices dflag = ""
         | otherwise               = checkErrorPrefix
