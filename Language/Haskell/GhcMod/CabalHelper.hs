@@ -26,9 +26,9 @@ module Language.Haskell.GhcMod.CabalHelper
 
 import Control.Applicative
 import Control.Monad
+import Control.Category ((.))
 import Data.Maybe
 import Data.Monoid
-import Data.Version
 import Data.Serialize (Serialize)
 import Data.Traversable
 import Distribution.Helper
@@ -40,15 +40,16 @@ import Language.Haskell.GhcMod.Utils
 import Language.Haskell.GhcMod.PathsAndFiles
 import Language.Haskell.GhcMod.Logging
 import System.FilePath
-import Prelude
+import Prelude hiding ((.))
 
 import Paths_ghc_mod as GhcMod
 
 -- | Only package related GHC options, sufficient for things that don't need to
 -- access home modules
-getGhcMergedPkgOptions :: (Applicative m, IOish m, GmEnv m, GmLog m)
-                 => m [GHCOption]
+getGhcMergedPkgOptions :: (Applicative m, IOish m, GmEnv m, GmState m, GmLog m)
+  => m [GHCOption]
 getGhcMergedPkgOptions = chCached Cached {
+  cacheLens = Just (lGmcMergedPkgOptions . lGmCaches),
   cacheFile = mergedPkgOptsCacheFile,
   cachedAction = \ _tcf (progs, rootdir, distdir, _) _ma -> do
     opts <- withCabal $ runQuery' progs rootdir distdir $ ghcMergedPkgOptions
@@ -67,13 +68,14 @@ getCustomPkgDbStack = do
     mCusPkgDbFile <- liftIO . (traverse readFile <=< findCustomPackageDbFile) . cradleRootDir =<< cradle
     return $ parseCustomPackageDb <$> mCusPkgDbFile
 
-getPackageDbStack :: (IOish m, GmEnv m, GmLog m) => m [GhcPkgDb]
+getPackageDbStack :: (IOish m, GmEnv m, GmState m, GmLog m) => m [GhcPkgDb]
 getPackageDbStack = do
     mCusPkgStack <- getCustomPkgDbStack
     flip fromMaybe mCusPkgStack <$> getPackageDbStack'
 
-getPackageDbStack' :: (IOish m, GmEnv m, GmLog m) => m [GhcPkgDb]
+getPackageDbStack' :: (IOish m, GmEnv m, GmState m, GmLog m) => m [GhcPkgDb]
 getPackageDbStack' = chCached Cached {
+  cacheLens = Just (lGmcPackageDbStack . lGmCaches),
   cacheFile = pkgDbStackCacheFile,
   cachedAction = \ _tcf (progs, rootdir, distdir, _) _ma -> do
     dbs <- withCabal $ map chPkgToGhcPkg <$> runQuery' progs rootdir distdir packageDbStack
@@ -90,14 +92,10 @@ chPkgToGhcPkg (ChPkgSpecific f) = PackageDb f
 --
 -- The Component\'s 'gmcHomeModuleGraph' will be empty and has to be resolved by
 -- 'resolveGmComponents'.
-getComponents :: (Applicative m, IOish m, GmEnv m, GmLog m)
+getComponents :: (Applicative m, IOish m, GmEnv m, GmState m, GmLog m)
               => m [GmComponent 'GMCRaw ChEntrypoint]
-getComponents = chCached cabalHelperCache
-
-cabalHelperCache
-  :: (Functor m, Applicative m, MonadIO m)
-  => Cached m (Programs, FilePath, FilePath, (Version, String)) [GmComponent 'GMCRaw ChEntrypoint]
-cabalHelperCache = Cached {
+getComponents = chCached Cached {
+    cacheLens = Just (lGmcComponents . lGmCaches),
     cacheFile = cabalHelperCacheFile,
     cachedAction = \ _tcf (progs, rootdir, distdir, _vers) _ma ->
       runQuery' progs rootdir distdir $ do
@@ -143,6 +141,8 @@ withCabal action = do
            Nothing -> return False
 
     cusPkgStack <- maybe [] ((PackageDb "clear"):) <$> getCustomPkgDbStack
+
+    --TODO: also invalidate when sandboxConfig file changed
 
     when (isSetupConfigOutOfDate mCabalFile mCabalConfig) $
       gmLog GmDebug "" $ strDoc $ "setup configuration is out of date, reconfiguring Cabal project."
@@ -194,8 +194,8 @@ helperProgs opts = Programs {
                             ghcPkgProgram = T.ghcPkgProgram opts
                           }
 
-chCached :: (Applicative m, IOish m, GmEnv m, GmLog m, Serialize a)
-         => Cached m (Programs, FilePath, FilePath, (Version, [Char])) a -> m a
+chCached :: (Applicative m, IOish m, GmEnv m, GmState m, GmLog m, Serialize a)
+  => Cached m GhcModState ChCacheData a -> m a
 chCached c = do
   root <- cradleRootDir <$> cradle
   d <- cacheInputData root

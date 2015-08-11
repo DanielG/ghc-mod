@@ -19,6 +19,7 @@ module Language.Haskell.GhcMod.Target where
 
 import Control.Arrow
 import Control.Applicative
+import Control.Category ((.))
 import Control.Monad.Reader (runReaderT)
 import GHC
 import GHC.Paths (libdir)
@@ -53,7 +54,7 @@ import qualified Data.Map  as Map
 import Data.Set (Set)
 import qualified Data.Set as Set
 import Distribution.Helper
-import Prelude
+import Prelude hiding ((.))
 
 import System.Directory
 import System.FilePath
@@ -86,7 +87,7 @@ runLightGhc env action = do
   renv <- newIORef env
   flip runReaderT renv $ unLightGhc action
 
-runGmPkgGhc :: (IOish m, GmEnv m, GmLog m) => LightGhc a -> m a
+runGmPkgGhc :: (IOish m, GmEnv m, GmState m, GmLog m) => LightGhc a -> m a
 runGmPkgGhc action = do
     pkgOpts <- packageGhcOptions
     withLightHscEnv pkgOpts $ \env -> liftIO $ runLightGhc env action
@@ -203,10 +204,11 @@ targetGhcOptions crdl sefnmn = do
             let cn = pickComponent candidates
             return $ gmcGhcOpts $ fromJust $ Map.lookup cn mcs
 
-resolvedComponentsCache :: IOish m => Cached (GhcModT m)
+resolvedComponentsCache :: IOish m => Cached (GhcModT m) GhcModState
     [GmComponent 'GMCRaw (Set.Set ModulePath)]
     (Map.Map ChComponentName (GmComponent 'GMCResolved (Set.Set ModulePath)))
 resolvedComponentsCache = Cached {
+    cacheLens = Just (lGmcResolvedComponents . lGmCaches),
     cacheFile  = resolvedComponentsCacheFile,
     cachedAction = \tcfs comps ma -> do
         Cradle {..} <- cradle
@@ -282,7 +284,8 @@ findCandidates scns = foldl1 Set.intersection scns
 pickComponent :: Set ChComponentName -> ChComponentName
 pickComponent scn = Set.findMin scn
 
-packageGhcOptions :: (Applicative m, IOish m, GmEnv m, GmLog m) => m [GHCOption]
+packageGhcOptions :: (Applicative m, IOish m, GmEnv m, GmState m, GmLog m)
+                  => m [GHCOption]
 packageGhcOptions = do
     crdl <- cradle
     case cradleCabalFile crdl of

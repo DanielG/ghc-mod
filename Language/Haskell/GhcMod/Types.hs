@@ -1,5 +1,5 @@
 {-# LANGUAGE CPP, DeriveDataTypeable, DeriveFunctor, DeriveGeneric,
-  StandaloneDeriving, DefaultSignatures, FlexibleInstances #-}
+  StandaloneDeriving, DefaultSignatures, FlexibleInstances, TemplateHaskell #-}
 {-# OPTIONS_GHC -fno-warn-orphans -fno-warn-deprecations #-}
 module Language.Haskell.GhcMod.Types (
     module Language.Haskell.GhcMod.Types
@@ -13,6 +13,7 @@ import Control.Monad.Error (Error(..))
 import qualified Control.Monad.IO.Class as MTL
 import Control.Exception (Exception)
 import Control.Applicative
+import Control.Monad
 import Data.Serialize
 import Data.Version
 import Data.List (intercalate)
@@ -23,15 +24,21 @@ import qualified Data.Set as Set
 import Data.Monoid
 import Data.Maybe
 import Data.Typeable (Typeable)
+import Data.IORef
+import Data.Label.Derive
 import Distribution.Helper
 import Exception (ExceptionMonad)
 #if __GLASGOW_HASKELL__ < 708
 import qualified MonadUtils as GHC (MonadIO(..))
 #endif
 import GHC (ModuleName, moduleNameString, mkModuleName)
+import HscTypes (HscEnv)
 import PackageConfig (PackageConfig)
 import GHC.Generics
+import Text.PrettyPrint (Doc)
 import Prelude
+
+import Language.Haskell.GhcMod.Caching.Types
 
 -- | A constraint alias (-XConstraintKinds) to make functions dealing with
 -- 'GhcModT' somewhat cleaner.
@@ -113,6 +120,50 @@ data Cradle = Cradle {
   -- | The file name of the found cabal file.
   , cradleCabalFile  :: Maybe FilePath
   } deriving (Eq, Show)
+
+data GhcModEnv = GhcModEnv {
+      gmOptions    :: Options
+    , gmCradle     :: Cradle
+    }
+
+data GhcModLog = GhcModLog {
+      gmLogLevel     :: Maybe GmLogLevel,
+      gmLogVomitDump :: Last Bool,
+      gmLogMessages  :: [(GmLogLevel, String, Doc)]
+    } deriving (Show)
+
+instance Monoid GhcModLog where
+    mempty = GhcModLog (Just GmPanic) (Last Nothing) mempty
+    GhcModLog ml vd ls `mappend` GhcModLog ml' vd' ls' =
+        GhcModLog (ml' `mplus` ml) (vd `mappend` vd') (ls `mappend` ls')
+
+data GmGhcSession = GmGhcSession {
+      gmgsOptions :: ![GHCOption],
+      gmgsSession :: !(IORef HscEnv)
+    }
+
+data GhcModCaches = GhcModCaches {
+      gmcPackageDbStack   :: CacheContents ChCacheData [GhcPkgDb]
+    , gmcMergedPkgOptions :: CacheContents ChCacheData [GHCOption]
+    , gmcComponents       :: CacheContents ChCacheData [GmComponent 'GMCRaw ChEntrypoint]
+    , gmcResolvedComponents :: CacheContents
+          [GmComponent 'GMCRaw (Set.Set ModulePath)]
+          (Map.Map ChComponentName (GmComponent 'GMCResolved (Set.Set ModulePath)))
+    }
+
+data GhcModState = GhcModState {
+      gmGhcSession   :: !(Maybe GmGhcSession)
+    , gmComponents   :: !(Map ChComponentName (GmComponent 'GMCResolved (Set ModulePath)))
+    , gmCompilerMode :: !CompilerMode
+    , gmCaches       :: !GhcModCaches
+    }
+
+data CompilerMode = Simple | Intelligent deriving (Eq,Show,Read)
+
+defaultGhcModState :: GhcModState
+defaultGhcModState =
+    GhcModState n Map.empty Simple (GhcModCaches n n n n)
+ where n = Nothing
 
 ----------------------------------------------------------------
 
@@ -303,3 +354,6 @@ instance Serialize Programs
 instance Serialize ChModuleName
 instance Serialize ChComponentName
 instance Serialize ChEntrypoint
+
+mkLabel ''GhcModCaches
+mkLabel ''GhcModState

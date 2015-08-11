@@ -1,11 +1,16 @@
 {-# LANGUAGE OverloadedStrings #-}
-module Language.Haskell.GhcMod.Caching where
+module Language.Haskell.GhcMod.Caching (
+    module Language.Haskell.GhcMod.Caching
+  , module Language.Haskell.GhcMod.Caching.Types
+  ) where
 
 import Control.Arrow (first)
+import Control.Monad
 import Control.Monad.Trans.Maybe
 import Data.Maybe
-import Data.Serialize
+import Data.Serialize (Serialize, encode, decode)
 import Data.Version
+import Data.Label
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Char8 as BS8
 import System.FilePath
@@ -13,54 +18,13 @@ import Utils (TimedFile(..), timeMaybe, mightExist)
 import Paths_ghc_mod (version)
 
 import Language.Haskell.GhcMod.Monad.Types
+import Language.Haskell.GhcMod.Caching.Types
 import Language.Haskell.GhcMod.Logging
 
-data Cached m d a = Cached {
-  cacheFile       :: FilePath,
-
-
-  cachedAction    :: TimedCacheFiles
-                  -> d
-                  -> Maybe a
-                  -> m ([FilePath], a)
-
-  -- ^ @cachedAction tcf data ma@
-  --
-  -- * @tcf@: Input file timestamps. Not technically necessary, just an
-  -- optimizazion when knowing which input files changed can make updating the
-  -- cache faster
-  --
-  -- * @data@: Arbitrary static input data to cache action. Can be used to
-  -- invalidate the cache using something other than file timestamps
-  -- i.e. environment tool version numbers
-  --
-  -- * @ma@: Cached data if it existed
-  --
-  -- Returns:
-  --
-  -- * @fst@: Input files used in generating the cache
-  --
-  -- * @snd@: Cache data, will be stored alongside the static input data in the
-  --   'cacheFile'
-  --
-  -- The cached action, will only run if one of the following is true:
-  --
-  -- * 'cacheFile' doesn\'t exist yet
-  -- * 'cacheFile' exists and 'inputData' changed
-  -- * any files returned by the cached action changed
- }
-
-data TimedCacheFiles = TimedCacheFiles {
-  tcCacheFile :: Maybe TimedFile,
-  -- ^ 'cacheFile' timestamp
-  tcFiles     :: [TimedFile]
-  -- ^ Timestamped files returned by the cached action
- }
-
 -- | Cache a MonadIO action with proper invalidation.
-cached :: forall m a d. (MonadIO m, GmLog m, Serialize a, Eq d, Serialize d, Show d)
+cached :: forall m a d. (MonadIO m, GmLog m, GmState m, Serialize a, Eq d, Serialize d, Show d)
        => FilePath -- ^ Directory to prepend to 'cacheFile'
-       -> Cached m d a -- ^ Cache descriptor
+       -> Cached m GhcModState d a -- ^ Cache descriptor
        -> d
        -> m a
 cached dir cd d = do
@@ -86,23 +50,42 @@ cached dir cd d = do
      (ifs', a) <- (cachedAction cd) tcf d ma
      gmLog GmDebug "" $ (text "regenerating cache") <+>: text (cacheFile cd)
                                                     <+> parens (text cause)
+     case cacheLens cd of
+       Nothing -> return ()
+       Just label -> do
+         gmLog GmDebug "" $ (text "writing memory cache") <+>: text (cacheFile cd)
+         setLabel label $ Just (ifs', d, a)
+
      liftIO $ BS.writeFile (dir </> cacheFile cd) $
          BS.append cacheHeader $ encode (ifs', d, a)
      return a
 
+   setLabel l x = do
+     s <- gmsGet
+     gmsPut $ set l x s
+
    readCache :: m (Maybe ([FilePath], d, a))
    readCache = runMaybeT $ do
-       f <- MaybeT $ liftIO $ mightExist $ cacheFile cd
-       MaybeT $ readCache' f
-    where
-       readCache' f = do
-         gmLog GmDebug "" $ (text "reading cache") <+>: text (cacheFile cd)
-         cc <- liftIO $ BS.readFile f
-         case first BS8.words $ BS8.span (/='\n') cc of
-           (["Written", "by", "ghc-mod", ver], rest)
-               | BS8.unpack ver == showVersion version ->
-                return $ either (const Nothing) Just $ decode $ BS.drop 1 rest
-           _ -> return Nothing
+       case cacheLens cd of
+         Just label -> do
+             c <- MaybeT (get label `liftM` gmsGet) `mplus` readCacheFromFile
+             setLabel label $ Just c
+             return c
+         Nothing ->
+             readCacheFromFile
+
+   readCacheFromFile = do
+         f <- MaybeT $ liftIO $ mightExist $ cacheFile cd
+         readCacheFromFile' f
+
+   readCacheFromFile' f = MaybeT $ do
+     gmLog GmDebug "" $ (text "reading cache") <+>: text (cacheFile cd)
+     cc <- liftIO $ BS.readFile f
+     case first BS8.words $ BS8.span (/='\n') cc of
+       (["Written", "by", "ghc-mod", ver], rest)
+           | BS8.unpack ver == showVersion version ->
+            return $ either (const Nothing) Just $ decode $ BS.drop 1 rest
+       _ -> return Nothing
 
 timeCacheInput :: MonadIO m => FilePath -> FilePath -> [FilePath] -> m TimedCacheFiles
 timeCacheInput dir cfile ifs = liftIO $ do

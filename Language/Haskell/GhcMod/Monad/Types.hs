@@ -30,6 +30,7 @@ module Language.Haskell.GhcMod.Monad.Types (
   -- * Environment, state and logging
   , GhcModEnv(..)
   , GhcModState(..)
+  , GhcModCaches(..)
   , defaultGhcModState
   , GmGhcSession(..)
   , GmComponent(..)
@@ -78,7 +79,7 @@ import Control.Monad.Reader (ReaderT(..))
 import Control.Monad.Error (ErrorT(..), MonadError(..))
 import Control.Monad.State.Strict (StateT(..))
 import Control.Monad.Trans.Journal (JournalT)
-import Control.Monad.Trans.Maybe (MaybeT)
+import Control.Monad.Trans.Maybe (MaybeT(..))
 
 import Control.Monad.Base (MonadBase(..), liftBase)
 import Control.Monad.Trans.Control
@@ -95,50 +96,12 @@ import qualified Control.Monad.IO.Class as MTL
 import Data.Monoid (Monoid)
 #endif
 
-import Data.Set (Set)
-import Data.Map as Map (Map, empty)
 import Data.Maybe
 import Data.Monoid
 import Data.IORef
-import Distribution.Helper
-import Text.PrettyPrint (Doc)
 import Prelude
 
 import qualified MonadUtils as GHC (MonadIO(..))
-
-data GhcModEnv = GhcModEnv {
-      gmOptions    :: Options
-    , gmCradle     :: Cradle
-    }
-
-data GhcModLog = GhcModLog {
-      gmLogLevel     :: Maybe GmLogLevel,
-      gmLogVomitDump :: Last Bool,
-      gmLogMessages  :: [(GmLogLevel, String, Doc)]
-    } deriving (Show)
-
-instance Monoid GhcModLog where
-    mempty = GhcModLog (Just GmPanic) (Last Nothing) mempty
-    GhcModLog ml vd ls `mappend` GhcModLog ml' vd' ls' =
-        GhcModLog (ml' `mplus` ml) (vd `mappend` vd') (ls `mappend` ls')
-
-data GmGhcSession = GmGhcSession {
-      gmgsOptions :: ![GHCOption],
-      gmgsSession :: !(IORef HscEnv)
-    }
-
-data GhcModState = GhcModState {
-      gmGhcSession   :: !(Maybe GmGhcSession)
-    , gmComponents   :: !(Map ChComponentName (GmComponent 'GMCResolved (Set ModulePath)))
-    , gmCompilerMode :: !CompilerMode
-    }
-
-defaultGhcModState :: GhcModState
-defaultGhcModState = GhcModState Nothing Map.empty Simple
-
-data CompilerMode = Simple | Intelligent deriving (Eq,Show,Read)
-
-----------------------------------------------------------------
 
 -- | This is basically a newtype wrapper around 'StateT', 'ErrorT', 'JournalT'
 -- and 'ReaderT' with custom instances for 'GhcMonad' and it's constraints that
@@ -269,6 +232,11 @@ instance Monad m => GmState (GhcModT m) where
     gmsGet = GhcModT get
     gmsPut = GhcModT . put
     gmsState = GhcModT . state
+
+instance GmState m => GmState (MaybeT m) where
+    gmsGet = MaybeT $ Just `liftM` gmsGet
+    gmsPut = MaybeT . (Just `liftM`) . gmsPut
+    gmsState = MaybeT . (Just `liftM`) . gmsState
 
 class Monad m => GmLog m where
     gmlJournal :: GhcModLog -> m ()
