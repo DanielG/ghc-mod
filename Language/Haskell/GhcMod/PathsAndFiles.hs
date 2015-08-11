@@ -144,7 +144,7 @@ findCabalSandboxDir dir = do
              _ -> Nothing
 
  where
-   isSandboxConfig = (==sandboConfigFile)
+   isSandboxConfig = (==sandboxConfigFile)
 
 zipMapM :: Monad m => (a -> m c) -> [a] -> m [(a,c)]
 zipMapM f as = mapM (\a -> liftM ((,) a) $ f a) as
@@ -180,8 +180,8 @@ parents dir' =
 setupConfigFile :: Cradle -> FilePath
 setupConfigFile crdl = cradleRootDir crdl </> setupConfigPath
 
-sandboConfigFile :: FilePath
-sandboConfigFile = "cabal.sandbox.config"
+sandboxConfigFile :: FilePath
+sandboxConfigFile = "cabal.sandbox.config"
 
 -- | Path to 'LocalBuildInfo' file, usually @dist/setup-config@
 setupConfigPath :: FilePath

@@ -77,7 +77,7 @@ getPackageDbStack' = chCached Cached {
   cacheFile = pkgDbStackCacheFile,
   cachedAction = \ _tcf (progs, rootdir, distdir, _) _ma -> do
     dbs <- withCabal $ map chPkgToGhcPkg <$> runQuery' progs rootdir distdir packageDbStack
-    return ([setupConfigPath, sandboConfigFile], dbs)
+    return ([setupConfigPath, sandboxConfigFile], dbs)
  }
 
 chPkgToGhcPkg :: ChPkgDb -> GhcPkgDb
