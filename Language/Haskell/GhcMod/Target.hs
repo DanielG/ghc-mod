@@ -176,9 +176,9 @@ targetGhcOptions :: forall m. IOish m
 targetGhcOptions crdl sefnmn = do
     when (Set.null sefnmn) $ error "targetGhcOptions: no targets given"
 
-    case cradleCabalFile crdl of
-      Just _ -> cabalOpts crdl
-      Nothing -> sandboxOpts crdl
+    case cradleProjectType crdl of
+      CabalProject -> cabalOpts crdl
+      _ -> sandboxOpts crdl
  where
    zipMap f l = l `zip` (f `map` l)
 
@@ -288,10 +288,11 @@ packageGhcOptions :: (Applicative m, IOish m, GmEnv m, GmState m, GmLog m)
                   => m [GHCOption]
 packageGhcOptions = do
     crdl <- cradle
-    case cradleCabalFile crdl of
-      Just _ -> getGhcMergedPkgOptions
-      Nothing -> sandboxOpts crdl
+    case cradleProjectType crdl of
+      CabalProject -> getGhcMergedPkgOptions
+      _ -> sandboxOpts crdl
 
+-- also works for plain projects!
 sandboxOpts :: MonadIO m => Cradle -> m [String]
 sandboxOpts crdl = do
     pkgDbStack <- liftIO $ getSandboxPackageDbStack $ cradleRootDir crdl

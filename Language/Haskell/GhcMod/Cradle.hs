@@ -29,7 +29,7 @@ findCradle = findCradle' =<< getCurrentDirectory
 
 findCradle' :: FilePath -> IO Cradle
 findCradle' dir = run $ do
-    (customCradle dir `mplus` cabalCradle dir `mplus`  sandboxCradle dir `mplus` plainCradle dir)
+    (cabalCradle dir `mplus`  sandboxCradle dir `mplus` plainCradle dir)
  where run a = fillTempDir =<< (fromJust <$> runMaybeT a)
 
 findSpecCradle :: FilePath -> IO Cradle
@@ -53,17 +53,6 @@ fillTempDir crdl = do
   tmpDir <- liftIO $ newTempDir (cradleRootDir crdl)
   return crdl { cradleTempDir = tmpDir }
 
-customCradle :: FilePath -> MaybeT IO Cradle
-customCradle wdir = do
-    cabalFile <- MaybeT $ findCabalFile wdir
-    let cabalDir = takeDirectory cabalFile
-    return Cradle {
-        cradleCurrentDir = wdir
-      , cradleRootDir    = cabalDir
-      , cradleTempDir    = error "tmpDir"
-      , cradleCabalFile  = Just cabalFile
-      }
-
 cabalCradle :: FilePath -> MaybeT IO Cradle
 cabalCradle wdir = do
     cabalFile <- MaybeT $ findCabalFile wdir
@@ -71,7 +60,8 @@ cabalCradle wdir = do
     let cabalDir = takeDirectory cabalFile
 
     return Cradle {
-        cradleCurrentDir = wdir
+        cradleProjectType = CabalProject
+      , cradleCurrentDir = wdir
       , cradleRootDir    = cabalDir
       , cradleTempDir    = error "tmpDir"
       , cradleCabalFile  = Just cabalFile
@@ -81,7 +71,8 @@ sandboxCradle :: FilePath -> MaybeT IO Cradle
 sandboxCradle wdir = do
     sbDir <- MaybeT $ findCabalSandboxDir wdir
     return Cradle {
-        cradleCurrentDir = wdir
+        cradleProjectType = SandboxProject
+      , cradleCurrentDir = wdir
       , cradleRootDir    = sbDir
       , cradleTempDir    = error "tmpDir"
       , cradleCabalFile  = Nothing
@@ -90,7 +81,8 @@ sandboxCradle wdir = do
 plainCradle :: FilePath -> MaybeT IO Cradle
 plainCradle wdir = do
     return $ Cradle {
-        cradleCurrentDir = wdir
+        cradleProjectType = PlainProject
+      , cradleCurrentDir = wdir
       , cradleRootDir    = wdir
       , cradleTempDir    = error "tmpDir"
       , cradleCabalFile  = Nothing

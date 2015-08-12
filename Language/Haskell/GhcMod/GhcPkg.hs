@@ -61,14 +61,14 @@ ghcDbOpt (PackageDb pkgDb)
 getPackageCachePaths :: IOish m => FilePath -> GhcModT m [FilePath]
 getPackageCachePaths sysPkgCfg = do
   crdl <- cradle
-  pkgDbStack <- if isJust $ cradleCabalFile crdl
-     then do
-       getPackageDbStack
-     else do
-         mdb <- liftIO $ getSandboxDb $ cradleRootDir crdl
-         return $ case mdb of
-           Just db -> [db]
-           Nothing -> [GlobalDb, UserDb]
+  pkgDbStack <- case cradleProjectType crdl of
+    PlainProject ->
+        return [GlobalDb, UserDb]
+    SandboxProject -> do
+        Just db <- liftIO $ getSandboxDb $ cradleRootDir crdl
+        return $ [GlobalDb, db]
+    CabalProject ->
+        getPackageDbStack
 
   catMaybes <$> (liftIO . resolvePackageConfig sysPkgCfg) `mapM` pkgDbStack
 

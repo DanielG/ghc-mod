@@ -109,10 +109,14 @@ defaultOptions = Options {
 
 ----------------------------------------------------------------
 
+data ProjectType = CabalProject | SandboxProject | PlainProject
+                 deriving (Eq, Show)
+
 -- | The environment where this library is used.
 data Cradle = Cradle {
+    cradleProjectType:: ProjectType
   -- | The directory where this library is executed.
-    cradleCurrentDir :: FilePath
+  , cradleCurrentDir :: FilePath
   -- | The project root directory.
   , cradleRootDir    :: FilePath
   -- | Per-Project temporary directory

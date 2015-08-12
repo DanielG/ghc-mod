@@ -26,9 +26,9 @@ debugInfo = do
     Cradle {..} <- cradle
 
     cabal <-
-        case cradleCabalFile of
-          Just _ -> cabalDebug
-          Nothing -> return []
+        case cradleProjectType of
+          CabalProject -> cabalDebug
+          _ -> return []
 
     pkgOpts <- packageGhcOptions
 
