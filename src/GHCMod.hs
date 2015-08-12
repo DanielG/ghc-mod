@@ -359,9 +359,17 @@ main = do
 
 progMain :: (Options,[String]) -> IO ()
 progMain (globalOptions,cmdArgs) = hndle $ runGhcModT globalOptions $ handler $ do
+    let
+      loadMMappedFiles from (MemoryMapping Nothing) = do
+          src <- liftIO getFileSourceFromStdin
+          return (from, MemoryMapping $ Just src)
+      loadMMappedFiles from x = return (from, x)
+    fileMappings' <- forM (reverse $ fileMappings globalOptions) $ uncurry loadMMappedFiles
     case globalCommands cmdArgs of
       Just s -> gmPutStr s
-      Nothing -> ghcCommands cmdArgs
+      Nothing -> do
+        mapM_ (uncurry loadMappedFile) fileMappings'
+        ghcCommands cmdArgs
  where
    hndle action = do
      (e, _l) <- action
@@ -468,9 +476,7 @@ getFileSourceFromStdin = do
 
 ghcCommands :: IOish m => [String] -> GhcModT m ()
 ghcCommands []         = fatalError "No command given (try --help)"
-ghcCommands (cmd:args) = do
-    loadMappedFiles
-    gmPutStr =<< action args
+ghcCommands (cmd:args) = gmPutStr =<< action args
  where
    action = case cmd of
      _ | cmd == "list" || cmd == "modules" -> modulesCmd

@@ -1,6 +1,5 @@
 module Language.Haskell.GhcMod.FileMapping
     ( loadMappedFile
-    , loadMappedFiles
     , unloadMappedFile
     , mapFile
     , fileModSummaryWithMapping
@@ -16,11 +15,6 @@ import Data.Time
 
 import Control.Monad.Trans.Maybe
 import GHC
-
-loadMappedFiles :: IOish m => GhcModT m ()
-loadMappedFiles = do
-  Options {fileMappings} <- options
-  mapM_ (uncurry loadMappedFile) fileMappings
 
 loadMappedFile :: IOish m => FilePath -> FileMapping -> GhcModT m ()
 loadMappedFile from fm =
