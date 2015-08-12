@@ -29,7 +29,7 @@ import Data.Traversable hiding (mapM)
 import Distribution.Helper (buildPlatform)
 import System.Directory
 import System.FilePath
-import System.IO.Unsafe
+import System.Process
 
 import Language.Haskell.GhcMod.Types
 import Language.Haskell.GhcMod.Error
@@ -78,13 +78,14 @@ getSandboxDb :: FilePath
              -> IO (Maybe GhcPkgDb)
 getSandboxDb d = do
   mConf <- traverse readFile =<< mightExist (d </> "cabal.sandbox.config")
-  return $ PackageDb . fixPkgDbVer <$> (extractSandboxDbDir =<< mConf)
+  bp <- buildPlatform readProcess
+  return $ PackageDb . fixPkgDbVer bp <$> (extractSandboxDbDir =<< mConf)
 
  where
-   fixPkgDbVer dir =
-       case takeFileName dir == ghcSandboxPkgDbDir of
+   fixPkgDbVer bp dir =
+       case takeFileName dir == ghcSandboxPkgDbDir bp of
          True -> dir
-         False -> takeDirectory dir </> ghcSandboxPkgDbDir
+         False -> takeDirectory dir </> ghcSandboxPkgDbDir bp
 
 -- | Extract the sandbox package db directory from the cabal.sandbox.config
 -- file. Exception is thrown if the sandbox config file is broken.
@@ -190,12 +191,9 @@ setupConfigPath = "dist/setup-config" -- localBuildInfoFile defaultDistPref
 macrosHeaderPath :: FilePath
 macrosHeaderPath = "dist/build/autogen/cabal_macros.h"
 
-ghcSandboxPkgDbDir :: String
-ghcSandboxPkgDbDir =
-   cabalBuildPlatform ++ "-ghc-" ++ cProjectVersion ++ "-packages.conf.d"
-
-cabalBuildPlatform :: String
-cabalBuildPlatform = unsafePerformIO $ buildPlatform
+ghcSandboxPkgDbDir :: String -> String
+ghcSandboxPkgDbDir buildPlatf = do
+    buildPlatf ++ "-ghc-" ++ cProjectVersion ++ "-packages.conf.d"
 
 packageCache :: String
 packageCache = "package.cache"

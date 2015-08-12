@@ -19,6 +19,7 @@ import Prelude
 import Language.Haskell.GhcMod.Types
 import Language.Haskell.GhcMod.Monad.Types
 import Language.Haskell.GhcMod.CabalHelper
+import Language.Haskell.GhcMod.PathsAndFiles
 
 ghcVersion :: Int
 ghcVersion = read cProjectVersionInt
@@ -59,7 +60,16 @@ ghcDbOpt (PackageDb pkgDb)
 
 getPackageCachePaths :: IOish m => FilePath -> GhcModT m [FilePath]
 getPackageCachePaths sysPkgCfg = do
-  pkgDbStack <- getPackageDbStack
+  crdl <- cradle
+  pkgDbStack <- if isJust $ cradleCabalFile crdl
+     then do
+       getPackageDbStack
+     else do
+         mdb <- liftIO $ getSandboxDb $ cradleRootDir crdl
+         return $ case mdb of
+           Just db -> [db]
+           Nothing -> [GlobalDb, UserDb]
+
   catMaybes <$> (liftIO . resolvePackageConfig sysPkgCfg) `mapM` pkgDbStack
 
 -- TODO: use PkgConfRef
