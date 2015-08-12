@@ -125,6 +125,10 @@ withCabal :: (IOish m, GmEnv m, GmLog m) => m a -> m a
 withCabal action = do
     crdl <- cradle
     opts <- options
+
+    let projdir = cradleRootDir crdl
+        distdir = projdir </> "dist"
+
     mCabalFile <- liftIO $ timeFile `traverse` cradleCabalFile crdl
     mCabalConfig <- liftIO $ timeMaybe (setupConfigFile crdl)
 
@@ -133,8 +137,7 @@ withCabal action = do
     pkgDbStackOutOfSync <-
          case mCusPkgDbStack of
            Just cusPkgDbStack -> do
-             let root = cradleRootDir crdl
-             pkgDb <- runQuery' (helperProgs opts) root (root </> "dist") $
+             pkgDb <- runQuery' (helperProgs opts) projdir distdir $
                  map chPkgToGhcPkg <$> packageDbStack
              return $ pkgDb /= cusPkgDbStack
 
@@ -161,7 +164,7 @@ withCabal action = do
                     ++ map pkgDbArg cusPkgStack
             liftIO $ void $ readProcess (T.cabalProgram opts) ("configure":progOpts) ""
             gmLog GmDebug "" $ strDoc $ "writing Cabal autogen files"
-            liftIO $ writeAutogenFiles $ cradleRootDir crdl </> "dist"
+            liftIO $ writeAutogenFiles readProcess projdir distdir
     action
 
 pkgDbArg :: GhcPkgDb -> String
