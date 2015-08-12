@@ -137,14 +137,14 @@ nil            does not display errors/warnings.
 	info infos)
     (dolist (err errs (nreverse infos))
       (when (string-match regex err)
-	(let* ((file (expand-file-name (match-string 1 err) (ghc-get-project-root))) ;; for Windows
-	       (line (string-to-number (match-string 2 err)))
+	(let* ((line (string-to-number (match-string 2 err)))
                (coln (string-to-number (match-string 3 err)))
 	       (msg (match-string 4 err))
+               (file (expand-file-name (match-string 1 err) (ghc-get-project-root))) ;; for Windows
 	       (wrn (string-match "^Warning" msg))
                (hole (save-match-data
-                        (when (string-match "Found hole .\\(_[_[:alnum:]]*\\)." msg)
-                              (match-string 1 msg))))
+                       (when (string-match "Found hole .\\(_[_[:alnum:]]*\\)." msg)
+                         (match-string 1 msg))))
 	       (info (ghc-make-hilit-info
 		      :file file
 		      :line line
