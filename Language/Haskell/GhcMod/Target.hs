@@ -188,6 +188,7 @@ targetGhcOptions crdl sefnmn = do
        mcs <- cached cradleRootDir resolvedComponentsCache comps
 
        let mdlcs = moduleComponents mcs `zipMap` Set.toList sefnmn
+           cns = map gmcName comps
            candidates = findCandidates $ map snd mdlcs
 
        let noCandidates = Set.null candidates
@@ -195,8 +196,8 @@ targetGhcOptions crdl sefnmn = do
 
        if noCandidates && noModuleHasAnyAssignment
           then do
-            gmLog GmWarning "" $ strDoc $ "Could not find a component assignment, falling back to guessed GHC options."
-            sandboxOpts crdl
+            gmLog GmWarning "" $ strDoc $ "Could not find a component assignment, falling back to picking first component in cabal file."
+            return $ gmcGhcOpts $ fromJust $ Map.lookup (head cns) mcs
           else do
             when noCandidates $
               throwError $ GMECabalCompAssignment mdlcs
