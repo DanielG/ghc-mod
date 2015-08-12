@@ -31,6 +31,9 @@ install:
 #  - ls -lR ~/.ghc
 #  - ls -lR ~/.cabal
   - cabal install -j --only-dependencies --enable-tests
+  - git clone --depth=1 https://github.com/DanielG/cabal-helper.git
+  - cabal install cabal-helper/
+
 
 script:
   - touch ChangeLog # Create ChangeLog if we're not on the release branch
