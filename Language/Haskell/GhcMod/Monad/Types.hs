@@ -51,6 +51,8 @@ module Language.Haskell.GhcMod.Monad.Types (
   -- * Re-exporting convenient stuff
   , MonadIO
   , liftIO
+  , gmlGetSession
+  , gmlSetSession
   ) where
 
 -- MonadUtils of GHC 7.6 or earlier defines its own MonadIO.
@@ -352,13 +354,22 @@ gmLiftWithInner f = liftWith f >>= restoreT . return
 type GmGhc m = (IOish m, GhcMonad m)
 
 instance (MonadIO m, MonadBaseControl IO m) => GhcMonad (GmlT m) where
-    getSession = do
+    getSession = gmlGetSession
+    setSession = gmlSetSession
+
+-- ---------------------------------------------------------------------
+
+gmlGetSession :: (MonadIO m, MonadBaseControl IO m) => GmlT m HscEnv
+gmlGetSession = do
         ref <- gmgsSession . fromJust . gmGhcSession <$> gmsGet
         GHC.liftIO $ readIORef ref
-    setSession a = do
+
+gmlSetSession :: (MonadIO m, MonadBaseControl IO m) => HscEnv -> GmlT m ()
+gmlSetSession a = do
         ref <- gmgsSession . fromJust . gmGhcSession <$> gmsGet
         GHC.liftIO $ flip writeIORef a ref
 
+-- ---------------------------------------------------------------------
 instance GhcMonad LightGhc where
     getSession = (GHC.liftIO . readIORef) =<< LightGhc ask
     setSession a = (GHC.liftIO . flip writeIORef a) =<< LightGhc ask

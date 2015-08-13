@@ -8,6 +8,9 @@ module Language.Haskell.GhcMod.Internal (
   , PackageVersion
   , PackageId
   , IncludeDir
+  , GmlT(..)
+  , MonadIO(..)
+  , GmEnv(..)
   -- * Various Paths
   , ghcLibDir
   , ghcModExecutable
@@ -20,9 +23,18 @@ module Language.Haskell.GhcMod.Internal (
   , GhcModState
   , CompilerMode(..)
   , GhcModLog
+  , GmLog(..)
+  , GmLogLevel(..)
+  , gmSetLogLevel
   -- * Monad utilities
   , runGhcModT'
   , hoistGhcModT
+  , runGmlT
+  , runGmlT'
+  , gmlGetSession
+  , gmlSetSession
+  , loadTargets
+  , cabalResolvedComponents
   -- ** Accessing 'GhcModEnv' and 'GhcModState'
   , options
   , cradle
@@ -35,13 +47,20 @@ module Language.Haskell.GhcMod.Internal (
   , World
   , getCurrentWorld
   , didWorldChange
+  -- * Cabal Helper
+  , ModulePath(..)
+  , GmComponent(..)
+  , GmComponentType(..)
+  , GmModuleGraph(..)
   ) where
 
 import GHC.Paths (libdir)
 
+import Language.Haskell.GhcMod.Target
 import Language.Haskell.GhcMod.DynFlags
 import Language.Haskell.GhcMod.Error
 import Language.Haskell.GhcMod.Logger
+import Language.Haskell.GhcMod.Logging
 import Language.Haskell.GhcMod.Monad
 import Language.Haskell.GhcMod.Types
 import Language.Haskell.GhcMod.Utils
