@@ -19,6 +19,7 @@
 (defvar-local ghc-process-original-file nil)
 (defvar-local ghc-process-callback nil)
 (defvar-local ghc-process-hook nil)
+(defvar-local ghc-process-root nil)
 
 (defvar ghc-command "ghc-mod")
 
@@ -28,28 +29,30 @@
   (ghc-run-ghc-mod '("root")))
 
 (defun ghc-with-process (cmd callback &optional hook1 hook2)
-  (unless ghc-process-process-name
-    (setq ghc-process-process-name (ghc-get-project-root)))
-  (when (and ghc-process-process-name (not ghc-process-running))
-    (setq ghc-process-running t)
-    (if hook1 (funcall hook1))
-    (let* ((cbuf (current-buffer))
-	   (name ghc-process-process-name)
-	   (buf (get-buffer-create (concat " ghc-mod:" name)))
-	   (file (buffer-file-name))
-	   (cpro (get-process name)))
-      (ghc-with-current-buffer buf
-        (setq ghc-process-original-buffer cbuf)
-	(setq ghc-process-original-file file)
-	(setq ghc-process-callback callback)
-	(setq ghc-process-hook hook2)
-	(erase-buffer)
-	(let ((pro (ghc-get-process cpro name buf)))
-	  (process-send-string pro cmd)
-	  (when ghc-debug
-	    (ghc-with-debug-buffer
-	     (insert (format "%% %s" cmd))))
-	  pro)))))
+  (let ((root (ghc-get-project-root)))
+    (unless ghc-process-process-name
+      (setq ghc-process-process-name root))
+    (when (and ghc-process-process-name (not ghc-process-running))
+      (setq ghc-process-running t)
+      (if hook1 (funcall hook1))
+      (let* ((cbuf (current-buffer))
+	     (name ghc-process-process-name)
+	     (buf (get-buffer-create (concat " ghc-mod:" name)))
+	     (file (buffer-file-name))
+	     (cpro (get-process name)))
+	(ghc-with-current-buffer buf
+	  (setq ghc-process-original-buffer cbuf)
+	  (setq ghc-process-original-file file)
+	  (setq ghc-process-callback callback)
+	  (setq ghc-process-hook hook2)
+	  (setq ghc-process-root root)
+	  (erase-buffer)
+	  (let ((pro (ghc-get-process cpro name buf)))
+	    (process-send-string pro cmd)
+	    (when ghc-debug
+	      (ghc-with-debug-buffer
+	       (insert (format "%% %s" cmd))))
+	    pro))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 

@@ -146,7 +146,6 @@
     (insert "\nVersion: all GHC versions must be the same.\n")
     (insert (format "\t  ghc.el version %s\n" el-ver))
     (insert (format "\t %s\n" ghc-mod-ver))
-    (insert (format "\t%s\n" ghc-modi-ver))
     (insert (format "\t%s\n" ghc-ver))
     (insert "\nEnvironment variables:\n")
     (insert (format "\tPATH=%s\n" path))))

@@ -137,7 +137,7 @@ nil            does not display errors/warnings.
 	info infos)
     (dolist (err errs (nreverse infos))
       (when (string-match regex err)
-	(let* ((file (expand-file-name (match-string 1 err) (ghc-get-project-root))) ;; for Windows
+	(let* ((file (expand-file-name (match-string 1 err) ghc-process-root)) ;; for Windows
 	       (line (string-to-number (match-string 2 err)))
                (coln (string-to-number (match-string 3 err)))
 	       (msg (match-string 4 err))
