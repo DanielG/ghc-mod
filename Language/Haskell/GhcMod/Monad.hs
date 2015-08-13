@@ -35,7 +35,7 @@ import Language.Haskell.GhcMod.Error
 import Language.Haskell.GhcMod.Logging
 import Language.Haskell.GhcMod.Cradle
 import Language.Haskell.GhcMod.Target
-import Language.Haskell.GhcMod.Stderr
+import Language.Haskell.GhcMod.Output
 
 import Control.Arrow (first)
 import Control.Applicative

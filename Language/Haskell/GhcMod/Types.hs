@@ -130,8 +130,21 @@ data Cradle = Cradle {
   , cradleCabalFile  :: Maybe FilePath
   } deriving (Eq, Show)
 
+
+data GmStream = GmOut | GmErr
+                deriving (Show)
+
+data GmLineType = GmTerminated | GmPartial
+                deriving (Show)
+
+data GmLines a = GmLines GmLineType a
+              deriving (Show, Functor)
+
+unGmLine :: GmLines a -> a
+unGmLine (GmLines _ s) = s
+
 data GmOutput = GmOutputStdio
-              | GmOutputChan (Chan String)
+              | GmOutputChan (Chan (GmStream, GmLines String))
 
 data GhcModEnv = GhcModEnv {
       gmOptions    :: Options

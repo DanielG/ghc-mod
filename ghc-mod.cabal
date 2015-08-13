@@ -125,7 +125,6 @@ Library
                         Language.Haskell.GhcMod.Pretty
                         Language.Haskell.GhcMod.Read
                         Language.Haskell.GhcMod.SrcUtils
-                        Language.Haskell.GhcMod.Stderr
                         Language.Haskell.GhcMod.Target
                         Language.Haskell.GhcMod.Types
                         Language.Haskell.GhcMod.Utils

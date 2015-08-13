@@ -39,7 +39,7 @@ import Language.Haskell.GhcMod.Monad.Types
 import Language.Haskell.GhcMod.Utils
 import Language.Haskell.GhcMod.PathsAndFiles
 import Language.Haskell.GhcMod.Logging
-import Language.Haskell.GhcMod.Stderr
+import Language.Haskell.GhcMod.Output
 import System.FilePath
 import Prelude hiding ((.))
 
@@ -53,7 +53,9 @@ getGhcMergedPkgOptions = chCached Cached {
   cacheLens = Just (lGmcMergedPkgOptions . lGmCaches),
   cacheFile = mergedPkgOptsCacheFile,
   cachedAction = \ _tcf (progs, rootdir, distdir, _) _ma -> do
-    opts <- withCabal $ runQuery' progs rootdir distdir $ ghcMergedPkgOptions
+    readProc <- gmReadProcess
+    opts <- withCabal $ runQuery'' readProc progs rootdir distdir $
+                ghcMergedPkgOptions
     return ([setupConfigPath], opts)
  }
 
@@ -79,7 +81,8 @@ getPackageDbStack' = chCached Cached {
   cacheLens = Just (lGmcPackageDbStack . lGmCaches),
   cacheFile = pkgDbStackCacheFile,
   cachedAction = \ _tcf (progs, rootdir, distdir, _) _ma -> do
-    dbs <- withCabal $ map chPkgToGhcPkg <$> runQuery' progs rootdir distdir packageDbStack
+    readProc <- gmReadProcess
+    dbs <- withCabal $ map chPkgToGhcPkg <$> runQuery'' readProc progs rootdir distdir packageDbStack
     return ([setupConfigPath, sandboxConfigFile], dbs)
  }
 
@@ -98,8 +101,9 @@ getComponents :: (Applicative m, IOish m, GmEnv m, GmState m, GmLog m)
 getComponents = chCached Cached {
     cacheLens = Just (lGmcComponents . lGmCaches),
     cacheFile = cabalHelperCacheFile,
-    cachedAction = \ _tcf (progs, rootdir, distdir, _vers) _ma ->
-      runQuery' progs rootdir distdir $ do
+    cachedAction = \ _tcf (progs, rootdir, distdir, _vers) _ma -> do
+      readProc <- gmReadProcess
+      runQuery'' readProc progs rootdir distdir $ do
         q <- join7
                <$> ghcOptions
                <*> ghcPkgOptions
@@ -126,6 +130,7 @@ withCabal :: (IOish m, GmEnv m, GmLog m) => m a -> m a
 withCabal action = do
     crdl <- cradle
     opts <- options
+    readProc <- gmReadProcess
 
     let projdir = cradleRootDir crdl
         distdir = projdir </> "dist"
@@ -138,7 +143,7 @@ withCabal action = do
     pkgDbStackOutOfSync <-
          case mCusPkgDbStack of
            Just cusPkgDbStack -> do
-             pkgDb <- runQuery' (helperProgs opts) projdir distdir $
+             pkgDb <- runQuery'' readProc (helperProgs opts) projdir distdir $
                  map chPkgToGhcPkg <$> packageDbStack
              return $ pkgDb /= cusPkgDbStack
 
@@ -163,9 +168,9 @@ withCabal action = do
                          then [ "--with-ghc-pkg=" ++ T.ghcPkgProgram opts ]
                          else []
                     ++ map pkgDbArg cusPkgStack
-            liftIO $ void $ readProcess (T.cabalProgram opts) ("configure":progOpts) ""
+            liftIO $ void $ readProc (T.cabalProgram opts) ("configure":progOpts) ""
             gmLog GmDebug "" $ strDoc $ "writing Cabal autogen files"
-            liftIO $ writeAutogenFiles readProcess projdir distdir
+            liftIO $ writeAutogenFiles readProc projdir distdir
     action
 
 pkgDbArg :: GhcPkgDb -> String
