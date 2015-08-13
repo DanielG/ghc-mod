@@ -21,7 +21,9 @@
 (defvar-local ghc-process-hook nil)
 (defvar-local ghc-process-root nil)
 
-(defvar ghc-command "ghc-mod")
+(defvar ghc-command "Mock")
+
+(defvar ghc-error-buffer "*GHC Error*")
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -74,15 +76,46 @@
     pro))
 
 (defun ghc-process-filter (process string)
-  (let ((pbuf (process-buffer process)))
+  (let* ((pbuf (process-buffer process))
+	 (tbufname (concat " tmp " (buffer-name pbuf)))
+	 tbuf)
     (if (not (get-buffer pbuf))
 	(setq ghc-process-running nil) ;; just in case
-      (ghc-with-current-buffer (process-buffer process)
+      (ghc-with-current-buffer pbuf
 	(when ghc-debug
 	  (ghc-with-debug-buffer
 	   (insert string)))
-        (goto-char (point-max))
-	(insert string)
+	(with-current-buffer (get-buffer-create tbufname)
+	  (setq tbuf (current-buffer))
+	  (goto-char (point-max))
+	  (insert string)
+	  (goto-char (point-min))
+	  (let ((cont t) end out)
+	    (while (and cont (not (eobp)))
+	      (cond
+	       ((looking-at "^O: ")
+		(setq out t))
+	       ((looking-at "^E: ")
+		(setq out nil))
+	       (t
+		(setq cont nil)))
+	      (when cont
+		(forward-line)
+		(unless (bolp) (setq cont nil)))
+	      (when cont
+		(delete-region 1 4)
+		(setq end (point))
+		(if out
+		    (with-current-buffer pbuf
+		      (goto-char (point-max))
+		      (insert-buffer-substring tbuf 1 end))
+		  (with-current-buffer (get-buffer-create ghc-error-buffer)
+		    (goto-char (point-max))
+		    (insert-buffer-substring tbuf 1 end)
+		    (display-buffer (current-buffer))
+		    (redisplay)))
+		(delete-region 1 end)))))
+	(goto-char (point-max))
 	(forward-line -1)
 	(cond
 	 ((looking-at "^OK$")
