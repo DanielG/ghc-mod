@@ -13,7 +13,7 @@ import Data.IORef (IORef, newIORef, readIORef, writeIORef)
 import Prelude
 
 import Language.Haskell.GhcMod
-import Language.Haskell.GhcMod.Internal
+import Language.Haskell.GhcMod.Internal hiding (MonadIO,liftIO)
 
 ----------------------------------------------------------------
 
