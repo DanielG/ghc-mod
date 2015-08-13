@@ -74,10 +74,10 @@ usage =
  \\n"
    ++ (unlines $ indent <$> optionUsage indent globalArgSpec) ++
  "*Commands*\n\
- \    - version | --version\n\
+ \    - version\n\
  \        Print the version of the program.\n\
  \\n\
- \    - help | --help\n\
+ \    - help\n\
  \       Print this help message.\n\
  \\n\
  \    - list [FLAGS...] | modules [FLAGS...]\n\
@@ -259,8 +259,12 @@ globalArgSpec =
       , option "l" ["tolisp"] "Format output as an S-Expression" $
                NoArg $ \o -> Right $ o { outputStyle = LispStyle }
 
-      , option "b" ["boundary"] "Output line separator"$
+      , option "b" ["boundary", "line-seperator"] "Output line separator"$
                reqArg "SEP" $ \s o -> Right $ o { lineSeparator = LineSeparator s }
+      , option "" ["line-prefix"] "Output line separator"$
+               reqArg "OUT,ERR" $ \s o -> let
+                     [out, err] = splitOn "," s
+                   in Right $ o { linePrefix = Just (out, err) }
 
       , option "g" ["ghcOpt", "ghc-option"] "Option to be passed to GHC" $
                reqArg "OPT" $ \g o -> Right $
@@ -339,25 +343,29 @@ main :: IO ()
 main = handler $ do
     hSetEncoding stdout utf8
     args <- getArgs
-
-    -- This doesn't handle --help and --version being given after any global
-    -- options. To do that we'd have to fiddle with getOpt.
     case parseGlobalArgs args of
-      Left e -> case globalCommands args of
-                  Just s -> putStr s
-                  Nothing -> throw e
-
-      Right res@(_,cmdArgs) ->
-          case globalCommands cmdArgs of
-            Just s -> putStr s
-            Nothing -> progMain res
+      Left e -> throw e
+      Right res -> progMain res
 
 progMain :: (Options,[String]) -> IO ()
-progMain (globalOptions,cmdArgs) = do
-    (res,_) <- runGhcModT globalOptions $ ghcCommands cmdArgs
-    case res of
-      Right () -> return ()
-      Left e -> exitError $ renderStyle ghcModStyle (gmeDoc e)
+progMain (globalOptions,cmdArgs) = hndle $ runGhcModT globalOptions $ do
+    case globalCommands cmdArgs of
+      Just s -> gmPutStr s
+      Nothing -> ghcCommands cmdArgs
+ where
+   hndle action = do
+     (e, _l) <- action
+     case e of
+       Right _ ->
+           return ()
+       Left ed ->
+           exitError $ renderStyle ghcModStyle (gmeDoc ed)
+
+globalCommands :: [String] -> Maybe String
+globalCommands (cmd:_)
+    | cmd == "help"    = Just usage
+    | cmd == "version" = Just ghcModVersion
+globalCommands _       = Nothing
 
 -- ghc-modi
 legacyInteractive :: IOish m => GhcModT m ()
@@ -367,10 +375,10 @@ legacyInteractive = do
     world <- getCurrentWorld
     legacyInteractiveLoop symdbreq world
 
-bug :: String -> IO ()
+bug :: IOish m => String -> GhcModT m ()
 bug msg = do
-  putStrLn $ notGood $ "BUG: " ++ msg
-  exitFailure
+  gmPutStrLn $ notGood $ "BUG: " ++ msg
+  liftIO exitFailure
 
 notGood :: String -> String
 notGood msg = "NG " ++ escapeNewlines msg
@@ -422,20 +430,13 @@ legacyInteractiveLoop symdbreq world = do
         ""       -> liftIO $ exitSuccess
         _        -> fatalError $ "unknown command: `" ++ cmd ++ "'"
 
-    liftIO $ putStr res >> putStrLn "OK" >> hFlush stdout
+    gmPutStr res >> gmPutStrLn "OK" >> liftIO (hFlush stdout)
     legacyInteractiveLoop symdbreq world
-
-globalCommands :: [String] -> Maybe String
-globalCommands []      = Nothing
-globalCommands (cmd:_) = case cmd of
-    _ | cmd == "help"    -> Just usage
-    _ | cmd == "version" -> Just ghcModVersion
-    _                                          -> Nothing
 
 ghcCommands :: IOish m => [String] -> GhcModT m ()
 ghcCommands []         = fatalError "No command given (try --help)"
 ghcCommands (cmd:args) = do
-    liftIO . putStr =<< action args
+    gmPutStr =<< action args
  where
    action = case cmd of
      _ | cmd == "list" || cmd == "modules" -> modulesCmd

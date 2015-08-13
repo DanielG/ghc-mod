@@ -39,6 +39,7 @@ module Language.Haskell.GhcMod.Monad.Types (
   , GmLogLevel(..)
   , GhcModLog(..)
   , GhcModError(..)
+  , Gm
   , GmEnv(..)
   , GmState(..)
   , GmLog(..)
@@ -197,6 +198,8 @@ class Monad m => GmEnv m where
 
     gmeLocal :: (GhcModEnv -> GhcModEnv) -> m a -> m a
     {-# MINIMAL (gmeAsk | gmeReader), gmeLocal #-}
+
+type Gm m = (GmEnv m, GmState m, GmLog m)
 
 instance Monad m => GmEnv (GhcModT m) where
     gmeAsk = GhcModT ask

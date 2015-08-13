@@ -35,9 +35,12 @@ import Language.Haskell.GhcMod.Error
 import Language.Haskell.GhcMod.Logging
 import Language.Haskell.GhcMod.Cradle
 import Language.Haskell.GhcMod.Target
+import Language.Haskell.GhcMod.Stderr
 
 import Control.Arrow (first)
 import Control.Applicative
+
+import Control.Concurrent
 
 import Control.Monad.Reader (runReaderT)
 import Control.Monad.State.Strict (runStateT)
@@ -58,11 +61,21 @@ withGhcModEnv dir opt f = withCradle dir (withGhcModEnv' opt f)
 withGhcModEnv' :: IOish m => Options -> (GhcModEnv -> m a) -> Cradle -> m a
 withGhcModEnv' opt f crdl = do
     olddir <- liftIO getCurrentDirectory
-    gbracket_ (liftIO $ setCurrentDirectory $ cradleRootDir crdl)
-              (liftIO $ setCurrentDirectory olddir)
-              (f $ GhcModEnv opt crdl)
+    c <- liftIO newChan
+    let outp = case linePrefix opt of
+                 Just _ -> GmOutputChan c
+                 Nothing -> GmOutputStdio
+    gbracket_ (setup c) (teardown olddir) (f $ GhcModEnv opt crdl outp)
  where
-   gbracket_ ma mb mc = gbracket ma (const mb) (const mc)
+   setup c = liftIO $ do
+     setCurrentDirectory $ cradleRootDir crdl
+     forkIO $ stdoutGateway c
+
+   teardown olddir tid = liftIO $ do
+     setCurrentDirectory olddir
+     killThread tid
+
+   gbracket_ ma mb mc = gbracket ma mb (const mc)
 
 -- | Run a @GhcModT m@ computation.
 runGhcModT :: IOish m

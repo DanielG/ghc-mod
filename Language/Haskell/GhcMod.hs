@@ -56,6 +56,11 @@ module Language.Haskell.GhcMod (
   -- * SymbolDb
   , loadSymbolDb
   , isOutdated
+  -- * Output
+  , gmPutStr
+  , gmErrStr
+  , gmPutStrLn
+  , gmErrStrLn
   ) where
 
 import Language.Haskell.GhcMod.Boot
@@ -76,3 +81,4 @@ import Language.Haskell.GhcMod.Monad
 import Language.Haskell.GhcMod.PkgDoc
 import Language.Haskell.GhcMod.Types
 import Language.Haskell.GhcMod.Target
+import Language.Haskell.GhcMod.Output

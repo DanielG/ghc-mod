@@ -39,6 +39,7 @@ import Prelude
 import Language.Haskell.GhcMod.Monad.Types
 import Language.Haskell.GhcMod.Types
 import Language.Haskell.GhcMod.Pretty
+import Language.Haskell.GhcMod.Output
 
 gmSetLogLevel :: GmLog m => GmLogLevel -> m ()
 gmSetLogLevel level =
@@ -64,7 +65,7 @@ decreaseLogLevel l = pred l
 -- True
 -- >>> Just GmDebug <= Just GmException
 -- False
-gmLog :: (MonadIO m, GmLog m) => GmLogLevel -> String -> Doc -> m ()
+gmLog :: (MonadIO m, GmLog m, GmEnv m) => GmLogLevel -> String -> Doc -> m ()
 gmLog level loc' doc = do
   GhcModLog { gmLogLevel = Just level' } <- gmlHistory
 
@@ -73,7 +74,7 @@ gmLog level loc' doc = do
       msgDoc = gmLogLevelDoc level <+>: sep [loc, doc]
       msg = dropWhileEnd isSpace $ gmRenderDoc msgDoc
 
-  when (level <= level') $ liftIO $ hPutStrLn stderr msg
+  when (level <= level') $ gmErrStrLn msg
 
   gmlJournal (GhcModLog Nothing (Last Nothing) [(level, loc', msgDoc)])
 

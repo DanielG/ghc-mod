@@ -22,7 +22,7 @@ import Language.Haskell.GhcMod.Caching.Types
 import Language.Haskell.GhcMod.Logging
 
 -- | Cache a MonadIO action with proper invalidation.
-cached :: forall m a d. (MonadIO m, GmLog m, GmState m, Serialize a, Eq d, Serialize d, Show d)
+cached :: forall m a d. (Gm m, MonadIO m, Serialize a, Eq d, Serialize d, Show d)
        => FilePath -- ^ Directory to prepend to 'cacheFile'
        -> Cached m GhcModState d a -- ^ Cache descriptor
        -> d

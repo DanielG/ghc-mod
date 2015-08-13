@@ -119,11 +119,13 @@ Library
                         Language.Haskell.GhcMod.Modules
                         Language.Haskell.GhcMod.Monad
                         Language.Haskell.GhcMod.Monad.Types
+                        Language.Haskell.GhcMod.Output
                         Language.Haskell.GhcMod.PathsAndFiles
                         Language.Haskell.GhcMod.PkgDoc
                         Language.Haskell.GhcMod.Pretty
                         Language.Haskell.GhcMod.Read
                         Language.Haskell.GhcMod.SrcUtils
+                        Language.Haskell.GhcMod.Stderr
                         Language.Haskell.GhcMod.Target
                         Language.Haskell.GhcMod.Types
                         Language.Haskell.GhcMod.Utils

@@ -39,6 +39,7 @@ import Language.Haskell.GhcMod.Monad.Types
 import Language.Haskell.GhcMod.Utils
 import Language.Haskell.GhcMod.PathsAndFiles
 import Language.Haskell.GhcMod.Logging
+import Language.Haskell.GhcMod.Stderr
 import System.FilePath
 import Prelude hiding ((.))
 

@@ -13,6 +13,7 @@ import Control.Monad.Error (Error(..))
 import qualified Control.Monad.IO.Class as MTL
 import Control.Exception (Exception)
 import Control.Applicative
+import Control.Concurrent
 import Control.Monad
 import Data.Serialize
 import Data.Version
@@ -72,6 +73,9 @@ data Options = Options {
     outputStyle   :: OutputStyle
   -- | Line separator string.
   , lineSeparator :: LineSeparator
+  -- | Stdout/err line multiplexing using prefix encoding. @fst@ is stdout,
+  -- @snd@ is stderr prefix.
+  , linePrefix :: Maybe (String, String)
   -- | Verbosity
   , logLevel      :: GmLogLevel
   -- | @ghc@ program name.
@@ -96,6 +100,7 @@ defaultOptions :: Options
 defaultOptions = Options {
     outputStyle    = PlainStyle
   , lineSeparator  = LineSeparator "\0"
+  , linePrefix     = Nothing
   , logLevel       = GmWarning
   , ghcProgram     = "ghc"
   , ghcPkgProgram  = "ghc-pkg"
@@ -125,9 +130,13 @@ data Cradle = Cradle {
   , cradleCabalFile  :: Maybe FilePath
   } deriving (Eq, Show)
 
+data GmOutput = GmOutputStdio
+              | GmOutputChan (Chan String)
+
 data GhcModEnv = GhcModEnv {
       gmOptions    :: Options
     , gmCradle     :: Cradle
+    , gmOutput     :: GmOutput
     }
 
 data GhcModLog = GhcModLog {

@@ -334,7 +334,7 @@ resolveGmComponent mums c@GmComponent {..} = do
            [ "-optP-include", "-optP" ++ macrosHeaderPath ]
         ]
 
-resolveEntrypoint :: (IOish m, GmLog m)
+resolveEntrypoint :: (IOish m, GmEnv m, GmLog m)
     => Cradle
     -> GmComponent 'GMCRaw ChEntrypoint
     -> m (GmComponent 'GMCRaw (Set ModulePath))
@@ -366,7 +366,7 @@ resolveChEntrypoints srcDir ChSetupEntrypoint = do
 chModToMod :: ChModuleName -> ModuleName
 chModToMod (ChModuleName mn) = mkModuleName mn
 
-resolveModule :: (MonadIO m, GmLog m) =>
+resolveModule :: (MonadIO m, GmEnv m, GmLog m) =>
   HscEnv -> [FilePath] -> CompilationUnit -> m (Maybe ModulePath)
 resolveModule env _srcDirs (Right mn) =
     liftIO $ traverse canonicalizeModulePath =<< findModulePath env mn
