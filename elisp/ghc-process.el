@@ -78,6 +78,9 @@
     (if (not (get-buffer pbuf))
 	(setq ghc-process-running nil) ;; just in case
       (ghc-with-current-buffer (process-buffer process)
+	(when ghc-debug
+	  (ghc-with-debug-buffer
+	   (insert string)))
         (goto-char (point-max))
 	(insert string)
 	(forward-line -1)
@@ -86,17 +89,9 @@
 	  (if ghc-process-hook (funcall ghc-process-hook))
 	  (goto-char (point-min))
 	  (funcall ghc-process-callback 'ok)
-	  (when ghc-debug
-	    (let ((cbuf (current-buffer)))
-	      (ghc-with-debug-buffer
-	       (insert-buffer-substring cbuf))))
 	  (setq ghc-process-running nil))
 	 ((looking-at "^NG ")
 	  (funcall ghc-process-callback 'ng)
-	  (when ghc-debug
-	    (let ((cbuf (current-buffer)))
-	      (ghc-with-debug-buffer
-	       (insert-buffer-substring cbuf))))
 	  (setq ghc-process-running nil)))))))
 
 (defun ghc-process-sentinel (process event)
