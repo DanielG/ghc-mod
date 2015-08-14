@@ -133,7 +133,7 @@ Library
                       , bytestring
                       , cereal >= 0.4
                       , containers
-                      , cabal-helper == 0.5.* && >= 0.5.0.0
+                      , cabal-helper == 0.5.* && >= 0.5.1.0
                       , deepseq
                       , directory
                       , filepath
