@@ -21,7 +21,7 @@
 (defvar-local ghc-process-hook nil)
 (defvar-local ghc-process-root nil)
 
-(defvar ghc-command "Mock")
+(defvar ghc-command "ghc-mod")
 
 (defvar ghc-error-buffer "*GHC Error*")
 
@@ -68,7 +68,9 @@
    (t cpro)))
 
 (defun ghc-start-process (name buf)
-  (let* ((opts (append '("legacy-interactive" "-b" "\n" "-l" "-s") (ghc-make-ghc-options)))
+  (let* ((opts (append '("-b" "\n" "-l" "--line-prefix=O: ,E: ")
+		       (ghc-make-ghc-options)
+		       '("legacy-interactive")))
 	 (pro (apply 'start-file-process name buf ghc-command opts)))
     (set-process-filter pro 'ghc-process-filter)
     (set-process-sentinel pro 'ghc-process-sentinel)
