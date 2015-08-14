@@ -20,7 +20,7 @@
      :underline (:style wave :color "orangered"))
     (t
      :inherit error))
-  "Face used for marking error lines."
+  "Face used for error lines."
   :group 'ghc)
 
 (defface ghc-face-warn
@@ -28,7 +28,7 @@
      :underline (:style wave :color "gold"))
     (t
      :inherit warning))
-  "Face used for marking warning lines."
+  "Face used for warning lines."
   :group 'ghc)
 
 (defface ghc-face-hole
@@ -36,7 +36,7 @@
      :underline (:style wave :color "purple"))
     (t
      :inherit warning))
-  "Face used for marking hole lines."
+  "Face used for hole lines."
   :group 'ghc)
 
 (defvar ghc-check-error-fringe (propertize "!" 'display '(left-fringe exclamation-mark)))
@@ -46,18 +46,18 @@
 (defvar ghc-check-hole-fringe (propertize "_" 'display '(left-fringe horizontal-bar)))
 
 (defvar ghc-display-error nil
-  "*An action to display errors/warnings for 'M-n' and 'M-p:
+  "*How to display errors/warnings when using 'M-n' and 'M-p':
 
-nil            does not display errors/warnings.
-'minibuffer    displays errors/warnings in the minibuffer.
-'other-buffer  displays errors/warnings in the other buffer.
+nil            do not display errors/warnings.
+'minibuffer    display errors/warnings in the minibuffer.
+'other-buffer  display errors/warnings in a new buffer.
 ")
 
 (defvar ghc-display-hole 'other-buffer
-  "*An action to display hole information for 'C-c C-j' and 'C-c C-h'
+  "*How to display hole information when using 'C-c C-j' and 'C-c C-h'
 
-'minibuffer    displays errors/warnings in the minibuffer.
-'other-buffer  displays errors/warnings in the other buffer"
+'minibuffer    display errors/warnings in the minibuffer.
+'other-buffer  display errors/warnings in the a new buffer"
 )
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
