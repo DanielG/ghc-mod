@@ -1,3 +1,12 @@
+2015-08-14 v5.3.0.0
+	* Re-license majority of code under the AGPL-3
+	* Add support for GHC 7.10 and Cabal 1.22
+	* Remove `cabalDependPackages', `cabalAllTargets'
+	* Merge #434, Fix finding sandbox config file and directory.
+	* Merge #431, Re-add output line separator global option for expand command.
+	* Merge #470, Support for overriding the package-db stack
+	* Merge #486, Fix ineffective cache invalidation for `find`
+
 2014-12-31 v5.2.1.2
 	* Merge #377, Fix `browse` erroneously thinking haskell2010 identifiers
 	  are operators
