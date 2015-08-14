@@ -20,7 +20,7 @@
      :underline (:style wave :color "orangered"))
     (t
      :inherit error))
-  "Face used for marking error lines."
+  "Face used for error lines."
   :group 'ghc)
 
 (defface ghc-face-warn
@@ -28,7 +28,7 @@
      :underline (:style wave :color "gold"))
     (t
      :inherit warning))
-  "Face used for marking warning lines."
+  "Face used for warning lines."
   :group 'ghc)
 
 (defface ghc-face-hole
@@ -36,7 +36,7 @@
      :underline (:style wave :color "purple"))
     (t
      :inherit warning))
-  "Face used for marking hole lines."
+  "Face used for hole lines."
   :group 'ghc)
 
 (defvar ghc-check-error-fringe (propertize "!" 'display '(left-fringe exclamation-mark)))
@@ -46,27 +46,34 @@
 (defvar ghc-check-hole-fringe (propertize "_" 'display '(left-fringe horizontal-bar)))
 
 (defvar ghc-display-error nil
-  "*An action to display errors/warnings for 'M-n' and 'M-p:
+  "*How to display errors/warnings when using 'M-n' and 'M-p':
 
-nil            does not display errors/warnings.
-'minibuffer    displays errors/warnings in the minibuffer.
-'other-buffer  displays errors/warnings in the other buffer.
+nil            do not display errors/warnings.
+'minibuffer    display errors/warnings in the minibuffer.
+'other-buffer  display errors/warnings in a new buffer.
 ")
 
 (defvar ghc-display-hole 'other-buffer
-  "*An action to display hole information for 'C-c C-j' and 'C-c C-h'
+  "*How to display hole information when using 'C-c C-j' and 'C-c C-h'
 
-'minibuffer    displays errors/warnings in the minibuffer.
-'other-buffer  displays errors/warnings in the other buffer"
+'minibuffer    display errors/warnings in the minibuffer.
+'other-buffer  display errors/warnings in the a new buffer"
 )
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defun ghc-check-syntax ()
   (interactive)
-  (ghc-with-process (ghc-check-send)
-		    'ghc-check-callback
-		    (lambda () (setq mode-line-process " -:-"))))
+  ;; Only check syntax of visible buffers
+  (when (and (buffer-file-name)
+	     (file-exists-p (buffer-file-name))
+	     (get-buffer-window (current-buffer) t))
+    (with-timeout
+        (10 (error "ghc process may have hung or exited with an error"))
+      (while ghc-process-running (sleep-for 0.1)))
+    (ghc-with-process (ghc-check-send)
+                      'ghc-check-callback
+                      (lambda () (setq mode-line-process " -:-")))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -132,7 +139,7 @@ nil            does not display errors/warnings.
 	info infos)
     (dolist (err errs (nreverse infos))
       (when (string-match regex err)
-	(let* ((file (expand-file-name (match-string 1 err))) ;; for Windows
+	(let* ((file (expand-file-name (match-string 1 err) ghc-process-root)) ;; for Windows
 	       (line (string-to-number (match-string 2 err)))
                (coln (string-to-number (match-string 3 err)))
 	       (msg (match-string 4 err))
@@ -167,18 +174,20 @@ nil            does not display errors/warnings.
 	  ;; If this is a bottleneck for a large code, let's fix.
 	  (goto-char (point-min))
 	  (cond
-           ((and (string= ofile file) hole)
-            (forward-line (1- line))
-            (forward-char (1- coln))
-            (setq beg (point))
-            (forward-char (length hole))
-            (setq end (point)))
-	   ((string= ofile file)
-	    (forward-line (1- line))
-	    (while (eq (char-after) 32) (forward-char))
-	    (setq beg (point))
-	    (forward-line)
-	    (setq end (1- (point))))
+	   ((string= (file-truename ofile) (file-truename file))
+            (if hole
+              (progn
+                (forward-line (1- line))
+                (forward-char (1- coln))
+                (setq beg (point))
+                (forward-char (length hole))
+                (setq end (point)))
+              (progn
+                (forward-line (1- line))
+                (forward-char (1- coln))
+                (setq beg (point))
+                (skip-chars-forward "^[:space:]" (line-end-position))
+                (setq end (point)))))
 	   (t
 	    (setq beg (point))
 	    (forward-line)

@@ -5,22 +5,23 @@ import Language.Haskell.GhcMod.GhcPkg
 import Language.Haskell.GhcMod.Monad
 import Language.Haskell.GhcMod.Utils
 
-import Control.Applicative ((<$>))
+import Control.Applicative
+import Prelude
 
 -- | Obtaining the package name and the doc path of a module.
 pkgDoc :: IOish m => String -> GhcModT m String
 pkgDoc mdl = do
-    c <- cradle
-    pkg <- trim <$> readProcess' "ghc-pkg" (toModuleOpts c)
+    pkgDbStack <- getPackageDbStack
+    pkg <- liftIO $ trim <$> readProcess "ghc-pkg" (toModuleOpts pkgDbStack) ""
     if pkg == "" then
         return "\n"
       else do
-        htmlpath <- readProcess' "ghc-pkg" (toDocDirOpts pkg c)
+        htmlpath <- liftIO $ readProcess "ghc-pkg" (toDocDirOpts pkg pkgDbStack) ""
         let ret = pkg ++ " " ++ drop 14 htmlpath
         return ret
   where
-    toModuleOpts c = ["find-module", mdl, "--simple-output"]
-                   ++ ghcPkgDbStackOpts (cradlePkgDbStack c)
-    toDocDirOpts pkg c = ["field", pkg, "haddock-html"]
-                       ++ ghcPkgDbStackOpts (cradlePkgDbStack c)
+    toModuleOpts dbs = ["find-module", mdl, "--simple-output"]
+                   ++ ghcPkgDbStackOpts dbs
+    toDocDirOpts pkg dbs = ["field", pkg, "haddock-html"]
+                       ++ ghcPkgDbStackOpts dbs
     trim = takeWhile (`notElem` " \n")

@@ -127,7 +127,7 @@ unloaded modules are loaded")
   (interactive)
   (if (ghc-should-scroll)
       (ghc-scroll-completion-buffer)
-      (ghc-try-complete)))
+    (ghc-try-complete)))
 
 (defun ghc-should-scroll ()
   (let ((window (ghc-completion-window)))

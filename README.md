@@ -44,7 +44,27 @@ Make sure you're not using the MELPA version of `ghc.el` otherwise you might get
 all sorts of nasty conflicts.
 
 
+## Custom ghc-mod cradle
+
+To customize the package databases used by `ghc-mod`, put a file called `ghc-mod.cradle` beside the `.cabal` file with the following syntax:
+
+```
+temp directory root
+package db 1
+...
+package db n
+```
+
+each package database line is either a *path* to a package database, or `global` or `user`.
+
 ## IRC
 
 If you have any problems, suggestions, comments swing by
-[#ghc-mod](irc://chat.freenode.net/ghc-mod) on Freenode.
+[\#ghc-mod (web client)](https://kiwiirc.com/client/irc.freenode.org/ghc-mod) on
+Freenode. If you're reporting a bug please also create an issue
+[here](https://github.com/kazu-yamamoto/ghc-mod/issues) so we have a way to contact
+you if you don't have time to stay.
+
+Do hang around for a while if no one answers and repeat your question if you
+still haven't gotten any answer after a day or so. You're most likely to get an
+answer during the day in GMT+1.

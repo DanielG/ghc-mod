@@ -8,35 +8,33 @@ module Language.Haskell.GhcMod.Internal (
   , PackageVersion
   , PackageId
   , IncludeDir
-  , CompilerOptions(..)
-  -- * Cabal API
-  , parseCabalFile
-  , getCompilerOptions
-  , cabalAllBuildInfo
-  , cabalDependPackages
-  , cabalSourceDirs
-  , cabalAllTargets
+  , GmlT(..)
+  , MonadIO(..)
+  , GmEnv(..)
   -- * Various Paths
   , ghcLibDir
   , ghcModExecutable
-  -- * IO
-  , getDynamicFlags
-  -- * Targets
-  , setTargetFiles
   -- * Logging
   , withLogger
   , setNoWarningFlags
   , setAllWarningFlags
   -- * Environment, state and logging
   , GhcModEnv(..)
-  , newGhcModEnv
   , GhcModState
-  , defaultState
   , CompilerMode(..)
   , GhcModLog
+  , GmLog(..)
+  , GmLogLevel(..)
+  , gmSetLogLevel
   -- * Monad utilities
   , runGhcModT'
   , hoistGhcModT
+  , runGmlT
+  , runGmlT'
+  , gmlGetSession
+  , gmlSetSession
+  , loadTargets
+  , cabalResolvedComponents
   -- ** Accessing 'GhcModEnv' and 'GhcModState'
   , options
   , cradle
@@ -45,28 +43,33 @@ module Language.Haskell.GhcMod.Internal (
   , withOptions
   -- * 'GhcModError'
   , gmeDoc
-  -- * 'GhcMonad' Choice
-  , (||>)
-  , goNext
-  , runAnyOne
   -- * World
   , World
   , getCurrentWorld
   , didWorldChange
+  -- * Cabal Helper
+  , ModulePath(..)
+  , GmComponent(..)
+  , GmComponentType(..)
+  , GmModuleGraph(..)
+  , prepareCabalHelper
+  -- * Misc stuff
+  , GHandler(..)
+  , gcatches
   ) where
 
 import GHC.Paths (libdir)
 
-import Language.Haskell.GhcMod.CabalApi
+import Language.Haskell.GhcMod.Target
 import Language.Haskell.GhcMod.DynFlags
 import Language.Haskell.GhcMod.Error
-import Language.Haskell.GhcMod.GHCChoice
 import Language.Haskell.GhcMod.Logger
+import Language.Haskell.GhcMod.Logging
 import Language.Haskell.GhcMod.Monad
-import Language.Haskell.GhcMod.Target
 import Language.Haskell.GhcMod.Types
 import Language.Haskell.GhcMod.Utils
 import Language.Haskell.GhcMod.World
+import Language.Haskell.GhcMod.CabalHelper
 
 -- | Obtaining the directory for ghc system libraries.
 ghcLibDir :: FilePath

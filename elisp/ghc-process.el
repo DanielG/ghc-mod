@@ -10,6 +10,9 @@
 
 (require 'ghc-func)
 
+(defvar ghc-debug-options nil)
+;; (setq ghc-debug-options '("-v9"))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defvar ghc-process-running nil)
@@ -19,8 +22,11 @@
 (defvar-local ghc-process-original-file nil)
 (defvar-local ghc-process-callback nil)
 (defvar-local ghc-process-hook nil)
+(defvar-local ghc-process-root nil)
 
-(defvar ghc-interactive-command "ghc-modi")
+(defvar ghc-command "ghc-mod")
+
+(defvar ghc-error-buffer "*GHC Error*")
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -28,28 +34,30 @@
   (ghc-run-ghc-mod '("root")))
 
 (defun ghc-with-process (cmd callback &optional hook1 hook2)
-  (unless ghc-process-process-name
-    (setq ghc-process-process-name (ghc-get-project-root)))
-  (when (and ghc-process-process-name (not ghc-process-running))
-    (setq ghc-process-running t)
-    (if hook1 (funcall hook1))
-    (let* ((cbuf (current-buffer))
-	   (name ghc-process-process-name)
-	   (buf (get-buffer-create (concat " ghc-modi:" name)))
-	   (file (buffer-file-name))
-	   (cpro (get-process name)))
-      (ghc-with-current-buffer buf
-        (setq ghc-process-original-buffer cbuf)
-	(setq ghc-process-original-file file)
-	(setq ghc-process-callback callback)
-	(setq ghc-process-hook hook2)
-	(erase-buffer)
-	(let ((pro (ghc-get-process cpro name buf)))
-	  (process-send-string pro cmd)
-	  (when ghc-debug
-	    (ghc-with-debug-buffer
-	     (insert (format "%% %s" cmd))))
-	  pro)))))
+  (let ((root (ghc-get-project-root)))
+    (unless ghc-process-process-name
+      (setq ghc-process-process-name root))
+    (when (and ghc-process-process-name (not ghc-process-running))
+      (setq ghc-process-running t)
+      (if hook1 (funcall hook1))
+      (let* ((cbuf (current-buffer))
+	     (name ghc-process-process-name)
+	     (buf (get-buffer-create (concat " ghc-mod:" name)))
+	     (file (buffer-file-name))
+	     (cpro (get-process name)))
+	(ghc-with-current-buffer buf
+	  (setq ghc-process-original-buffer cbuf)
+	  (setq ghc-process-original-file file)
+	  (setq ghc-process-callback callback)
+	  (setq ghc-process-hook hook2)
+	  (setq ghc-process-root root)
+	  (erase-buffer)
+	  (let ((pro (ghc-get-process cpro name buf)))
+	    (process-send-string pro cmd)
+	    (when ghc-debug
+	      (ghc-with-debug-buffer
+	       (insert (format "%% %s" cmd))))
+	    pro))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -63,37 +71,74 @@
    (t cpro)))
 
 (defun ghc-start-process (name buf)
-  (let* ((opts (append '("-b" "\n" "-l") (ghc-make-ghc-options)))
-	 (pro (apply 'start-file-process name buf ghc-interactive-command opts)))
+  (let* ((opts (append ghc-debug-options
+		       '("-b" "\n" "-l" "--line-prefix=O: ,E: ")
+		       (ghc-make-ghc-options)
+		       '("legacy-interactive")))
+	 (pro (apply 'start-file-process name buf ghc-command opts)))
     (set-process-filter pro 'ghc-process-filter)
     (set-process-sentinel pro 'ghc-process-sentinel)
     (set-process-query-on-exit-flag pro nil)
     pro))
 
 (defun ghc-process-filter (process string)
-  (let ((pbuf (process-buffer process)))
+  (let* ((pbuf (process-buffer process))
+	 (tbufname (concat " tmp " (buffer-name pbuf)))
+	 tbuf)
     (if (not (get-buffer pbuf))
 	(setq ghc-process-running nil) ;; just in case
-      (ghc-with-current-buffer (process-buffer process)
-        (goto-char (point-max))
-	(insert string)
+      (ghc-with-current-buffer pbuf
+	(when ghc-debug
+	  (ghc-with-debug-buffer
+	   (insert string)))
+	(with-current-buffer (get-buffer-create tbufname)
+	  (setq tbuf (current-buffer))
+	  (goto-char (point-max))
+	  (insert string)
+	  (goto-char (point-min))
+	  (let ((cont t) end out)
+	    (while (and cont (not (eobp)))
+	      (cond
+	       ((looking-at "^O: ")
+		(setq out t))
+	       ((looking-at "^E: ")
+		(setq out nil))
+	       (t
+		(setq cont nil)))
+	      (when cont
+		(forward-line)
+		(unless (bolp) (setq cont nil)))
+	      (when cont
+		(delete-region 1 4)
+		(setq end (point))
+		(if out
+		    (with-current-buffer pbuf
+		      (goto-char (point-max))
+		      (insert-buffer-substring tbuf 1 end))
+		  (with-current-buffer (get-buffer-create ghc-error-buffer)
+		    (setq buffer-read-only t)
+		    (let* ((buffer-read-only nil)
+			   (inhibit-read-only t)
+			   (cbuf (current-buffer))
+			   cwin)
+		      (unless (get-buffer-window cbuf) (display-buffer cbuf))
+		      (setq cwin (get-buffer-window cbuf))
+		      (with-selected-window cwin
+			(goto-char (point-max))
+			(insert-buffer-substring tbuf 1 end)
+			(set-buffer-modified-p nil)
+			(redisplay)))))
+		(delete-region 1 end)))))
+	(goto-char (point-max))
 	(forward-line -1)
 	(cond
 	 ((looking-at "^OK$")
 	  (if ghc-process-hook (funcall ghc-process-hook))
 	  (goto-char (point-min))
 	  (funcall ghc-process-callback 'ok)
-	  (when ghc-debug
-	    (let ((cbuf (current-buffer)))
-	      (ghc-with-debug-buffer
-	       (insert-buffer-substring cbuf))))
 	  (setq ghc-process-running nil))
 	 ((looking-at "^NG ")
 	  (funcall ghc-process-callback 'ng)
-	  (when ghc-debug
-	    (let ((cbuf (current-buffer)))
-	      (ghc-with-debug-buffer
-	       (insert-buffer-substring cbuf))))
 	  (setq ghc-process-running nil)))))))
 
 (defun ghc-process-sentinel (process event)

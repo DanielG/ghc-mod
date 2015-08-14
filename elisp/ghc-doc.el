@@ -25,7 +25,7 @@
     (setq pkg-ver-path (and mod (ghc-resolve-document-path mod)))
     (if pkg-ver-path
 	(ghc-display-document pkg-ver-path mod haskell-org expr)
-      (message "No document found"))))
+      (message "No documentation found"))))
 
 (ghc-defstruct pkg-ver-path pkg ver path)
 
@@ -93,7 +93,7 @@
   (read-from-minibuffer "Module name: " def ghc-input-map))
 
 (defun ghc-read-expression (def)
-  (read-from-minibuffer "Expression: " def ghc-input-map))
+  (read-from-minibuffer "Identifier: " def ghc-input-map))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 

@@ -13,3 +13,4 @@ test-suite test
   build-depends: base == 4.*
   hs-source-dirs: test
   main-is: Main.hs
+  ghc-options: -Wall

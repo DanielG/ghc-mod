@@ -4,52 +4,26 @@ module Language.Haskell.GhcMod.GhcPkg (
   , ghcPkgDbStackOpts
   , ghcDbStackOpts
   , ghcDbOpt
-  , fromInstalledPackageId
-  , fromInstalledPackageId'
   , getPackageDbStack
   , getPackageCachePaths
   ) where
 
 import Config (cProjectVersion, cTargetPlatformString, cProjectVersionInt)
-import Control.Applicative ((<$>))
-import Data.List (intercalate)
+import Control.Applicative
 import Data.List.Split (splitOn)
 import Data.Maybe
-import Distribution.Package (InstalledPackageId(..))
 import Exception (handleIO)
-import Language.Haskell.GhcMod.PathsAndFiles
-import Language.Haskell.GhcMod.Types
 import System.Directory (doesDirectoryExist, getAppUserDataDirectory)
 import System.FilePath ((</>))
+import Prelude
+
+import Language.Haskell.GhcMod.Types
+import Language.Haskell.GhcMod.Monad.Types
+import Language.Haskell.GhcMod.CabalHelper
+import Language.Haskell.GhcMod.PathsAndFiles
 
 ghcVersion :: Int
 ghcVersion = read cProjectVersionInt
-
-getPackageDbStack :: FilePath -- ^ Project Directory (where the
-                                 -- cabal.sandbox.config file would be if it
-                                 -- exists)
-                  -> IO [GhcPkgDb]
-getPackageDbStack cdir = do
-    mSDir <- getSandboxDb cdir
-    return $ [GlobalDb] ++ case mSDir of
-                             Nothing -> [UserDb]
-                             Just db -> [PackageDb db]
-
-----------------------------------------------------------------
-
-fromInstalledPackageId' :: InstalledPackageId -> Maybe Package
-fromInstalledPackageId' pid = let
-    InstalledPackageId pkg = pid
-    in case reverse $ splitOn "-" pkg of
-      i:v:rest -> Just (intercalate "-" (reverse rest), v, i)
-      _ -> Nothing
-
-fromInstalledPackageId :: InstalledPackageId -> Package
-fromInstalledPackageId pid =
-    case fromInstalledPackageId' pid of
-      Just p -> p
-      Nothing -> error $
-        "fromInstalledPackageId: `"++show pid++"' is not a valid package-id"
 
 ----------------------------------------------------------------
 
@@ -85,11 +59,24 @@ ghcDbOpt (PackageDb pkgDb)
 
 ----------------------------------------------------------------
 
+getPackageDbStack :: IOish m => GhcModT m [GhcPkgDb]
+getPackageDbStack = do
+  crdl <- cradle
+  mCusPkgStack <- getCustomPkgDbStack
+  stack <- case cradleProjectType crdl of
+    PlainProject ->
+        return [GlobalDb, UserDb]
+    SandboxProject -> do
+        Just db <- liftIO $ getSandboxDb $ cradleRootDir crdl
+        return $ [GlobalDb, db]
+    CabalProject ->
+        getCabalPackageDbStack
+  return $ fromMaybe stack mCusPkgStack
 
-getPackageCachePaths :: FilePath -> Cradle -> IO [FilePath]
-getPackageCachePaths sysPkgCfg crdl =
-    catMaybes <$> resolvePackageConfig sysPkgCfg `mapM` cradlePkgDbStack crdl
-
+getPackageCachePaths :: IOish m => FilePath -> GhcModT m [FilePath]
+getPackageCachePaths sysPkgCfg = do
+  pkgDbStack <- getPackageDbStack
+  catMaybes <$> (liftIO . resolvePackageConfig sysPkgCfg) `mapM` pkgDbStack
 
 -- TODO: use PkgConfRef
 --- Copied from ghc module `Packages' unfortunately it's not exported :/

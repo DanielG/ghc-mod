@@ -3,20 +3,25 @@ module Language.Haskell.GhcMod.Info (
   , types
   ) where
 
-import Control.Applicative ((<$>))
+import Control.Applicative
 import Data.Function (on)
 import Data.List (sortBy)
 import Data.Maybe (catMaybes)
+import System.FilePath
 import Exception (ghandle, SomeException(..))
 import GHC (GhcMonad, LHsBind, LHsExpr, LPat, Id, TypecheckedModule(..), SrcSpan, Type)
+import Prelude
 import qualified GHC as G
-import Language.Haskell.GhcMod.Doc (showPage)
-import Language.Haskell.GhcMod.Gap (HasType(..))
 import qualified Language.Haskell.GhcMod.Gap as Gap
+
+import Language.Haskell.GhcMod.Convert
+import Language.Haskell.GhcMod.Doc
+import Language.Haskell.GhcMod.DynFlags
+import Language.Haskell.GhcMod.Gap
+import Language.Haskell.GhcMod.Logging
 import Language.Haskell.GhcMod.Monad
 import Language.Haskell.GhcMod.SrcUtils
 import Language.Haskell.GhcMod.Types
-import Language.Haskell.GhcMod.Convert
 
 ----------------------------------------------------------------
 
@@ -25,14 +30,22 @@ info :: IOish m
      => FilePath     -- ^ A target file.
      -> Expression   -- ^ A Haskell expression.
      -> GhcModT m String
-info file expr = do
-    opt <- options
-    convert opt <$> ghandle handler body
+info file expr =
+  ghandle handler $
+    runGmlT' [Left file] deferErrors $
+      withContext $
+        convert <$> options <*> body
   where
-    body = inModuleContext file $ \dflag style -> do
-        sdoc <- Gap.infoThing expr
-        return $ showPage dflag style sdoc
-    handler (SomeException _) = return "Cannot show info"
+    handler (SomeException ex) = do
+      gmLog GmException "info" $ text "" $$ nest 4 (showDoc ex)
+      convert' "Cannot show info"
+
+    body :: GhcMonad m => m String
+    body = do
+      sdoc  <- Gap.infoThing expr
+      st    <- getStyle
+      dflag <- G.getSessionDynFlags
+      return $ showPage dflag st sdoc
 
 ----------------------------------------------------------------
 
@@ -42,24 +55,29 @@ types :: IOish m
       -> Int          -- ^ Line number.
       -> Int          -- ^ Column number.
       -> GhcModT m String
-types file lineNo colNo = do
-    opt <- options
-    convert opt <$> ghandle handler body
-  where
-    body = inModuleContext file $ \dflag style -> do
-        modSum <- Gap.fileModSummary file
+types file lineNo colNo =
+  ghandle handler $
+    runGmlT' [Left file] deferErrors $
+      withContext $ do
+        crdl         <- cradle
+        modSum       <- Gap.fileModSummary (cradleCurrentDir crdl </> file)
         srcSpanTypes <- getSrcSpanType modSum lineNo colNo
-        return $ map (toTup dflag style) $ sortBy (cmp `on` fst) srcSpanTypes
-    handler (SomeException _) = return []
+        dflag        <- G.getSessionDynFlags
+        st           <- getStyle
+        convert' $ map (toTup dflag st) $ sortBy (cmp `on` fst) srcSpanTypes
+ where
+   handler (SomeException ex) = do
+     gmLog GmException "types" $ showDoc ex
+     return []
 
 getSrcSpanType :: GhcMonad m => G.ModSummary -> Int -> Int -> m [(SrcSpan, Type)]
 getSrcSpanType modSum lineNo colNo = do
-    p <- G.parseModule modSum
-    tcm@TypecheckedModule{tm_typechecked_source = tcs} <- G.typecheckModule p
-    let bs = listifySpans tcs (lineNo, colNo) :: [LHsBind Id]
-        es = listifySpans tcs (lineNo, colNo) :: [LHsExpr Id]
-        ps = listifySpans tcs (lineNo, colNo) :: [LPat Id]
-    bts <- mapM (getType tcm) bs
-    ets <- mapM (getType tcm) es
-    pts <- mapM (getType tcm) ps
-    return $ catMaybes $ concat [ets, bts, pts]
+  p <- G.parseModule modSum
+  tcm@TypecheckedModule{tm_typechecked_source = tcs} <- G.typecheckModule p
+  let bs = listifySpans tcs (lineNo, colNo) :: [LHsBind Id]
+      es = listifySpans tcs (lineNo, colNo) :: [LHsExpr Id]
+      ps = listifySpans tcs (lineNo, colNo) :: [LPat Id]
+  bts <- mapM (getType tcm) bs
+  ets <- mapM (getType tcm) es
+  pts <- mapM (getType tcm) ps
+  return $ catMaybes $ concat [ets, bts, pts]

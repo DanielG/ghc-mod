@@ -28,7 +28,7 @@
 	       (< emacs-minor-version minor)))
       (error "ghc-mod requires at least Emacs %d.%d" major minor)))
 
-(defconst ghc-version "5.2.1.2")
+(defconst ghc-version "5.3.0.0")
 
 ;; (eval-when-compile
 ;;  (require 'haskell-mode))
@@ -117,6 +117,9 @@
     (setq ghc-initialized t)
     (defadvice save-buffer (after ghc-check-syntax-on-save activate)
       "Check syntax with GHC when a haskell-mode buffer is saved."
+      (when (eq 'haskell-mode major-mode) (ghc-check-syntax)))
+    (defadvice switch-to-buffer (after ghc-check-syntax-on-switch-to-buffer activate)
+      "Check syntax with GHC when switching to a haskell-mode buffer."
       (when (eq 'haskell-mode major-mode) (ghc-check-syntax))))
   (ghc-import-module)
   (ghc-check-syntax))
@@ -130,23 +133,19 @@
   (let ((el-path (locate-file "ghc.el" load-path))
 	(ghc-path (executable-find "ghc")) ;; FIXME
 	(ghc-mod-path (executable-find ghc-module-command))
-	(ghc-modi-path (executable-find ghc-interactive-command))
 	(el-ver ghc-version)
 	(ghc-ver (ghc-run-ghc-mod '("--version") "ghc"))
 	(ghc-mod-ver (ghc-run-ghc-mod '("version")))
-	(ghc-modi-ver (ghc-run-ghc-mod '("version") ghc-interactive-command))
 	(path (getenv "PATH")))
     (switch-to-buffer (get-buffer-create "**GHC Debug**"))
     (erase-buffer)
     (insert "Path: check if you are using intended programs.\n")
     (insert (format "\t  ghc.el path: %s\n" el-path))
     (insert (format "\t ghc-mod path: %s\n" ghc-mod-path))
-    (insert (format "\tghc-modi path: %s\n" ghc-modi-path))
     (insert (format "\t     ghc path: %s\n" ghc-path))
-    (insert "\nVersion: all versions must be the same.\n")
+    (insert "\nVersion: all GHC versions must be the same.\n")
     (insert (format "\t  ghc.el version %s\n" el-ver))
     (insert (format "\t %s\n" ghc-mod-ver))
-    (insert (format "\t%s\n" ghc-modi-ver))
     (insert (format "\t%s\n" ghc-ver))
     (insert "\nEnvironment variables:\n")
     (insert (format "\tPATH=%s\n" path))))

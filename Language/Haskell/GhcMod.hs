@@ -3,15 +3,22 @@
 module Language.Haskell.GhcMod (
   -- * Cradle
     Cradle(..)
+  , ProjectType(..)
   , findCradle
   -- * Options
   , Options(..)
   , LineSeparator(..)
   , OutputStyle(..)
   , defaultOptions
+  -- * Logging
+  , GmLogLevel
+  , increaseLogLevel
+  , decreaseLogLevel
+  , gmSetLogLevel
+  , gmLog
   -- * Types
   , ModuleString
-  , Expression
+  , Expression(..)
   , GhcPkgDb
   , Symbol
   , SymbolDb
@@ -22,12 +29,14 @@ module Language.Haskell.GhcMod (
   -- * Monad utilities
   , runGhcModT
   , withOptions
+  , dropSession
   -- * 'GhcMod' utilities
   , boot
   , browse
   , check
   , checkSyntax
   , debugInfo
+  , componentInfo
   , expandTemplate
   , info
   , lint
@@ -47,6 +56,13 @@ module Language.Haskell.GhcMod (
   -- * SymbolDb
   , loadSymbolDb
   , isOutdated
+  -- * Output
+  , gmPutStr
+  , gmErrStr
+  , gmPutStrLn
+  , gmErrStrLn
+  , gmUnsafePutStrLn
+  , gmUnsafeErrStrLn
   ) where
 
 import Language.Haskell.GhcMod.Boot
@@ -61,7 +77,10 @@ import Language.Haskell.GhcMod.Flag
 import Language.Haskell.GhcMod.Info
 import Language.Haskell.GhcMod.Lang
 import Language.Haskell.GhcMod.Lint
-import Language.Haskell.GhcMod.Monad
+import Language.Haskell.GhcMod.Logging
 import Language.Haskell.GhcMod.Modules
+import Language.Haskell.GhcMod.Monad
 import Language.Haskell.GhcMod.PkgDoc
 import Language.Haskell.GhcMod.Types
+import Language.Haskell.GhcMod.Target
+import Language.Haskell.GhcMod.Output

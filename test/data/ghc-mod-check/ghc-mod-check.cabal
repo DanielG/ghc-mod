@@ -15,13 +15,12 @@ build-type:          Simple
 cabal-version:       >=1.8
 
 library
-  -- exposed-modules:
-  -- other-modules:
+  HS-Source-Dirs:      lib
   build-depends:       base
   exposed-modules:     Data.Foo
 
 executable foo
   Main-Is:              main.hs
   GHC-Options:          -Wall
-  Build-Depends:        base >= 4 && < 5
+  Build-Depends:        base
                       , ghc-mod-check

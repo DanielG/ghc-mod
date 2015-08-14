@@ -4,11 +4,36 @@ ghc:
   - 7.6
   - 7.8
 
+sudo: false
+
+addons:
+  apt:
+    packages:
+    - zlib1g-dev
+
+cache:
+  apt: true
+  directories:
+  - ~/.cabal
+  - ~/.ghc
+
+before_cache:
+  - rm -f $HOME/.cabal/logs $HOME/.cabal/packages/*/build-reports.log
+
 install:
   - cabal update
-  - cabal install happy --constraint 'transformers <= 0.3.0.0'
+#  - ( $CABAL122 && cabal install cabal-install --constraint "Cabal >= 1.22" && ghc-pkg unregister Cabal ) || true
+  - echo $PATH
+  - which cabal
+  - if [ -n "$(cabal --version | grep 'Cabal library' | awk '{ print $3 }' | tail -n1 | sed -n '/^1.18/p')" ]; then cabal install cabal-install --constraint "Cabal == 1.18.* && > 1.18.0"; fi
+  - cabal install happy
   - happy --version
+#  - ls -lR ~/.ghc
+#  - ls -lR ~/.cabal
   - cabal install -j --only-dependencies --enable-tests
+  - git clone --depth=1 https://github.com/DanielG/cabal-helper.git
+  - cabal install cabal-helper/
+
 
 script:
   - touch ChangeLog # Create ChangeLog if we're not on the release branch
@@ -21,6 +46,7 @@ script:
   - if [ -n "$(ghc --version | awk '{ print $8 }' | sed -n '/^7.8/p')" ]; then export WERROR="--ghc-option=-Werror"; fi
   - cabal configure --enable-tests $WERROR
   - cabal build
+  - export ghc_mod_datadir=$PWD
   - cabal test
 
 matrix:

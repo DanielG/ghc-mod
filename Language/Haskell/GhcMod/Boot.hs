@@ -1,6 +1,7 @@
 module Language.Haskell.GhcMod.Boot where
 
 import Control.Applicative
+import Prelude
 import Language.Haskell.GhcMod.Browse
 import Language.Haskell.GhcMod.Flag
 import Language.Haskell.GhcMod.Lang
@@ -9,8 +10,9 @@ import Language.Haskell.GhcMod.Modules
 
 -- | Printing necessary information for front-end booting.
 boot :: IOish m => GhcModT m String
-boot =  concat <$> sequence [modules, languages, flags,
-                             concat <$> mapM browse preBrowsedModules]
+boot = concat <$> sequence ms
+  where
+    ms = [modules, languages, flags, concat <$> mapM browse preBrowsedModules]
 
 preBrowsedModules :: [String]
 preBrowsedModules = [

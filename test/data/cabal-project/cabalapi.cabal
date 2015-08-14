@@ -1,0 +1,67 @@
+Name:                   ghc-mod
+Version:                1.11.3
+Author:                 Kazu Yamamoto <kazu@iij.ad.jp>
+Maintainer:             Kazu Yamamoto <kazu@iij.ad.jp>
+License:                BSD3
+License-File:           LICENSE
+Homepage:               http://www.mew.org/~kazu/proj/ghc-mod/
+Synopsis:               Happy Haskell programming on Emacs/Vim
+Description:            This packages includes Elisp files
+			and a Haskell command, "ghc-mod".
+			"ghc*.el" enable completion of
+			Haskell symbols on Emacs.
+                        Flymake is also integrated.
+			"ghc-mod" is a backend of "ghc*.el".
+			It lists up all installed modules
+                        or extracts names of functions, classes,
+                        and data declarations.
+                        To use "ghc-mod" on Vim,
+                        see <https://github.com/eagletmt/ghcmod-vim> or
+                        <https://github.com/scrooloose/syntastic>
+Category:               Development
+Cabal-Version:          >= 1.6
+Build-Type:             Simple
+Data-Dir:               elisp
+Data-Files:             Makefile ghc.el ghc-func.el ghc-doc.el ghc-comp.el
+                        ghc-flymake.el ghc-command.el ghc-info.el
+                        ghc-ins-mod.el ghc-indent.el
+Executable ghc-mod
+  Main-Is:              GHCMod.hs
+  Other-Modules:        Browse
+                        CabalApi
+                        Cabal
+                        CabalDev
+                        Check
+                        ErrMsg
+                        Flag
+                        GHCApi
+                        GHCChoice
+                        Gap
+                        Info
+                        Lang
+                        Lint
+                        List
+                        Paths_ghc_mod
+                        Types
+  GHC-Options:          -Wall
+  Build-Depends:        base
+                      , Cabal >= 1.10
+                      , template-haskell
+
+Test-Suite spec
+  Main-Is:              Spec.hs
+  Hs-Source-Dirs:       test, .
+  Type:                 exitcode-stdio-1.0
+  Other-Modules:        Expectation
+                        BrowseSpec
+                        CabalApiSpec
+                        FlagSpec
+                        LangSpec
+                        LintSpec
+                        ListSpec
+  Build-Depends:        base
+                      , Cabal >= 1.10
+
+Source-Repository head
+  Type:                 git
+  Location:             git://github.com/kazu-yamamoto/ghc-mod.git

@@ -1,32 +1,26 @@
 module Language.Haskell.GhcMod.Modules (modules) where
 
-import Control.Applicative ((<$>))
-import Control.Exception (SomeException(..))
-import Data.List (nub, sort)
-import qualified GHC as G
+import Control.Arrow
+import Data.List
 import Language.Haskell.GhcMod.Convert
-import Language.Haskell.GhcMod.Monad
 import Language.Haskell.GhcMod.Types
-import Packages (pkgIdMap, exposedModules, sourcePackageId, display)
-import UniqFM (eltsUFM)
+import Language.Haskell.GhcMod.Monad
+import Language.Haskell.GhcMod.Gap ( listVisibleModuleNames
+                                   , lookupModulePackageInAllPackages
+                                   )
+
+import qualified GHC as G
 
 ----------------------------------------------------------------
 
 -- | Listing installed modules.
-modules :: IOish m => GhcModT m String
+modules :: (IOish m, GmEnv m, GmState m, GmLog m) => m String
 modules = do
-    opt <- options
-    convert opt . arrange opt <$> (getModules `G.gcatch` handler)
-  where
-    getModules = getExposedModules <$> G.getSessionDynFlags
-    getExposedModules = concatMap exposedModules'
-                      . eltsUFM . pkgIdMap . G.pkgState
-    exposedModules' p =
-        map G.moduleNameString (exposedModules p)
-    	`zip`
-        repeat (display $ sourcePackageId p)
-    arrange opt = nub . sort . map (dropPkgs opt)
-    dropPkgs opt (name, pkg)
-      | detailed opt = name ++ " " ++ pkg
-      | otherwise = name
-    handler (SomeException _) = return []
+  Options { detailed } <- options
+  df <- runGmPkgGhc G.getSessionDynFlags
+  let mns = listVisibleModuleNames df
+      pmnss = map (first moduleNameString) $ zip mns (modulePkg df `map` mns)
+  convert' $ nub [ if detailed then pkg ++ " " ++ mn else mn
+                 | (mn, pkgs) <- pmnss, pkg <- pkgs ]
+ where
+   modulePkg df = lookupModulePackageInAllPackages df
