@@ -99,8 +99,5 @@ setNoMaxRelevantBindings = id
 
 deferErrors :: DynFlags -> Ghc DynFlags
 deferErrors df = return $
-  Gap.setWarnTypedHoles $ Gap.setDeferTypeErrors $ setNoWarningFlags df
-
-deferErrorsAndHoles :: DynFlags -> Ghc DynFlags
-deferErrorsAndHoles df = return $
-  Gap.setDeferTypeErrors $ Gap.setDeferTypedHoles $ setNoWarningFlags df
+  Gap.setWarnTypedHoles $ Gap.setDeferTypedHoles $
+  Gap.setDeferTypeErrors $ setNoWarningFlags df

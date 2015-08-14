@@ -296,7 +296,7 @@ setDeferTypeErrors = id
 #endif
 
 setDeferTypedHoles :: DynFlags -> DynFlags
-#if __GLASGOW_HASKELL__ >= 708
+#if __GLASGOW_HASKELL__ >= 710
 setDeferTypedHoles dflag = gopt_set dflag Opt_DeferTypedHoles
 #else
 setDeferTypedHoles = id
