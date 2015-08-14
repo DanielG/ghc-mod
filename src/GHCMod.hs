@@ -411,7 +411,7 @@ legacyInteractiveLoop symdbreq world = do
         cmd = dropWhileEnd isSpace cmd'
         args = dropWhileEnd isSpace `map` args'
 
-    res <- case dropWhileEnd isSpace cmd of
+    res <- flip gcatches interactiveHandlers $ case dropWhileEnd isSpace cmd of
         "check"  -> checkSyntaxCmd [arg]
         "lint"   -> lintCmd [arg]
         "find"    -> do
@@ -435,6 +435,11 @@ legacyInteractiveLoop symdbreq world = do
 
     gmPutStr res >> gmPutStrLn "OK" >> liftIO (hFlush stdout)
     legacyInteractiveLoop symdbreq world
+ where
+   interactiveHandlers =
+          [ GHandler $ \e@(FatalError _) -> throw e
+          , GHandler $ \(SomeException e) -> gmErrStrLn (show e) >> return ""
+          ]
 
 ghcCommands :: IOish m => [String] -> GhcModT m ()
 ghcCommands []         = fatalError "No command given (try --help)"
