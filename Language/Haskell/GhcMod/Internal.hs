@@ -53,6 +53,9 @@ module Language.Haskell.GhcMod.Internal (
   , GmComponentType(..)
   , GmModuleGraph(..)
   , prepareCabalHelper
+  -- * Misc stuff
+  , GHandler(..)
+  , gcatches
   ) where
 
 import GHC.Paths (libdir)

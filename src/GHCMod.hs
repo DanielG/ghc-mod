@@ -23,7 +23,7 @@ import System.Directory (setCurrentDirectory, getAppUserDataDirectory,
                         removeDirectoryRecursive)
 import System.Environment (getArgs)
 import System.Exit (exitFailure)
-import System.IO (hPutStrLn, stdout, stderr, hSetEncoding, utf8, hFlush)
+import System.IO (stdout, hSetEncoding, utf8, hFlush)
 import System.Exit (exitSuccess)
 import Text.PrettyPrint
 import Prelude
@@ -327,20 +327,21 @@ data InteractiveOptions = InteractiveOptions {
       ghcModExtensions :: Bool
     }
 
-handler :: IO a -> IO a
-handler = flip catches $
-          [ Handler $ \(FatalError msg) -> exitError msg
-          , Handler $ \(InvalidCommandLine e) -> do
+handler :: IOish m => GhcModT m a -> GhcModT m a
+handler = flip gcatches $
+          [ GHandler $ \(FatalError msg) -> exitError msg
+          , GHandler $ \(InvalidCommandLine e) -> do
                 case e of
                   Left cmd ->
                       exitError $ "Usage for `"++cmd++"' command:\n\n"
                                   ++ (cmdUsage cmd usage) ++ "\n"
                                   ++ "ghc-mod: Invalid command line form."
                   Right msg -> exitError $ "ghc-mod: " ++ msg
+          , GHandler $ \(SomeException e) -> exitError $ "ghc-mod: " ++ show e
           ]
 
 main :: IO ()
-main = handler $ do
+main = do
     hSetEncoding stdout utf8
     args <- getArgs
     case parseGlobalArgs args of
@@ -348,7 +349,7 @@ main = handler $ do
       Right res -> progMain res
 
 progMain :: (Options,[String]) -> IO ()
-progMain (globalOptions,cmdArgs) = hndle $ runGhcModT globalOptions $ do
+progMain (globalOptions,cmdArgs) = hndle $ runGhcModT globalOptions $ handler $ do
     case globalCommands cmdArgs of
       Just s -> gmPutStr s
       Nothing -> ghcCommands cmdArgs
@@ -359,7 +360,7 @@ progMain (globalOptions,cmdArgs) = hndle $ runGhcModT globalOptions $ do
        Right _ ->
            return ()
        Left ed ->
-           exitError $ renderStyle ghcModStyle (gmeDoc ed)
+           exitError' globalOptions $ renderStyle ghcModStyle (gmeDoc ed)
 
 globalCommands :: [String] -> Maybe String
 globalCommands (cmd:_)
@@ -471,8 +472,12 @@ newtype InvalidCommandLine = InvalidCommandLine (Either String String)
     deriving (Show, Typeable)
 instance Exception InvalidCommandLine
 
-exitError :: String -> IO a
-exitError msg = hPutStrLn stderr (dropWhileEnd (=='\n') msg) >> exitFailure
+exitError :: IOish m => String -> GhcModT m a
+exitError msg = gmErrStrLn (dropWhileEnd (=='\n') msg) >> liftIO exitFailure
+
+exitError' :: Options -> String -> IO a
+exitError' opts msg =
+    gmUnsafeErrStrLn opts (dropWhileEnd (=='\n') msg) >> liftIO exitFailure
 
 fatalError :: String -> a
 fatalError s = throw $ FatalError $ "ghc-mod: " ++ s

@@ -61,6 +61,8 @@ module Language.Haskell.GhcMod (
   , gmErrStr
   , gmPutStrLn
   , gmErrStrLn
+  , gmUnsafePutStrLn
+  , gmUnsafeErrStrLn
   ) where
 
 import Language.Haskell.GhcMod.Boot

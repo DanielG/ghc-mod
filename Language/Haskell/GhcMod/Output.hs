@@ -22,6 +22,8 @@ module Language.Haskell.GhcMod.Output (
   , gmErrStr
   , gmPutStrLn
   , gmErrStrLn
+  , gmUnsafePutStrLn
+  , gmUnsafeErrStrLn
   , gmReadProcess
   , stdoutGateway
   ) where
@@ -60,20 +62,29 @@ toGmLines "" = GmLines GmPartial ""
 toGmLines s | isNewline (last s) = GmLines GmTerminated s
 toGmLines s = GmLines GmPartial s
 
-outputFns :: (GmEnv m, MonadIO m') => m (GmLines String -> m' (), GmLines String -> m' ())
+outputFns :: (GmEnv m, MonadIO m')
+          => m (GmLines String -> m' (), GmLines String -> m' ())
 outputFns = do
-  GhcModEnv {..} <- gmeAsk
-  let Options {..} = gmOptions
+  opts <- options
+  env <- gmeAsk
+  return $ outputFns' opts (gmOutput env)
 
-  let pfx f = withLines f
+outputFns' :: MonadIO m'
+           => Options
+           -> GmOutput
+           -> (GmLines String -> m' (), GmLines String -> m' ())
+outputFns' opts output  = let
+  Options {..} = opts
 
-  let outPfx, errPfx :: GmLines String -> GmLines String
-      (outPfx, errPfx) =
-          case linePrefix of
-            Nothing -> ( id, id )
-            Just (op, ep) -> ( fmap $ pfx (op++), fmap $ pfx (ep++) )
+  pfx f = withLines f
 
-  return $ case gmOutput of
+  outPfx, errPfx :: GmLines String -> GmLines String
+  (outPfx, errPfx) =
+      case linePrefix of
+        Nothing -> ( id, id )
+        Just (op, ep) -> ( fmap $ pfx (op++), fmap $ pfx (ep++) )
+ in
+  case output of
     GmOutputStdio  ->
         ( liftIO . putStr         . unGmLine . outPfx
         , liftIO . hPutStr stderr . unGmLine . errPfx)
@@ -94,6 +105,12 @@ gmErrStrLn = gmErrStr . (++"\n")
 gmErrStr str = do
   putErr <- snd `liftM` outputFns
   putErr $ toGmLines str
+
+-- | Only use these when you're sure there are no other writers on stdout
+gmUnsafePutStrLn, gmUnsafeErrStrLn
+    :: MonadIO m => Options -> String -> m ()
+gmUnsafePutStrLn opts = (fst $ outputFns' opts GmOutputStdio) . toGmLines
+gmUnsafeErrStrLn opts = (snd $ outputFns' opts GmOutputStdio) . toGmLines
 
 gmReadProcess :: GmEnv m => m (FilePath -> [String] -> String -> IO String)
 gmReadProcess = do
@@ -177,6 +194,6 @@ withForkWait async body = do
 
 processFailedException :: String -> String -> [String] -> Int -> IO a
 processFailedException fn exe args rv =
-      error $ concat [fn, ": ", exe, " "
+      error $ concat [ fn, ": ", exe, " "
                      , intercalate " " (map show args)
                      , " (exit " ++ show rv ++ ")"]
