@@ -26,6 +26,7 @@ import Language.Haskell.GhcMod.PathsAndFiles
 import Language.Haskell.GhcMod.Types
 import Language.Haskell.GhcMod.Utils
 import Language.Haskell.GhcMod.World (timedPackageCaches)
+import Language.Haskell.GhcMod.Output
 import Name (getOccString)
 import Module (moduleName)
 import System.Directory (doesFileExist, getModificationTime)
@@ -72,7 +73,8 @@ loadSymbolDb :: IOish m => GhcModT m SymbolDb
 loadSymbolDb = do
   ghcMod <- liftIO ghcModExecutable
   tmpdir <- cradleTempDir <$> cradle
-  file   <- liftIO $ chop <$> readProcess ghcMod ["dumpsym", tmpdir] ""
+  readProc <- gmReadProcess
+  file   <- liftIO $ chop <$> readProc ghcMod ["dumpsym", tmpdir] ""
   !db    <- M.fromAscList . map conv . lines <$> liftIO (readFile file)
   return $ SymbolDb
     { table             = db
