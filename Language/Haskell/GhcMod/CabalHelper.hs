@@ -20,6 +20,7 @@ module Language.Haskell.GhcMod.CabalHelper
   ( getComponents
   , getGhcMergedPkgOptions
   , getPackageDbStack
+  , prepareCabalHelper
   )
 #endif
   where
@@ -125,6 +126,14 @@ getComponents = chCached Cached {
                  , (a', c) <- lc
                  , a == a'
                  ]
+
+prepareCabalHelper :: (IOish m, GmEnv m, GmLog m) => m ()
+prepareCabalHelper = do
+  crdl <- cradle
+  let projdir = cradleRootDir crdl
+      distdir = projdir </> "dist"
+  readProc <- gmReadProcess
+  liftIO $ prepare readProc projdir distdir
 
 withCabal :: (IOish m, GmEnv m, GmLog m) => m a -> m a
 withCabal action = do

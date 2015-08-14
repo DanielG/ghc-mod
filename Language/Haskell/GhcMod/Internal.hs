@@ -52,6 +52,7 @@ module Language.Haskell.GhcMod.Internal (
   , GmComponent(..)
   , GmComponentType(..)
   , GmModuleGraph(..)
+  , prepareCabalHelper
   ) where
 
 import GHC.Paths (libdir)
@@ -65,6 +66,7 @@ import Language.Haskell.GhcMod.Monad
 import Language.Haskell.GhcMod.Types
 import Language.Haskell.GhcMod.Utils
 import Language.Haskell.GhcMod.World
+import Language.Haskell.GhcMod.CabalHelper
 
 -- | Obtaining the directory for ghc system libraries.
 ghcLibDir :: FilePath

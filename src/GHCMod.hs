@@ -371,6 +371,7 @@ globalCommands _       = Nothing
 legacyInteractive :: IOish m => GhcModT m ()
 legacyInteractive = do
     opt <- options
+    prepareCabalHelper
     symdbreq <- liftIO $ newSymDbReq opt
     world <- getCurrentWorld
     legacyInteractiveLoop symdbreq world
