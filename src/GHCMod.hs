@@ -463,7 +463,7 @@ ghcCommands (cmd:args) = do
      "dumpsym" -> dumpSymbolCmd
      "boot"    -> bootCmd
      "legacy-interactive" -> legacyInteractiveCmd
-     "nuke-caches" -> nukeCachesCmd
+--     "nuke-caches" -> nukeCachesCmd
      _         -> fatalError $ "unknown command: `" ++ cmd ++ "'"
 
 newtype FatalError = FatalError String deriving (Show, Typeable)
