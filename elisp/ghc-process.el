@@ -10,6 +10,9 @@
 
 (require 'ghc-func)
 
+(defvar ghc-debug-options nil)
+;; (setq ghc-debug-options '("-v9"))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defvar ghc-process-running nil)
@@ -68,7 +71,8 @@
    (t cpro)))
 
 (defun ghc-start-process (name buf)
-  (let* ((opts (append '("-b" "\n" "-l" "--line-prefix=O: ,E: ")
+  (let* ((opts (append ghc-debug-options
+		       '("-b" "\n" "-l" "--line-prefix=O: ,E: ")
 		       (ghc-make-ghc-options)
 		       '("legacy-interactive")))
 	 (pro (apply 'start-file-process name buf ghc-command opts)))
