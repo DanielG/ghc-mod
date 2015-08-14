@@ -119,7 +119,7 @@ foo xs = foldr bar id xs
     bar = (:)
 |<
 
-C-xC-s highlights the 2nd line. C-c? displays the following:
+C-xC-s highlights the 2nd line. M-? displays the following:
 
 >|
 Couldn't match type `[a -> a]' with `a -> a'
@@ -139,7 +139,7 @@ foo xs = foldr _bar id xs
     bar = (:)
 |<
 
-C-c? displays:
+M-? displays:
 
 >|
 Found hole `_bar' with type: (a -> a) -> (a -> a) -> a -> a
