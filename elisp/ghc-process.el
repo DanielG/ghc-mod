@@ -23,6 +23,8 @@
 
 (defvar ghc-command "ghc-mod")
 
+(defvar ghc-error-buffer "*GHC Error*")
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defun ghc-get-project-root ()
@@ -66,7 +68,9 @@
    (t cpro)))
 
 (defun ghc-start-process (name buf)
-  (let* ((opts (append '("legacy-interactive" "-b" "\n" "-l" "-s") (ghc-make-ghc-options)))
+  (let* ((opts (append '("-b" "\n" "-l" "--line-prefix=O: ,E: ")
+		       (ghc-make-ghc-options)
+		       '("legacy-interactive")))
 	 (pro (apply 'start-file-process name buf ghc-command opts)))
     (set-process-filter pro 'ghc-process-filter)
     (set-process-sentinel pro 'ghc-process-sentinel)
@@ -74,29 +78,65 @@
     pro))
 
 (defun ghc-process-filter (process string)
-  (let ((pbuf (process-buffer process)))
+  (let* ((pbuf (process-buffer process))
+	 (tbufname (concat " tmp " (buffer-name pbuf)))
+	 tbuf)
     (if (not (get-buffer pbuf))
 	(setq ghc-process-running nil) ;; just in case
-      (ghc-with-current-buffer (process-buffer process)
-        (goto-char (point-max))
-	(insert string)
+      (ghc-with-current-buffer pbuf
+	(when ghc-debug
+	  (ghc-with-debug-buffer
+	   (insert string)))
+	(with-current-buffer (get-buffer-create tbufname)
+	  (setq tbuf (current-buffer))
+	  (goto-char (point-max))
+	  (insert string)
+	  (goto-char (point-min))
+	  (let ((cont t) end out)
+	    (while (and cont (not (eobp)))
+	      (cond
+	       ((looking-at "^O: ")
+		(setq out t))
+	       ((looking-at "^E: ")
+		(setq out nil))
+	       (t
+		(setq cont nil)))
+	      (when cont
+		(forward-line)
+		(unless (bolp) (setq cont nil)))
+	      (when cont
+		(delete-region 1 4)
+		(setq end (point))
+		(if out
+		    (with-current-buffer pbuf
+		      (goto-char (point-max))
+		      (insert-buffer-substring tbuf 1 end))
+		  (with-current-buffer (get-buffer-create ghc-error-buffer)
+		    (setq buffer-read-only t)
+		    (let* ((buffer-read-only nil)
+			   (inhibit-read-only t)
+			   (cbuf (current-buffer))
+			   cwin)
+		      (unless (get-buffer-window cbuf) (display-buffer cbuf))
+		      (setq cwin (get-buffer-window cbuf))
+		      (goto-char (point-max))
+		      (insert-buffer-substring tbuf 1 end)
+		      (set-buffer-modified-p nil)
+		      (unless (pos-visible-in-window-p (point) cwin)
+			(with-selected-window cwin
+			  (scroll-up 2))))
+		    (redisplay)))
+		(delete-region 1 end)))))
+	(goto-char (point-max))
 	(forward-line -1)
 	(cond
 	 ((looking-at "^OK$")
 	  (if ghc-process-hook (funcall ghc-process-hook))
 	  (goto-char (point-min))
 	  (funcall ghc-process-callback 'ok)
-	  (when ghc-debug
-	    (let ((cbuf (current-buffer)))
-	      (ghc-with-debug-buffer
-	       (insert-buffer-substring cbuf))))
 	  (setq ghc-process-running nil))
 	 ((looking-at "^NG ")
 	  (funcall ghc-process-callback 'ng)
-	  (when ghc-debug
-	    (let ((cbuf (current-buffer)))
-	      (ghc-with-debug-buffer
-	       (insert-buffer-substring cbuf))))
 	  (setq ghc-process-running nil)))))))
 
 (defun ghc-process-sentinel (process event)
