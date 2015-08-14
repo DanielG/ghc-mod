@@ -119,13 +119,11 @@
 			   cwin)
 		      (unless (get-buffer-window cbuf) (display-buffer cbuf))
 		      (setq cwin (get-buffer-window cbuf))
-		      (goto-char (point-max))
-		      (insert-buffer-substring tbuf 1 end)
-		      (set-buffer-modified-p nil)
-		      (unless (pos-visible-in-window-p (point) cwin)
-			(with-selected-window cwin
-			  (scroll-up 2))))
-		    (redisplay)))
+		      (with-selected-window cwin
+			(goto-char (point-max))
+			(insert-buffer-substring tbuf 1 end)
+			(set-buffer-modified-p nil)
+			(redisplay)))))
 		(delete-region 1 end)))))
 	(goto-char (point-max))
 	(forward-line -1)
