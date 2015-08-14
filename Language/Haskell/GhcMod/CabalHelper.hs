@@ -133,7 +133,7 @@ prepareCabalHelper = do
   let projdir = cradleRootDir crdl
       distdir = projdir </> "dist"
   readProc <- gmReadProcess
-  liftIO $ prepare readProc projdir distdir
+  withCabal $ liftIO $ prepare readProc projdir distdir
 
 withCabal :: (IOish m, GmEnv m, GmLog m) => m a -> m a
 withCabal action = do
