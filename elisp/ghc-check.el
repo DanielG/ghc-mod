@@ -65,7 +65,8 @@ nil            does not display errors/warnings.
 (defun ghc-check-syntax ()
   (interactive)
   ;; Only check syntax of visible buffers
-  (when (and (file-exists-p (buffer-file-name))
+  (when (and (buffer-file-name)
+	     (file-exists-p (buffer-file-name))
 	     (get-buffer-window (current-buffer) t))
     (with-timeout
         (10 (error "ghc process may have hung or exited with an error"))
