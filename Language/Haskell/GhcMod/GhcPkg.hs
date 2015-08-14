@@ -4,6 +4,7 @@ module Language.Haskell.GhcMod.GhcPkg (
   , ghcPkgDbStackOpts
   , ghcDbStackOpts
   , ghcDbOpt
+  , getPackageDbStack
   , getPackageCachePaths
   ) where
 
@@ -58,18 +59,23 @@ ghcDbOpt (PackageDb pkgDb)
 
 ----------------------------------------------------------------
 
-getPackageCachePaths :: IOish m => FilePath -> GhcModT m [FilePath]
-getPackageCachePaths sysPkgCfg = do
+getPackageDbStack :: IOish m => GhcModT m [GhcPkgDb]
+getPackageDbStack = do
   crdl <- cradle
-  pkgDbStack <- case cradleProjectType crdl of
+  mCusPkgStack <- getCustomPkgDbStack
+  stack <- case cradleProjectType crdl of
     PlainProject ->
         return [GlobalDb, UserDb]
     SandboxProject -> do
         Just db <- liftIO $ getSandboxDb $ cradleRootDir crdl
         return $ [GlobalDb, db]
     CabalProject ->
-        getPackageDbStack
+        getCabalPackageDbStack
+  return $ fromMaybe stack mCusPkgStack
 
+getPackageCachePaths :: IOish m => FilePath -> GhcModT m [FilePath]
+getPackageCachePaths sysPkgCfg = do
+  pkgDbStack <- getPackageDbStack
   catMaybes <$> (liftIO . resolvePackageConfig sysPkgCfg) `mapM` pkgDbStack
 
 -- TODO: use PkgConfRef

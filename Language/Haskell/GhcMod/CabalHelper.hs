@@ -19,7 +19,8 @@ module Language.Haskell.GhcMod.CabalHelper
 #ifndef SPEC
   ( getComponents
   , getGhcMergedPkgOptions
-  , getPackageDbStack
+  , getCabalPackageDbStack
+  , getCustomPkgDbStack
   , prepareCabalHelper
   )
 #endif
@@ -60,25 +61,8 @@ getGhcMergedPkgOptions = chCached Cached {
     return ([setupConfigPath], opts)
  }
 
-parseCustomPackageDb :: String -> [GhcPkgDb]
-parseCustomPackageDb src = map parsePkgDb $ filter (not . null) $ lines src
- where
-   parsePkgDb "global" = GlobalDb
-   parsePkgDb "user" = UserDb
-   parsePkgDb s = PackageDb s
-
-getCustomPkgDbStack :: (IOish m, GmEnv m) => m (Maybe [GhcPkgDb])
-getCustomPkgDbStack = do
-    mCusPkgDbFile <- liftIO . (traverse readFile <=< findCustomPackageDbFile) . cradleRootDir =<< cradle
-    return $ parseCustomPackageDb <$> mCusPkgDbFile
-
-getPackageDbStack :: (IOish m, GmEnv m, GmState m, GmLog m) => m [GhcPkgDb]
-getPackageDbStack = do
-    mCusPkgStack <- getCustomPkgDbStack
-    flip fromMaybe mCusPkgStack <$> getPackageDbStack'
-
-getPackageDbStack' :: (IOish m, GmEnv m, GmState m, GmLog m) => m [GhcPkgDb]
-getPackageDbStack' = chCached Cached {
+getCabalPackageDbStack :: (IOish m, GmEnv m, GmState m, GmLog m) => m [GhcPkgDb]
+getCabalPackageDbStack = chCached Cached {
   cacheLens = Just (lGmcPackageDbStack . lGmCaches),
   cacheFile = pkgDbStackCacheFile,
   cachedAction = \ _tcf (progs, rootdir, distdir, _) _ma -> do
@@ -135,6 +119,18 @@ prepareCabalHelper = do
   readProc <- gmReadProcess
   when (cradleProjectType crdl == CabalProject) $
        withCabal $ liftIO $ prepare readProc projdir distdir
+
+parseCustomPackageDb :: String -> [GhcPkgDb]
+parseCustomPackageDb src = map parsePkgDb $ filter (not . null) $ lines src
+ where
+   parsePkgDb "global" = GlobalDb
+   parsePkgDb "user" = UserDb
+   parsePkgDb s = PackageDb s
+
+getCustomPkgDbStack :: (IOish m, GmEnv m) => m (Maybe [GhcPkgDb])
+getCustomPkgDbStack = do
+    mCusPkgDbFile <- liftIO . (traverse readFile <=< findCustomPackageDbFile) . cradleRootDir =<< cradle
+    return $ parseCustomPackageDb <$> mCusPkgDbFile
 
 withCabal :: (IOish m, GmEnv m, GmLog m) => m a -> m a
 withCabal action = do

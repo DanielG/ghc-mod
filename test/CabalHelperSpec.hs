@@ -91,6 +91,6 @@ spec = do
                 (s, s') <- runD $ do
                     Just stack <- getCustomPkgDbStack
                     withCabal $ do
-                        stack' <- getPackageDbStack'
+                        stack' <- getCabalPackageDbStack
                         return (stack, stack')
                 s' `shouldBe` s

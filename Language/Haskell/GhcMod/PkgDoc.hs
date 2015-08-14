@@ -4,7 +4,6 @@ import Language.Haskell.GhcMod.Types
 import Language.Haskell.GhcMod.GhcPkg
 import Language.Haskell.GhcMod.Monad
 import Language.Haskell.GhcMod.Utils
-import Language.Haskell.GhcMod.CabalHelper
 
 import Control.Applicative
 import Prelude
