@@ -56,7 +56,9 @@ isOutdated db =
 -- | Looking up 'SymbolDb' with 'Symbol' to \['ModuleString'\]
 --   which will be concatenated. 'loadSymbolDb' is called internally.
 findSymbol :: IOish m => Symbol -> GhcModT m String
-findSymbol sym = loadSymbolDb >>= lookupSymbol sym
+findSymbol sym = do
+  tmpdir <- cradleTempDir <$> cradle
+  loadSymbolDb tmpdir >>= lookupSymbol sym
 
 -- | Looking up 'SymbolDb' with 'Symbol' to \['ModuleString'\]
 --   which will be concatenated.
@@ -69,12 +71,11 @@ lookupSym sym db = M.findWithDefault [] sym $ table db
 ---------------------------------------------------------------
 
 -- | Loading a file and creates 'SymbolDb'.
-loadSymbolDb :: IOish m => GhcModT m SymbolDb
-loadSymbolDb = do
+loadSymbolDb :: IOish m => FilePath -> GhcModT m SymbolDb
+loadSymbolDb dir = do
   ghcMod <- liftIO ghcModExecutable
-  tmpdir <- cradleTempDir <$> cradle
   readProc <- gmReadProcess
-  file   <- liftIO $ chop <$> readProc ghcMod ["dumpsym", tmpdir] ""
+  file   <- liftIO $ chop <$> readProc ghcMod ["dumpsym", dir] ""
   !db    <- M.fromAscList . map conv . lines <$> liftIO (readFile file)
   return $ SymbolDb
     { table             = db

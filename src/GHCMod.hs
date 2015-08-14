@@ -373,7 +373,8 @@ legacyInteractive :: IOish m => GhcModT m ()
 legacyInteractive = do
     opt <- options
     prepareCabalHelper
-    symdbreq <- liftIO $ newSymDbReq opt
+    tmpdir <- cradleTempDir <$> cradle
+    symdbreq <- liftIO $ newSymDbReq opt tmpdir
     world <- getCurrentWorld
     legacyInteractiveLoop symdbreq world
 

@@ -20,9 +20,9 @@ import Language.Haskell.GhcMod.Internal hiding (MonadIO,liftIO)
 type SymDbReqAction = (Either GhcModError SymbolDb, GhcModLog)
 data SymDbReq = SymDbReq (IORef (Async SymDbReqAction)) (IO SymDbReqAction)
 
-newSymDbReq :: Options -> IO SymDbReq
-newSymDbReq opt = do
-    let act = runGhcModT opt loadSymbolDb
+newSymDbReq :: Options -> FilePath -> IO SymDbReq
+newSymDbReq opt dir = do
+    let act = runGhcModT opt $ loadSymbolDb dir
     req <- async act
     ref <- newIORef req
     return $ SymDbReq ref act
