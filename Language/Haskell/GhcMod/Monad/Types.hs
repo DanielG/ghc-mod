@@ -105,7 +105,6 @@ import qualified Control.Monad.IO.Class as MTL
 import Data.Monoid (Monoid)
 #endif
 
-import Data.Map (Map, empty)
 import qualified Data.Map as M
 import Data.Maybe
 import Data.Monoid

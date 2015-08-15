@@ -53,7 +53,6 @@ import Data.Map (Map)
 import qualified Data.Map  as Map
 import Data.Set (Set)
 import qualified Data.Set as Set
-import Data.List (nubBy)
 import Data.Function (on)
 import Distribution.Helper
 import Prelude hiding ((.))
