@@ -82,6 +82,8 @@ Extra-Source-Files:     ChangeLog
                         test/data/cabal-preprocessors/*.hs
                         test/data/cabal-preprocessors/*.hsc
                         test/data/file-mapping/*.hs
+                        test/data/file-mapping/preprocessor/*.hs
+                        test/data/file-mapping/lhs/*.lhs
 
 Library
   Default-Language:     Haskell2010
