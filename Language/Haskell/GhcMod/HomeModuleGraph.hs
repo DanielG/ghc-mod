@@ -44,7 +44,6 @@ import Control.Arrow ((&&&))
 import Control.Applicative
 import Control.Monad
 import Control.Monad.Trans.Maybe (MaybeT(..), runMaybeT)
-import Control.Monad.Trans (lift)
 import Control.Monad.State.Strict (execStateT)
 import Control.Monad.State.Class
 import Data.Maybe
@@ -56,7 +55,6 @@ import qualified Data.Set as Set
 import System.FilePath
 import System.Directory
 import System.IO
-import System.IO.Temp
 import Prelude
 
 import Language.Haskell.GhcMod.Logging
