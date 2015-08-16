@@ -126,14 +126,14 @@ spec = do
               mapM_ (uncurry loadMappedFile) fm
               checkSyntax ["File.hs"]
             res `shouldBe` "File.hs:3:1:Warning: Top-level binding with no type signature: main :: IO ()\n"
-        it "checks in-memory file if one is specified and outputs original filename" $ do
+        it "doesn't check in-memory file" $ do
           withDirectory_ "test/data/file-mapping/preprocessor" $ do
             src <- readFile "File_Redir.hs"
             let fm = [("File.hs", MemoryMapping $ Just src)]
             res <- run defaultOptions $ do
               mapM_ (uncurry loadMappedFile) fm
               checkSyntax ["File.hs"]
-            res `shouldBe` "File.hs:3:1:Warning: Top-level binding with no type signature: main :: IO ()\n"
+            res `shouldBe` "buffer needs preprocesing; interactive check disabled\n"
         it "lints redirected file if one is specified and outputs original filename" $ do
           withDirectory_ "test/data/file-mapping/preprocessor" $ do
             res <- runD $ do
