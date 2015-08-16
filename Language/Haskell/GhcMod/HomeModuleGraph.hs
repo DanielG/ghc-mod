@@ -44,6 +44,7 @@ import Control.Arrow ((&&&))
 import Control.Applicative
 import Control.Monad
 import Control.Monad.Trans.Maybe (MaybeT(..), runMaybeT)
+import Control.Monad.Trans (lift)
 import Control.Monad.State.Strict (execStateT)
 import Control.Monad.State.Class
 import Data.Maybe
@@ -62,7 +63,7 @@ import Language.Haskell.GhcMod.Logging
 import Language.Haskell.GhcMod.Logger
 import Language.Haskell.GhcMod.Monad.Types
 import Language.Haskell.GhcMod.Types
-import Language.Haskell.GhcMod.Utils (getMappedFileSource)
+import Language.Haskell.GhcMod.Utils (withMappedFile)
 import Language.Haskell.GhcMod.Gap (parseModuleHeader)
 
 -- | Turn module graph into a graphviz dot file
@@ -247,19 +248,9 @@ preprocessFile :: (IOish m, GmEnv m, GmState m) =>
   HscEnv -> FilePath -> m (Either [String] ([String], (DynFlags, FilePath)))
 preprocessFile env file =
   withLogger' env $ \setDf -> do
-    src <- runMaybeT $ getMappedFileSource file
-    let env' = env { hsc_dflags = setDf (hsc_dflags env) }
-    maybe
-      (liftIO $ preprocess env' (file, Nothing))
-      (preprocessWithTemp env' file)
-      src
-  where
-    preprocessWithTemp env' fn src = do
-      tmpdir <- cradleTempDir <$> cradle
-      liftIO $ withTempFile tmpdir fn $ \fn' hndl -> do
-        hPutStr hndl src
-        hClose hndl
-        preprocess env' (fn', Nothing)
+    withMappedFile file $ \fn -> do
+      let env' = env { hsc_dflags = setDf (hsc_dflags env) }
+      liftIO $ preprocess env' (fn, Nothing)
 
 fileModuleName :: (IOish m, GmEnv m, GmState m) =>
   HscEnv -> FilePath -> m (Either [String] (Maybe ModuleName))
@@ -269,11 +260,12 @@ fileModuleName env fn = do
     case ep of
       Left errs -> do
         return $ Left errs
-      Right (_warns, (dflags, procdFile)) -> handler $ do
+      Right (_warns, (dflags, procdFile)) -> leftM (errBagToStrList env) =<< handler (do
         src <- readFile procdFile
         case parseModuleHeader src dflags procdFile of
-          Left errs -> do
-            return $ Left $ errBagToStrList env errs
+          Left errs -> return $ Left errs
           Right (_, lmdl) -> do
             let HsModule {..} = unLoc lmdl
-            return $ Right $ unLoc <$> hsmodName
+            return $ Right $ unLoc <$> hsmodName)
+  where
+    leftM f = either (return . Left <=< f) (return . Right)

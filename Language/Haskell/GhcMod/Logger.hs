@@ -108,12 +108,16 @@ withLogger' env action = do
 
     return ((,) ls <$> a)
 
-errBagToStrList :: HscEnv -> Bag ErrMsg -> [String]
+errBagToStrList :: (Functor m, GmState m, GmEnv m) => HscEnv -> Bag ErrMsg -> m [String]
 errBagToStrList env errs = let
     dflags = hsc_dflags env
     pu = icPrintUnqual dflags (hsc_IC env)
     st = mkUserStyle pu AllTheWay
- in runReader (errsToStr (bagToList errs)) GmPprEnv{gpeDynFlags=dflags, gpePprStyle=st}
+ in do
+   rfm <- mkRevRedirMapFunc
+   return $ runReader
+    (errsToStr (bagToList errs))
+    GmPprEnv{gpeDynFlags=dflags, gpePprStyle=st, gpeMapFile=rfm}
 
 ----------------------------------------------------------------
 

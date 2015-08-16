@@ -274,8 +274,8 @@ globalArgSpec =
       , option "" ["map-file"] "Redirect one file to another, --map-file \"file1.hs=file2.hs\"" $
                reqArg "OPT" $ \g o ->
                   let m = case second (drop 1) $ span (/='=') g of
-                            (s,"") -> (s, MemoryMapping Nothing)
-                            (f,t)  -> (f, RedirectedMapping t)
+                            (s,"") -> (s, Nothing)
+                            (f,t)  -> (f, Just t)
                   in
                   Right $ o { fileMappings = m : fileMappings o }
 
@@ -359,16 +359,10 @@ main = do
 
 progMain :: (Options,[String]) -> IO ()
 progMain (globalOptions,cmdArgs) = hndle $ runGhcModT globalOptions $ handler $ do
-    let
-      loadMMappedFiles from (MemoryMapping Nothing) = do
-          src <- liftIO getFileSourceFromStdin
-          return (from, MemoryMapping $ Just src)
-      loadMMappedFiles from x = return (from, x)
-    fileMappings' <- forM (reverse $ fileMappings globalOptions) $ uncurry loadMMappedFiles
     case globalCommands cmdArgs of
       Just s -> gmPutStr s
       Nothing -> do
-        mapM_ (uncurry loadMappedFile) fileMappings'
+        forM_ (reverse $ fileMappings globalOptions) $ uncurry loadMMappedFiles
         ghcCommands cmdArgs
  where
    hndle action = do
@@ -378,6 +372,10 @@ progMain (globalOptions,cmdArgs) = hndle $ runGhcModT globalOptions $ handler $ 
            return ()
        Left ed ->
            exitError' globalOptions $ renderStyle ghcModStyle (gmeDoc ed)
+   loadMMappedFiles from (Just to) = loadMappedFile from to
+   loadMMappedFiles from (Nothing) = do
+       src <- liftIO getFileSourceFromStdin
+       loadMappedFileSource from src
 
 globalCommands :: [String] -> Maybe String
 globalCommands (cmd:_)
@@ -447,7 +445,7 @@ legacyInteractiveLoop symdbreq world = do
         "browse" -> browseCmd args
 
         "map-file"   ->  liftIO getFileSourceFromStdin
-                     >>= loadMappedFile arg . MemoryMapping . Just
+                     >>= loadMappedFileSource arg
                      >>  return ""
 
         "unmap-file" ->  unloadMappedFile arg

@@ -26,25 +26,23 @@ module Language.Haskell.GhcMod.Utils (
 import Control.Applicative
 import Data.Char
 import qualified Data.Map as M
-import Data.Maybe (mapMaybe, fromMaybe)
+import Data.Maybe (fromMaybe)
 import Exception
 import Language.Haskell.GhcMod.Error
 import Language.Haskell.GhcMod.Types
 import Language.Haskell.GhcMod.Monad.Types
 import System.Directory (getCurrentDirectory, setCurrentDirectory, doesFileExist,
-                         getTemporaryDirectory, canonicalizePath, removeFile)
+                         getTemporaryDirectory, canonicalizePath)
 import System.Environment
 import System.FilePath (splitDrive, takeDirectory, takeFileName, pathSeparators,
                         (</>), makeRelative)
-import System.IO.Temp (createTempDirectory, openTempFile)
-import System.IO (hPutStr, hClose)
+import System.IO.Temp (createTempDirectory)
 import System.Process (readProcess)
 import Text.Printf
 
 import Paths_ghc_mod (getLibexecDir)
 import Utils
 import Prelude
-import Control.Monad.Trans.Maybe
 
 -- dropWhileEnd is not provided prior to base 4.5.0.0.
 dropWhileEnd :: (a -> Bool) -> [a] -> [a]
@@ -167,44 +165,26 @@ withMappedFile :: (IOish m, GmState m, GmEnv m) =>
                   forall a. FilePath -> (FilePath -> m a) -> m a
 withMappedFile file action = getCanonicalFileNameSafe file >>= lookupMMappedFile >>= runWithFile
   where
-    runWithFile (Just (RedirectedMapping to)) = action to
-    runWithFile (Just (MemoryMapping (Just src))) = do
-      crdl <- cradle
-      (fp,hndl) <- liftIO $ openTempFile (cradleTempDir crdl) (takeFileName file)
-      liftIO $ hPutStr hndl src
-      liftIO $ hClose hndl
-      result <- action fp
-      liftIO $ removeFile fp
-      return result
+    runWithFile (Just to) = action $ fmPath to
     runWithFile _ = action file
 
 getCanonicalFileNameSafe :: (IOish m, GmEnv m) => FilePath -> m FilePath
 getCanonicalFileNameSafe fn = do
   crdl <- cradle
-  let ccfn = cradleCurrentDir crdl </> fn
+  let ccfn = cradleRootDir crdl </> fn
   fex <- liftIO $ doesFileExist ccfn
   if fex
     then liftIO $ canonicalizePath ccfn
     else return ccfn
 
-getMappedFileSource :: (IOish m, GmEnv m, GmState m) => FilePath -> MaybeT m String
-getMappedFileSource fn = do
-  mf <- MaybeT $ getCanonicalFileNameSafe fn >>= lookupMMappedFile
-  case mf of
-    RedirectedMapping fn' -> liftIO $ readFile fn'
-    MemoryMapping (Just src) -> return src
-    _ -> mzero
-
 mkRevRedirMapFunc :: (Functor m, GmState m, GmEnv m) => m (FilePath -> FilePath)
 mkRevRedirMapFunc = do
-  rm <- M.fromList <$> mapMaybe (uncurry mf) <$> M.toList <$> getMMappedFiles
+  rm <- M.fromList <$> map (uncurry mf) <$> M.toList <$> getMMappedFiles
   crdl <- cradle
   return $ \key ->
     fromMaybe key
     $ makeRelative (cradleRootDir crdl)
     <$> M.lookup key rm
   where
-    mf :: FilePath -> FileMapping -> Maybe (FilePath, FilePath)
-    mf from (RedirectedMapping to)
-           = Just (to, from)
-    mf _ _ = Nothing
+    mf :: FilePath -> FileMapping -> (FilePath, FilePath)
+    mf from to = (fmPath to, from)

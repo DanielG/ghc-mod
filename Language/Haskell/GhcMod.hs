@@ -66,6 +66,7 @@ module Language.Haskell.GhcMod (
   , gmUnsafeErrStrLn
   -- * FileMapping
   , loadMappedFile
+  , loadMappedFileSource
   , unloadMappedFile
   ) where
 

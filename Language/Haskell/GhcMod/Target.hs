@@ -151,7 +151,7 @@ runGmlTWith efnmns' mdf wrapper action = do
 
     let (fns, mns) = partitionEithers efnmns'
         ccfns = map (cradleCurrentDir crdl </>) fns
-    cfns <- liftIO $ mapM canonicalizePath ccfns
+    cfns <- mapM getCanonicalFileNameSafe ccfns
     let serfnmn = Set.fromList $ map Right mns ++ map Left cfns
     opts <- targetGhcOptions crdl serfnmn
     let opts' = opts ++ ["-O0"] ++ ghcUserOptions

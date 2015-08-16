@@ -69,8 +69,7 @@ data OutputStyle = LispStyle  -- ^ S expression style.
 -- | The type for line separator. Historically, a Null string is used.
 newtype LineSeparator = LineSeparator String deriving (Show)
 
-data FileMapping =  RedirectedMapping FilePath
-                  | MemoryMapping (Maybe String)
+data FileMapping =  FileMapping {fmPath :: FilePath, fmTemp :: Bool}
                   deriving Show
 
 type FileMappingMap = Map FilePath FileMapping
@@ -99,7 +98,7 @@ data Options = Options {
   -- | If 'True', 'browse' will return fully qualified name
   , qualified     :: Bool
   , hlintOpts     :: [String]
-  , fileMappings  :: [(FilePath,FileMapping)]
+  , fileMappings  :: [(FilePath, Maybe FilePath)]
   } deriving (Show)
 
 -- | A default 'Options'.
