@@ -19,11 +19,9 @@ import System.Directory
 import Control.Monad.Trans.Maybe
 import GHC
 import Control.Monad
-import Control.Monad.Trans (lift)
 
 loadMappedFile :: IOish m => FilePath -> FilePath -> GhcModT m ()
-loadMappedFile from to =
-  getCanonicalFileNameSafe from >>= (`addMMappedFile` FileMapping to False)
+loadMappedFile from to = loadMappedFile' from to False
 
 loadMappedFileSource :: IOish m => FilePath -> String -> GhcModT m ()
 loadMappedFileSource from src = do
@@ -33,7 +31,13 @@ loadMappedFileSource from src = do
     hPutStr h src
     hClose h
     return fn
-  getCanonicalFileNameSafe from >>= (`addMMappedFile` FileMapping to True)
+  loadMappedFile' from to True
+
+loadMappedFile' :: IOish m => FilePath -> FilePath -> Bool -> GhcModT m ()
+loadMappedFile' from to isTemp = do
+  cfn <- getCanonicalFileNameSafe from
+  unloadMappedFile' cfn
+  addMMappedFile cfn (FileMapping to isTemp)
 
 mapFile :: (IOish m, GmState m, GhcMonad m, GmEnv m) =>
             HscEnv -> Target -> m Target
@@ -54,8 +58,10 @@ mkMappedTarget _ _ taoc (Just to) =
 mkMappedTarget _ tid taoc _ = return $ mkTarget tid taoc Nothing
 
 unloadMappedFile :: IOish m => FilePath -> GhcModT m ()
-unloadMappedFile what = void $ runMaybeT $ do
-  cfn <- lift $ getCanonicalFileNameSafe what
+unloadMappedFile = getCanonicalFileNameSafe >=> unloadMappedFile'
+
+unloadMappedFile' :: IOish m => FilePath -> GhcModT m ()
+unloadMappedFile' cfn = void $ runMaybeT $ do
   fm <- MaybeT $ lookupMMappedFile cfn
   liftIO $ when (fmTemp fm) $ removeFile (fmPath fm)
   delMMappedFile cfn
