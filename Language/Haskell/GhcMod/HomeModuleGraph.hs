@@ -54,12 +54,15 @@ import Data.Set (Set)
 import qualified Data.Set as Set
 import System.FilePath
 import System.Directory
+import System.IO
+import System.IO.Temp
 import Prelude
 
 import Language.Haskell.GhcMod.Logging
 import Language.Haskell.GhcMod.Logger
 import Language.Haskell.GhcMod.Monad.Types
 import Language.Haskell.GhcMod.Types
+import Language.Haskell.GhcMod.Utils (getMappedFileSource)
 import Language.Haskell.GhcMod.Gap (parseModuleHeader)
 
 -- | Turn module graph into a graphviz dot file
@@ -244,8 +247,19 @@ preprocessFile :: (IOish m, GmEnv m, GmState m) =>
   HscEnv -> FilePath -> m (Either [String] ([String], (DynFlags, FilePath)))
 preprocessFile env file =
   withLogger' env $ \setDf -> do
+    src <- runMaybeT $ getMappedFileSource file
     let env' = env { hsc_dflags = setDf (hsc_dflags env) }
-    liftIO $ preprocess env' (file, Nothing)
+    maybe
+      (liftIO $ preprocess env' (file, Nothing))
+      (preprocessWithTemp env' file)
+      src
+  where
+    preprocessWithTemp env' fn src = do
+      tmpdir <- cradleTempDir <$> cradle
+      liftIO $ withTempFile tmpdir fn $ \fn' hndl -> do
+        hPutStr hndl src
+        hClose hndl
+        preprocess env' (fn', Nothing)
 
 fileModuleName :: (IOish m, GmEnv m, GmState m) =>
   HscEnv -> FilePath -> m (Either [String] (Maybe ModuleName))

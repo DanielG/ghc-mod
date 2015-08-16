@@ -44,6 +44,7 @@ import Text.Printf
 import Paths_ghc_mod (getLibexecDir)
 import Utils
 import Prelude
+import Control.Monad.Trans.Maybe
 
 -- dropWhileEnd is not provided prior to base 4.5.0.0.
 dropWhileEnd :: (a -> Bool) -> [a] -> [a]
@@ -185,6 +186,14 @@ getCanonicalFileNameSafe fn = do
   if fex
     then liftIO $ canonicalizePath ccfn
     else return ccfn
+
+getMappedFileSource :: (IOish m, GmEnv m, GmState m) => FilePath -> MaybeT m String
+getMappedFileSource fn = do
+  mf <- MaybeT $ getCanonicalFileNameSafe fn >>= lookupMMappedFile
+  case mf of
+    RedirectedMapping fn' -> liftIO $ readFile fn'
+    MemoryMapping (Just src) -> return src
+    _ -> mzero
 
 mkRevRedirMapFunc :: (Functor m, GmState m, GmEnv m) => m (FilePath -> FilePath)
 mkRevRedirMapFunc = do
