@@ -6,6 +6,7 @@ import Test.Hspec
 import TestUtils
 import qualified Data.Map as M
 import Dir
+import System.IO.Temp
 
 import Language.Haskell.GhcMod
 
@@ -116,3 +117,87 @@ spec = do
               loadMappedFile "File.hs" (MemoryMapping $ Just "module File where\n\ntestfun = putStrLn \"Hello!\"")
               info "File.hs" $ Expression "testfun"
             res `shouldBe` "testfun :: IO () \t-- Defined at File.hs:3:1\n"
+
+      describe "preprocessor tests" $ do
+        it "checks redirected file if one is specified and outputs original filename" $ do
+          withDirectory_ "test/data/file-mapping/preprocessor" $ do
+            let fm = [("File.hs", RedirectedMapping "File_Redir.hs")]
+            res <- run defaultOptions $ do
+              mapM_ (uncurry loadMappedFile) fm
+              checkSyntax ["File.hs"]
+            res `shouldBe` "File.hs:3:1:Warning: Top-level binding with no type signature: main :: IO ()\n"
+        it "checks in-memory file if one is specified and outputs original filename" $ do
+          withDirectory_ "test/data/file-mapping/preprocessor" $ do
+            src <- readFile "File_Redir.hs"
+            let fm = [("File.hs", MemoryMapping $ Just src)]
+            res <- run defaultOptions $ do
+              mapM_ (uncurry loadMappedFile) fm
+              checkSyntax ["File.hs"]
+            res `shouldBe` "File.hs:3:1:Warning: Top-level binding with no type signature: main :: IO ()\n"
+        it "lints redirected file if one is specified and outputs original filename" $ do
+          withDirectory_ "test/data/file-mapping/preprocessor" $ do
+            res <- runD $ do
+              loadMappedFile "File.hs" (RedirectedMapping "File_Redir_Lint.hs")
+              lint "File.hs"
+            res `shouldBe` "File.hs:6:1: Error: Eta reduce\NULFound:\NUL  func a b = (*) a b\NULWhy not:\NUL  func = (*)\n"
+        it "lints in-memory file if one is specified and outputs original filename" $ do
+          withDirectory_ "test/data/file-mapping/preprocessor" $ do
+            src <- readFile "File_Redir_Lint.hs"
+            res <- runD $ do
+              loadMappedFile "File.hs" (MemoryMapping $ Just src)
+              lint "File.hs"
+            res `shouldBe` "File.hs:6:1: Error: Eta reduce\NULFound:\NUL  func a b = (*) a b\NULWhy not:\NUL  func = (*)\n"
+      describe "literate haskell tests" $ do
+        it "checks redirected file if one is specified and outputs original filename" $ do
+          withDirectory_ "test/data/file-mapping/lhs" $ do
+            let fm = [("File.lhs", RedirectedMapping "File_Redir.lhs")]
+            res <- run defaultOptions $ do
+              mapM_ (uncurry loadMappedFile) fm
+              checkSyntax ["File.lhs"]
+            res `shouldBe` "File.lhs:1:3:Warning: Top-level binding with no type signature: main :: IO ()\n"
+        it "checks in-memory file if one is specified and outputs original filename" $ do
+          withDirectory_ "test/data/file-mapping/lhs" $ do
+            src <- readFile "File_Redir.lhs"
+            let fm = [("File.lhs", MemoryMapping $ Just src)]
+            res <- run defaultOptions $ do
+              mapM_ (uncurry loadMappedFile) fm
+              checkSyntax ["File.lhs"]
+            res `shouldBe` "File.lhs:1:3:Warning: Top-level binding with no type signature: main :: IO ()\n"
+        -- NOTE: There is a bug in hlint that prevents it from linting lhs files.
+        -- it "lints redirected file if one is specified and outputs original filename" $ do
+        --   withDirectory_ "test/data/file-mapping/lhs" $ do
+        --     res <- runD $ do
+        --       loadMappedFile "File.lhs" (RedirectedMapping "File_Redir_Lint.lhs")
+        --       lint "File.lhs"
+        --     res `shouldBe` "File.lhs:6:1: Error: Eta reduce\NULFound:\NUL  func a b = (*) a b\NULWhy not:\NUL  func = (*)\n"
+        -- it "lints in-memory file if one is specified and outputs original filename" $ do
+        --   withDirectory_ "test/data/file-mapping/lhs" $ do
+        --     src <- readFile "File_Redir_Lint.lhs"
+        --     res <- runD $ do
+        --       loadMappedFile "File.lhs" (MemoryMapping $ Just src)
+        --       lint "File.lhs"
+        --     res `shouldBe` "File.lhs:6:1: Error: Eta reduce\NULFound:\NUL  func a b = (*) a b\NULWhy not:\NUL  func = (*)\n"
+      describe "template haskell" $ do
+        it "works with a redirected module using TemplateHaskell" $ do
+          withSystemTempDirectory "ghc-mod-test" $ \tmpdir -> do
+            srcFoo <- readFile "test/data/template-haskell/Foo.hs"
+            srcBar <- readFile "test/data/template-haskell/Bar.hs"
+            withDirectory_ "test/data/file-mapping" $ do
+              writeFile (tmpdir </> "Foo_Redir.hs") srcFoo
+              writeFile (tmpdir </> "Bar_Redir.hs") srcBar
+              let fm = [("Foo.hs", RedirectedMapping $ tmpdir </> "Foo_Redir.hs")
+                       ,("Bar.hs", RedirectedMapping $ tmpdir </> "Bar_Redir.hs")]
+              res <- run defaultOptions $ do
+                mapM_ (uncurry loadMappedFile) fm
+                types "Bar.hs" 5 1
+              res `shouldBe` unlines ["5 1 5 20 \"[Char]\""]
+        it "works with a memory module using TemplateHaskell" $ do
+          srcFoo <- readFile "test/data/template-haskell/Foo.hs"
+          srcBar <- readFile "test/data/template-haskell/Bar.hs"
+          withDirectory_ "test/data/file-mapping" $ do
+            let fm = [("Foo.hs", MemoryMapping $ Just srcFoo)
+                     ,("Bar.hs", MemoryMapping $ Just srcBar)]
+            res <- run defaultOptions $ do
+              mapM_ (uncurry loadMappedFile) fm
+              types "Bar.hs" 5 1
+            res `shouldBe` unlines ["5 1 5 20 \"[Char]\""]
