@@ -271,6 +271,40 @@ globalArgSpec =
                reqArg "OPT" $ \g o -> Right $
                    o { ghcUserOptions = g : ghcUserOptions o }
 
+{-
+File map docs:
+
+CLI options:
+* `--map-file "file1.hs=file2.hs"` can be used to tell
+    ghc-mod that it should take source code for `file1.hs` from `file2.hs`.
+    `file1.hs` can be either full path, or path relative to project root.
+    `file2.hs` has to be either relative to current directory,
+    or full path (preferred).
+* `--map-file "file.hs"` can be used to tell ghc-mod that it should take
+    source code for `file.hs` from stdin. File end marker is `\EOT\n`,
+    i.e. `\x04\x0A`. `file.hs` may or may not exist, and should be
+    either full path, or relative to project root.
+
+Interactive commands:
+* `map-file file.hs` -- tells ghc-modi to read `file.hs` source from stdin.
+    Works the same as second form of `--map-file` CLI option.
+* `unmap-file file.hs` -- unloads previously mapped file, so that it's
+    no longer mapped. `file.hs` can be full path or relative to
+    project root, either will work.
+
+Exposed functions:
+* `loadMappedFile :: FilePath -> FilePath -> GhcModT m ()` -- maps `FilePath`,
+    given as first argument to take source from `FilePath` given as second
+    argument. Works exactly the same as first form of `--map-file`
+    CLI option.
+* `loadMappedFileSource :: FilePath -> String -> GhcModT m ()` -- maps
+    `FilePath`, given as first argument to have source as given
+    by second argument. Works exactly the same as second form of `--map-file`
+    CLI option, sans reading from stdin.
+* `unloadMappedFile :: FilePath -> GhcModT m ()` -- unmaps `FilePath`, given as
+    first argument, and removes any temporary files created when file was
+    mapped. Works exactly the same as `unmap-file` interactive command
+-}
       , option "" ["map-file"] "Redirect one file to another, --map-file \"file1.hs=file2.hs\"" $
                reqArg "OPT" $ \g o ->
                   let m = case second (drop 1) $ span (/='=') g of
