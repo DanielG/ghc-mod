@@ -361,7 +361,7 @@ refine file lineNo colNo (Expression expr) =
              in (fourInts loc, doParen paren txt)
   where
    handler (SomeException ex) = do
-     gmLog GmDebug "refining" $
+     gmLog GmException "refining" $
            text "" $$ nest 4 (showDoc ex)
      emptyResult =<< options
 
@@ -450,7 +450,7 @@ auto file lineNo colNo =
                  , map (doParen paren) $ nub (djinnsEmpty ++ djinns))
  where
    handler (SomeException ex) = do
-     gmLog GmDebug "auto-refining" $
+     gmLog GmException "auto-refining" $
            text "" $$ nest 4 (showDoc ex)
      emptyResult =<< options
 

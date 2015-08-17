@@ -66,7 +66,7 @@ splits file lineNo colNo =
           return (fourInts bndLoc, t)
  where
    handler (SomeException ex) = do
-     gmLog GmDebug "splits" $
+     gmLog GmException "splits" $
            text "" $$ nest 4 (showDoc ex)
      emptyResult =<< options
 
