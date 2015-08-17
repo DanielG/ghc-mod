@@ -28,6 +28,11 @@ main = do
   genSandboxCfg `mapM_` sandboxes
   genGhcPkgCache `mapM_` pkgDirs
 
+  let stackDir = "test/data/stack-project"
+  withDirectory stackDir $ \_ -> do
+    system "stack init --force"
+    system "stack build"
+
   let caches = [ "setup-config"
                , "setup-config.ghc-mod.cabal-helper"
                , "setup-config.ghc-mod.cabal-components"
