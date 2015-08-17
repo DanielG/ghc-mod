@@ -29,7 +29,7 @@ findCradle = findCradle' =<< getCurrentDirectory
 
 findCradle' :: FilePath -> IO Cradle
 findCradle' dir = run $ do
-    (cabalCradle dir `mplus`  sandboxCradle dir `mplus` plainCradle dir)
+    (stackCradle dir `mplus` cabalCradle dir `mplus` sandboxCradle dir `mplus` plainCradle dir)
  where run a = fillTempDir =<< (fromJust <$> runMaybeT a)
 
 findSpecCradle :: FilePath -> IO Cradle
@@ -61,6 +61,22 @@ cabalCradle wdir = do
 
     return Cradle {
         cradleProjectType = CabalProject
+      , cradleCurrentDir = wdir
+      , cradleRootDir    = cabalDir
+      , cradleTempDir    = error "tmpDir"
+      , cradleCabalFile  = Just cabalFile
+      }
+
+stackCradle :: FilePath -> MaybeT IO Cradle
+stackCradle wdir = do
+    cabalFile <- MaybeT $ findCabalFile wdir
+
+    let cabalDir = takeDirectory cabalFile
+
+    stackConfigFile <- MaybeT $ findStackConfigFile cabalDir
+
+    return Cradle {
+        cradleProjectType = StackProject
       , cradleCurrentDir = wdir
       , cradleRootDir    = cabalDir
       , cradleTempDir    = error "tmpDir"
