@@ -121,7 +121,7 @@ defaultOptions = Options {
 
 ----------------------------------------------------------------
 
-data ProjectType = CabalProject | SandboxProject | PlainProject
+data ProjectType = CabalProject | SandboxProject | PlainProject | StackProject
                  deriving (Eq, Show)
 
 -- | The environment where this library is used.

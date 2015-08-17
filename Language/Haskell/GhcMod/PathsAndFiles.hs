@@ -71,6 +71,9 @@ findCabalFile dir = do
    appendDir :: DirPath -> [FileName] -> [FilePath]
    appendDir d fs = (d </>) `map` fs
 
+findStackConfigFile :: FilePath -> IO (Maybe FilePath)
+findStackConfigFile dir = mightExist (dir </> "stack.yaml")
+
 -- | Get path to sandbox config file
 getSandboxDb :: FilePath
              -- ^ Path to the cabal package root directory (containing the

@@ -149,6 +149,7 @@ targetGhcOptions crdl sefnmn = do
 
     case cradleProjectType crdl of
       CabalProject -> cabalOpts crdl
+      StackProject -> stackOpts crdl
       _ -> sandboxOpts crdl
  where
    zipMap f l = l `zip` (f `map` l)
@@ -264,7 +265,16 @@ packageGhcOptions = do
     crdl <- cradle
     case cradleProjectType crdl of
       CabalProject -> getGhcMergedPkgOptions
+      StackProject -> stackOpts crdl
       _ -> sandboxOpts crdl
+
+stackOpts :: MonadIO m => Cradle -> m [String]
+stackOpts crdl = do
+    pkgDbStack <- liftIO getStackPackageDbStack
+    let pkgOpts = ghcDbStackOpts pkgDbStack
+    return $ ["-i" ++ d | d <- [wdir,rdir]] ++ pkgOpts ++ ["-Wall"]
+  where
+    (wdir, rdir) = (cradleCurrentDir crdl, cradleRootDir crdl)
 
 -- also works for plain projects!
 sandboxOpts :: MonadIO m => Cradle -> m [String]

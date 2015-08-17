@@ -20,6 +20,7 @@ module Language.Haskell.GhcMod.CabalHelper
   ( getComponents
   , getGhcMergedPkgOptions
   , getCabalPackageDbStack
+  , getStackPackageDbStack
   , getCustomPkgDbStack
   , prepareCabalHelper
   )
@@ -43,6 +44,7 @@ import Language.Haskell.GhcMod.PathsAndFiles
 import Language.Haskell.GhcMod.Logging
 import Language.Haskell.GhcMod.Output
 import System.FilePath
+import System.Directory (findExecutable)
 import Prelude hiding ((.))
 
 import Paths_ghc_mod as GhcMod
@@ -131,6 +133,16 @@ getCustomPkgDbStack :: (IOish m, GmEnv m) => m (Maybe [GhcPkgDb])
 getCustomPkgDbStack = do
     mCusPkgDbFile <- liftIO . (traverse readFile <=< findCustomPackageDbFile) . cradleRootDir =<< cradle
     return $ parseCustomPackageDb <$> mCusPkgDbFile
+
+getStackPackageDbStack :: IOish m => m [GhcPkgDb]
+getStackPackageDbStack = do
+    mstack <- liftIO $ findExecutable "stack"
+    case mstack of
+      Nothing -> return []
+      Just stack -> do
+        snapshotDb <- liftIO $ readProcess stack ["path", "--snapshot-pkg-db"] ""
+        localDb <- liftIO $ readProcess stack ["path", "--local-pkg-db"] ""
+        return $ map (PackageDb . takeWhile (/='\n')) [snapshotDb, localDb]
 
 withCabal :: (IOish m, GmEnv m, GmLog m) => m a -> m a
 withCabal action = do
