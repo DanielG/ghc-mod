@@ -73,7 +73,7 @@ stackCradle wdir = do
 
     let cabalDir = takeDirectory cabalFile
 
-    stackConfigFile <- MaybeT $ findStackConfigFile cabalDir
+    _stackConfigFile <- MaybeT $ findStackConfigFile cabalDir
 
     return Cradle {
         cradleProjectType = StackProject
