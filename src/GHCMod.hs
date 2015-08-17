@@ -277,20 +277,20 @@ File map docs:
 CLI options:
 * `--map-file "file1.hs=file2.hs"` can be used to tell
     ghc-mod that it should take source code for `file1.hs` from `file2.hs`.
-    `file1.hs` can be either full path, or path relative to project root.
+    `file1.hs` can be either full path, or path relative to current directory.
     `file2.hs` has to be either relative to current directory,
     or full path (preferred).
 * `--map-file "file.hs"` can be used to tell ghc-mod that it should take
     source code for `file.hs` from stdin. File end marker is `\EOT\n`,
     i.e. `\x04\x0A`. `file.hs` may or may not exist, and should be
-    either full path, or relative to project root.
+    either full path, or relative to current directory.
 
 Interactive commands:
 * `map-file file.hs` -- tells ghc-modi to read `file.hs` source from stdin.
     Works the same as second form of `--map-file` CLI option.
 * `unmap-file file.hs` -- unloads previously mapped file, so that it's
     no longer mapped. `file.hs` can be full path or relative to
-    project root, either will work.
+    current directory, either will work.
 
 Exposed functions:
 * `loadMappedFile :: FilePath -> FilePath -> GhcModT m ()` -- maps `FilePath`,
