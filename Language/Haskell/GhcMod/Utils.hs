@@ -29,7 +29,7 @@ import qualified Data.Map as M
 import Data.Maybe (fromMaybe)
 import Data.Either (rights)
 import Data.List (inits)
-import System.FilePath (joinPath, splitPath)
+import System.FilePath (joinPath, splitPath, normalise)
 import Exception
 import Language.Haskell.GhcMod.Error
 import Language.Haskell.GhcMod.Types
@@ -173,11 +173,18 @@ withMappedFile file action = getCanonicalFileNameSafe file >>= lookupMMappedFile
 
 getCanonicalFileNameSafe :: (IOish m, GmEnv m) => FilePath -> m FilePath
 getCanonicalFileNameSafe fn = do
-  pl <- liftIO $ rights <$> (mapM ((try :: IO FilePath -> IO (Either SomeException FilePath)) . canonicalizePath . joinPath) $ reverse $ inits $ splitPath fn)
+  let fn' = normalise fn
+  pl <- liftIO $ rights <$> (mapM ((try :: IO FilePath -> IO (Either SomeException FilePath)) . canonicalizePath . joinPath) $ reverse $ inits $ splitPath' fn')
   return $
     if (length pl > 0)
-    then joinPath $ (head pl):(drop (length pl - 1) (splitPath fn))
+    then joinPath $ (head pl):(drop (length pl - 1) (splitPath fn'))
     else error "Current dir doesn't seem to exist?"
+  where
+#if __GLASGOW_HASKELL__ < 710
+    splitPath' = (".":) . splitPath
+#else
+    splitPath' = splitPath
+#endif
 
 mkRevRedirMapFunc :: (Functor m, GmState m, GmEnv m) => m (FilePath -> FilePath)
 mkRevRedirMapFunc = do
