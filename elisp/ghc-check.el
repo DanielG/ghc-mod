@@ -186,7 +186,8 @@ nil            do not display errors/warnings.
                 (forward-line (1- line))
                 (forward-char (1- coln))
                 (setq beg (point))
-                (skip-chars-forward "^[:space:]" (line-end-position))
+		(forward-sexp)
+                ;; (skip-chars-forward "^[:space:]" (line-end-position))
                 (setq end (point)))))
 	   (t
 	    (setq beg (point))
