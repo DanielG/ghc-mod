@@ -126,8 +126,8 @@
 		      (with-selected-window cwin
 			(goto-char (point-max))
 			(insert-buffer-substring tbuf 1 end)
-			(set-buffer-modified-p nil)
-			(redisplay)))))
+			(set-buffer-modified-p nil))
+		      (redisplay))))
 		(delete-region 1 end)))))
 	(goto-char (point-max))
 	(forward-line -1)
