@@ -168,20 +168,8 @@ runGmlTWith efnmns' mdf wrapper action = do
     let targetStrs = mappedStrs ++ map moduleNameString mns ++ cfns
 
     unGmlT $ wrapper $ do
-      targets <-
-        withLightHscEnv opts $ \env ->
-                liftM (nubBy ((==) `on` targetId))
-                  (mapM ((`guessTarget` Nothing) >=> mapFile env) targetStrs)
-              >>= mapM relativize
-      loadTargets targets
+      loadTargets opts targetStrs
       action
-  where
-    relativize (Target (TargetFile filePath phase) taoc src) = do
-      crdl <- cradle
-      let tid = TargetFile relativeFilePath phase
-          relativeFilePath = makeRelative (cradleRootDir crdl) filePath
-      return $ Target tid taoc src
-    relativize tgt = return tgt
 
 targetGhcOptions :: forall m. IOish m
                   => Cradle
@@ -444,8 +432,14 @@ resolveGmComponents mumns cs = do
    same f a b = (f a) == (f b)
 
 -- | Set the files as targets and load them.
-loadTargets :: IOish m => [Target] -> GmlT m ()
-loadTargets targets = do
+loadTargets :: IOish m => [GHCOption] -> [FilePath] -> GmlT m ()
+loadTargets opts targetStrs = do
+    targets <-
+        withLightHscEnv opts $ \env ->
+                liftM (nubBy ((==) `on` targetId))
+                  (mapM ((`guessTarget` Nothing) >=> mapFile env) targetStrs)
+              >>= mapM relativize
+
     gmLog GmDebug "loadTargets" $
           text "Loading" <+>: fsep (map (text . showTargetId) targets)
 
@@ -466,6 +460,13 @@ loadTargets targets = do
           else
             loadTargets' Simple
   where
+    relativize (Target (TargetFile filePath phase) taoc src) = do
+      crdl <- cradle
+      let tid = TargetFile relativeFilePath phase
+          relativeFilePath = makeRelative (cradleRootDir crdl) filePath
+      return $ Target tid taoc src
+    relativize tgt = return tgt
+
     loadTargets' Simple = do
         void $ load LoadAllTargets
         mapM_ (parseModule >=> typecheckModule >=> desugarModule) =<< getModuleGraph

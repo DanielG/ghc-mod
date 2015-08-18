@@ -40,6 +40,7 @@ module Language.Haskell.GhcMod.Internal (
   , cradle
   , getCompilerMode
   , setCompilerMode
+  , targetGhcOptions
   , withOptions
   -- * 'GhcModError'
   , gmeDoc
