@@ -10,6 +10,17 @@
 (require 'ghc-comp)
 (require 'ghc-info)
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;
+;;; Customize Variables
+;;;
+
+(defcustom ghc-doc-browser-function #'browse-url
+  "Function used to browse documentation."
+  :type '(radio (function-item browse-url)
+                (function-item ghc-browse-url-safari))
+  :group 'ghc-mod)
+
 ;;; Code:
 
 (defun ghc-browse-document (&optional haskell-org)
@@ -43,9 +54,18 @@
 (defconst ghc-doc-hackage-format
   "http://hackage.haskell.org/packages/archive/%s/%s/doc/html/%s.html")
 
+(defun ghc-browse-url-safari (uri &rest args)
+"Open a URI in Safari using AppleScript. This preserves anchors."
+  (let ((script (format "
+tell application \"Safari\"
+  open location \"%s\"
+  activate
+end tell" uri)))
+    (do-applescript script)))
+
 (defun ghc-display-document (pkg-ver-path mod haskell-org &optional symbol)
-  (let* ((mod- (ghc-replace-character mod ?. ?-))
-	 (pkg  (ghc-pkg-ver-path-get-pkg pkg-ver-path))
+  (let* ((pkg  (ghc-pkg-ver-path-get-pkg pkg-ver-path))
+         (mod- (ghc-replace-character mod ?. ?-))
 	 (ver  (ghc-pkg-ver-path-get-ver pkg-ver-path))
 	 (path (ghc-pkg-ver-path-get-path pkg-ver-path))
 	 (pkg-with-ver (format "%s-%s" pkg ver))
@@ -54,8 +74,7 @@
 	 (file (format "%s/%s.html" path mod-))
 	 (url0 (if (or haskell-org (not (file-exists-p file))) remote local))
 	 (url (if symbol (ghc-add-anchor url0 symbol) url0)))
-    ;; Mac's "open" removes the anchor from "file://", sigh.
-    (browse-url url)))
+    (funcall ghc-doc-browser-function url)))
 
 (defun ghc-add-anchor (url symbol)
   (let ((case-fold-search nil))
