@@ -267,7 +267,8 @@ resolvedComponentsCache = Cached {
            -> [FilePath]
    flatten = Map.elems
       >>> map (gmcHomeModuleGraph >>> gmgGraph
-               >>> Map.elems
+               >>> (Map.keysSet &&& Map.elems)
+               >>> uncurry insert
                >>> map (Set.map mpPath)
                >>> Set.unions
               )
