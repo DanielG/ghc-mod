@@ -8,15 +8,17 @@ module Language.Haskell.GhcMod.Logger (
 
 import Control.Arrow
 import Control.Applicative
-import Data.List (isPrefixOf)
-import Data.Maybe (fromMaybe)
+import Data.Ord
+import Data.List
+import Data.Maybe
+import Data.Function
 import Control.Monad.Reader (Reader, asks, runReader)
 import Data.IORef (IORef, newIORef, readIORef, writeIORef, modifyIORef)
 import System.FilePath (normalise)
 import Text.PrettyPrint
 
-import ErrUtils (ErrMsg, errMsgShortDoc, errMsgExtraInfo)
-import GHC (DynFlags, SrcSpan, Severity(SevError))
+import ErrUtils
+import GHC
 import HscTypes
 import Outputable
 import qualified GHC as G
@@ -38,7 +40,6 @@ data Log = Log [String] Builder
 newtype LogRef = LogRef (IORef Log)
 
 data GmPprEnv = GmPprEnv { gpeDynFlags :: DynFlags
-                         , gpePprStyle :: PprStyle
                          , gpeMapFile :: FilePath -> FilePath
                          }
 
@@ -56,18 +57,23 @@ readAndClearLogRef (LogRef ref) = do
     writeIORef ref emptyLog
     return $ b []
 
-appendLogRef :: GmPprEnv -> DynFlags -> LogRef -> DynFlags -> Severity -> SrcSpan -> PprStyle -> SDoc -> IO ()
-appendLogRef rs df (LogRef ref) _ sev src st msg = modifyIORef ref update
+appendLogRef :: (FilePath -> FilePath) -> DynFlags -> LogRef -> DynFlags -> Severity -> SrcSpan -> PprStyle -> SDoc -> IO ()
+appendLogRef rfm df (LogRef ref) _ sev src st msg = do
+    modifyIORef ref update
   where
-    l = runReader (ppMsg src sev msg) rs{gpeDynFlags=df, gpePprStyle=st}
+    gpe = GmPprEnv {
+            gpeDynFlags = df
+          , gpeMapFile = rfm
+          }
+    l = runReader (ppMsg st src sev msg) gpe
+
     update lg@(Log ls b)
       | l `elem` ls = lg
       | otherwise   = Log (l:ls) (b . (l:))
 
 ----------------------------------------------------------------
 
--- | Set the session flag (e.g. "-Wall" or "-w:") then
---   executes a body. Logged messages are returned as 'String'.
+-- | Logged messages are returned as 'String'.
 --   Right is success and Left is failure.
 withLogger :: (GmGhc m, GmEnv m, GmState m)
            => (DynFlags -> DynFlags)
@@ -88,73 +94,67 @@ withLogger' env action = do
 
     rfm <- mkRevRedirMapFunc
 
-    let dflags = hsc_dflags env
-        pu = icPrintUnqual dflags (hsc_IC env)
-        stl = mkUserStyle pu AllTheWay
-        st = GmPprEnv {
-                gpeDynFlags = dflags
-              , gpePprStyle = stl
+    let setLogger df = Gap.setLogAction df $ appendLogRef rfm df logref
+        handlers = [
+            GHandler $ \ex -> return $ Left $ runReader (sourceError ex) gpe,
+            GHandler $ \ex -> return $ Left [render $ ghcExceptionDoc ex]
+          ]
+        gpe = GmPprEnv {
+                gpeDynFlags = hsc_dflags env
               , gpeMapFile = rfm
         }
-
-        setLogger df = Gap.setLogAction df $ appendLogRef st df logref
-        handlers = [
-            GHandler $ \ex -> return $ Left $ runReader (sourceError ex) st,
-            GHandler $ \ex -> return $ Left [render $ ghcExceptionDoc ex]
-         ]
 
     a <- gcatches (Right <$> action setLogger) handlers
     ls <- liftIO $ readAndClearLogRef logref
 
     return ((,) ls <$> a)
 
-errBagToStrList :: (Functor m, GmState m, GmEnv m) => HscEnv -> Bag ErrMsg -> m [String]
-errBagToStrList env errs = let
-    dflags = hsc_dflags env
-    pu = icPrintUnqual dflags (hsc_IC env)
-    st = mkUserStyle pu AllTheWay
- in do
+errBagToStrList :: (IOish m, GmState m, GmEnv m) => HscEnv -> Bag ErrMsg -> m [String]
+errBagToStrList env errs = do
    rfm <- mkRevRedirMapFunc
    return $ runReader
-    (errsToStr (bagToList errs))
-    GmPprEnv{gpeDynFlags=dflags, gpePprStyle=st, gpeMapFile=rfm}
+    (errsToStr (sortMsgBag errs))
+    GmPprEnv{ gpeDynFlags = hsc_dflags env, gpeMapFile = rfm }
 
 ----------------------------------------------------------------
 
 -- | Converting 'SourceError' to 'String'.
 sourceError :: SourceError -> GmPprEnvM [String]
-sourceError = errsToStr . reverse . bagToList . srcErrorMessages
+sourceError = errsToStr . sortMsgBag . srcErrorMessages
 
 errsToStr :: [ErrMsg] -> GmPprEnvM [String]
 errsToStr = mapM ppErrMsg
+
+sortMsgBag :: Bag ErrMsg -> [ErrMsg]
+sortMsgBag bag = sortBy (compare `on` Gap.errorMsgSpan) $ bagToList bag
 
 ----------------------------------------------------------------
 
 ppErrMsg :: ErrMsg -> GmPprEnvM String
 ppErrMsg err = do
-    dflag <- asks gpeDynFlags
-    st <- asks gpePprStyle
-    let ext = showPage dflag st (errMsgExtraInfo err)
-    m <- ppMsg spn SevError msg
+    dflags <- asks gpeDynFlags
+    let unqual = errMsgContext err
+        st = mkErrStyle dflags unqual
+    let ext = showPage dflags st (errMsgExtraInfo err)
+    m <- ppMsg st spn SevError msg
     return $ m ++ (if null ext then "" else "\n" ++ ext)
    where
      spn = Gap.errorMsgSpan err
      msg = errMsgShortDoc err
 
-ppMsg :: SrcSpan -> Severity-> SDoc -> GmPprEnvM String
-ppMsg spn sev msg = do
-  dflag <- asks gpeDynFlags
-  st <- asks gpePprStyle
-  let cts  = showPage dflag st msg
+ppMsg :: PprStyle -> SrcSpan -> Severity -> SDoc -> GmPprEnvM String
+ppMsg st spn sev msg = do
+  dflags <- asks gpeDynFlags
+  let cts  = showPage dflags st msg
   prefix <- ppMsgPrefix spn sev cts
   return $ prefix ++ cts
 
 ppMsgPrefix :: SrcSpan -> Severity -> String -> GmPprEnvM String
 ppMsgPrefix spn sev cts = do
-  dflag <- asks gpeDynFlags
+  dflags <- asks gpeDynFlags
   mr <- asks gpeMapFile
   let defaultPrefix
-        | Gap.isDumpSplices dflag = ""
+        | Gap.isDumpSplices dflags = ""
         | otherwise               = checkErrorPrefix
   return $ fromMaybe defaultPrefix $ do
     (line,col,_,_) <- Gap.getSrcSpan spn

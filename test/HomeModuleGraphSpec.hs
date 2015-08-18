@@ -19,7 +19,7 @@
 module HomeModuleGraphSpec where
 
 import Language.Haskell.GhcMod.HomeModuleGraph
-import Language.Haskell.GhcMod.Target
+import Language.Haskell.GhcMod.LightGhc
 import TestUtils
 
 import GHC

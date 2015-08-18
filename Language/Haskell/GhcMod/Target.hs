@@ -20,14 +20,10 @@ module Language.Haskell.GhcMod.Target where
 import Control.Arrow
 import Control.Applicative
 import Control.Category ((.))
-import Control.Monad.Reader (runReaderT)
 import GHC
 import GHC.Paths (libdir)
-import StaticFlags
 import SysTools
 import DynFlags
-import HscMain
-import HscTypes
 
 import Language.Haskell.GhcMod.DynFlags
 import Language.Haskell.GhcMod.Monad.Types
@@ -40,6 +36,7 @@ import Language.Haskell.GhcMod.Logging
 import Language.Haskell.GhcMod.Types
 import Language.Haskell.GhcMod.Utils as U
 import Language.Haskell.GhcMod.FileMapping
+import Language.Haskell.GhcMod.LightGhc
 
 import Data.Maybe
 import Data.Monoid as Monoid
@@ -59,34 +56,6 @@ import Prelude hiding ((.))
 
 import System.Directory
 import System.FilePath
-
-withLightHscEnv :: forall m a. IOish m
-    => [GHCOption] -> (HscEnv -> m a) -> m a
-withLightHscEnv opts action = gbracket initEnv teardownEnv action
- where
-   teardownEnv :: HscEnv -> m ()
-   teardownEnv env = liftIO $ do
-       let dflags = hsc_dflags env
-       cleanTempFiles dflags
-       cleanTempDirs dflags
-
-   initEnv :: m HscEnv
-   initEnv = liftIO $ do
-     initStaticOpts
-     settings <- initSysTools (Just libdir)
-     dflags  <- initDynFlags (defaultDynFlags settings)
-     env <- newHscEnv dflags
-     dflags' <- runLightGhc env $ do
-         -- HomeModuleGraph and probably all other clients get into all sorts of
-         -- trouble if the package state isn't initialized here
-         _ <- setSessionDynFlags =<< addCmdOpts opts =<< getSessionDynFlags
-         getSessionDynFlags
-     newHscEnv dflags'
-
-runLightGhc :: HscEnv -> LightGhc a -> IO a
-runLightGhc env action = do
-  renv <- newIORef env
-  flip runReaderT renv $ unLightGhc action
 
 runGmPkgGhc :: (IOish m, GmEnv m, GmState m, GmLog m) => LightGhc a -> m a
 runGmPkgGhc action = do
