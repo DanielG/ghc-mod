@@ -119,7 +119,7 @@ prepareCabalHelper = do
   let projdir = cradleRootDir crdl
       distdir = projdir </> cradleDistDir crdl
   readProc <- gmReadProcess
-  when (cradleProjectType crdl == CabalProject) $
+  when (cradleProjectType crdl == CabalProject || cradleProjectType crdl == StackProject) $
        withCabal $ liftIO $ prepare readProc projdir distdir
 
 parseCustomPackageDb :: String -> [GhcPkgDb]
