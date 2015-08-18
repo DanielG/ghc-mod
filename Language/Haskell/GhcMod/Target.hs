@@ -318,10 +318,11 @@ sandboxOpts crdl = do
   where
     (wdir, rdir) = (cradleCurrentDir crdl, cradleRootDir crdl)
 
-    getSandboxPackageDbStack :: FilePath
-                      -- ^ Project Directory (where the cabal.sandbox.config
-                      -- file would be if it exists)
-                      -> IO [GhcPkgDb]
+    getSandboxPackageDbStack
+        :: FilePath
+        -- ^ Project Directory (where the cabal.sandbox.config file would be if
+        -- it exists)
+        -> IO [GhcPkgDb]
     getSandboxPackageDbStack cdir =
         ([GlobalDb] ++) . maybe [UserDb] return <$> getSandboxDb cdir
 
