@@ -23,9 +23,8 @@ import System.FilePath ((</>))
 import System.Directory (setCurrentDirectory, getAppUserDataDirectory,
                         removeDirectoryRecursive)
 import System.Environment (getArgs)
-import System.Exit (exitFailure)
 import System.IO (stdout, hSetEncoding, utf8, hFlush)
-import System.Exit (exitSuccess)
+import System.Exit
 import Text.PrettyPrint
 import Prelude
 
@@ -373,6 +372,8 @@ data InteractiveOptions = InteractiveOptions {
 handler :: IOish m => GhcModT m a -> GhcModT m a
 handler = flip gcatches $
           [ GHandler $ \(FatalError msg) -> exitError msg
+          , GHandler $ \e@(ExitSuccess) -> throw e
+          , GHandler $ \e@(ExitFailure _) -> throw e
           , GHandler $ \(InvalidCommandLine e) -> do
                 case e of
                   Left cmd ->
@@ -494,6 +495,8 @@ legacyInteractiveLoop symdbreq world = do
  where
    interactiveHandlers =
           [ GHandler $ \e@(FatalError _) -> throw e
+          , GHandler $ \e@(ExitSuccess) -> throw e
+          , GHandler $ \e@(ExitFailure _) -> throw e
           , GHandler $ \(SomeException e) -> gmErrStrLn (show e) >> return ""
           ]
 
