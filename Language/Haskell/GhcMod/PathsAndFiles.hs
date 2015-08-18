@@ -74,6 +74,14 @@ findCabalFile dir = do
 findStackConfigFile :: FilePath -> IO (Maybe FilePath)
 findStackConfigFile dir = mightExist (dir </> "stack.yaml")
 
+findStackDistDir :: FilePath -> IO FilePath
+findStackDistDir dir = U.withDirectory_ dir $ do
+    mstack <- liftIO $ findExecutable "stack"
+    case mstack of
+      Nothing -> return "dist"
+      Just stack ->
+        takeWhile (/='\n') <$> readProcess stack ["path", "--dist-dir"] ""
+
 -- | Get path to sandbox config file
 getSandboxDb :: FilePath
              -- ^ Path to the cabal package root directory (containing the
@@ -182,17 +190,17 @@ parents dir' =
 ----------------------------------------------------------------
 
 setupConfigFile :: Cradle -> FilePath
-setupConfigFile crdl = cradleRootDir crdl </> setupConfigPath
+setupConfigFile crdl = cradleRootDir crdl </> cradleDistDir crdl </> setupConfigPath
 
 sandboxConfigFile :: FilePath
 sandboxConfigFile = "cabal.sandbox.config"
 
 -- | Path to 'LocalBuildInfo' file, usually @dist/setup-config@
 setupConfigPath :: FilePath
-setupConfigPath = "dist/setup-config" -- localBuildInfoFile defaultDistPref
+setupConfigPath = "setup-config" -- localBuildInfoFile defaultDistPref
 
 macrosHeaderPath :: FilePath
-macrosHeaderPath = "dist/build/autogen/cabal_macros.h"
+macrosHeaderPath = "build/autogen/cabal_macros.h"
 
 ghcSandboxPkgDbDir :: String -> String
 ghcSandboxPkgDbDir buildPlatf = do
