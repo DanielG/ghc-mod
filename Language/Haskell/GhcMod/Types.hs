@@ -135,6 +135,8 @@ data Cradle = Cradle {
   , cradleTempDir    :: FilePath
   -- | The file name of the found cabal file.
   , cradleCabalFile  :: Maybe FilePath
+  -- | The build info directory.
+  , cradleDistDir    :: FilePath
   } deriving (Eq, Show)
 
 
