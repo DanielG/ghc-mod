@@ -211,7 +211,7 @@ targetGhcOptions crdl sefnmn = do
             -- First component should be ChLibName, if no lib will take lexically first exe.
             let cns = filter (/= ChSetupHsName) $ Map.keys mcs
 
-            gmLog GmWarning "" $ strDoc $ "Could not find a component assignment, falling back to picking library component in cabal file."
+            gmLog GmDebug "" $ strDoc $ "Could not find a component assignment, falling back to picking library component in cabal file."
             return $ gmcGhcOpts $ fromJust $ Map.lookup (head cns) mcs
           else do
             when noCandidates $
