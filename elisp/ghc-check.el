@@ -136,7 +136,7 @@ nil            do not display errors/warnings.
 (defun ghc-to-info (errs)
   ;; [^\t] to include \n.
   (let ((regex "^\\([^\n]*\\):\\([0-9]+\\):\\([0-9]+\\): *\\([^\t]+\\)")
-	info infos)
+	infos)
     (dolist (err errs (nreverse infos))
       (when (string-match regex err)
 	(let* ((file (expand-file-name (match-string 1 err) ghc-process-root)) ;; for Windows
