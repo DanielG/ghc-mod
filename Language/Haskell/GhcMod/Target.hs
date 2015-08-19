@@ -182,9 +182,9 @@ resolvedComponentsCache :: IOish m => FilePath ->
     Cached (GhcModT m) GhcModState
     [GmComponent 'GMCRaw (Set.Set ModulePath)]
     (Map.Map ChComponentName (GmComponent 'GMCResolved (Set.Set ModulePath)))
-resolvedComponentsCache distDir = Cached {
+resolvedComponentsCache distdir = Cached {
     cacheLens = Just (lGmcResolvedComponents . lGmCaches),
-    cacheFile  = distDir </> resolvedComponentsCacheFile,
+    cacheFile = resolvedComponentsCacheFile distdir,
     cachedAction = \tcfs comps ma -> do
         Cradle {..} <- cradle
         let iifsM = invalidatingInputFiles tcfs
@@ -195,13 +195,13 @@ resolvedComponentsCache distDir = Cached {
                 Just iifs ->
                   let
                       filterOutSetupCfg =
-                          filter (/= cradleRootDir </> cradleDistDir </> setupConfigPath)
+                          filter (/= cradleRootDir </> setupConfigPath distdir)
                       changedFiles = filterOutSetupCfg iifs
                   in if null changedFiles
                        then Nothing
                        else Just $ map Left changedFiles
             setupChanged = maybe False
-                                 (elem $ cradleRootDir </> cradleDistDir </> setupConfigPath)
+                                 (elem $ cradleRootDir </> setupConfigPath distdir)
                                  iifsM
         case (setupChanged, ma) of
           (False, Just mcs) -> gmsGet >>= \s -> gmsPut s { gmComponents = mcs }
@@ -218,7 +218,7 @@ resolvedComponentsCache distDir = Cached {
               text "files changed" <+>: changedDoc
 
         mcs <- resolveGmComponents mums comps
-        return ((cradleDistDir </> setupConfigPath) : flatten mcs , mcs)
+        return (setupConfigPath distdir : flatten mcs , mcs)
  }
 
  where

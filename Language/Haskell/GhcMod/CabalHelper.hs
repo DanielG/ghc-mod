@@ -53,24 +53,24 @@ import Paths_ghc_mod as GhcMod
 -- access home modules
 getGhcMergedPkgOptions :: (Applicative m, IOish m, GmEnv m, GmState m, GmLog m)
   => m [GHCOption]
-getGhcMergedPkgOptions = chCached $ \distDir -> Cached {
+getGhcMergedPkgOptions = chCached $ \distdir -> Cached {
   cacheLens = Just (lGmcMergedPkgOptions . lGmCaches),
-  cacheFile = distDir </> mergedPkgOptsCacheFile,
-  cachedAction = \ _tcf (progs, rootdir, distdir, _) _ma -> do
+  cacheFile = mergedPkgOptsCacheFile distdir,
+  cachedAction = \ _tcf (progs, rootdir, _) _ma -> do
     readProc <- gmReadProcess
     opts <- withCabal $ runQuery'' readProc progs rootdir distdir $
                 ghcMergedPkgOptions
-    return ([distDir </> setupConfigPath], opts)
+    return ([setupConfigPath distdir], opts)
  }
 
 getCabalPackageDbStack :: (IOish m, GmEnv m, GmState m, GmLog m) => m [GhcPkgDb]
-getCabalPackageDbStack = chCached $ \distDir -> Cached {
+getCabalPackageDbStack = chCached $ \distdir -> Cached {
   cacheLens = Just (lGmcPackageDbStack . lGmCaches),
-  cacheFile = distDir </> pkgDbStackCacheFile,
-  cachedAction = \ _tcf (progs, rootdir, distdir, _) _ma -> do
+  cacheFile = pkgDbStackCacheFile distdir,
+  cachedAction = \ _tcf (progs, rootdir, _) _ma -> do
     readProc <- gmReadProcess
     dbs <- withCabal $ map chPkgToGhcPkg <$> runQuery'' readProc progs rootdir distdir packageDbStack
-    return ([distDir </> setupConfigPath, sandboxConfigFile], dbs)
+    return ([setupConfigPath distdir, sandboxConfigFile], dbs)
  }
 
 chPkgToGhcPkg :: ChPkgDb -> GhcPkgDb
@@ -85,10 +85,10 @@ chPkgToGhcPkg (ChPkgSpecific f) = PackageDb f
 -- 'resolveGmComponents'.
 getComponents :: (Applicative m, IOish m, GmEnv m, GmState m, GmLog m)
               => m [GmComponent 'GMCRaw ChEntrypoint]
-getComponents = chCached$ \distDir -> Cached {
+getComponents = chCached$ \distdir -> Cached {
     cacheLens = Just (lGmcComponents . lGmCaches),
-    cacheFile = distDir </> cabalHelperCacheFile,
-    cachedAction = \ _tcf (progs, rootdir, distdir, _vers) _ma -> do
+    cacheFile = cabalHelperCacheFile distdir,
+    cachedAction = \ _tcf (progs, rootdir, _vers) _ma -> do
       readProc <- gmReadProcess
       runQuery'' readProc progs rootdir distdir $ do
         q <- join7
@@ -100,7 +100,7 @@ getComponents = chCached$ \distDir -> Cached {
                <*> entrypoints
                <*> sourceDirs
         let cs = flip map q $ curry8 (GmComponent mempty)
-        return ([distDir </> setupConfigPath], cs)
+        return ([setupConfigPath distdir], cs)
   }
  where
    curry8 fn (a, (b, (c, (d, (e, (f, (g, h))))))) = fn a b c d e f g h
@@ -226,14 +226,15 @@ chCached :: (Applicative m, IOish m, GmEnv m, GmState m, GmLog m, Serialize a)
 chCached c = do
   root <- cradleRootDir <$> cradle
   dist <- cradleDistDir <$> cradle
-  d <- cacheInputData root dist
+  d <- cacheInputData root
   withCabal $ cached root (c dist) d
  where
-   cacheInputData root dist = do
+   -- we don't need to include the disdir in the cache input because when it
+   -- changes the cache files will be gone anyways ;)
+   cacheInputData root = do
                opt <- options
                return $ ( helperProgs opt
                         , root
-                        , root </> dist
                         , (gmVer, chVer)
                         )
 

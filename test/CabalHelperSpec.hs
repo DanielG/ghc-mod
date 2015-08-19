@@ -58,10 +58,9 @@ spec = do
 
         it "handles stack project" $ do
             let tdir = "test/data/stack-project"
-            opts <- map gmcGhcOpts <$> runD' tdir getComponents
-            let ghcOpts = head opts
-                pkgs = pkgOptions ghcOpts
-            pkgs `shouldBe` ["Cabal","base","new-template"]
+            [ghcOpts] <- map gmcGhcOpts . filter ((==ChExeName "new-template-exe") . gmcName) <$> runD' tdir getComponents
+            let pkgs = pkgOptions ghcOpts
+            pkgs `shouldBe` ["base", "bytestring"]
 
         it "extracts build dependencies" $ do
             let tdir = "test/data/cabal-project"

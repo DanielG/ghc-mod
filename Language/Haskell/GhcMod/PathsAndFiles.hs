@@ -22,6 +22,7 @@ module Language.Haskell.GhcMod.PathsAndFiles (
 import Config (cProjectVersion)
 import Control.Applicative
 import Control.Monad
+import Control.Monad.Trans.Maybe
 import Data.List
 import Data.Char
 import Data.Maybe
@@ -74,13 +75,10 @@ findCabalFile dir = do
 findStackConfigFile :: FilePath -> IO (Maybe FilePath)
 findStackConfigFile dir = mightExist (dir </> "stack.yaml")
 
-findStackDistDir :: FilePath -> IO FilePath
-findStackDistDir dir = U.withDirectory_ dir $ do
-    mstack <- liftIO $ findExecutable "stack"
-    case mstack of
-      Nothing -> return "dist"
-      Just stack ->
-        takeWhile (/='\n') <$> readProcess stack ["path", "--dist-dir"] ""
+getStackDistDir :: FilePath -> IO (Maybe FilePath)
+getStackDistDir dir = U.withDirectory_ dir $ runMaybeT $ do
+    stack <- MaybeT $ findExecutable "stack"
+    liftIO $ takeWhile (/='\n') <$> readProcess stack ["path", "--dist-dir"] ""
 
 -- | Get path to sandbox config file
 getSandboxDb :: FilePath
@@ -190,14 +188,16 @@ parents dir' =
 ----------------------------------------------------------------
 
 setupConfigFile :: Cradle -> FilePath
-setupConfigFile crdl = cradleRootDir crdl </> cradleDistDir crdl </> setupConfigPath
+setupConfigFile crdl =
+    cradleRootDir crdl </> setupConfigPath (cradleDistDir crdl)
 
 sandboxConfigFile :: FilePath
 sandboxConfigFile = "cabal.sandbox.config"
 
 -- | Path to 'LocalBuildInfo' file, usually @dist/setup-config@
-setupConfigPath :: FilePath
-setupConfigPath = "setup-config" -- localBuildInfoFile defaultDistPref
+setupConfigPath :: FilePath -> FilePath
+setupConfigPath dist = dist </> "setup-config"
+ -- localBuildInfoFile defaultDistPref
 
 macrosHeaderPath :: FilePath
 macrosHeaderPath = "build/autogen/cabal_macros.h"
@@ -216,17 +216,21 @@ symbolCache crdl = cradleTempDir crdl </> symbolCacheFile
 symbolCacheFile :: String
 symbolCacheFile = "ghc-mod.symbol-cache"
 
-resolvedComponentsCacheFile :: String
-resolvedComponentsCacheFile = setupConfigPath <.> "ghc-mod.resolved-components"
+resolvedComponentsCacheFile :: FilePath -> FilePath
+resolvedComponentsCacheFile dist =
+    setupConfigPath dist <.> "ghc-mod.resolved-components"
 
-cabalHelperCacheFile :: String
-cabalHelperCacheFile = setupConfigPath <.> "ghc-mod.cabal-components"
+cabalHelperCacheFile :: FilePath -> FilePath
+cabalHelperCacheFile dist =
+    setupConfigPath dist <.> "ghc-mod.cabal-components"
 
-mergedPkgOptsCacheFile :: String
-mergedPkgOptsCacheFile = setupConfigPath <.> "ghc-mod.package-options"
+mergedPkgOptsCacheFile :: FilePath -> FilePath
+mergedPkgOptsCacheFile dist =
+    setupConfigPath dist <.> "ghc-mod.package-options"
 
-pkgDbStackCacheFile :: String
-pkgDbStackCacheFile = setupConfigPath <.> "ghc-mod.package-db-stack"
+pkgDbStackCacheFile :: FilePath -> FilePath
+pkgDbStackCacheFile dist =
+    setupConfigPath dist <.> "ghc-mod.package-db-stack"
 
 -- | @findCustomPackageDbFile dir@. Searches for a @.ghc-mod.cradle@ file in @dir@.
 -- If it exists in the given directory it is returned otherwise @findCradleFile@ returns @Nothing@

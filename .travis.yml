@@ -16,6 +16,7 @@ cache:
   directories:
   - ~/.cabal
   - ~/.ghc
+  - ~/.stack
 
 before_cache:
   - rm -f $HOME/.cabal/logs $HOME/.cabal/packages/*/build-reports.log
