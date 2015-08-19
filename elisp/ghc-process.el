@@ -141,7 +141,7 @@
 	  (funcall ghc-process-callback 'ng)
 	  (setq ghc-process-running nil)))))))
 
-(defun ghc-process-sentinel (process event)
+(defun ghc-process-sentinel (_process _event)
   (setq ghc-process-running nil))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
