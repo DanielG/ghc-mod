@@ -84,6 +84,7 @@ Extra-Source-Files:     ChangeLog
                         test/data/file-mapping/*.hs
                         test/data/file-mapping/preprocessor/*.hs
                         test/data/file-mapping/lhs/*.lhs
+                        test/data/nice-qualification/*.hs
 
 Library
   Default-Language:     Haskell2010
