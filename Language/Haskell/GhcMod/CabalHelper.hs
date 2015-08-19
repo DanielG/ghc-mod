@@ -68,9 +68,10 @@ getCabalPackageDbStack = chCached $ \distdir -> Cached {
   cacheLens = Just (lGmcPackageDbStack . lGmCaches),
   cacheFile = pkgDbStackCacheFile distdir,
   cachedAction = \ _tcf (progs, rootdir, _) _ma -> do
+    crdl <- cradle
     readProc <- gmReadProcess
     dbs <- withCabal $ map chPkgToGhcPkg <$> runQuery'' readProc progs rootdir distdir packageDbStack
-    return ([setupConfigPath distdir, sandboxConfigFile], dbs)
+    return ([setupConfigFile crdl, sandboxConfigFile crdl], dbs)
  }
 
 chPkgToGhcPkg :: ChPkgDb -> GhcPkgDb
@@ -153,8 +154,9 @@ withCabal action = do
     let projdir = cradleRootDir crdl
         distdir = projdir </> cradleDistDir crdl
 
-    mCabalFile <- liftIO $ timeFile `traverse` cradleCabalFile crdl
-    mCabalConfig <- liftIO $ timeMaybe (setupConfigFile crdl)
+    mCabalFile          <- liftIO $ timeFile `traverse` cradleCabalFile crdl
+    mCabalConfig        <- liftIO $ timeMaybe (setupConfigFile crdl)
+    mCabalSandboxConfig <- liftIO $ timeMaybe (sandboxConfigFile crdl)
 
     mCusPkgDbStack <- getCustomPkgDbStack
 
@@ -173,11 +175,17 @@ withCabal action = do
 
     when (isSetupConfigOutOfDate mCabalFile mCabalConfig) $
       gmLog GmDebug "" $ strDoc $ "setup configuration is out of date, reconfiguring Cabal project."
+
+    when (isSetupConfigOutOfDate mCabalSandboxConfig mCabalConfig) $
+      gmLog GmDebug "" $ strDoc $ "sandbox configuration is out of date, reconfiguring Cabal project."
+
     when pkgDbStackOutOfSync $
       gmLog GmDebug "" $ strDoc $ "package-db stack out of sync with ghc-mod.package-db-stack, reconfiguring Cabal project."
 
-    when (isSetupConfigOutOfDate mCabalFile mCabalConfig || pkgDbStackOutOfSync) $
-        withDirectory_ (cradleRootDir crdl) $ do
+    when ( isSetupConfigOutOfDate mCabalFile mCabalConfig
+        || pkgDbStackOutOfSync
+        || isSetupConfigOutOfDate mCabalSandboxConfig mCabalConfig) $
+          withDirectory_ (cradleRootDir crdl) $ do
             let progOpts =
                     [ "--with-ghc=" ++ T.ghcProgram opts ]
                     -- Only pass ghc-pkg if it was actually set otherwise we
@@ -200,9 +208,9 @@ pkgDbArg (PackageDb p) = "--package-db=" ++ p
 --   @Nothing < Nothing = False@
 --   (since we don't need to @cabal configure@ when no cabal file exists.)
 --
--- * Cabal file doesn't exist (unlikely case) -> should return False
+-- * Cabal file doesn't exist (impossible since cabal-helper is only used with
+-- cabal projects) -> should return False
 --   @Just cc < Nothing = False@
---   TODO: should we delete dist/setup-config?
 --
 -- * dist/setup-config doesn't exist yet -> should return True:
 --   @Nothing < Just cf = True@
@@ -212,7 +220,6 @@ pkgDbArg (PackageDb p) = "--package-db=" ++ p
 isSetupConfigOutOfDate :: Maybe TimedFile -> Maybe TimedFile -> Bool
 isSetupConfigOutOfDate worldCabalFile worldCabalConfig = do
   worldCabalConfig < worldCabalFile
-
 
 helperProgs :: Options -> Programs
 helperProgs opts = Programs {

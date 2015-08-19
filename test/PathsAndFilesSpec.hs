@@ -1,7 +1,10 @@
 module PathsAndFilesSpec where
 
-import Language.Haskell.GhcMod.PathsAndFiles
 
+import Language.Haskell.GhcMod.PathsAndFiles
+import Language.Haskell.GhcMod.Cradle
+
+import Control.Monad.Trans.Maybe
 import System.Directory
 import System.FilePath
 import Test.Hspec
@@ -12,11 +15,13 @@ spec = do
     describe "getSandboxDb" $ do
         it "can parse a config file and extract the sandbox package-db" $ do
             cwd <- getCurrentDirectory
-            Just db <- getSandboxDb "test/data/cabal-project"
+            Just crdl <- runMaybeT $ plainCradle "test/data/cabal-project"
+            Just db <- getSandboxDb crdl
             db `shouldSatisfy` isPkgDbAt (cwd </> "test/data/cabal-project/.cabal-sandbox")
 
         it "returns Nothing if the sandbox config file is broken" $ do
-            getSandboxDb "test/data/broken-sandbox" `shouldReturn` Nothing
+            Just crdl <- runMaybeT $ plainCradle "test/data/broken-sandbox"
+            getSandboxDb crdl  `shouldReturn` Nothing
 
     describe "findCabalFile" $ do
         it "works" $ do

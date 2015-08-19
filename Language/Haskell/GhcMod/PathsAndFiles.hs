@@ -81,12 +81,9 @@ getStackDistDir dir = U.withDirectory_ dir $ runMaybeT $ do
     liftIO $ takeWhile (/='\n') <$> readProcess stack ["path", "--dist-dir"] ""
 
 -- | Get path to sandbox config file
-getSandboxDb :: FilePath
-             -- ^ Path to the cabal package root directory (containing the
-             -- @cabal.sandbox.config@ file)
-             -> IO (Maybe GhcPkgDb)
-getSandboxDb d = do
-  mConf <- traverse readFile =<< mightExist (d </> "cabal.sandbox.config")
+getSandboxDb :: Cradle -> IO (Maybe GhcPkgDb)
+getSandboxDb crdl = do
+  mConf <-traverse readFile =<< mightExist (sandboxConfigFile crdl)
   bp <- buildPlatform readProcess
   return $ PackageDb . fixPkgDbVer bp <$> (extractSandboxDbDir =<< mConf)
 
@@ -154,7 +151,7 @@ findCabalSandboxDir dir = do
              _ -> Nothing
 
  where
-   isSandboxConfig = (==sandboxConfigFile)
+   isSandboxConfig = (==sandboxConfigFileName)
 
 zipMapM :: Monad m => (a -> m c) -> [a] -> m [(a,c)]
 zipMapM f as = mapM (\a -> liftM ((,) a) $ f a) as
@@ -191,8 +188,11 @@ setupConfigFile :: Cradle -> FilePath
 setupConfigFile crdl =
     cradleRootDir crdl </> setupConfigPath (cradleDistDir crdl)
 
-sandboxConfigFile :: FilePath
-sandboxConfigFile = "cabal.sandbox.config"
+sandboxConfigFile :: Cradle -> FilePath
+sandboxConfigFile crdl = cradleRootDir crdl </> sandboxConfigFileName
+
+sandboxConfigFileName :: String
+sandboxConfigFileName = "cabal.sandbox.config"
 
 -- | Path to 'LocalBuildInfo' file, usually @dist/setup-config@
 setupConfigPath :: FilePath -> FilePath

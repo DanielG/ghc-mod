@@ -280,19 +280,15 @@ stackOpts crdl = do
 -- also works for plain projects!
 sandboxOpts :: MonadIO m => Cradle -> m [String]
 sandboxOpts crdl = do
-    pkgDbStack <- liftIO $ getSandboxPackageDbStack $ cradleRootDir crdl
+    pkgDbStack <- liftIO $ getSandboxPackageDbStack
     let pkgOpts = ghcDbStackOpts pkgDbStack
     return $ ["-i" ++ d | d <- [wdir,rdir]] ++ pkgOpts ++ ["-Wall"]
   where
     (wdir, rdir) = (cradleCurrentDir crdl, cradleRootDir crdl)
 
-    getSandboxPackageDbStack
-        :: FilePath
-        -- ^ Project Directory (where the cabal.sandbox.config file would be if
-        -- it exists)
-        -> IO [GhcPkgDb]
-    getSandboxPackageDbStack cdir =
-        ([GlobalDb] ++) . maybe [UserDb] return <$> getSandboxDb cdir
+    getSandboxPackageDbStack :: IO [GhcPkgDb]
+    getSandboxPackageDbStack =
+        ([GlobalDb] ++) . maybe [UserDb] return <$> getSandboxDb crdl
 
 resolveGmComponent :: (IOish m, GmLog m, GmEnv m, GmState m)
     => Maybe [CompilationUnit] -- ^ Updated modules
