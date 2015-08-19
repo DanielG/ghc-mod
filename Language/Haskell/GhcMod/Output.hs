@@ -129,13 +129,14 @@ stdoutGateway chan = go ("", "")
      case ty of
        GmTerminated ->
            case stream of
-             GmOut -> putStr (obuf++l) >> go ("", ebuf)
-             GmErr -> putStr (ebuf++l) >> go (obuf, "")
+             GmOut -> putStr (obuf++l) >> hFlush stdout >> go ("", ebuf)
+             GmErr -> putStr (ebuf++l) >> hFlush stdout >> go (obuf, "")
        GmPartial -> case reverse $ lines l of
                       [] -> go buf
                       [x] -> go (appendBuf stream buf x)
                       x:xs -> do
                         putStr $ unlines $ reverse xs
+                        hFlush stdout
                         go (appendBuf stream buf x)
 
    appendBuf GmOut (obuf, ebuf) s = (obuf++s, ebuf)
