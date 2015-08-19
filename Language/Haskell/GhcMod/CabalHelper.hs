@@ -169,9 +169,7 @@ withCabal action = do
 
            Nothing -> return False
 
-    cusPkgStack <- maybe [] ((PackageDb "clear"):) <$> getCustomPkgDbStack
-
-    --TODO: also invalidate when sandboxConfig file changed
+    projType <- cradleProjectType <$> cradle
 
     when (isSetupConfigOutOfDate mCabalFile mCabalConfig) $
       gmLog GmDebug "" $ strDoc $ "setup configuration is out of date, reconfiguring Cabal project."
@@ -185,19 +183,33 @@ withCabal action = do
     when ( isSetupConfigOutOfDate mCabalFile mCabalConfig
         || pkgDbStackOutOfSync
         || isSetupConfigOutOfDate mCabalSandboxConfig mCabalConfig) $
-          withDirectory_ (cradleRootDir crdl) $ do
-            let progOpts =
-                    [ "--with-ghc=" ++ T.ghcProgram opts ]
-                    -- Only pass ghc-pkg if it was actually set otherwise we
-                    -- might break cabal's guessing logic
-                    ++ if T.ghcPkgProgram opts /= T.ghcPkgProgram defaultOptions
-                         then [ "--with-ghc-pkg=" ++ T.ghcPkgProgram opts ]
-                         else []
-                    ++ map pkgDbArg cusPkgStack
-            liftIO $ void $ readProc (T.cabalProgram opts) ("configure":progOpts) ""
-            gmLog GmDebug "" $ strDoc $ "writing Cabal autogen files"
-            liftIO $ writeAutogenFiles readProc projdir distdir
+          case projType of
+            CabalProject ->
+                cabalReconfigure readProc opts crdl projdir distdir
+            StackProject ->
+                -- https://github.com/commercialhaskell/stack/issues/820
+                gmLog GmWarning "" $ strDoc $ "Stack project configuration is out of date, please reconfigure manually using 'stack build'"
+            _ ->
+                error $ "withCabal: unsupported project type: " ++ show projType
+
     action
+
+ where
+   cabalReconfigure readProc opts crdl projdir distdir = do
+     withDirectory_ (cradleRootDir crdl) $ do
+        cusPkgStack <- maybe [] ((PackageDb "clear"):) <$> getCustomPkgDbStack
+        let progOpts =
+                [ "--with-ghc=" ++ T.ghcProgram opts ]
+                -- Only pass ghc-pkg if it was actually set otherwise we
+                -- might break cabal's guessing logic
+                ++ if T.ghcPkgProgram opts /= T.ghcPkgProgram defaultOptions
+                     then [ "--with-ghc-pkg=" ++ T.ghcPkgProgram opts ]
+                     else []
+                ++ map pkgDbArg cusPkgStack
+        liftIO $ void $ readProc (T.cabalProgram opts) ("configure":progOpts) ""
+        gmLog GmDebug "" $ strDoc $ "writing Cabal autogen files"
+        liftIO $ writeAutogenFiles readProc projdir distdir
+
 
 pkgDbArg :: GhcPkgDb -> String
 pkgDbArg GlobalDb      = "--package-db=global"
