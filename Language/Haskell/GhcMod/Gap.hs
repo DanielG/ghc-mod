@@ -42,6 +42,7 @@ module Language.Haskell.GhcMod.Gap (
   , lookupModulePackageInAllPackages
   , Language.Haskell.GhcMod.Gap.isSynTyCon
   , parseModuleHeader
+  , mkErrStyle'
   ) where
 
 import Control.Applicative hiding (empty)
@@ -559,3 +560,10 @@ parseModuleHeader str dflags filename =
      POk pst rdr_module ->
          let (warns,_) = getMessages pst in
          Right (warns, rdr_module)
+
+mkErrStyle' :: DynFlags -> PrintUnqualified -> PprStyle
+#if __GLASGOW_HASKELL__ >= 706
+mkErrStyle' = Outputable.mkErrStyle
+#else
+mkErrStyle' _ = Outputable.mkErrStyle
+#endif

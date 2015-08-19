@@ -134,7 +134,7 @@ ppErrMsg :: ErrMsg -> GmPprEnvM String
 ppErrMsg err = do
     dflags <- asks gpeDynFlags
     let unqual = errMsgContext err
-        st = mkErrStyle dflags unqual
+        st = Gap.mkErrStyle' dflags unqual
     let ext = showPage dflags st (errMsgExtraInfo err)
     m <- ppMsg st spn SevError msg
     return $ m ++ (if null ext then "" else "\n" ++ ext)
