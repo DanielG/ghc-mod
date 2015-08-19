@@ -192,7 +192,7 @@ targetGhcOptions crdl sefnmn = do
 
     case cradleProjectType crdl of
       CabalProject -> cabalOpts crdl
-      StackProject -> stackOpts crdl
+      StackProject -> cabalOpts crdl
       _ -> sandboxOpts crdl
  where
    zipMap f l = l `zip` (f `map` l)
