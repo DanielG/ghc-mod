@@ -84,6 +84,11 @@ Extra-Source-Files:     ChangeLog
                         test/data/file-mapping/*.hs
                         test/data/file-mapping/preprocessor/*.hs
                         test/data/file-mapping/lhs/*.lhs
+                        test/data/stack-project/new-template.cabal
+                        test/data/stack-project/Setup.hs
+                        test/data/stack-project/app/Main.hs
+                        test/data/stack-project/src/Lib.hs
+                        test/data/stack-project/test/Spec.hs
 
 Library
   Default-Language:     Haskell2010

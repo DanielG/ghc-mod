@@ -20,6 +20,7 @@ module Language.Haskell.GhcMod.CabalHelper
   ( getComponents
   , getGhcMergedPkgOptions
   , getCabalPackageDbStack
+  , getStackPackageDbStack
   , getCustomPkgDbStack
   , prepareCabalHelper
   )
@@ -43,6 +44,7 @@ import Language.Haskell.GhcMod.PathsAndFiles
 import Language.Haskell.GhcMod.Logging
 import Language.Haskell.GhcMod.Output
 import System.FilePath
+import System.Directory (findExecutable)
 import Prelude hiding ((.))
 
 import Paths_ghc_mod as GhcMod
@@ -51,24 +53,24 @@ import Paths_ghc_mod as GhcMod
 -- access home modules
 getGhcMergedPkgOptions :: (Applicative m, IOish m, GmEnv m, GmState m, GmLog m)
   => m [GHCOption]
-getGhcMergedPkgOptions = chCached Cached {
+getGhcMergedPkgOptions = chCached $ \distDir -> Cached {
   cacheLens = Just (lGmcMergedPkgOptions . lGmCaches),
-  cacheFile = mergedPkgOptsCacheFile,
+  cacheFile = distDir </> mergedPkgOptsCacheFile,
   cachedAction = \ _tcf (progs, rootdir, distdir, _) _ma -> do
     readProc <- gmReadProcess
     opts <- withCabal $ runQuery'' readProc progs rootdir distdir $
                 ghcMergedPkgOptions
-    return ([setupConfigPath], opts)
+    return ([distDir </> setupConfigPath], opts)
  }
 
 getCabalPackageDbStack :: (IOish m, GmEnv m, GmState m, GmLog m) => m [GhcPkgDb]
-getCabalPackageDbStack = chCached Cached {
+getCabalPackageDbStack = chCached $ \distDir -> Cached {
   cacheLens = Just (lGmcPackageDbStack . lGmCaches),
-  cacheFile = pkgDbStackCacheFile,
+  cacheFile = distDir </> pkgDbStackCacheFile,
   cachedAction = \ _tcf (progs, rootdir, distdir, _) _ma -> do
     readProc <- gmReadProcess
     dbs <- withCabal $ map chPkgToGhcPkg <$> runQuery'' readProc progs rootdir distdir packageDbStack
-    return ([setupConfigPath, sandboxConfigFile], dbs)
+    return ([distDir </> setupConfigPath, sandboxConfigFile], dbs)
  }
 
 chPkgToGhcPkg :: ChPkgDb -> GhcPkgDb
@@ -83,9 +85,9 @@ chPkgToGhcPkg (ChPkgSpecific f) = PackageDb f
 -- 'resolveGmComponents'.
 getComponents :: (Applicative m, IOish m, GmEnv m, GmState m, GmLog m)
               => m [GmComponent 'GMCRaw ChEntrypoint]
-getComponents = chCached Cached {
+getComponents = chCached$ \distDir -> Cached {
     cacheLens = Just (lGmcComponents . lGmCaches),
-    cacheFile = cabalHelperCacheFile,
+    cacheFile = distDir </> cabalHelperCacheFile,
     cachedAction = \ _tcf (progs, rootdir, distdir, _vers) _ma -> do
       readProc <- gmReadProcess
       runQuery'' readProc progs rootdir distdir $ do
@@ -98,7 +100,7 @@ getComponents = chCached Cached {
                <*> entrypoints
                <*> sourceDirs
         let cs = flip map q $ curry8 (GmComponent mempty)
-        return ([setupConfigPath], cs)
+        return ([distDir </> setupConfigPath], cs)
   }
  where
    curry8 fn (a, (b, (c, (d, (e, (f, (g, h))))))) = fn a b c d e f g h
@@ -115,9 +117,9 @@ prepareCabalHelper :: (IOish m, GmEnv m, GmLog m) => m ()
 prepareCabalHelper = do
   crdl <- cradle
   let projdir = cradleRootDir crdl
-      distdir = projdir </> "dist"
+      distdir = projdir </> cradleDistDir crdl
   readProc <- gmReadProcess
-  when (cradleProjectType crdl == CabalProject) $
+  when (cradleProjectType crdl == CabalProject || cradleProjectType crdl == StackProject) $
        withCabal $ liftIO $ prepare readProc projdir distdir
 
 parseCustomPackageDb :: String -> [GhcPkgDb]
@@ -132,6 +134,16 @@ getCustomPkgDbStack = do
     mCusPkgDbFile <- liftIO . (traverse readFile <=< findCustomPackageDbFile) . cradleRootDir =<< cradle
     return $ parseCustomPackageDb <$> mCusPkgDbFile
 
+getStackPackageDbStack :: IOish m => m [GhcPkgDb]
+getStackPackageDbStack = do
+    mstack <- liftIO $ findExecutable "stack"
+    case mstack of
+      Nothing -> return []
+      Just stack -> do
+        snapshotDb <- liftIO $ readProcess stack ["path", "--snapshot-pkg-db"] ""
+        localDb <- liftIO $ readProcess stack ["path", "--local-pkg-db"] ""
+        return $ map (PackageDb . last . lines) [snapshotDb, localDb]
+
 withCabal :: (IOish m, GmEnv m, GmLog m) => m a -> m a
 withCabal action = do
     crdl <- cradle
@@ -139,7 +151,7 @@ withCabal action = do
     readProc <- gmReadProcess
 
     let projdir = cradleRootDir crdl
-        distdir = projdir </> "dist"
+        distdir = projdir </> cradleDistDir crdl
 
     mCabalFile <- liftIO $ timeFile `traverse` cradleCabalFile crdl
     mCabalConfig <- liftIO $ timeMaybe (setupConfigFile crdl)
@@ -210,17 +222,18 @@ helperProgs opts = Programs {
                           }
 
 chCached :: (Applicative m, IOish m, GmEnv m, GmState m, GmLog m, Serialize a)
-  => Cached m GhcModState ChCacheData a -> m a
+  => (FilePath -> Cached m GhcModState ChCacheData a) -> m a
 chCached c = do
   root <- cradleRootDir <$> cradle
-  d <- cacheInputData root
-  withCabal $ cached root c d
+  dist <- cradleDistDir <$> cradle
+  d <- cacheInputData root dist
+  withCabal $ cached root (c dist) d
  where
-   cacheInputData root = do
+   cacheInputData root dist = do
                opt <- options
                return $ ( helperProgs opt
                         , root
-                        , root </> "dist"
+                        , root </> dist
                         , (gmVer, chVer)
                         )
 

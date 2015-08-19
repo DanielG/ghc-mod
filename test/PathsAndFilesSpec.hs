@@ -25,6 +25,10 @@ spec = do
         it "finds cabal files in parent directories" $ do
             findCabalFile "test/data/cabal-project/subdir1/subdir2" `shouldReturn` Just "test/data/cabal-project/cabalapi.cabal"
 
+    describe "findStackConfigFile" $ do
+        it "works" $ do
+            findStackConfigFile "test/data/stack-project" `shouldReturn` Just "test/data/stack-project/stack.yaml"
+
     describe "findCabalSandboxDir" $ do
         it "works" $ do
             findCabalSandboxDir "test/data/cabal-project" `shouldReturn` Just "test/data/cabal-project"
