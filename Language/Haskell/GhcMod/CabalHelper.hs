@@ -142,7 +142,7 @@ getStackPackageDbStack = do
       Just stack -> do
         snapshotDb <- liftIO $ readProcess stack ["path", "--snapshot-pkg-db"] ""
         localDb <- liftIO $ readProcess stack ["path", "--local-pkg-db"] ""
-        return $ map (PackageDb . takeWhile (/='\n')) [snapshotDb, localDb]
+        return $ map (PackageDb . last . lines) [snapshotDb, localDb]
 
 withCabal :: (IOish m, GmEnv m, GmLog m) => m a -> m a
 withCabal action = do
