@@ -67,10 +67,12 @@ getPackageDbStack = do
     PlainProject ->
         return [GlobalDb, UserDb]
     SandboxProject -> do
-        Just db <- liftIO $ getSandboxDb $ cradleRootDir crdl
+        Just db <- liftIO $ getSandboxDb crdl
         return $ [GlobalDb, db]
     CabalProject ->
         getCabalPackageDbStack
+    StackProject ->
+        getStackPackageDbStack
   return $ fromMaybe stack mCusPkgStack
 
 getPackageCachePaths :: IOish m => FilePath -> GhcModT m [FilePath]

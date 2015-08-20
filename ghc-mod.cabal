@@ -85,6 +85,12 @@ Extra-Source-Files:     ChangeLog
                         test/data/file-mapping/preprocessor/*.hs
                         test/data/file-mapping/lhs/*.lhs
                         test/data/nice-qualification/*.hs
+                        test/data/stack-project/stack.yaml
+                        test/data/stack-project/new-template.cabal
+                        test/data/stack-project/*.hs
+                        test/data/stack-project/app/*.hs
+                        test/data/stack-project/src/*.hs
+                        test/data/stack-project/test/*.hs
 
 Library
   Default-Language:     Haskell2010

@@ -149,6 +149,7 @@ targetGhcOptions crdl sefnmn = do
 
     case cradleProjectType crdl of
       CabalProject -> cabalOpts crdl
+      StackProject -> cabalOpts crdl
       _ -> sandboxOpts crdl
  where
    zipMap f l = l `zip` (f `map` l)
@@ -177,12 +178,13 @@ targetGhcOptions crdl sefnmn = do
             let cn = pickComponent candidates
             return $ gmcGhcOpts $ fromJust $ Map.lookup cn mcs
 
-resolvedComponentsCache :: IOish m => Cached (GhcModT m) GhcModState
+resolvedComponentsCache :: IOish m => FilePath ->
+    Cached (GhcModT m) GhcModState
     [GmComponent 'GMCRaw (Set.Set ModulePath)]
     (Map.Map ChComponentName (GmComponent 'GMCResolved (Set.Set ModulePath)))
-resolvedComponentsCache = Cached {
+resolvedComponentsCache distdir = Cached {
     cacheLens = Just (lGmcResolvedComponents . lGmCaches),
-    cacheFile  = resolvedComponentsCacheFile,
+    cacheFile = resolvedComponentsCacheFile distdir,
     cachedAction = \tcfs comps ma -> do
         Cradle {..} <- cradle
         let iifsM = invalidatingInputFiles tcfs
@@ -193,13 +195,13 @@ resolvedComponentsCache = Cached {
                 Just iifs ->
                   let
                       filterOutSetupCfg =
-                          filter (/= cradleRootDir </> setupConfigPath)
+                          filter (/= cradleRootDir </> setupConfigPath distdir)
                       changedFiles = filterOutSetupCfg iifs
                   in if null changedFiles
                        then Nothing
                        else Just $ map Left changedFiles
             setupChanged = maybe False
-                                 (elem $ cradleRootDir </> setupConfigPath)
+                                 (elem $ cradleRootDir </> setupConfigPath distdir)
                                  iifsM
         case (setupChanged, ma) of
           (False, Just mcs) -> gmsGet >>= \s -> gmsPut s { gmComponents = mcs }
@@ -216,7 +218,7 @@ resolvedComponentsCache = Cached {
               text "files changed" <+>: changedDoc
 
         mcs <- resolveGmComponents mums comps
-        return (setupConfigPath:flatten mcs , mcs)
+        return (setupConfigPath distdir : flatten mcs , mcs)
  }
 
  where
@@ -264,31 +266,29 @@ packageGhcOptions = do
     crdl <- cradle
     case cradleProjectType crdl of
       CabalProject -> getGhcMergedPkgOptions
+      StackProject -> getGhcMergedPkgOptions
       _ -> sandboxOpts crdl
 
 -- also works for plain projects!
 sandboxOpts :: MonadIO m => Cradle -> m [String]
 sandboxOpts crdl = do
-    pkgDbStack <- liftIO $ getSandboxPackageDbStack $ cradleRootDir crdl
+    pkgDbStack <- liftIO $ getSandboxPackageDbStack
     let pkgOpts = ghcDbStackOpts pkgDbStack
     return $ ["-i" ++ d | d <- [wdir,rdir]] ++ pkgOpts ++ ["-Wall"]
   where
     (wdir, rdir) = (cradleCurrentDir crdl, cradleRootDir crdl)
 
-    getSandboxPackageDbStack
-        :: FilePath
-        -- ^ Project Directory (where the cabal.sandbox.config file would be if
-        -- it exists)
-        -> IO [GhcPkgDb]
-    getSandboxPackageDbStack cdir =
-        ([GlobalDb] ++) . maybe [UserDb] return <$> getSandboxDb cdir
+    getSandboxPackageDbStack :: IO [GhcPkgDb]
+    getSandboxPackageDbStack =
+        ([GlobalDb] ++) . maybe [UserDb] return <$> getSandboxDb crdl
 
 resolveGmComponent :: (IOish m, GmLog m, GmEnv m, GmState m)
     => Maybe [CompilationUnit] -- ^ Updated modules
     -> GmComponent 'GMCRaw (Set ModulePath)
     -> m (GmComponent 'GMCResolved (Set ModulePath))
 resolveGmComponent mums c@GmComponent {..} = do
-  withLightHscEnv ghcOpts $ \env -> do
+  distDir <- cradleDistDir <$> cradle
+  withLightHscEnv (ghcOpts distDir) $ \env -> do
     let srcDirs = if null gmcSourceDirs then [""] else gmcSourceDirs
     let mg = gmcHomeModuleGraph
     let simp = gmcEntrypoints
@@ -302,10 +302,10 @@ resolveGmComponent mums c@GmComponent {..} = do
 
     return $ c { gmcEntrypoints = simp, gmcHomeModuleGraph = mg' }
 
- where ghcOpts = concat [
+ where ghcOpts distDir = concat [
            gmcGhcSrcOpts,
            gmcGhcLangOpts,
-           [ "-optP-include", "-optP" ++ macrosHeaderPath ]
+           [ "-optP-include", "-optP" ++ distDir </> macrosHeaderPath ]
         ]
 
 resolveEntrypoint :: (IOish m, GmEnv m, GmLog m, GmState m)
@@ -472,4 +472,4 @@ cabalResolvedComponents :: (IOish m) =>
 cabalResolvedComponents = do
     crdl@(Cradle{..}) <- cradle
     comps <- mapM (resolveEntrypoint crdl) =<< getComponents
-    cached cradleRootDir resolvedComponentsCache comps
+    cached cradleRootDir (resolvedComponentsCache cradleDistDir) comps

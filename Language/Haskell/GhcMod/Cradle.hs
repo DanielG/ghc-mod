@@ -1,9 +1,14 @@
-module Language.Haskell.GhcMod.Cradle (
+{-# LANGUAGE CPP #-}
+module Language.Haskell.GhcMod.Cradle
+#ifndef SPEC
+  (
     findCradle
   , findCradle'
   , findSpecCradle
   , cleanupCradle
-  ) where
+  )
+#endif
+  where
 
 import Language.Haskell.GhcMod.PathsAndFiles
 import Language.Haskell.GhcMod.Monad.Types
@@ -29,7 +34,7 @@ findCradle = findCradle' =<< getCurrentDirectory
 
 findCradle' :: FilePath -> IO Cradle
 findCradle' dir = run $ do
-    (cabalCradle dir `mplus`  sandboxCradle dir `mplus` plainCradle dir)
+    (stackCradle dir `mplus` cabalCradle dir `mplus` sandboxCradle dir `mplus` plainCradle dir)
  where run a = fillTempDir =<< (fromJust <$> runMaybeT a)
 
 findSpecCradle :: FilePath -> IO Cradle
@@ -65,6 +70,25 @@ cabalCradle wdir = do
       , cradleRootDir    = cabalDir
       , cradleTempDir    = error "tmpDir"
       , cradleCabalFile  = Just cabalFile
+      , cradleDistDir    = "dist"
+      }
+
+stackCradle :: FilePath -> MaybeT IO Cradle
+stackCradle wdir = do
+    cabalFile <- MaybeT $ findCabalFile wdir
+
+    let cabalDir = takeDirectory cabalFile
+
+    _stackConfigFile <- MaybeT $ findStackConfigFile cabalDir
+    distDir <- MaybeT $ getStackDistDir cabalDir
+
+    return Cradle {
+        cradleProjectType = StackProject
+      , cradleCurrentDir = wdir
+      , cradleRootDir    = cabalDir
+      , cradleTempDir    = error "tmpDir"
+      , cradleCabalFile  = Just cabalFile
+      , cradleDistDir    = distDir
       }
 
 sandboxCradle :: FilePath -> MaybeT IO Cradle
@@ -76,6 +100,7 @@ sandboxCradle wdir = do
       , cradleRootDir    = sbDir
       , cradleTempDir    = error "tmpDir"
       , cradleCabalFile  = Nothing
+      , cradleDistDir    = "dist"
       }
 
 plainCradle :: FilePath -> MaybeT IO Cradle
@@ -86,4 +111,5 @@ plainCradle wdir = do
       , cradleRootDir    = wdir
       , cradleTempDir    = error "tmpDir"
       , cradleCabalFile  = Nothing
+      , cradleDistDir    = "dist"
       }

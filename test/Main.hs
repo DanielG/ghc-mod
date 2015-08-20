@@ -36,15 +36,25 @@ main = do
                , "setup-config.ghc-mod.package-db-stack"
                , "ghc-mod.cache"
                ]
-      cachesFindExp :: String
-      cachesFindExp = unwords $ intersperse "-o " $ map ("-name "++) caches
+      findExp = unwords $ intersperse "-o " $ concat [
+                 stackWorkFindExp,
+                 cachesFindExp
+                ]
+      cachesFindExp = map ("-name "++) caches
+      stackWorkFindExp = ["-name .stack-work -type d"]
 
-      cleanCmd = "find test \\( "++ cachesFindExp ++" \\) -exec rm {} \\;"
+      cleanCmd = "find test \\( "++ findExp ++" \\) -exec rm -r {} \\;"
 
   putStrLn $ "$ " ++ cleanCmd
   void $ system cleanCmd
   void $ system "cabal --version"
   void $ system "ghc --version"
+
+  let stackDir = "test/data/stack-project"
+  void $ withDirectory_ stackDir $ do
+--    void $ system "stack init --force"
+    void $ system "stack setup"
+    void $ system "stack build"
 
   (putStrLn =<< runD debugInfo)
       `E.catch` (\(_ :: E.SomeException) -> return () )

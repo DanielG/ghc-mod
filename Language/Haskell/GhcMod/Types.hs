@@ -121,7 +121,7 @@ defaultOptions = Options {
 
 ----------------------------------------------------------------
 
-data ProjectType = CabalProject | SandboxProject | PlainProject
+data ProjectType = CabalProject | SandboxProject | PlainProject | StackProject
                  deriving (Eq, Show)
 
 -- | The environment where this library is used.
@@ -135,6 +135,8 @@ data Cradle = Cradle {
   , cradleTempDir    :: FilePath
   -- | The file name of the found cabal file.
   , cradleCabalFile  :: Maybe FilePath
+  -- | The build info directory.
+  , cradleDistDir    :: FilePath
   } deriving (Eq, Show)
 
 

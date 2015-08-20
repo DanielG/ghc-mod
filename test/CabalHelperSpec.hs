@@ -56,6 +56,12 @@ spec = do
               then forM_ opts (\o -> o `shouldContain` ["-no-user-package-conf","-package-conf", cwd </> "test/data/cabal-project/.cabal-sandbox/"++ghcSandboxPkgDbDir bp])
               else forM_ opts (\o -> o `shouldContain` ["-no-user-package-db","-package-db",cwd </> "test/data/cabal-project/.cabal-sandbox/"++ghcSandboxPkgDbDir bp])
 
+        it "handles stack project" $ do
+            let tdir = "test/data/stack-project"
+            [ghcOpts] <- map gmcGhcOpts . filter ((==ChExeName "new-template-exe") . gmcName) <$> runD' tdir getComponents
+            let pkgs = pkgOptions ghcOpts
+            pkgs `shouldBe` ["base", "bytestring"]
+
         it "extracts build dependencies" $ do
             let tdir = "test/data/cabal-project"
             opts <- map gmcGhcOpts <$> runD' tdir getComponents

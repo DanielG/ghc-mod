@@ -27,6 +27,7 @@ debugInfo = do
     cabal <-
         case cradleProjectType of
           CabalProject -> cabalDebug
+          StackProject -> cabalDebug
           _ -> return []
 
     pkgOpts <- packageGhcOptions

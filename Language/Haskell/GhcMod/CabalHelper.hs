@@ -20,6 +20,7 @@ module Language.Haskell.GhcMod.CabalHelper
   ( getComponents
   , getGhcMergedPkgOptions
   , getCabalPackageDbStack
+  , getStackPackageDbStack
   , getCustomPkgDbStack
   , prepareCabalHelper
   )
@@ -43,6 +44,7 @@ import Language.Haskell.GhcMod.PathsAndFiles
 import Language.Haskell.GhcMod.Logging
 import Language.Haskell.GhcMod.Output
 import System.FilePath
+import System.Directory (findExecutable)
 import Prelude hiding ((.))
 
 import Paths_ghc_mod as GhcMod
@@ -51,24 +53,25 @@ import Paths_ghc_mod as GhcMod
 -- access home modules
 getGhcMergedPkgOptions :: (Applicative m, IOish m, GmEnv m, GmState m, GmLog m)
   => m [GHCOption]
-getGhcMergedPkgOptions = chCached Cached {
+getGhcMergedPkgOptions = chCached $ \distdir -> Cached {
   cacheLens = Just (lGmcMergedPkgOptions . lGmCaches),
-  cacheFile = mergedPkgOptsCacheFile,
-  cachedAction = \ _tcf (progs, rootdir, distdir, _) _ma -> do
+  cacheFile = mergedPkgOptsCacheFile distdir,
+  cachedAction = \ _tcf (progs, rootdir, _) _ma -> do
     readProc <- gmReadProcess
     opts <- withCabal $ runQuery'' readProc progs rootdir distdir $
                 ghcMergedPkgOptions
-    return ([setupConfigPath], opts)
+    return ([setupConfigPath distdir], opts)
  }
 
 getCabalPackageDbStack :: (IOish m, GmEnv m, GmState m, GmLog m) => m [GhcPkgDb]
-getCabalPackageDbStack = chCached Cached {
+getCabalPackageDbStack = chCached $ \distdir -> Cached {
   cacheLens = Just (lGmcPackageDbStack . lGmCaches),
-  cacheFile = pkgDbStackCacheFile,
-  cachedAction = \ _tcf (progs, rootdir, distdir, _) _ma -> do
+  cacheFile = pkgDbStackCacheFile distdir,
+  cachedAction = \ _tcf (progs, rootdir, _) _ma -> do
+    crdl <- cradle
     readProc <- gmReadProcess
     dbs <- withCabal $ map chPkgToGhcPkg <$> runQuery'' readProc progs rootdir distdir packageDbStack
-    return ([setupConfigPath, sandboxConfigFile], dbs)
+    return ([setupConfigFile crdl, sandboxConfigFile crdl], dbs)
  }
 
 chPkgToGhcPkg :: ChPkgDb -> GhcPkgDb
@@ -83,10 +86,10 @@ chPkgToGhcPkg (ChPkgSpecific f) = PackageDb f
 -- 'resolveGmComponents'.
 getComponents :: (Applicative m, IOish m, GmEnv m, GmState m, GmLog m)
               => m [GmComponent 'GMCRaw ChEntrypoint]
-getComponents = chCached Cached {
+getComponents = chCached$ \distdir -> Cached {
     cacheLens = Just (lGmcComponents . lGmCaches),
-    cacheFile = cabalHelperCacheFile,
-    cachedAction = \ _tcf (progs, rootdir, distdir, _vers) _ma -> do
+    cacheFile = cabalHelperCacheFile distdir,
+    cachedAction = \ _tcf (progs, rootdir, _vers) _ma -> do
       readProc <- gmReadProcess
       runQuery'' readProc progs rootdir distdir $ do
         q <- join7
@@ -98,7 +101,7 @@ getComponents = chCached Cached {
                <*> entrypoints
                <*> sourceDirs
         let cs = flip map q $ curry8 (GmComponent mempty)
-        return ([setupConfigPath], cs)
+        return ([setupConfigPath distdir], cs)
   }
  where
    curry8 fn (a, (b, (c, (d, (e, (f, (g, h))))))) = fn a b c d e f g h
@@ -115,9 +118,9 @@ prepareCabalHelper :: (IOish m, GmEnv m, GmLog m) => m ()
 prepareCabalHelper = do
   crdl <- cradle
   let projdir = cradleRootDir crdl
-      distdir = projdir </> "dist"
+      distdir = projdir </> cradleDistDir crdl
   readProc <- gmReadProcess
-  when (cradleProjectType crdl == CabalProject) $
+  when (cradleProjectType crdl == CabalProject || cradleProjectType crdl == StackProject) $
        withCabal $ liftIO $ prepare readProc projdir distdir
 
 parseCustomPackageDb :: String -> [GhcPkgDb]
@@ -132,6 +135,16 @@ getCustomPkgDbStack = do
     mCusPkgDbFile <- liftIO . (traverse readFile <=< findCustomPackageDbFile) . cradleRootDir =<< cradle
     return $ parseCustomPackageDb <$> mCusPkgDbFile
 
+getStackPackageDbStack :: IOish m => m [GhcPkgDb]
+getStackPackageDbStack = do
+    mstack <- liftIO $ findExecutable "stack"
+    case mstack of
+      Nothing -> return []
+      Just stack -> do
+        snapshotDb <- liftIO $ readProcess stack ["path", "--snapshot-pkg-db"] ""
+        localDb <- liftIO $ readProcess stack ["path", "--local-pkg-db"] ""
+        return $ map (PackageDb . takeWhile (/='\n')) [snapshotDb, localDb]
+
 withCabal :: (IOish m, GmEnv m, GmLog m) => m a -> m a
 withCabal action = do
     crdl <- cradle
@@ -139,10 +152,11 @@ withCabal action = do
     readProc <- gmReadProcess
 
     let projdir = cradleRootDir crdl
-        distdir = projdir </> "dist"
+        distdir = projdir </> cradleDistDir crdl
 
-    mCabalFile <- liftIO $ timeFile `traverse` cradleCabalFile crdl
-    mCabalConfig <- liftIO $ timeMaybe (setupConfigFile crdl)
+    mCabalFile          <- liftIO $ timeFile `traverse` cradleCabalFile crdl
+    mCabalConfig        <- liftIO $ timeMaybe (setupConfigFile crdl)
+    mCabalSandboxConfig <- liftIO $ timeMaybe (sandboxConfigFile crdl)
 
     mCusPkgDbStack <- getCustomPkgDbStack
 
@@ -155,29 +169,47 @@ withCabal action = do
 
            Nothing -> return False
 
-    cusPkgStack <- maybe [] ((PackageDb "clear"):) <$> getCustomPkgDbStack
-
-    --TODO: also invalidate when sandboxConfig file changed
+    projType <- cradleProjectType <$> cradle
 
     when (isSetupConfigOutOfDate mCabalFile mCabalConfig) $
       gmLog GmDebug "" $ strDoc $ "setup configuration is out of date, reconfiguring Cabal project."
+
+    when (isSetupConfigOutOfDate mCabalSandboxConfig mCabalConfig) $
+      gmLog GmDebug "" $ strDoc $ "sandbox configuration is out of date, reconfiguring Cabal project."
+
     when pkgDbStackOutOfSync $
       gmLog GmDebug "" $ strDoc $ "package-db stack out of sync with ghc-mod.package-db-stack, reconfiguring Cabal project."
 
-    when (isSetupConfigOutOfDate mCabalFile mCabalConfig || pkgDbStackOutOfSync) $
-        withDirectory_ (cradleRootDir crdl) $ do
-            let progOpts =
-                    [ "--with-ghc=" ++ T.ghcProgram opts ]
-                    -- Only pass ghc-pkg if it was actually set otherwise we
-                    -- might break cabal's guessing logic
-                    ++ if T.ghcPkgProgram opts /= T.ghcPkgProgram defaultOptions
-                         then [ "--with-ghc-pkg=" ++ T.ghcPkgProgram opts ]
-                         else []
-                    ++ map pkgDbArg cusPkgStack
-            liftIO $ void $ readProc (T.cabalProgram opts) ("configure":progOpts) ""
-            gmLog GmDebug "" $ strDoc $ "writing Cabal autogen files"
-            liftIO $ writeAutogenFiles readProc projdir distdir
+    when ( isSetupConfigOutOfDate mCabalFile mCabalConfig
+        || pkgDbStackOutOfSync
+        || isSetupConfigOutOfDate mCabalSandboxConfig mCabalConfig) $
+          case projType of
+            CabalProject ->
+                cabalReconfigure readProc opts crdl projdir distdir
+            StackProject ->
+                -- https://github.com/commercialhaskell/stack/issues/820
+                gmLog GmWarning "" $ strDoc $ "Stack project configuration is out of date, please reconfigure manually using 'stack build'"
+            _ ->
+                error $ "withCabal: unsupported project type: " ++ show projType
+
     action
+
+ where
+   cabalReconfigure readProc opts crdl projdir distdir = do
+     withDirectory_ (cradleRootDir crdl) $ do
+        cusPkgStack <- maybe [] ((PackageDb "clear"):) <$> getCustomPkgDbStack
+        let progOpts =
+                [ "--with-ghc=" ++ T.ghcProgram opts ]
+                -- Only pass ghc-pkg if it was actually set otherwise we
+                -- might break cabal's guessing logic
+                ++ if T.ghcPkgProgram opts /= T.ghcPkgProgram defaultOptions
+                     then [ "--with-ghc-pkg=" ++ T.ghcPkgProgram opts ]
+                     else []
+                ++ map pkgDbArg cusPkgStack
+        liftIO $ void $ readProc (T.cabalProgram opts) ("configure":progOpts) ""
+        gmLog GmDebug "" $ strDoc $ "writing Cabal autogen files"
+        liftIO $ writeAutogenFiles readProc projdir distdir
+
 
 pkgDbArg :: GhcPkgDb -> String
 pkgDbArg GlobalDb      = "--package-db=global"
@@ -188,9 +220,9 @@ pkgDbArg (PackageDb p) = "--package-db=" ++ p
 --   @Nothing < Nothing = False@
 --   (since we don't need to @cabal configure@ when no cabal file exists.)
 --
--- * Cabal file doesn't exist (unlikely case) -> should return False
+-- * Cabal file doesn't exist (impossible since cabal-helper is only used with
+-- cabal projects) -> should return False
 --   @Just cc < Nothing = False@
---   TODO: should we delete dist/setup-config?
 --
 -- * dist/setup-config doesn't exist yet -> should return True:
 --   @Nothing < Just cf = True@
@@ -201,7 +233,6 @@ isSetupConfigOutOfDate :: Maybe TimedFile -> Maybe TimedFile -> Bool
 isSetupConfigOutOfDate worldCabalFile worldCabalConfig = do
   worldCabalConfig < worldCabalFile
 
-
 helperProgs :: Options -> Programs
 helperProgs opts = Programs {
                             cabalProgram  = T.cabalProgram opts,
@@ -210,17 +241,19 @@ helperProgs opts = Programs {
                           }
 
 chCached :: (Applicative m, IOish m, GmEnv m, GmState m, GmLog m, Serialize a)
-  => Cached m GhcModState ChCacheData a -> m a
+  => (FilePath -> Cached m GhcModState ChCacheData a) -> m a
 chCached c = do
   root <- cradleRootDir <$> cradle
+  dist <- cradleDistDir <$> cradle
   d <- cacheInputData root
-  withCabal $ cached root c d
+  withCabal $ cached root (c dist) d
  where
+   -- we don't need to include the disdir in the cache input because when it
+   -- changes the cache files will be gone anyways ;)
    cacheInputData root = do
                opt <- options
                return $ ( helperProgs opt
                         , root
-                        , root </> "dist"
                         , (gmVer, chVer)
                         )
 

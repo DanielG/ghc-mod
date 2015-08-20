@@ -49,4 +49,4 @@ data TimedCacheFiles = TimedCacheFiles {
   -- ^ Timestamped files returned by the cached action
  } deriving (Eq, Ord, Show)
 
-type ChCacheData = (Programs, FilePath, FilePath, (Version, [Char]))
+type ChCacheData = (Programs, FilePath, (Version, [Char]))
