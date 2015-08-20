@@ -16,6 +16,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defvar ghc-process-running nil)
+(defvar ghc-process-file-mapping nil)
 
 (defvar-local ghc-process-process-name nil)
 (defvar-local ghc-process-original-buffer nil)
@@ -48,15 +49,38 @@
 	(ghc-with-current-buffer buf
 	  (setq ghc-process-original-buffer cbuf)
 	  (setq ghc-process-original-file file)
-	  (setq ghc-process-callback callback)
 	  (setq ghc-process-hook hook2)
 	  (setq ghc-process-root root)
-	  (erase-buffer)
-	  (let ((pro (ghc-get-process cpro name buf)))
-	    (process-send-string pro cmd)
+	  (let ((pro (ghc-get-process cpro name buf))
+		(map-cmd (format "map-file %s\n" file)))
+	    ;; map-file
+	    (setq ghc-process-file-mapping t)
+	    (setq ghc-process-callback nil)
+	    (erase-buffer)
+	    (when ghc-debug
+	      (ghc-with-debug-buffer
+	       (insert (format "%% %s" map-cmd))
+	       (insert "CONTENTS + EOT\n")))
+	    (process-send-string pro map-cmd)
+	    (with-current-buffer cbuf
+	      (save-restriction
+		(widen)
+		(process-send-region pro (point-min) (point-max))))
+	    (process-send-string pro "\004\n")
+	    (condition-case nil
+		(let ((inhibit-quit nil))
+		  (while ghc-process-file-mapping
+		    (accept-process-output pro 0.1 nil t)))
+	      (quit
+	       (setq ghc-process-running nil)
+	       (setq ghc-process-file-mapping nil)))
+	    ;; command
+	    (setq ghc-process-callback callback)
+	    (erase-buffer)
 	    (when ghc-debug
 	      (ghc-with-debug-buffer
 	       (insert (format "%% %s" cmd))))
+	    (process-send-string pro cmd)
 	    pro))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -71,11 +95,12 @@
    (t cpro)))
 
 (defun ghc-start-process (name buf)
-  (let* ((opts (append ghc-debug-options
+  (let* ((process-connection-type nil) ;; using PIPE due to ^D
+	 (opts (append ghc-debug-options
 		       '("-b" "\n" "-l" "--line-prefix=O: ,E: ")
 		       (ghc-make-ghc-options)
 		       '("legacy-interactive")))
-	 (pro (apply 'start-file-process name buf ghc-command opts)))
+	 (pro (apply 'start-process name buf ghc-command opts)))
     (set-process-filter pro 'ghc-process-filter)
     (set-process-sentinel pro 'ghc-process-sentinel)
     (set-process-query-on-exit-flag pro nil)
@@ -133,10 +158,13 @@
 	(forward-line -1)
 	(cond
 	 ((looking-at "^OK$")
-	  (if ghc-process-hook (funcall ghc-process-hook))
-	  (goto-char (point-min))
-	  (funcall ghc-process-callback 'ok)
-	  (setq ghc-process-running nil))
+	  (delete-region (point) (point-max))
+	  (setq ghc-process-file-mapping nil)
+	  (when ghc-process-callback
+	    (if ghc-process-hook (funcall ghc-process-hook))
+	    (goto-char (point-min))
+	    (funcall ghc-process-callback 'ok)
+	    (setq ghc-process-running nil)))
 	 ((looking-at "^NG ")
 	  (funcall ghc-process-callback 'ng)
 	  (setq ghc-process-running nil)))))))
