@@ -32,6 +32,7 @@ Data-Files:             LICENSE COPYING.BSD3 COPYING.AGPL3
 Extra-Source-Files:     ChangeLog
                         SetupCompat.hs
                         NotCPP/*.hs
+                        NotCPP/COPYING
                         test/data/annotations/*.hs
                         test/data/broken-cabal/*.cabal
                         test/data/broken-cabal/cabal.sandbox.config.in
