@@ -80,6 +80,12 @@ stackCradle wdir = do
     let cabalDir = takeDirectory cabalFile
 
     _stackConfigFile <- MaybeT $ findStackConfigFile cabalDir
+
+    -- If dist/setup-config already exists the user probably wants to use cabal
+    -- rather than stack, or maybe that's just me ;)
+    mCabalSetupCfg <- mightExist $ setupConfigPath "dist"
+    when (isJust mCabalSetupCfg) $ mzero
+
     distDir <- MaybeT $ getStackDistDir cabalDir
 
     return Cradle {
