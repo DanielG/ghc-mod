@@ -420,6 +420,10 @@ nil            do not display errors/warnings.
 	  (let ((old (match-string 1 data))
 		(new (match-string 2 data)))
 	    (ghc-check-replace old new)))
+	 ((string-match "Found hole .\\(_[_[:alnum:]]*\\). with type: \\([^\t\n]+\\)" data)
+	  (let ((old (match-string 1 data))
+		(new (match-string 2 data)))
+	    (ghc-check-replace old new)))
 	 (t
 	  (setq ret nil)))))))
 
