@@ -277,7 +277,7 @@ CLI options:
 * `--map-file "file1.hs=file2.hs"` can be used to tell
     ghc-mod that it should take source code for `file1.hs` from `file2.hs`.
     `file1.hs` can be either full path, or path relative to project root.
-    `file2.hs` has to be either relative to current directory,
+    `file2.hs` has to be either relative to project root,
     or full path (preferred).
 * `--map-file "file.hs"` can be used to tell ghc-mod that it should take
     source code for `file.hs` from stdin. File end marker is `\EOT\n`,
