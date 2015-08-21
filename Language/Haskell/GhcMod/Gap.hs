@@ -7,7 +7,7 @@ module Language.Haskell.GhcMod.Gap (
   , setLogAction
   , getSrcSpan
   , getSrcFile
-  , withContext
+  , withInteractiveContext
   , fOptions
   , toStringBuffer
   , showSeverityCaption
@@ -214,8 +214,8 @@ fileModSummary file' = do
         (Just file==) <$> canonicalizePath `traverse` ml_hs_file (ms_location m)
     return ms
 
-withContext :: GhcMonad m => m a -> m a
-withContext action = gbracket setup teardown body
+withInteractiveContext :: GhcMonad m => m a -> m a
+withInteractiveContext action = gbracket setup teardown body
   where
     setup = getContext
     teardown = setCtx

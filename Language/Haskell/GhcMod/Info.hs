@@ -35,7 +35,7 @@ info :: IOish m
 info file expr =
   ghandle handler $
     runGmlT' [Left file] deferErrors $
-      withContext $
+      withInteractiveContext $
         convert <$> options <*> body
   where
     handler (SomeException ex) = do
@@ -61,7 +61,7 @@ types :: IOish m
 types file lineNo colNo =
   ghandle handler $
     runGmlT' [Left file] deferErrors $
-      withContext $ do
+      withInteractiveContext $ do
         crdl         <- cradle
         modSum       <- fileModSummaryWithMapping (cradleCurrentDir crdl </> file)
         srcSpanTypes <- getSrcSpanType modSum lineNo colNo
