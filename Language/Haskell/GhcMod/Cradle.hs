@@ -83,7 +83,7 @@ stackCradle wdir = do
 
     -- If dist/setup-config already exists the user probably wants to use cabal
     -- rather than stack, or maybe that's just me ;)
-    mCabalSetupCfg <- mightExist $ setupConfigPath "dist"
+    mCabalSetupCfg <- liftIO $ mightExist $ setupConfigPath "dist"
     when (isJust mCabalSetupCfg) $ mzero
 
     distDir <- MaybeT $ getStackDistDir cabalDir
