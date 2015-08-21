@@ -63,7 +63,7 @@
 	(cons 'ghc-type-clear-overlay after-change-functions))
   (add-hook 'post-command-hook 'ghc-type-post-command-hook))
 
-(defun ghc-type-clear-overlay (&optional beg end len)
+(defun ghc-type-clear-overlay (&optional _beg _end _len)
   (when (overlayp ghc-type-overlay)
     (ghc-type-set-ix 0)
     (ghc-type-set-point 0)

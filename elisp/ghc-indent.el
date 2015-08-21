@@ -10,11 +10,11 @@
 
 (defvar ghc-indent-offset 4)
 
-(defun ghc-make-indent-shallower (beg end)
+(defun ghc-make-indent-shallower (_beg _end)
   (interactive "r")
   (indent-rigidly (region-beginning) (region-end) (- ghc-indent-offset)))
 
-(defun ghc-make-indent-deeper (beg end)
+(defun ghc-make-indent-deeper (_beg _end)
   (interactive "r")
   (indent-rigidly (region-beginning) (region-end) ghc-indent-offset))
 

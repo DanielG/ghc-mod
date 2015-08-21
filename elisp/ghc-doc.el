@@ -54,7 +54,7 @@
 (defconst ghc-doc-hackage-format
   "http://hackage.haskell.org/packages/archive/%s/%s/doc/html/%s.html")
 
-(defun ghc-browse-url-safari (uri &rest args)
+(defun ghc-browse-url-safari (uri &rest _args)
 "Open a URI in Safari using AppleScript. This preserves anchors."
   (let ((script (format "
 tell application \"Safari\"
@@ -68,7 +68,6 @@ end tell" uri)))
          (mod- (ghc-replace-character mod ?. ?-))
 	 (ver  (ghc-pkg-ver-path-get-ver pkg-ver-path))
 	 (path (ghc-pkg-ver-path-get-path pkg-ver-path))
-	 (pkg-with-ver (format "%s-%s" pkg ver))
 	 (local (format ghc-doc-local-format path mod-))
 	 (remote (format ghc-doc-hackage-format pkg ver mod-))
 	 (file (format "%s/%s.html" path mod-))

@@ -136,7 +136,7 @@ nil            do not display errors/warnings.
 (defun ghc-to-info (errs)
   ;; [^\t] to include \n.
   (let ((regex "^\\([^\n]*\\):\\([0-9]+\\):\\([0-9]+\\): *\\([^\t]+\\)")
-	info infos)
+	infos)
     (dolist (err errs (nreverse infos))
       (when (string-match regex err)
 	(let* ((file (expand-file-name (match-string 1 err) ghc-process-root)) ;; for Windows
@@ -295,14 +295,13 @@ nil            do not display errors/warnings.
   (let ((file-msgs (ghc-get-only-holes)))
     (if (null file-msgs)
 	(message "No holes")
-      (let ((file (ghc-file-msgs-get-file file-msgs))
-	    (msgs (ghc-file-msgs-get-msgs file-msgs)))
+      (let ((msgs (ghc-file-msgs-get-msgs file-msgs)))
 	(ghc-display
 	 nil
 	 (lambda ()
            (progn
 	     (mapc (lambda (x) (insert x "\n\n")) msgs)
-             (buttonize-buffer)) ))))))
+             (buttonize-buffer))))))))
 
 (defun ghc-display-holes-to-minibuf ()
   (let ((file-msgs (ghc-get-only-holes)))
@@ -479,7 +478,7 @@ nil            do not display errors/warnings.
 	(forward-line)
 	(re-search-forward "^$" nil t)
 	(insert fn)
-	(dotimes (i arity)
+	(dotimes (_i arity)
 	  (insert " _"))
 	(insert  " = error \"" fn "\"\n")))))
 
