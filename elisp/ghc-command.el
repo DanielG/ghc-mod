@@ -53,7 +53,7 @@
       (let ((inhibit-field-text-motion t))
         (sort-subr nil 'forward-line 'end-of-line
 		   (lambda ()
-		     (re-search-forward "^import\\( *qualified\\)? *" nil t)
+		     (re-search-forward "^import +\\(qualified\\)? *" nil t)
 		     nil)
 		   'end-of-line))
       (ghc-merge-lines))))
@@ -64,7 +64,7 @@
     (while (not (eolp))
       ;; qualified modlues are not merged at this moment.
       ;; fixme if it is improper.
-      (if (looking-at "^import *\\([A-Z][^ \n]+\\) *(\\(.*\\))$")
+      (if (looking-at "^import +\\([A-Z][^ \n]+\\) *(\\(.*\\))$")
 	  (let ((mod (match-string-no-properties 1))
 		(syms (match-string-no-properties 2))
 		(beg (point)))
@@ -73,7 +73,7 @@
 	(forward-line)))))
 
 (defun ghc-merge-line (beg mod syms)
-  (let ((regex (concat "^import *" (regexp-quote mod) " *(\\(.*\\))$"))
+  (let ((regex (concat "^import +" (regexp-quote mod) " *(\\(.*\\))$"))
 	duplicated)
     (while (looking-at regex)
       (setq duplicated t)
