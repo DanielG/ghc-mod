@@ -28,11 +28,12 @@ package is called `ghc` there, not `ghc-mod`) and install the
 
 ### Nix & NixOS
 
-The installation is a little more involved in this environment as Nix needs some
-ugly hacks to get packages using the GHC API to work, please refer to this
-stackoverflow answer:
-
-http://stackoverflow.com/a/24228830
+`ghc-mod` works fine for users of Nix who follow a recent version of the
+package database such as the `nixos-15.09` or `nixos-unstable` channel. Just
+include the package `ghc-mod` into your `ghcWithPackages` environment like any
+other library. The [Nixpkgs Haskell User's
+Guide](http://hydra.nixos.org/job/nixpkgs/trunk/manual/latest/download-by-type/doc/manual#users-guide-to-the-haskell-infrastructure)
+covers this subject in gret detail.
 
 ## Using the development version
 
