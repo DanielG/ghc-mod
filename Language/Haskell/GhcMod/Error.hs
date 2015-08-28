@@ -140,6 +140,9 @@ gmeDoc e = case e of
                ++ intercalate "\", \"" cfs ++"\"."
     GMECabalStateFile csfe ->
         gmCsfeDoc csfe
+    GMEStackBootrap rv stderr ->
+        (text $ "Boostrapping stack project failed (exited with "++show rv++")")
+          <+>: text stderr
 
 ghcExceptionDoc :: GhcException -> Doc
 ghcExceptionDoc e@(CmdLineError _) =

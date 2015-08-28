@@ -1,4 +1,4 @@
-{-# LANGUAGE CPP, DeriveDataTypeable, DeriveFunctor, DeriveGeneric,
+{-# LANGUAGE CPP, DeriveDataTypeable, DeriveFunctor, DeriveGeneric, RankNTypes,
   StandaloneDeriving, DefaultSignatures, FlexibleInstances, TemplateHaskell #-}
 {-# OPTIONS_GHC -fno-warn-orphans -fno-warn-deprecations #-}
 module Language.Haskell.GhcMod.Types (
@@ -27,7 +27,8 @@ import Data.Maybe
 import Data.Typeable (Typeable)
 import Data.IORef
 import Data.Label.Derive
-import Distribution.Helper
+import Distribution.Helper hiding (Programs(..))
+import qualified Distribution.Helper as CabalHelper
 import Exception (ExceptionMonad)
 #if __GLASGOW_HASKELL__ < 708
 import qualified MonadUtils as GHC (MonadIO(..))
@@ -74,6 +75,19 @@ data FileMapping =  FileMapping {fmPath :: FilePath, fmTemp :: Bool}
 
 type FileMappingMap = Map FilePath FileMapping
 
+data ProgramSource = ProgramSourceUser | ProgramSourceStack
+
+data Programs = Programs {
+  -- | @ghc@ program name.
+    ghcProgram    :: FilePath
+  -- | @ghc-pkg@ program name.
+  , ghcPkgProgram :: FilePath
+  -- | @cabal@ program name.
+  , cabalProgram  :: FilePath
+  -- | @stack@ program name.
+  , stackProgram   :: FilePath
+  } deriving (Show)
+
 data Options = Options {
     outputStyle   :: OutputStyle
   -- | Line separator string.
@@ -83,12 +97,7 @@ data Options = Options {
   , linePrefix :: Maybe (String, String)
   -- | Verbosity
   , logLevel      :: GmLogLevel
-  -- | @ghc@ program name.
-  , ghcProgram    :: FilePath
-  -- | @ghc-pkg@ program name.
-  , ghcPkgProgram :: FilePath
-  -- | @cabal@ program name.
-  , cabalProgram  :: FilePath
+  , programs      :: Programs
     -- | GHC command line options set on the @ghc-mod@ command line
   , ghcUserOptions:: [GHCOption]
   -- | If 'True', 'browse' also returns operators.
@@ -108,9 +117,12 @@ defaultOptions = Options {
   , lineSeparator  = LineSeparator "\0"
   , linePrefix     = Nothing
   , logLevel       = GmWarning
-  , ghcProgram     = "ghc"
-  , ghcPkgProgram  = "ghc-pkg"
-  , cabalProgram   = "cabal"
+  , programs       = Programs {
+      ghcProgram     = "ghc"
+    , ghcPkgProgram  = "ghc-pkg"
+    , cabalProgram   = "cabal"
+    , stackProgram   = "stack"
+    }
   , ghcUserOptions = []
   , operators      = False
   , detailed       = False
@@ -366,6 +378,9 @@ data GhcModError
 
   | GMECabalStateFile GMConfigStateFileError
     -- ^ Reading Cabal's state configuration file falied somehow.
+
+  | GMEStackBootrap Int String
+    -- ^ Bootstrapping @stack@ environment failed (process exited with failure)
     deriving (Eq,Show,Typeable)
 
 instance Error GhcModError where
@@ -386,10 +401,12 @@ data GMConfigStateFileError
 deriving instance Generic Version
 instance Serialize Version
 
-instance Serialize Programs
+instance Serialize CabalHelper.Programs
 instance Serialize ChModuleName
 instance Serialize ChComponentName
 instance Serialize ChEntrypoint
 
 mkLabel ''GhcModCaches
 mkLabel ''GhcModState
+mkLabel ''Options
+mkLabel ''Programs

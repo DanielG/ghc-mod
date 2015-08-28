@@ -31,6 +31,8 @@ import Distribution.Helper (buildPlatform)
 import System.Directory
 import System.FilePath
 import System.Process
+import System.Info.Extra
+import System.Exit
 
 import Language.Haskell.GhcMod.Types
 import Language.Haskell.GhcMod.Error
@@ -76,9 +78,38 @@ findStackConfigFile :: FilePath -> IO (Maybe FilePath)
 findStackConfigFile dir = mightExist (dir </> "stack.yaml")
 
 getStackDistDir :: FilePath -> IO (Maybe FilePath)
-getStackDistDir dir = U.withDirectory_ dir $ runMaybeT $ do
-    stack <- MaybeT $ findExecutable "stack"
-    liftIO $ takeWhile (/='\n') <$> readProcess stack ["path", "--dist-dir"] ""
+getStackDistDir projdir = U.withDirectory_ projdir $ runMaybeT $ do
+    takeWhile (/='\n') <$> readStack ["path", "--dist-dir"]
+
+getStackGhcPath :: FilePath -> IO (Maybe FilePath)
+getStackGhcPath = findExecutablesInStackBinPath "ghc"
+
+getStackGhcPkgPath :: FilePath -> IO (Maybe FilePath)
+getStackGhcPkgPath = findExecutablesInStackBinPath "ghc-pkg"
+
+findExecutablesInStackBinPath :: String -> FilePath -> IO (Maybe FilePath)
+findExecutablesInStackBinPath exe projdir =
+    U.withDirectory_ projdir $ runMaybeT $ do
+      path <- splitSearchPath . takeWhile (/='\n')
+                <$> readStack ["path", "--bin-path"]
+      MaybeT $ listToMaybe <$> findExecutablesInDirectories' path exe
+
+findExecutablesInDirectories' :: [FilePath] -> String -> IO [FilePath]
+findExecutablesInDirectories' path binary =
+    U.findFilesWith' isExecutable path (binary <.> exeExtension)
+   where isExecutable file = do
+             perms <- getPermissions file
+             return $ executable perms
+
+         exeExtension = if isWindows then "exe" else ""
+
+readStack :: [String] -> MaybeT IO String
+readStack args = do
+  stack <- MaybeT $ findExecutable "stack"
+  (e, out, err) <- liftIO $ readProcessWithExitCode stack args ""
+  case e of
+    ExitSuccess -> return out
+    (ExitFailure rv) -> throw $ GMEStackBootrap rv err
 
 -- | Get path to sandbox config file
 getSandboxDb :: Cradle -> IO (Maybe GhcPkgDb)

@@ -3,12 +3,13 @@
 module Main where
 
 import Config (cProjectVersion)
-import MonadUtils (liftIO)
+import Control.Category
 import Control.Applicative
 import Control.Arrow
 import Control.Monad
 import Data.Typeable (Typeable)
 import Data.Version (showVersion)
+import Data.Label
 import Data.List
 import Data.List.Split
 import Data.Char (isSpace)
@@ -16,6 +17,7 @@ import Data.Maybe
 import Exception
 import Language.Haskell.GhcMod
 import Language.Haskell.GhcMod.Internal hiding (MonadIO,liftIO)
+import Language.Haskell.GhcMod.Types
 import Paths_ghc_mod
 import System.Console.GetOpt (OptDescr(..), ArgDescr(..), ArgOrder(..))
 import qualified System.Console.GetOpt as O
@@ -26,7 +28,7 @@ import System.Environment (getArgs)
 import System.IO (stdout, hSetEncoding, utf8, hFlush)
 import System.Exit
 import Text.PrettyPrint
-import Prelude
+import Prelude hiding ((.))
 
 import Misc
 
@@ -313,13 +315,16 @@ Exposed functions:
                   Right $ o { fileMappings = m : fileMappings o }
 
       , option "" ["with-ghc"] "GHC executable to use" $
-               reqArg "PROG" $ \p o -> Right $ o { ghcProgram = p }
+               reqArg "PATH" $ \p o -> Right $ set (lGhcProgram . lPrograms) p o
 
       , option "" ["with-ghc-pkg"] "ghc-pkg executable to use (only needed when guessing from GHC path fails)" $
-               reqArg "PROG" $ \p o -> Right $ o { ghcPkgProgram = p }
+               reqArg "PATH" $ \p o -> Right $ set (lGhcPkgProgram . lPrograms) p o
 
       , option "" ["with-cabal"] "cabal-install executable to use" $
-               reqArg "PROG" $ \p o -> Right $ o { cabalProgram = p }
+               reqArg "PATH" $ \p o -> Right $ set (lCabalProgram . lPrograms) p o
+
+      , option "" ["with-stack"] "stack executable to use" $
+               reqArg "PATH" $ \p o -> Right $ set (lStackProgram . lPrograms) p o
 
       , option "" ["version"] "print version information" $
                NoArg $ \_ -> Left ["version"]

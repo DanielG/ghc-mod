@@ -98,11 +98,9 @@ Library
   GHC-Options:          -Wall -fno-warn-deprecations
   Default-Extensions:   ScopedTypeVariables, RecordWildCards, NamedFieldPuns,
                         ConstraintKinds, FlexibleContexts,
-                        DataKinds, KindSignatures, TypeOperators
+                        DataKinds, KindSignatures, TypeOperators, ViewPatterns
   Exposed-Modules:      Language.Haskell.GhcMod
                         Language.Haskell.GhcMod.Internal
-  Other-Modules:        Paths_ghc_mod
-                        Utils
                         Language.Haskell.GhcMod.Boot
                         Language.Haskell.GhcMod.Browse
                         Language.Haskell.GhcMod.CabalHelper
@@ -142,6 +140,8 @@ Library
                         Language.Haskell.GhcMod.Types
                         Language.Haskell.GhcMod.Utils
                         Language.Haskell.GhcMod.World
+  Other-Modules:        Paths_ghc_mod
+                        Utils
   Build-Depends:        base >= 4.0 && < 5
                       , bytestring
                       , cereal >= 0.4
@@ -169,7 +169,8 @@ Library
                       , haskell-src-exts
                       , text
                       , djinn-ghc >= 0.0.2.2
-                      , fclabels
+                      , fclabels == 2.0.*
+                      , extra == 1.4.*
   if impl(ghc < 7.8)
     Build-Depends:      convertible
   if impl(ghc < 7.5)
@@ -181,7 +182,7 @@ Executable ghc-mod
   Default-Language:     Haskell2010
   Main-Is:              GHCMod.hs
   Other-Modules:        Paths_ghc_mod
-  GHC-Options:          -Wall -fno-warn-deprecations
+  GHC-Options:          -Wall -fno-warn-deprecations -threaded
   Default-Extensions:   ConstraintKinds, FlexibleContexts
   HS-Source-Dirs:       src
   Build-Depends:        base >= 4.0 && < 5
@@ -194,6 +195,7 @@ Executable ghc-mod
                       , mtl >= 2.0
                       , ghc
                       , ghc-mod
+                      , fclabels == 2.0.*
 
 Executable ghc-modi
   Default-Language:     Haskell2010
@@ -229,7 +231,7 @@ Test-Suite spec
   Default-Language:     Haskell2010
   Default-Extensions:   ScopedTypeVariables, RecordWildCards, NamedFieldPuns,
                         ConstraintKinds, FlexibleContexts,
-                        DataKinds, KindSignatures, TypeOperators
+                        DataKinds, KindSignatures, TypeOperators, ViewPatterns
   Main-Is:              Main.hs
   Hs-Source-Dirs:       test, .
   Ghc-Options:          -Wall -fno-warn-deprecations

@@ -53,6 +53,7 @@ cabalDebug = do
 
     return $
          [ "Cabal file:           " ++ show cradleCabalFile
+         , "Cabal Project Type:   " ++ show cradleProjectType
          , "Cabal entrypoints:\n"       ++ render (nest 4 $
               mapDoc gmComponentNameDoc smpDoc entrypoints)
          , "Cabal components:\n"        ++ render (nest 4 $
