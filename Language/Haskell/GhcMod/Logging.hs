@@ -36,6 +36,10 @@ import System.FilePath
 import Text.PrettyPrint hiding (style, (<>))
 import Prelude
 
+import GHC (GhcMonad)
+import DynFlags (getDynFlags)
+import Outputable (Outputable(..), SDoc, showSDoc)
+
 import Language.Haskell.GhcMod.Monad.Types
 import Language.Haskell.GhcMod.Types
 import Language.Haskell.GhcMod.Pretty
@@ -89,6 +93,17 @@ gmVomit filename doc content = do
   when (fromMaybe False mdump) $
        liftIO $ writeFile (dir </> filename) content
 
+-- | Dump a GHC 'SDoc'
+gmVomitSDoc :: (GhcMonad m, MonadIO m, GmLog m, GmEnv m)
+            => String -> SDoc -> String -> m ()
+gmVomitSDoc filename doc message = do
+    dflags <- getDynFlags
+    gmVomit filename (text $ showSDoc dflags doc) message
+
+-- | Dump something implementing GHC's 'Outputable' typeclass
+gmVomitPpr :: (GhcMonad m, MonadIO m, Outputable a, GmLog m, GmEnv m)
+           => String -> a -> String -> m ()
+gmVomitPpr filename thing message = gmVomitSDoc filename (ppr thing) message
 
 newtype LogDiscardT m a = LogDiscardT { runLogDiscard :: m a }
     deriving (Functor, Applicative, Monad)
