@@ -317,6 +317,9 @@ class HasType a where
     getType :: GhcMonad m => TypecheckedModule -> a -> m (Maybe (SrcSpan, Type))
 
 
+instance HasType (Located Id) where
+    getType _ (L l i) = return $ Just (l, idType i)
+
 instance HasType (LHsBind Id) where
     getType _ lb = return $ go lb
       where

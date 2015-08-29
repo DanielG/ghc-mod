@@ -1,15 +1,20 @@
+{-# LANGUAGE TupleSections #-}
+
 module Language.Haskell.GhcMod.Info (
     info
   , types
   ) where
 
 import Control.Applicative
+import Control.Monad.Trans.Maybe
+import Control.Monad.Trans.Class (lift)
 import Data.Function (on)
 import Data.List (sortBy)
 import Data.Maybe (catMaybes)
 import System.FilePath
 import Exception (ghandle, SomeException(..))
 import GHC (GhcMonad, LHsBind, LHsExpr, LPat, Id, TypecheckedModule(..), SrcSpan, Type)
+import RdrName (GlobalRdrElt(gre_name), lookupGRE_RdrName)
 import Prelude
 import qualified GHC as G
 import qualified Language.Haskell.GhcMod.Gap as Gap
@@ -73,14 +78,32 @@ types file lineNo colNo =
      gmLog GmException "types" $ showDoc ex
      return []
 
-getSrcSpanType :: GhcMonad m => G.ModSummary -> Int -> Int -> m [(SrcSpan, Type)]
+getRdrType :: (GhcMonad m) => G.RdrName -> m (Maybe Type)
+getRdrType rdr_name = runMaybeT $ do
+  rdr_env <- lift G.getGRE
+  gre_elt:_ <- return $ lookupGRE_RdrName rdr_name rdr_env
+  G.AnId i <- MaybeT $ G.lookupName (gre_name gre_elt)
+  return $ G.idType i
+
+getSrcSpanType :: (GhcMonad m, GmLog m, GmEnv m, MonadIO m)
+               => G.ModSummary -> Int -> Int -> m [(SrcSpan, Type)]
 getSrcSpanType modSum lineNo colNo = do
-  p <- G.parseModule modSum
+  p@G.ParsedModule{pm_parsed_source = psrc} <- G.parseModule modSum
+  -- In the parsed AST we may find the span in,
+  --   * A type signature (e.g. the name on the LHS of a binding)
+  -- These are RdrNames
+  let is = listifyParsedSpans psrc (lineNo, colNo) :: [G.Located G.RdrName]
+
   tcm@TypecheckedModule{tm_typechecked_source = tcs} <- G.typecheckModule p
+  -- In the typechecked AST we may find the span in,
+  --   * A binding
+  --   * An expression
+  --   * A pattern
   let bs = listifySpans tcs (lineNo, colNo) :: [LHsBind Id]
       es = listifySpans tcs (lineNo, colNo) :: [LHsExpr Id]
       ps = listifySpans tcs (lineNo, colNo) :: [LPat Id]
+  its <- mapM (\(G.L l i) -> fmap (l,) <$> getRdrType i) is
   bts <- mapM (getType tcm) bs
   ets <- mapM (getType tcm) es
   pts <- mapM (getType tcm) ps
-  return $ catMaybes $ concat [ets, bts, pts]
+  return $ catMaybes $ concat [ets, its, bts, pts]
