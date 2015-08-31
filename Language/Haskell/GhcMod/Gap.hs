@@ -49,7 +49,7 @@ import Control.Applicative hiding (empty)
 import Control.Monad (filterM)
 import CoreSyn (CoreExpr)
 import Data.List (intersperse)
-import Data.Maybe (catMaybes)
+import Data.Maybe (catMaybes, listToMaybe)
 import Data.Time.Clock (UTCTime)
 import Data.Traversable hiding (mapM)
 import DataCon (dataConRepType)
@@ -317,16 +317,24 @@ class HasType a where
     getType :: GhcMonad m => TypecheckedModule -> a -> m (Maybe (SrcSpan, Type))
 
 
+instance HasType (Located Id) where
+    getType _ (L l i) = return $ Just (l, idType i)
+
 instance HasType (LHsBind Id) where
+    getType _ lb = return $ go lb
+      where
+        go :: LHsBind Id -> Maybe (SrcSpan, Type)
 #if __GLASGOW_HASKELL__ >= 708
-    getType _ (L spn FunBind{fun_matches = m}) = return $ Just (spn, typ)
-      where in_tys = mg_arg_tys m
-            out_typ = mg_res_ty m
-            typ = mkFunTys in_tys out_typ
+        go (L spn FunBind{fun_matches = m}) = Just (spn, typ)
+          where in_tys = mg_arg_tys m
+                out_typ = mg_res_ty m
+                typ = mkFunTys in_tys out_typ
+        go (L _ AbsBinds{abs_binds = binds}) =
+          listToMaybe $ catMaybes $ map go $ bagToList binds
 #else
-    getType _ (L spn FunBind{fun_matches = MatchGroup _ typ}) = return $ Just (spn, typ)
+        go (L spn FunBind{fun_matches = MatchGroup _ typ}) = Just (spn, typ)
 #endif
-    getType _ _ = return Nothing
+        go _ = Nothing
 
 ----------------------------------------------------------------
 ----------------------------------------------------------------
