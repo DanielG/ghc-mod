@@ -138,7 +138,8 @@
 	(el-ver ghc-version)
 	(ghc-ver (ghc-run-ghc-mod '("--version") "ghc"))
 	(ghc-mod-ver (ghc-run-ghc-mod '("version")))
-	(path (getenv "PATH")))
+	(path (getenv "PATH"))
+	(debug (ghc-run-ghc-mod '("debug")))) ;; before switching buffers.
     (switch-to-buffer (get-buffer-create "**GHC Debug**"))
     (erase-buffer)
     (insert "Path: check if you are using intended programs.\n")
@@ -150,7 +151,10 @@
     (insert (format "\t %s\n" ghc-mod-ver))
     (insert (format "\t%s\n" ghc-ver))
     (insert "\nEnvironment variables:\n")
-    (insert (format "\tPATH=%s\n" path))))
+    (insert (format "\tPATH=%s\n" path))
+    (insert "\nThe result of \"ghc-mod debug\":\n")
+    (insert debug)
+    (goto-char (point-min))))
 
 (defun ghc-insert-template-or-signature (&optional flag)
   (interactive "P")

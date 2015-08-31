@@ -265,7 +265,7 @@ unloaded modules are loaded")
   (let (ret)
     (save-excursion
       (goto-char (point-min))
-      (while (re-search-forward "^import\\( *qualified\\)? +\\([^\n ]+\\)" nil t)
+      (while (re-search-forward "^import +\\(qualified\\)? *\\([^\n ]+\\)" nil t)
 	(ghc-add ret (match-string-no-properties 2))
 	(forward-line)))
     ret))

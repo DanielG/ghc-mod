@@ -56,7 +56,7 @@
 
 (defun ghc-goto-module-position ()
   (goto-char (point-max))
-  (if (re-search-backward "^import" nil t)
+  (if (re-search-backward "^import +" nil t)
       (ghc-goto-empty-line)
     (if (not (re-search-backward "^module" nil t))
 	(goto-char (point-min))
