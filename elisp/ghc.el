@@ -119,9 +119,6 @@
     (setq ghc-initialized t)
     (defadvice save-buffer (after ghc-check-syntax-on-save activate)
       "Check syntax with GHC when a haskell-mode buffer is saved."
-      (when (eq 'haskell-mode major-mode) (ghc-check-syntax)))
-    (defadvice switch-to-buffer (after ghc-check-syntax-on-switch-to-buffer activate)
-      "Check syntax with GHC when switching to a haskell-mode buffer."
       (when (eq 'haskell-mode major-mode) (ghc-check-syntax))))
   (ghc-import-module)
   (ghc-check-syntax))

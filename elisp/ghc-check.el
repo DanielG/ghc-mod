@@ -66,14 +66,10 @@ nil            do not display errors/warnings.
   (interactive)
   ;; Only check syntax of visible buffers
   (when (and (buffer-file-name)
-	     (file-exists-p (buffer-file-name))
-	     (get-buffer-window (current-buffer) t))
-    (with-timeout
-        (10 (error "ghc process may have hung or exited with an error"))
-      (while ghc-process-running (sleep-for 0.1)))
+	     (file-exists-p (buffer-file-name)))
     (ghc-with-process (ghc-check-send)
-                      'ghc-check-callback
-                      (lambda () (setq mode-line-process " -:-")))))
+		      'ghc-check-callback
+		      (lambda () (setq mode-line-process " -:-")))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
