@@ -18,14 +18,17 @@ import Language.Haskell.GhcMod.Cradle
 import Language.Haskell.GhcMod.Types
 
 import Control.Arrow
+import Control.Category
 import Control.Applicative
 import Control.Monad.Error (ErrorT, runErrorT)
 import Control.Monad.Trans.Journal
 import Data.List.Split
+import Data.Label
 import Data.String
 import System.FilePath
 import System.Directory
 import Test.Hspec
+import Prelude hiding ((.))
 
 import Exception
 
@@ -56,7 +59,7 @@ runGhcModTSpec' :: IOish m
 runGhcModTSpec' dir opt action = liftIO (canonicalizePath dir) >>= \dir' ->
     withGhcModEnvSpec dir' opt $ \env -> do
       first (fst <$>) <$> runGhcModT'' env defaultGhcModState
-        (gmSetLogLevel (logLevel opt) >> action)
+        (gmSetLogLevel (logLevel $ outputOpts opt) >> action)
 
 -- | Run GhcMod
 run :: Options -> GhcModT IO a -> IO a
@@ -65,11 +68,14 @@ run opt a = extract $ runGhcModTSpec opt a
 -- | Run GhcMod with default options
 runD :: GhcModT IO a -> IO a
 runD =
-    extract . runGhcModTSpec defaultOptions { logLevel = testLogLevel }
+    extract . runGhcModTSpec (setLogLevel testLogLevel defaultOptions)
 
 runD' :: FilePath -> GhcModT IO a -> IO a
 runD' dir =
-    extract . runGhcModTSpec' dir defaultOptions { logLevel = testLogLevel }
+    extract . runGhcModTSpec' dir (setLogLevel testLogLevel defaultOptions)
+
+setLogLevel :: GmLogLevel -> Options -> Options
+setLogLevel = set (lLogLevel . lOutputOpts)
 
 runE :: ErrorT e IO a -> IO (Either e a)
 runE = runErrorT

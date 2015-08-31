@@ -21,6 +21,7 @@ module Language.Haskell.GhcMod.PathsAndFiles (
 
 import Config (cProjectVersion)
 import Control.Applicative
+import Control.Exception as E
 import Control.Monad
 import Control.Monad.Trans.Maybe
 import Data.List
@@ -106,7 +107,7 @@ findExecutablesInDirectories' path binary =
 readStack :: OutputOpts -> [String] -> MaybeT IO String
 readStack oopts args = do
   stack <- MaybeT $ findExecutable "stack"
-  liftIO $ flip catch (\(e :: IOError) -> throw $ GMEStackBootrap $ show e) $ do
+  liftIO $ flip E.catch (\(e :: IOError) -> throw $ GMEStackBootrap $ show e) $ do
     evaluate =<< gmUnsafeReadProcess oopts stack args ""
 
 -- | Get path to sandbox config file
