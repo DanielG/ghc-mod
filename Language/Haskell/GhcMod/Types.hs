@@ -372,9 +372,9 @@ data GhcModError
   | GMECabalCompAssignment [(Either FilePath ModuleName, Set ChComponentName)]
   -- ^ Could not find a consistent component assignment for modules
 
-  | GMEProcess String [String] (Either (String, String, Int) GhcModError)
+  | GMEProcess String String [String] (Either Int GhcModError)
   -- ^ Launching an operating system process failed. Fields in
-  -- order: command, arguments, (stdout, stderr, exitcode)
+  -- order: function, command, arguments, (stdout, stderr, exitcode)
 
   | GMENoCabalFile
   -- ^ No cabal file found.

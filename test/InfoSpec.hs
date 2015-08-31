@@ -12,6 +12,7 @@ import System.Environment (getExecutablePath)
 import System.FilePath
 import Test.Hspec
 import TestUtils
+import Prelude
 
 spec :: Spec
 spec = do

@@ -188,7 +188,7 @@ readProcessStderrChan' pute = go pute
      res <- waitForProcess h
      case res of
        ExitFailure rv ->
-           processFailedException "readProcessStderrChan" exe args rv
+           throw $ GMEProcess "readProcessStderrChan" exe args $ Left rv
        ExitSuccess ->
            return output
     where
@@ -204,9 +204,3 @@ withForkWait async body = do
     tid <- forkIO $ try (restore async) >>= putMVar waitVar
     let wait = takeMVar waitVar >>= either throwIO return
     restore (body wait) `onException` killThread tid
-
-processFailedException :: String -> String -> [String] -> Int -> IO a
-processFailedException fn exe args rv =
-      error $ concat [ fn, ": ", exe, " "
-                     , intercalate " " (map show args)
-                     , " (exit " ++ show rv ++ ")"]

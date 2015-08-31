@@ -35,7 +35,6 @@ import System.Process
 import System.Info.Extra
 
 import Language.Haskell.GhcMod.Types
-import Language.Haskell.GhcMod.Error
 import Language.Haskell.GhcMod.Caching
 import Language.Haskell.GhcMod.Output
 import qualified Language.Haskell.GhcMod.Utils as U
