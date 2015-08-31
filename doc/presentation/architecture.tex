@@ -1,0 +1,44 @@
+\documentclass{article}
+\usepackage{polyglossia}
+\usepackage{xcolor}
+\usepackage{fontspec}
+\usepackage{tikz}
+
+\begin{document}
+
+  % \begin{tikzpicture}
+  %   \draw (-1,0) -- (1,0);
+  %   \draw (0,-1) -- (0,1);
+
+  %   \draw (-0.5,-0.5) rectangle (-1,-1);
+  % \end{tikzpicture}.
+
+  \begin{tikzpicture}[every node/.style={draw}]
+    \matrix [draw=red,column sep=1cm]
+    {
+      \node {8}; & \node{1}; & \node {6}; \\
+      \node {3}; & \node{5}; & \node {7}; \\
+      \node {4}; & \node{9}; & \node {2}; \\
+    };
+  \end{tikzpicture}
+
+  \begin{tikzpicture}
+    \matrix[draw=black,nodes=draw,column sep=1mm] at (0, 0) {
+      \node {check}; &
+      \node {type}; &
+      \node {browse}; &
+      \node {find}; &
+      \node {refine}; \\
+    };
+
+    \matrix[draw=black,nodes=draw,column sep=1mm] at (0, 0) {
+      \node {check}; &
+      \node {type}; &
+      \node {browse}; &
+      \node {find}; &
+      \node {refine}; \\
+    };
+  \end{tikzpicture}
+
+
+\end{document}
