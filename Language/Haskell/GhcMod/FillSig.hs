@@ -9,15 +9,27 @@ module Language.Haskell.GhcMod.FillSig (
 
 import Data.Char (isSymbol)
 import Data.Function (on)
+import Data.Functor
 import Data.List (find, nub, sortBy)
 import qualified Data.Map as M
 import Data.Maybe (catMaybes)
 import Text.PrettyPrint (($$), text, nest)
+import Prelude
+
 import Exception (ghandle, SomeException(..))
 import GHC (GhcMonad, Id, ParsedModule(..), TypecheckedModule(..), DynFlags,
             SrcSpan, Type, GenLocated(L))
 import qualified GHC as G
 import qualified Name as G
+import Outputable (PprStyle)
+import qualified Type as Ty
+import qualified HsBinds as Ty
+import qualified Class as Ty
+import qualified Var as Ty
+import qualified HsPat as Ty
+import qualified Language.Haskell.Exts.Annotated as HE
+import Djinn.GHC
+
 import qualified Language.Haskell.GhcMod.Gap as Gap
 import Language.Haskell.GhcMod.Convert
 import Language.Haskell.GhcMod.DynFlags
@@ -28,14 +40,6 @@ import Language.Haskell.GhcMod.Pretty (showDoc)
 import Language.Haskell.GhcMod.Doc
 import Language.Haskell.GhcMod.Types
 import Language.Haskell.GhcMod.FileMapping (fileModSummaryWithMapping)
-import Outputable (PprStyle)
-import qualified Type as Ty
-import qualified HsBinds as Ty
-import qualified Class as Ty
-import qualified Var as Ty
-import qualified HsPat as Ty
-import qualified Language.Haskell.Exts.Annotated as HE
-import Djinn.GHC
 
 #if __GLASGOW_HASKELL__ >= 710
 import GHC (unLoc)
@@ -74,11 +78,11 @@ sig :: IOish m
     -> GhcModT m String
 sig file lineNo colNo =
     runGmlT' [Left file] deferErrors $ ghandle fallback $ do
-      opt <- options
+      oopts <- outputOpts <$> options
       style <- getStyle
       dflag <- G.getSessionDynFlags
       modSum <- fileModSummaryWithMapping file
-      whenFound opt (getSignature modSum lineNo colNo) $ \s ->
+      whenFound oopts (getSignature modSum lineNo colNo) $ \s ->
         case s of
           Signature loc names ty ->
               ("function", fourInts loc, map (initialBody dflag style ty) names)
@@ -93,10 +97,10 @@ sig file lineNo colNo =
             in (rTy, fourInts loc, [initial ++ body])
   where
     fallback (SomeException _) = do
-      opt <- options
+      oopts <- outputOpts <$> options
       -- Code cannot be parsed by ghc module
       -- Fallback: try to get information via haskell-src-exts
-      whenFound opt (getSignatureFromHE file lineNo colNo) $ \x -> case x of
+      whenFound oopts (getSignatureFromHE file lineNo colNo) $ \x -> case x of
         HESignature loc names ty ->
           ("function", fourIntsHE loc, map (initialBody undefined undefined ty) names)
         HEFamSignature loc flavour name vars ->
@@ -343,14 +347,14 @@ refine :: IOish m
 refine file lineNo colNo (Expression expr) =
   ghandle handler $
     runGmlT' [Left file] deferErrors $ do
-      opt <- options
+      oopts <- outputOpts <$> options
       style <- getStyle
       dflag <- G.getSessionDynFlags
       modSum <- fileModSummaryWithMapping file
       p <- G.parseModule modSum
       tcm@TypecheckedModule{tm_typechecked_source = tcs} <- G.typecheckModule p
       ety <- G.exprType expr
-      whenFound opt (findVar dflag style tcm tcs lineNo colNo) $
+      whenFound oopts (findVar dflag style tcm tcs lineNo colNo) $
         \(loc, name, rty, paren) ->
             let eArgs = getFnArgs ety
                 rArgs = getFnArgs rty
@@ -363,7 +367,7 @@ refine file lineNo colNo (Expression expr) =
    handler (SomeException ex) = do
      gmLog GmException "refining" $
            text "" $$ nest 4 (showDoc ex)
-     emptyResult =<< options
+     emptyResult =<< outputOpts <$> options
 
 -- Look for the variable in the specified position
 findVar
@@ -420,7 +424,7 @@ auto :: IOish m
      -> GhcModT m String
 auto file lineNo colNo =
   ghandle handler $ runGmlT' [Left file] deferErrors $ do
-        opt <- options
+        oopts <- outputOpts <$> options
         style <- getStyle
         dflag <- G.getSessionDynFlags
         modSum <- fileModSummaryWithMapping file
@@ -429,7 +433,7 @@ auto file lineNo colNo =
                  tm_typechecked_source = tcs
                , tm_checked_module_info = minfo
                } <- G.typecheckModule p
-        whenFound' opt (findVar dflag style tcm tcs lineNo colNo) $ \(loc, _name, rty, paren) -> do
+        whenFound' oopts (findVar dflag style tcm tcs lineNo colNo) $ \(loc, _name, rty, paren) -> do
           topLevel <- getEverythingInTopLevel minfo
           let (f,pats) = getPatsForVariable tcs (lineNo,colNo)
               -- Remove self function to prevent recursion, and id to trim
@@ -452,7 +456,7 @@ auto file lineNo colNo =
    handler (SomeException ex) = do
      gmLog GmException "auto-refining" $
            text "" $$ nest 4 (showDoc ex)
-     emptyResult =<< options
+     emptyResult =<< outputOpts <$> options
 
 -- Functions we do not want in completions
 notWantedFuns :: [String]

@@ -147,13 +147,13 @@ getStackPackageDbStack = do
         localDb <- liftIO $ readProcess stack ["path", "--local-pkg-db"] ""
         return $ map (PackageDb . takeWhile (/='\n')) [snapshotDb, localDb]
 
-patchStackPrograms :: IOish m => Cradle -> Programs -> m Programs
-patchStackPrograms crdl progs
+patchStackPrograms :: IOish m => OutputOpts -> Cradle -> Programs -> m Programs
+patchStackPrograms _oopts crdl progs
     | cradleProjectType crdl /= StackProject = return progs
-patchStackPrograms crdl progs = do
+patchStackPrograms oopts crdl progs = do
   let projdir = cradleRootDir crdl
-  Just ghc <- liftIO $ getStackGhcPath projdir
-  Just ghcPkg <- liftIO $ getStackGhcPkgPath projdir
+  Just ghc <- liftIO $ getStackGhcPath oopts projdir
+  Just ghcPkg <- liftIO $ getStackGhcPkgPath oopts projdir
   return $ progs {
       ghcProgram = ghc
     , ghcPkgProgram = ghcPkg
@@ -288,10 +288,12 @@ chCached c = do
    -- we don't need to include the disdir in the cache input because when it
    -- changes the cache files will be gone anyways ;)
    cacheInputData root = do
-               opt <- options
+               opts <- options
+               let oopts = outputOpts opts
+                   progs = programs opts
                crdl <- cradle
-               progs <- patchStackPrograms crdl (programs opt)
-               return $ ( helperProgs progs
+               progs' <- patchStackPrograms oopts crdl progs
+               return $ ( helperProgs progs'
                         , root
                         , (gmVer, chVer)
                         )

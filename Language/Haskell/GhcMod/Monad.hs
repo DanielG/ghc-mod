@@ -51,21 +51,22 @@ import Exception (ExceptionMonad(..))
 import System.Directory
 import Prelude
 
-withCradle :: IOish m => FilePath -> (Cradle -> m a) -> m a
-withCradle cradledir f =
-    gbracket (liftIO $ findCradle' cradledir) (liftIO . cleanupCradle) f
+withCradle :: IOish m => OutputOpts -> FilePath -> (Cradle -> m a) -> m a
+withCradle oopts cradledir f =
+    gbracket (liftIO $ findCradle' oopts cradledir) (liftIO . cleanupCradle) f
 
 withGhcModEnv :: IOish m => FilePath -> Options -> (GhcModEnv -> m a) -> m a
-withGhcModEnv dir opt f = withCradle dir (withGhcModEnv' opt f)
+withGhcModEnv dir opts f =
+    withCradle (outputOpts opts) dir (withGhcModEnv' opts f)
 
 withGhcModEnv' :: IOish m => Options -> (GhcModEnv -> m a) -> Cradle -> m a
-withGhcModEnv' opt f crdl = do
+withGhcModEnv' opts f crdl = do
     olddir <- liftIO getCurrentDirectory
     c <- liftIO newChan
-    let outp = case linePrefix opt of
+    let outp = case linePrefix $ outputOpts opts of
                  Just _ -> GmOutputChan c
                  Nothing -> GmOutputStdio
-    gbracket_ (setup c) (teardown olddir) (f $ GhcModEnv opt crdl outp)
+    gbracket_ (setup c) (teardown olddir) (f $ GhcModEnv opts crdl outp)
  where
    setup c = liftIO $ do
      setCurrentDirectory $ cradleRootDir crdl
@@ -94,7 +95,7 @@ runGhcModT' :: IOish m
 runGhcModT' dir opt action = liftIO (canonicalizePath dir) >>= \dir' ->
     withGhcModEnv dir' opt $ \env ->
       first (fst <$>) <$> runGhcModT'' env defaultGhcModState
-        (gmSetLogLevel (logLevel opt) >> action)
+        (gmSetLogLevel (logLevel $ outputOpts opt) >> action)
 
 -- | @hoistGhcModT result@. Embed a GhcModT computation's result into a GhcModT
 -- computation. Note that if the computation that returned @result@ modified the

@@ -88,15 +88,19 @@ data Programs = Programs {
   , stackProgram   :: FilePath
   } deriving (Show)
 
-data Options = Options {
-    outputStyle   :: OutputStyle
+data OutputOpts = OutputOpts {
+  -- | Verbosity
+    logLevel      :: GmLogLevel
+  , outputStyle   :: OutputStyle
   -- | Line separator string.
   , lineSeparator :: LineSeparator
   -- | Stdout/err line multiplexing using prefix encoding. @fst@ is stdout,
   -- @snd@ is stderr prefix.
   , linePrefix :: Maybe (String, String)
-  -- | Verbosity
-  , logLevel      :: GmLogLevel
+  } deriving (Show)
+
+data Options = Options {
+    outputOpts    :: OutputOpts
   , programs      :: Programs
     -- | GHC command line options set on the @ghc-mod@ command line
   , ghcUserOptions:: [GHCOption]
@@ -113,10 +117,12 @@ data Options = Options {
 -- | A default 'Options'.
 defaultOptions :: Options
 defaultOptions = Options {
-    outputStyle    = PlainStyle
-  , lineSeparator  = LineSeparator "\0"
-  , linePrefix     = Nothing
-  , logLevel       = GmWarning
+    outputOpts     = OutputOpts {
+      outputStyle    = PlainStyle
+    , lineSeparator  = LineSeparator "\0"
+    , linePrefix     = Nothing
+    , logLevel       = GmWarning
+    }
   , programs       = Programs {
       ghcProgram     = "ghc"
     , ghcPkgProgram  = "ghc-pkg"
@@ -379,7 +385,7 @@ data GhcModError
   | GMECabalStateFile GMConfigStateFileError
     -- ^ Reading Cabal's state configuration file falied somehow.
 
-  | GMEStackBootrap Int String
+  | GMEStackBootrap String
     -- ^ Bootstrapping @stack@ environment failed (process exited with failure)
     deriving (Eq,Show,Typeable)
 
@@ -409,4 +415,5 @@ instance Serialize ChEntrypoint
 mkLabel ''GhcModCaches
 mkLabel ''GhcModState
 mkLabel ''Options
+mkLabel ''OutputOpts
 mkLabel ''Programs

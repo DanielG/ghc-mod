@@ -36,7 +36,7 @@ info file expr =
   ghandle handler $
     runGmlT' [Left file] deferErrors $
       withInteractiveContext $
-        convert <$> options <*> body
+        convert . outputOpts <$> options <*> body
   where
     handler (SomeException ex) = do
       gmLog GmException "info" $ text "" $$ nest 4 (showDoc ex)

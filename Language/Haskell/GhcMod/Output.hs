@@ -22,9 +22,10 @@ module Language.Haskell.GhcMod.Output (
   , gmErrStr
   , gmPutStrLn
   , gmErrStrLn
+  , gmReadProcess
   , gmUnsafePutStrLn
   , gmUnsafeErrStrLn
-  , gmReadProcess
+  , gmUnsafeReadProcess
   , stdoutGateway
   ) where
 
@@ -36,6 +37,7 @@ import Control.Monad
 import Control.DeepSeq
 import Control.Exception
 import Control.Concurrent
+import Prelude
 
 import Language.Haskell.GhcMod.Types hiding (LineSeparator)
 import Language.Haskell.GhcMod.Monad.Types
@@ -65,16 +67,16 @@ toGmLines s = GmLines GmPartial s
 outputFns :: (GmEnv m, MonadIO m')
           => m (GmLines String -> m' (), GmLines String -> m' ())
 outputFns = do
-  opts <- options
+  oopts <- outputOpts `liftM` options
   env <- gmeAsk
-  return $ outputFns' opts (gmOutput env)
+  return $ outputFns' oopts (gmOutput env)
 
 outputFns' :: MonadIO m'
-           => Options
+           => OutputOpts
            -> GmOutput
            -> (GmLines String -> m' (), GmLines String -> m' ())
 outputFns' opts output  = let
-  Options {..} = opts
+  OutputOpts {..} = opts
 
   pfx f = withLines f
 
@@ -108,9 +110,14 @@ gmErrStr str = do
 
 -- | Only use these when you're sure there are no other writers on stdout
 gmUnsafePutStrLn, gmUnsafeErrStrLn
-    :: MonadIO m => Options -> String -> m ()
-gmUnsafePutStrLn opts = (fst $ outputFns' opts GmOutputStdio) . toGmLines
-gmUnsafeErrStrLn opts = (snd $ outputFns' opts GmOutputStdio) . toGmLines
+    :: MonadIO m => OutputOpts -> String -> m ()
+gmUnsafePutStrLn oopts = (fst $ outputFns' oopts GmOutputStdio) . toGmLines
+gmUnsafeErrStrLn oopts = (snd $ outputFns' oopts GmOutputStdio) . toGmLines
+
+gmUnsafeReadProcess :: OutputOpts -> FilePath -> [String] -> String -> IO String
+gmUnsafeReadProcess oopts =
+    readProcessStderrChan' (snd $ outputFns' oopts GmOutputStdio)
+
 
 gmReadProcess :: GmEnv m => m (FilePath -> [String] -> String -> IO String)
 gmReadProcess = do
@@ -146,8 +153,13 @@ stdoutGateway chan = go ("", "")
 readProcessStderrChan ::
     GmEnv m => m (FilePath -> [String] -> String -> IO String)
 readProcessStderrChan = do
-  (_, e) <- outputFns
-  return $ go e
+  (_, e :: GmLines String -> IO ()) <- outputFns
+  return $ readProcessStderrChan' e
+
+readProcessStderrChan' ::
+     (GmLines String -> IO ())
+  -> FilePath -> [String] -> String -> IO String
+readProcessStderrChan' pute = go pute
  where
    go :: (GmLines String -> IO ()) -> FilePath -> [String] -> String -> IO String
    go putErr exe args input = do

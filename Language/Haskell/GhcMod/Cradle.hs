@@ -29,12 +29,12 @@ import Prelude
 --   Find a cabal file by tracing ancestor directories.
 --   Find a sandbox according to a cabal sandbox config
 --   in a cabal directory.
-findCradle :: IO Cradle
-findCradle = findCradle' =<< getCurrentDirectory
+findCradle :: OutputOpts -> IO Cradle
+findCradle oopts = findCradle' oopts =<< getCurrentDirectory
 
-findCradle' :: FilePath -> IO Cradle
-findCradle' dir = run $ do
-    (stackCradle dir `mplus` cabalCradle dir `mplus` sandboxCradle dir `mplus` plainCradle dir)
+findCradle' :: OutputOpts -> FilePath -> IO Cradle
+findCradle' oopts dir = run $ do
+    (stackCradle oopts dir `mplus` cabalCradle dir `mplus` sandboxCradle dir `mplus` plainCradle dir)
  where run a = fillTempDir =<< (fromJust <$> runMaybeT a)
 
 findSpecCradle :: FilePath -> IO Cradle
@@ -73,8 +73,8 @@ cabalCradle wdir = do
       , cradleDistDir    = "dist"
       }
 
-stackCradle :: FilePath -> MaybeT IO Cradle
-stackCradle wdir = do
+stackCradle :: OutputOpts -> FilePath -> MaybeT IO Cradle
+stackCradle oopts wdir = do
     cabalFile <- MaybeT $ findCabalFile wdir
 
     let cabalDir = takeDirectory cabalFile
@@ -85,7 +85,7 @@ stackCradle wdir = do
     -- rather than stack, or maybe that's just me ;)
     whenM (liftIO $ doesFileExist $ setupConfigPath "dist") $ mzero
 
-    distDir <- MaybeT $ getStackDistDir cabalDir
+    distDir <- MaybeT $ getStackDistDir oopts cabalDir
 
     return Cradle {
         cradleProjectType = StackProject

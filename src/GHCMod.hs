@@ -249,28 +249,29 @@ intToLogLevel = toEnum
 globalArgSpec :: [OptDescr (Options -> Either [String] Options)]
 globalArgSpec =
       [ option "v" ["verbose"] "Increase or set log level. (0-7)" $
-               optArg "LEVEL" $ \ml o -> Right $ o {
-                   logLevel = case ml of
-                                Nothing -> increaseLogLevel (logLevel o)
-                                Just l -> toEnum $ min 7 $ read l
-                 }
+          optArg "LEVEL" $ \ml o -> Right $ case ml of
+              Nothing ->
+                  modify (lLogLevel . lOutputOpts) increaseLogLevel o
+              Just l ->
+                  set (lLogLevel . lOutputOpts) (toEnum $ min 7 $ read l) o
 
       , option "s" [] "Be silent, set log level to 0" $
-               NoArg $ \o -> Right $ o { logLevel = toEnum 0 }
+          NoArg $ \o -> Right $ set (lLogLevel . lOutputOpts) (toEnum 0) o
 
       , option "l" ["tolisp"] "Format output as an S-Expression" $
-               NoArg $ \o -> Right $ o { outputStyle = LispStyle }
+          NoArg $ \o -> Right $ set (lOutputStyle . lOutputOpts) LispStyle o
 
       , option "b" ["boundary", "line-seperator"] "Output line separator"$
-               reqArg "SEP" $ \s o -> Right $ o { lineSeparator = LineSeparator s }
+          reqArg "SEP" $ \s o -> Right $ set (lLineSeparator . lOutputOpts) (LineSeparator s) o
+
       , option "" ["line-prefix"] "Output line separator"$
-               reqArg "OUT,ERR" $ \s o -> let
-                     [out, err] = splitOn "," s
-                   in Right $ o { linePrefix = Just (out, err) }
+          reqArg "OUT,ERR" $ \s o -> let
+                [out, err] = splitOn "," s
+              in Right $ set (lLinePrefix . lOutputOpts) (Just (out, err)) o
 
       , option "g" ["ghcOpt", "ghc-option"] "Option to be passed to GHC" $
-               reqArg "OPT" $ \g o -> Right $
-                   o { ghcUserOptions = g : ghcUserOptions o }
+          reqArg "OPT" $ \g o -> Right $
+              o { ghcUserOptions = g : ghcUserOptions o }
 
 {-
 File map docs:
@@ -307,32 +308,32 @@ Exposed functions:
     mapped. Works exactly the same as `unmap-file` interactive command
 -}
       , option "" ["map-file"] "Redirect one file to another, --map-file \"file1.hs=file2.hs\"" $
-               reqArg "OPT" $ \g o ->
-                  let m = case second (drop 1) $ span (/='=') g of
-                            (s,"") -> (s, Nothing)
-                            (f,t)  -> (f, Just t)
-                  in
-                  Right $ o { fileMappings = m : fileMappings o }
+          reqArg "OPT" $ \g o ->
+             let m = case second (drop 1) $ span (/='=') g of
+                       (s,"") -> (s, Nothing)
+                       (f,t)  -> (f, Just t)
+             in
+             Right $ o { fileMappings = m : fileMappings o }
 
       , option "" ["with-ghc"] "GHC executable to use" $
-               reqArg "PATH" $ \p o -> Right $ set (lGhcProgram . lPrograms) p o
+          reqArg "PATH" $ \p o -> Right $ set (lGhcProgram . lPrograms) p o
 
       , option "" ["with-ghc-pkg"] "ghc-pkg executable to use (only needed when guessing from GHC path fails)" $
-               reqArg "PATH" $ \p o -> Right $ set (lGhcPkgProgram . lPrograms) p o
+          reqArg "PATH" $ \p o -> Right $ set (lGhcPkgProgram . lPrograms) p o
 
       , option "" ["with-cabal"] "cabal-install executable to use" $
-               reqArg "PATH" $ \p o -> Right $ set (lCabalProgram . lPrograms) p o
+          reqArg "PATH" $ \p o -> Right $ set (lCabalProgram . lPrograms) p o
 
       , option "" ["with-stack"] "stack executable to use" $
-               reqArg "PATH" $ \p o -> Right $ set (lStackProgram . lPrograms) p o
+          reqArg "PATH" $ \p o -> Right $ set (lStackProgram . lPrograms) p o
 
       , option "" ["version"] "print version information" $
-               NoArg $ \_ -> Left ["version"]
+          NoArg $ \_ -> Left ["version"]
 
       , option "" ["help"] "print this help message" $
-               NoArg $ \_ -> Left ["help"]
-
+          NoArg $ \_ -> Left ["help"]
   ]
+
 
 
 parseGlobalArgs :: [String] -> Either InvalidCommandLine (Options, [String])
@@ -555,7 +556,7 @@ exitError msg = gmErrStrLn (dropWhileEnd (=='\n') msg) >> liftIO exitFailure
 
 exitError' :: Options -> String -> IO a
 exitError' opts msg =
-    gmUnsafeErrStrLn opts (dropWhileEnd (=='\n') msg) >> liftIO exitFailure
+    gmUnsafeErrStrLn (outputOpts opts) (dropWhileEnd (=='\n') msg) >> liftIO exitFailure
 
 fatalError :: String -> a
 fatalError s = throw $ FatalError $ "ghc-mod: " ++ s

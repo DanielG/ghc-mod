@@ -30,6 +30,7 @@ import Language.Haskell.GhcMod.DynFlags (withDynFlags)
 import Language.Haskell.GhcMod.Monad.Types
 import Language.Haskell.GhcMod.Error
 import Language.Haskell.GhcMod.Utils (mkRevRedirMapFunc)
+import Language.Haskell.GhcMod.Types
 import qualified Language.Haskell.GhcMod.Gap as Gap
 import Prelude
 
@@ -81,8 +82,8 @@ withLogger :: (GmGhc m, GmEnv m, GmState m)
            -> m (Either String (String, a))
 withLogger f action = do
   env <- G.getSession
-  opts <- options
-  let conv = convert opts
+  oopts <- outputOpts <$> options
+  let conv = convert oopts
   eres <- withLogger' env $ \setDf ->
       withDynFlags (f . setDf) action
   return $ either (Left . conv) (Right . first conv) eres
