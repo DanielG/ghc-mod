@@ -7,6 +7,8 @@ import Language.Haskell.GhcMod.Types
 import System.Directory (canonicalizePath)
 import System.FilePath (pathSeparator)
 import Test.Hspec
+import TestUtils
+import Prelude
 
 import Dir
 
@@ -35,14 +37,14 @@ spec = do
         it "returns the current directory" $ do
             withDirectory_ "/" $ do
                 curDir <- stripLastDot <$> canonicalizePath "/"
-                res <- clean_ findCradle
+                res <- clean_ $ runGmOutDef findCradle
                 cradleCurrentDir res `shouldBe` curDir
                 cradleRootDir    res `shouldBe` curDir
                 cradleCabalFile  res `shouldBe` Nothing
 
         it "finds a cabal file and a sandbox" $ do
             withDirectory "test/data/cabal-project/subdir1/subdir2" $ \dir -> do
-                res <- relativeCradle dir <$> clean_ findCradle
+                res <- relativeCradle dir <$> clean_ (runGmOutDef findCradle)
 
                 cradleCurrentDir res `shouldBe`
                     "test/data/cabal-project/subdir1/subdir2"
@@ -54,7 +56,7 @@ spec = do
 
         it "works even if a sandbox config file is broken" $ do
             withDirectory "test/data/broken-sandbox" $ \dir -> do
-                res <- relativeCradle dir <$> clean_ findCradle
+                res <- relativeCradle dir <$> clean_ (runGmOutDef findCradle)
                 cradleCurrentDir res `shouldBe`
                     "test" </> "data" </> "broken-sandbox"
 

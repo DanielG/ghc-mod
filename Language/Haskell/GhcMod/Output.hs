@@ -22,9 +22,9 @@ module Language.Haskell.GhcMod.Output (
   , gmErrStr
   , gmPutStrLn
   , gmErrStrLn
-  , gmUnsafePutStrLn
-  , gmUnsafeErrStrLn
   , gmReadProcess
+  , gmUnsafePutStr
+  , gmUnsafeErrStr
   , stdoutGateway
   ) where
 
@@ -36,6 +36,7 @@ import Control.Monad
 import Control.DeepSeq
 import Control.Exception
 import Control.Concurrent
+import Prelude
 
 import Language.Haskell.GhcMod.Types hiding (LineSeparator)
 import Language.Haskell.GhcMod.Monad.Types
@@ -62,38 +63,46 @@ toGmLines "" = GmLines GmPartial ""
 toGmLines s | isNewline (last s) = GmLines GmTerminated s
 toGmLines s = GmLines GmPartial s
 
-outputFns :: (GmEnv m, MonadIO m')
+outputFns :: (GmOut m, MonadIO m')
           => m (GmLines String -> m' (), GmLines String -> m' ())
-outputFns = do
-  opts <- options
-  env <- gmeAsk
-  return $ outputFns' opts (gmOutput env)
+outputFns =
+  outputFns' <$> gmoAsk
 
-outputFns' :: MonadIO m'
-           => Options
-           -> GmOutput
-           -> (GmLines String -> m' (), GmLines String -> m' ())
-outputFns' opts output  = let
-  Options {..} = opts
+pfxFns :: Maybe (String, String) -> (GmLines String -> GmLines String, GmLines String -> GmLines String)
+pfxFns lpfx = case lpfx of
+    Nothing -> ( id, id )
+    Just (op, ep) -> ( fmap $ pfx (op++), fmap $ pfx (ep++) )
+  where
+    pfx f = withLines f
 
-  pfx f = withLines f
+stdioOutputFns :: MonadIO m => Maybe (String, String) -> (GmLines String -> m (), GmLines String -> m ())
+stdioOutputFns lpfx = let
+    (outPfx, errPfx) = pfxFns lpfx
+  in
+    ( liftIO . putStr         . unGmLine . outPfx
+    , liftIO . hPutStr stderr . unGmLine . errPfx)
 
-  outPfx, errPfx :: GmLines String -> GmLines String
-  (outPfx, errPfx) =
-      case linePrefix of
-        Nothing -> ( id, id )
-        Just (op, ep) -> ( fmap $ pfx (op++), fmap $ pfx (ep++) )
+chanOutputFns :: MonadIO m
+              => Chan (GmStream, GmLines String)
+              -> Maybe (String, String)
+              -> (GmLines String -> m (), GmLines String -> m ())
+chanOutputFns c lpfx = let
+    (outPfx, errPfx) = pfxFns lpfx
+  in
+    ( liftIO . writeChan c . (,) GmOutStream . outPfx
+    , liftIO . writeChan c . (,) GmErrStream . errPfx)
+
+outputFns' ::
+  MonadIO m => GhcModOut -> (GmLines String -> m (), GmLines String -> m ())
+outputFns' (GhcModOut oopts c)  = let
+  OutputOpts {..} = oopts
  in
-  case output of
-    GmOutputStdio  ->
-        ( liftIO . putStr         . unGmLine . outPfx
-        , liftIO . hPutStr stderr . unGmLine . errPfx)
-    GmOutputChan c ->
-        ( liftIO . writeChan c . (,) GmOut . outPfx
-        , liftIO . writeChan c . (,) GmErr .errPfx)
+  case ooptLinePrefix of
+    Nothing  -> stdioOutputFns ooptLinePrefix
+    Just _ -> chanOutputFns c ooptLinePrefix
 
 gmPutStr, gmPutStrLn, gmErrStr, gmErrStrLn
-    :: (MonadIO m, GmEnv m) => String -> m ()
+    :: (MonadIO m, GmOut m) => String -> m ()
 
 gmPutStr str = do
   putOut <- fst `liftM` outputFns
@@ -107,18 +116,18 @@ gmErrStr str = do
   putErr $ toGmLines str
 
 -- | Only use these when you're sure there are no other writers on stdout
-gmUnsafePutStrLn, gmUnsafeErrStrLn
-    :: MonadIO m => Options -> String -> m ()
-gmUnsafePutStrLn opts = (fst $ outputFns' opts GmOutputStdio) . toGmLines
-gmUnsafeErrStrLn opts = (snd $ outputFns' opts GmOutputStdio) . toGmLines
+gmUnsafePutStr, gmUnsafeErrStr
+    :: MonadIO m => OutputOpts -> String -> m ()
+gmUnsafePutStr oopts = (fst $ stdioOutputFns (ooptLinePrefix oopts)) . toGmLines
+gmUnsafeErrStr oopts = (snd $ stdioOutputFns (ooptLinePrefix oopts)) . toGmLines
 
-gmReadProcess :: GmEnv m => m (FilePath -> [String] -> String -> IO String)
+gmReadProcess :: GmOut m => m (FilePath -> [String] -> String -> IO String)
 gmReadProcess = do
-  GhcModEnv {..} <- gmeAsk
-  case gmOutput of
-    GmOutputChan _ ->
+  GhcModOut {..} <- gmoAsk
+  case ooptLinePrefix gmoOptions of
+    Just _ ->
         readProcessStderrChan
-    GmOutputStdio ->
+    Nothing ->
         return $ readProcess
 
 stdoutGateway :: Chan (GmStream, GmLines String) -> IO ()
@@ -129,8 +138,8 @@ stdoutGateway chan = go ("", "")
      case ty of
        GmTerminated ->
            case stream of
-             GmOut -> putStr (obuf++l) >> hFlush stdout >> go ("", ebuf)
-             GmErr -> putStr (ebuf++l) >> hFlush stdout >> go (obuf, "")
+             GmOutStream -> putStr (obuf++l) >> hFlush stdout >> go ("", ebuf)
+             GmErrStream -> putStr (ebuf++l) >> hFlush stdout >> go (obuf, "")
        GmPartial -> case reverse $ lines l of
                       [] -> go buf
                       [x] -> go (appendBuf stream buf x)
@@ -139,15 +148,20 @@ stdoutGateway chan = go ("", "")
                         hFlush stdout
                         go (appendBuf stream buf x)
 
-   appendBuf GmOut (obuf, ebuf) s = (obuf++s, ebuf)
-   appendBuf GmErr (obuf, ebuf) s = (obuf, ebuf++s)
+   appendBuf GmOutStream (obuf, ebuf) s = (obuf++s, ebuf)
+   appendBuf GmErrStream (obuf, ebuf) s = (obuf, ebuf++s)
 
 
 readProcessStderrChan ::
-    GmEnv m => m (FilePath -> [String] -> String -> IO String)
+    GmOut m => m (FilePath -> [String] -> String -> IO String)
 readProcessStderrChan = do
-  (_, e) <- outputFns
-  return $ go e
+  (_, e :: GmLines String -> IO ()) <- outputFns
+  return $ readProcessStderrChan' e
+
+readProcessStderrChan' ::
+     (GmLines String -> IO ())
+  -> FilePath -> [String] -> String -> IO String
+readProcessStderrChan' pute = go pute
  where
    go :: (GmLines String -> IO ()) -> FilePath -> [String] -> String -> IO String
    go putErr exe args input = do
@@ -176,7 +190,7 @@ readProcessStderrChan = do
      res <- waitForProcess h
      case res of
        ExitFailure rv ->
-           processFailedException "readProcessStderrChan" exe args rv
+           throw $ GMEProcess "readProcessStderrChan" exe args $ Left rv
        ExitSuccess ->
            return output
     where
@@ -192,9 +206,3 @@ withForkWait async body = do
     tid <- forkIO $ try (restore async) >>= putMVar waitVar
     let wait = takeMVar waitVar >>= either throwIO return
     restore (body wait) `onException` killThread tid
-
-processFailedException :: String -> String -> [String] -> Int -> IO a
-processFailedException fn exe args rv =
-      error $ concat [ fn, ": ", exe, " "
-                     , intercalate " " (map show args)
-                     , " (exit " ++ show rv ++ ")"]

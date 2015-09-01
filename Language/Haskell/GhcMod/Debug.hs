@@ -39,7 +39,7 @@ debugInfo = do
               fsep $ map text pkgOpts)
       , "GHC System libraries: " ++ ghcLibDir
       , "GHC user options:\n"    ++ render (nest 4 $
-              fsep $ map text ghcUserOptions)
+              fsep $ map text optGhcUserOptions)
       ] ++ cabal
 
 cabalDebug :: IOish m => GhcModT m [String]
@@ -53,6 +53,7 @@ cabalDebug = do
 
     return $
          [ "Cabal file:           " ++ show cradleCabalFile
+         , "Cabal Project Type:   " ++ show cradleProjectType
          , "Cabal entrypoints:\n"       ++ render (nest 4 $
               mapDoc gmComponentNameDoc smpDoc entrypoints)
          , "Cabal components:\n"        ++ render (nest 4 $

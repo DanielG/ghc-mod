@@ -197,3 +197,14 @@ mkRevRedirMapFunc = do
   where
     mf :: FilePath -> FileMapping -> (FilePath, FilePath)
     mf from to = (fmPath to, from)
+
+findFilesWith' :: (FilePath -> IO Bool) -> [FilePath] -> String -> IO [FilePath]
+findFilesWith' _ [] _ = return []
+findFilesWith' f (d:ds) fileName = do
+    let file = d </> fileName
+    exist <- doesFileExist file
+    b <- if exist then f file else return False
+    if b then do
+               files <- findFilesWith' f ds fileName
+               return $ file : files
+        else findFilesWith' f ds fileName

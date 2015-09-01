@@ -10,6 +10,7 @@ import Test.Hspec
 import System.Directory
 import System.FilePath
 import System.Process (readProcess, system)
+import Prelude
 
 import Dir
 import TestUtils
@@ -60,7 +61,7 @@ spec = do
             let tdir = "test/data/stack-project"
             [ghcOpts] <- map gmcGhcOpts . filter ((==ChExeName "new-template-exe") . gmcName) <$> runD' tdir getComponents
             let pkgs = pkgOptions ghcOpts
-            pkgs `shouldBe` ["base", "bytestring"]
+            sort pkgs `shouldBe` ["base", "bytestring"]
 
         it "extracts build dependencies" $ do
             let tdir = "test/data/cabal-project"

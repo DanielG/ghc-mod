@@ -126,12 +126,12 @@ gmeDoc e = case e of
         compsDoc sc = fsep $ punctuate comma $
                         map gmComponentNameDoc $ Set.toList sc
 
-    GMEProcess cmd args emsg -> let c = showCommandForUser cmd args in
+    GMEProcess _fn cmd args emsg -> let c = showCommandForUser cmd args in
         case emsg of
           Right err ->
              text (printf "Launching system command `%s` failed: " c)
                   <> gmeDoc err
-          Left (_out, _err, rv) -> text $
+          Left rv -> text $
              printf "Launching system command `%s` failed (exited with %d)" c rv
     GMENoCabalFile ->
         text "No cabal file found."
@@ -140,6 +140,9 @@ gmeDoc e = case e of
                ++ intercalate "\", \"" cfs ++"\"."
     GMECabalStateFile csfe ->
         gmCsfeDoc csfe
+    GMEStackBootrap msg ->
+        (text $ "Boostrapping stack project failed")
+          <+>: text msg
 
 ghcExceptionDoc :: GhcException -> Doc
 ghcExceptionDoc e@(CmdLineError _) =

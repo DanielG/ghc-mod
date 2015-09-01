@@ -114,7 +114,7 @@ spec = do
         it "should work even if file doesn't exist" $ do
           withDirectory_ "test/data/file-mapping" $ do
             let fm = [("Nonexistent.hs", "main = putStrLn \"Hello World!\"\n")]
-            res <- run defaultOptions{logLevel=GmDebug} $ do
+            res <- run defaultOptions $ do
               mapM_ (uncurry loadMappedFileSource) fm
               checkSyntax ["Nonexistent.hs"]
             res `shouldBe` "Nonexistent.hs:1:1:Warning: Top-level binding with no type signature: main :: IO ()\n"
@@ -224,7 +224,7 @@ spec = do
               writeFile (tmpdir </> "Bar_Redir.hs") srcBar
               let fm = [("Foo.hs", tmpdir </> "Foo_Redir.hs")
                        ,("Bar.hs", tmpdir </> "Bar_Redir.hs")]
-              res <- run defaultOptions{logLevel = GmDebug} $ do
+              res <- run defaultOptions $ do
                 mapM_ (uncurry loadMappedFile) fm
                 types "Bar.hs" 5 1
               res `shouldBe` unlines ["5 1 5 20 \"[Char]\""]
@@ -234,7 +234,7 @@ spec = do
           withDirectory_ "test/data/file-mapping" $ do
             let fm = [("Foo.hs", srcFoo)
                      ,("Bar.hs", srcBar)]
-            res <- run defaultOptions{logLevel = GmDebug} $ do
+            res <- run defaultOptions $ do
               mapM_ (uncurry loadMappedFileSource) fm
               types "Bar.hs" 5 1
             res `shouldBe` unlines ["5 1 5 20 \"[Char]\""]

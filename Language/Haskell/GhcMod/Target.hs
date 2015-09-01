@@ -57,7 +57,7 @@ import Prelude hiding ((.))
 import System.Directory
 import System.FilePath
 
-runGmPkgGhc :: (IOish m, GmEnv m, GmState m, GmLog m) => LightGhc a -> m a
+runGmPkgGhc :: (IOish m, Gm m) => LightGhc a -> m a
 runGmPkgGhc action = do
     pkgOpts <- packageGhcOptions
     withLightHscEnv pkgOpts $ \env -> liftIO $ runLightGhc env action
@@ -116,14 +116,14 @@ runGmlTWith :: IOish m
                  -> GhcModT m b
 runGmlTWith efnmns' mdf wrapper action = do
     crdl <- cradle
-    Options { ghcUserOptions } <- options
+    Options { optGhcUserOptions } <- options
 
     let (fns, mns) = partitionEithers efnmns'
         ccfns = map (cradleCurrentDir crdl </>) fns
     cfns <- mapM getCanonicalFileNameSafe ccfns
     let serfnmn = Set.fromList $ map Right mns ++ map Left cfns
     opts <- targetGhcOptions crdl serfnmn
-    let opts' = opts ++ ["-O0"] ++ ghcUserOptions
+    let opts' = opts ++ ["-O0"] ++ optGhcUserOptions
 
     gmVomit
       "session-ghc-options"
@@ -260,7 +260,7 @@ findCandidates scns = foldl1 Set.intersection scns
 pickComponent :: Set ChComponentName -> ChComponentName
 pickComponent scn = Set.findMin scn
 
-packageGhcOptions :: (Applicative m, IOish m, GmEnv m, GmState m, GmLog m)
+packageGhcOptions :: (Applicative m, IOish m, Gm m)
                   => m [GHCOption]
 packageGhcOptions = do
     crdl <- cradle
@@ -282,7 +282,7 @@ sandboxOpts crdl = do
     getSandboxPackageDbStack =
         ([GlobalDb] ++) . maybe [UserDb] return <$> getSandboxDb crdl
 
-resolveGmComponent :: (IOish m, GmLog m, GmEnv m, GmState m)
+resolveGmComponent :: (IOish m, Gm m)
     => Maybe [CompilationUnit] -- ^ Updated modules
     -> GmComponent 'GMCRaw (Set ModulePath)
     -> m (GmComponent 'GMCResolved (Set ModulePath))
@@ -308,7 +308,7 @@ resolveGmComponent mums c@GmComponent {..} = do
            [ "-optP-include", "-optP" ++ distDir </> macrosHeaderPath ]
         ]
 
-resolveEntrypoint :: (IOish m, GmEnv m, GmLog m, GmState m)
+resolveEntrypoint :: (IOish m, Gm m)
     => Cradle
     -> GmComponent 'GMCRaw ChEntrypoint
     -> m (GmComponent 'GMCRaw (Set ModulePath))
@@ -341,7 +341,7 @@ chModToMod :: ChModuleName -> ModuleName
 chModToMod (ChModuleName mn) = mkModuleName mn
 
 
-resolveModule :: (IOish m, GmEnv m, GmLog m, GmState m) =>
+resolveModule :: (IOish m, Gm m) =>
   HscEnv -> [FilePath] -> CompilationUnit -> m (Maybe ModulePath)
 resolveModule env _srcDirs (Right mn) =
     liftIO $ traverse canonicalizeModulePath =<< findModulePath env mn
@@ -373,7 +373,7 @@ resolveModule env srcDirs (Left fn') = do
 
 type CompilationUnit = Either FilePath ModuleName
 
-resolveGmComponents :: (IOish m, GmState m, GmLog m, GmEnv m)
+resolveGmComponents :: (IOish m, Gm m)
     => Maybe [CompilationUnit]
         -- ^ Updated modules
     -> [GmComponent 'GMCRaw (Set ModulePath)]

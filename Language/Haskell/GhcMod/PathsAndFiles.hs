@@ -21,8 +21,10 @@ module Language.Haskell.GhcMod.PathsAndFiles (
 
 import Config (cProjectVersion)
 import Control.Applicative
+import Control.Exception as E
 import Control.Monad
 import Control.Monad.Trans.Maybe
+import Control.Monad.Trans.Class
 import Data.List
 import Data.Char
 import Data.Maybe
@@ -31,10 +33,12 @@ import Distribution.Helper (buildPlatform)
 import System.Directory
 import System.FilePath
 import System.Process
+import System.Info.Extra
 
 import Language.Haskell.GhcMod.Types
-import Language.Haskell.GhcMod.Error
+import Language.Haskell.GhcMod.Monad.Types
 import Language.Haskell.GhcMod.Caching
+import Language.Haskell.GhcMod.Output
 import qualified Language.Haskell.GhcMod.Utils as U
 import Utils (mightExist)
 import Prelude
@@ -75,10 +79,38 @@ findCabalFile dir = do
 findStackConfigFile :: FilePath -> IO (Maybe FilePath)
 findStackConfigFile dir = mightExist (dir </> "stack.yaml")
 
-getStackDistDir :: FilePath -> IO (Maybe FilePath)
-getStackDistDir dir = U.withDirectory_ dir $ runMaybeT $ do
-    stack <- MaybeT $ findExecutable "stack"
-    liftIO $ takeWhile (/='\n') <$> readProcess stack ["path", "--dist-dir"] ""
+getStackDistDir :: (IOish m, GmOut m) => FilePath -> m (Maybe FilePath)
+getStackDistDir projdir = U.withDirectory_ projdir $ runMaybeT $ do
+    takeWhile (/='\n') <$> readStack ["path", "--dist-dir"]
+
+getStackGhcPath :: (IOish m, GmOut m) => FilePath -> m (Maybe FilePath)
+getStackGhcPath = findExecutablesInStackBinPath "ghc"
+
+getStackGhcPkgPath :: (IOish m, GmOut m) => FilePath -> m (Maybe FilePath)
+getStackGhcPkgPath = findExecutablesInStackBinPath  "ghc-pkg"
+
+findExecutablesInStackBinPath :: (IOish m, GmOut m) => String -> FilePath -> m (Maybe FilePath)
+findExecutablesInStackBinPath exe projdir =
+    U.withDirectory_ projdir $ runMaybeT $ do
+      path <- splitSearchPath . takeWhile (/='\n')
+                <$> readStack ["path", "--bin-path"]
+      MaybeT $ liftIO $ listToMaybe <$> findExecutablesInDirectories' path exe
+
+findExecutablesInDirectories' :: [FilePath] -> String -> IO [FilePath]
+findExecutablesInDirectories' path binary =
+    U.findFilesWith' isExecutable path (binary <.> exeExtension)
+   where isExecutable file = do
+             perms <- getPermissions file
+             return $ executable perms
+
+         exeExtension = if isWindows then "exe" else ""
+
+readStack :: (IOish m, GmOut m) => [String] -> MaybeT m String
+readStack args = do
+  stack <- MaybeT $ liftIO $ findExecutable "stack"
+  readProc <- lift gmReadProcess
+  liftIO $ flip E.catch (\(e :: IOError) -> throw $ GMEStackBootrap $ show e) $ do
+    evaluate =<< readProc stack args ""
 
 -- | Get path to sandbox config file
 getSandboxDb :: Cradle -> IO (Maybe GhcPkgDb)

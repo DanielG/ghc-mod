@@ -9,6 +9,7 @@ import Data.Maybe (isJust)
 import qualified Data.Text as T
 import qualified Data.Text.IO as T (readFile)
 import System.FilePath
+import Prelude
 
 import qualified DataCon as Ty
 import GHC (GhcMonad, LPat, Id, ParsedModule(..), TypecheckedModule(..), DynFlags, SrcSpan, Type, GenLocated(L))
@@ -48,12 +49,12 @@ splits :: IOish m
        -> GhcModT m String
 splits file lineNo colNo =
   ghandle handler $ runGmlT' [Left file] deferErrors $ do
-      opt <- options
+      oopts <- outputOpts
       crdl <- cradle
       style <- getStyle
       dflag <- G.getSessionDynFlags
       modSum <- fileModSummaryWithMapping (cradleCurrentDir crdl </> file)
-      whenFound' opt (getSrcSpanTypeForSplit modSum lineNo colNo) $ \x -> case x of
+      whenFound' oopts (getSrcSpanTypeForSplit modSum lineNo colNo) $ \x -> case x of
         (SplitInfo varName bndLoc (varLoc,varT) _matches) -> do
           let varName' = showName dflag style varName  -- Convert name to string
           t <- genCaseSplitTextFile file (SplitToTextInfo varName' bndLoc varLoc $
@@ -68,7 +69,7 @@ splits file lineNo colNo =
    handler (SomeException ex) = do
      gmLog GmException "splits" $
            text "" $$ nest 4 (showDoc ex)
-     emptyResult =<< options
+     emptyResult =<< outputOpts
 
 ----------------------------------------------------------------
 -- a. Code for getting the information of the variable

@@ -3,7 +3,6 @@ module Language.Haskell.GhcMod.Info (
   , types
   ) where
 
-import Control.Applicative
 import Data.Function (on)
 import Data.List (sortBy)
 import Data.Maybe (catMaybes)
@@ -35,8 +34,8 @@ info :: IOish m
 info file expr =
   ghandle handler $
     runGmlT' [Left file] deferErrors $
-      withInteractiveContext $
-        convert <$> options <*> body
+      withInteractiveContext $ do
+        convert' =<< body
   where
     handler (SomeException ex) = do
       gmLog GmException "info" $ text "" $$ nest 4 (showDoc ex)

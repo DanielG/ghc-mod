@@ -75,14 +75,14 @@ appendLogRef rfm df (LogRef ref) _ sev src st msg = do
 
 -- | Logged messages are returned as 'String'.
 --   Right is success and Left is failure.
-withLogger :: (GmGhc m, GmEnv m, GmState m)
+withLogger :: (GmGhc m, GmEnv m, GmOut m, GmState m)
            => (DynFlags -> DynFlags)
            -> m a
            -> m (Either String (String, a))
 withLogger f action = do
   env <- G.getSession
-  opts <- options
-  let conv = convert opts
+  oopts <- outputOpts
+  let conv = convert oopts
   eres <- withLogger' env $ \setDf ->
       withDynFlags (f . setDf) action
   return $ either (Left . conv) (Right . first conv) eres

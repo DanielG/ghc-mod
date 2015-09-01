@@ -1,7 +1,7 @@
 {-# LANGUAGE CPP #-}
 module InfoSpec where
 
-import Control.Applicative ((<$>))
+import Control.Applicative
 import Data.List (isPrefixOf)
 import Language.Haskell.GhcMod
 #if __GLASGOW_HASKELL__ < 706
@@ -12,6 +12,7 @@ import System.Environment (getExecutablePath)
 import System.FilePath
 import Test.Hspec
 import TestUtils
+import Prelude
 
 spec :: Spec
 spec = do
