@@ -23,8 +23,8 @@ module Language.Haskell.GhcMod.Output (
   , gmPutStrLn
   , gmErrStrLn
   , gmReadProcess
-  , gmUnsafePutStrLn
-  , gmUnsafeErrStrLn
+  , gmUnsafePutStr
+  , gmUnsafeErrStr
   , gmUnsafeReadProcess
   , stdoutGateway
   ) where
@@ -109,10 +109,10 @@ gmErrStr str = do
   putErr $ toGmLines str
 
 -- | Only use these when you're sure there are no other writers on stdout
-gmUnsafePutStrLn, gmUnsafeErrStrLn
+gmUnsafePutStr, gmUnsafeErrStr
     :: MonadIO m => OutputOpts -> String -> m ()
-gmUnsafePutStrLn oopts = (fst $ outputFns' oopts GmOutputStdio) . toGmLines
-gmUnsafeErrStrLn oopts = (snd $ outputFns' oopts GmOutputStdio) . toGmLines
+gmUnsafePutStr oopts = (fst $ outputFns' oopts GmOutputStdio) . toGmLines
+gmUnsafeErrStr oopts = (snd $ outputFns' oopts GmOutputStdio) . toGmLines
 
 gmUnsafeReadProcess :: OutputOpts -> FilePath -> [String] -> String -> IO String
 gmUnsafeReadProcess oopts =

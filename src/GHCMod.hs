@@ -25,7 +25,7 @@ import System.FilePath ((</>))
 import System.Directory (setCurrentDirectory, getAppUserDataDirectory,
                         removeDirectoryRecursive)
 import System.Environment (getArgs)
-import System.IO (stdout, hSetEncoding, utf8, hFlush)
+import System.IO
 import System.Exit
 import Text.PrettyPrint
 import Prelude hiding ((.))
@@ -396,7 +396,10 @@ main = do
     args <- getArgs
     case parseGlobalArgs args of
       Left e -> throw e
-      Right res -> progMain res
+      Right res@(globalOptions,_) -> catches (progMain res) [
+            Handler $ \(e :: GhcModError) ->
+              exitError' globalOptions $ renderStyle ghcModStyle (gmeDoc e)
+          ]
 
 progMain :: (Options,[String]) -> IO ()
 progMain (globalOptions,cmdArgs) = hndle $ runGhcModT globalOptions $ handler $ do
@@ -407,7 +410,7 @@ progMain (globalOptions,cmdArgs) = hndle $ runGhcModT globalOptions $ handler $ 
         ghcCommands cmdArgs
  where
    hndle action = do
-     (e, _l) <- action
+     (e, _l) <- liftIO . evaluate =<< action
      case e of
        Right _ ->
            return ()
@@ -555,8 +558,9 @@ exitError :: IOish m => String -> GhcModT m a
 exitError msg = gmErrStrLn (dropWhileEnd (=='\n') msg) >> liftIO exitFailure
 
 exitError' :: Options -> String -> IO a
-exitError' opts msg =
-    gmUnsafeErrStrLn (outputOpts opts) (dropWhileEnd (=='\n') msg) >> liftIO exitFailure
+exitError' opts msg = do
+    gmUnsafeErrStr (outputOpts opts) msg
+    liftIO exitFailure
 
 fatalError :: String -> a
 fatalError s = throw $ FatalError $ "ghc-mod: " ++ s
