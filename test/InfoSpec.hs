@@ -1,7 +1,7 @@
 {-# LANGUAGE CPP #-}
 module InfoSpec where
 
-import Control.Applicative ((<$>))
+import Control.Applicative
 import Data.List (isPrefixOf)
 import Language.Haskell.GhcMod
 #if __GLASGOW_HASKELL__ < 706

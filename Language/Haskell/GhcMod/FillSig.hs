@@ -78,7 +78,7 @@ sig :: IOish m
     -> GhcModT m String
 sig file lineNo colNo =
     runGmlT' [Left file] deferErrors $ ghandle fallback $ do
-      oopts <- outputOpts <$> options
+      oopts <- outputOpts
       style <- getStyle
       dflag <- G.getSessionDynFlags
       modSum <- fileModSummaryWithMapping file
@@ -97,7 +97,7 @@ sig file lineNo colNo =
             in (rTy, fourInts loc, [initial ++ body])
   where
     fallback (SomeException _) = do
-      oopts <- outputOpts <$> options
+      oopts <- outputOpts
       -- Code cannot be parsed by ghc module
       -- Fallback: try to get information via haskell-src-exts
       whenFound oopts (getSignatureFromHE file lineNo colNo) $ \x -> case x of
@@ -347,7 +347,7 @@ refine :: IOish m
 refine file lineNo colNo (Expression expr) =
   ghandle handler $
     runGmlT' [Left file] deferErrors $ do
-      oopts <- outputOpts <$> options
+      oopts <- outputOpts
       style <- getStyle
       dflag <- G.getSessionDynFlags
       modSum <- fileModSummaryWithMapping file
@@ -367,7 +367,7 @@ refine file lineNo colNo (Expression expr) =
    handler (SomeException ex) = do
      gmLog GmException "refining" $
            text "" $$ nest 4 (showDoc ex)
-     emptyResult =<< outputOpts <$> options
+     emptyResult =<< outputOpts
 
 -- Look for the variable in the specified position
 findVar
@@ -424,7 +424,7 @@ auto :: IOish m
      -> GhcModT m String
 auto file lineNo colNo =
   ghandle handler $ runGmlT' [Left file] deferErrors $ do
-        oopts <- outputOpts <$> options
+        oopts <- outputOpts
         style <- getStyle
         dflag <- G.getSessionDynFlags
         modSum <- fileModSummaryWithMapping file
@@ -456,7 +456,7 @@ auto file lineNo colNo =
    handler (SomeException ex) = do
      gmLog GmException "auto-refining" $
            text "" $$ nest 4 (showDoc ex)
-     emptyResult =<< outputOpts <$> options
+     emptyResult =<< outputOpts
 
 -- Functions we do not want in completions
 notWantedFuns :: [String]

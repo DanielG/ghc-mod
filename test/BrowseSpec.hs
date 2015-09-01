@@ -17,12 +17,12 @@ spec = do
 
     describe "browse -d Data.Either" $ do
         it "contains functions (e.g. `either') including their type signature" $ do
-            syms <- run defaultOptions { detailed = True }
+            syms <- run defaultOptions { optDetailed = True }
                     $ lines <$> browse "Data.Either"
             syms `shouldContain` ["either :: (a -> c) -> (b -> c) -> Either a b -> c"]
 
         it "contains type constructors (e.g. `Left') including their type signature" $ do
-            syms <- run defaultOptions { detailed = True}
+            syms <- run defaultOptions { optDetailed = True}
                     $ lines <$> browse "Data.Either"
             syms `shouldContain` ["Left :: a -> Either a b"]
 

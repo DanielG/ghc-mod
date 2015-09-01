@@ -29,12 +29,16 @@ import Prelude
 --   Find a cabal file by tracing ancestor directories.
 --   Find a sandbox according to a cabal sandbox config
 --   in a cabal directory.
-findCradle :: OutputOpts -> IO Cradle
-findCradle oopts = findCradle' oopts =<< getCurrentDirectory
+findCradle :: (IOish m, GmOut m) => m Cradle
+findCradle = findCradle' =<< liftIO getCurrentDirectory
 
-findCradle' :: OutputOpts -> FilePath -> IO Cradle
-findCradle' oopts dir = run $ do
-    (stackCradle oopts dir `mplus` cabalCradle dir `mplus` sandboxCradle dir `mplus` plainCradle dir)
+findCradle' :: (IOish m, GmOut m) => FilePath -> m Cradle
+findCradle' dir = run $
+    msum [ stackCradle dir
+         , cabalCradle dir
+         , sandboxCradle dir
+         , plainCradle dir
+         ]
  where run a = fillTempDir =<< (fromJust <$> runMaybeT a)
 
 findSpecCradle :: FilePath -> IO Cradle
@@ -53,14 +57,14 @@ findSpecCradle dir = do
 cleanupCradle :: Cradle -> IO ()
 cleanupCradle crdl = removeDirectoryRecursive $ cradleTempDir crdl
 
-fillTempDir :: MonadIO m => Cradle -> m Cradle
+fillTempDir :: IOish m => Cradle -> m Cradle
 fillTempDir crdl = do
   tmpDir <- liftIO $ newTempDir (cradleRootDir crdl)
   return crdl { cradleTempDir = tmpDir }
 
-cabalCradle :: FilePath -> MaybeT IO Cradle
+cabalCradle :: IOish m => FilePath -> MaybeT m Cradle
 cabalCradle wdir = do
-    cabalFile <- MaybeT $ findCabalFile wdir
+    cabalFile <- MaybeT $ liftIO $ findCabalFile wdir
 
     let cabalDir = takeDirectory cabalFile
 
@@ -73,19 +77,19 @@ cabalCradle wdir = do
       , cradleDistDir    = "dist"
       }
 
-stackCradle :: OutputOpts -> FilePath -> MaybeT IO Cradle
-stackCradle oopts wdir = do
-    cabalFile <- MaybeT $ findCabalFile wdir
+stackCradle :: (IOish m, GmOut m) => FilePath -> MaybeT m Cradle
+stackCradle wdir = do
+    cabalFile <- MaybeT $ liftIO $ findCabalFile wdir
 
     let cabalDir = takeDirectory cabalFile
 
-    _stackConfigFile <- MaybeT $ findStackConfigFile cabalDir
+    _stackConfigFile <- MaybeT $ liftIO $ findStackConfigFile cabalDir
 
     -- If dist/setup-config already exists the user probably wants to use cabal
     -- rather than stack, or maybe that's just me ;)
     whenM (liftIO $ doesFileExist $ setupConfigPath "dist") $ mzero
 
-    distDir <- MaybeT $ getStackDistDir oopts cabalDir
+    distDir <- MaybeT $ getStackDistDir cabalDir
 
     return Cradle {
         cradleProjectType = StackProject
@@ -96,9 +100,9 @@ stackCradle oopts wdir = do
       , cradleDistDir    = distDir
       }
 
-sandboxCradle :: FilePath -> MaybeT IO Cradle
+sandboxCradle :: IOish m => FilePath -> MaybeT m Cradle
 sandboxCradle wdir = do
-    sbDir <- MaybeT $ findCabalSandboxDir wdir
+    sbDir <- MaybeT $ liftIO $ findCabalSandboxDir wdir
     return Cradle {
         cradleProjectType = SandboxProject
       , cradleCurrentDir = wdir
@@ -108,7 +112,7 @@ sandboxCradle wdir = do
       , cradleDistDir    = "dist"
       }
 
-plainCradle :: FilePath -> MaybeT IO Cradle
+plainCradle :: IOish m => FilePath -> MaybeT m Cradle
 plainCradle wdir = do
     return $ Cradle {
         cradleProjectType = PlainProject

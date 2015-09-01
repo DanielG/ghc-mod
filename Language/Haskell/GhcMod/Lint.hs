@@ -20,7 +20,7 @@ lint :: IOish m
 lint file = do
   opt <- options
   withMappedFile file $ \tempfile ->
-        liftIO (hlint $ tempfile : "--quiet" : hlintOpts opt)
+        liftIO (hlint $ tempfile : "--quiet" : optHlintOpts opt)
     >>= mapM (replaceFileName tempfile)
     >>= ghandle handler . pack
  where

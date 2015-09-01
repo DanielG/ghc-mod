@@ -14,13 +14,13 @@ import qualified GHC as G
 ----------------------------------------------------------------
 
 -- | Listing installed modules.
-modules :: (IOish m, GmEnv m, GmState m, GmLog m) => m String
+modules :: (IOish m, Gm m) => m String
 modules = do
-  Options { detailed } <- options
+  Options { optDetailed } <- options
   df <- runGmPkgGhc G.getSessionDynFlags
   let mns = listVisibleModuleNames df
       pmnss = map (first moduleNameString) $ zip mns (modulePkg df `map` mns)
-  convert' $ nub [ if detailed then pkg ++ " " ++ mn else mn
+  convert' $ nub [ if optDetailed then pkg ++ " " ++ mn else mn
                  | (mn, pkgs) <- pmnss, pkg <- pkgs ]
  where
    modulePkg df = lookupModulePackageInAllPackages df

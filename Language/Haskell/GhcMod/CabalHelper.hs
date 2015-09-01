@@ -53,7 +53,7 @@ import Paths_ghc_mod as GhcMod
 
 -- | Only package related GHC options, sufficient for things that don't need to
 -- access home modules
-getGhcMergedPkgOptions :: (Applicative m, IOish m, GmEnv m, GmState m, GmLog m)
+getGhcMergedPkgOptions :: (Applicative m, IOish m, Gm m)
   => m [GHCOption]
 getGhcMergedPkgOptions = chCached $ \distdir -> Cached {
   cacheLens = Just (lGmcMergedPkgOptions . lGmCaches),
@@ -65,7 +65,7 @@ getGhcMergedPkgOptions = chCached $ \distdir -> Cached {
     return ([setupConfigPath distdir], opts)
  }
 
-getCabalPackageDbStack :: (IOish m, GmEnv m, GmState m, GmLog m) => m [GhcPkgDb]
+getCabalPackageDbStack :: (IOish m, Gm m) => m [GhcPkgDb]
 getCabalPackageDbStack = chCached $ \distdir -> Cached {
   cacheLens = Just (lGmcPackageDbStack . lGmCaches),
   cacheFile = pkgDbStackCacheFile distdir,
@@ -86,7 +86,7 @@ chPkgToGhcPkg (ChPkgSpecific f) = PackageDb f
 --
 -- The Component\'s 'gmcHomeModuleGraph' will be empty and has to be resolved by
 -- 'resolveGmComponents'.
-getComponents :: (Applicative m, IOish m, GmEnv m, GmState m, GmLog m)
+getComponents :: (Applicative m, IOish m, Gm m)
               => m [GmComponent 'GMCRaw ChEntrypoint]
 getComponents = chCached$ \distdir -> Cached {
     cacheLens = Just (lGmcComponents . lGmCaches),
@@ -116,7 +116,7 @@ getComponents = chCached$ \distdir -> Cached {
                  , a == a'
                  ]
 
-prepareCabalHelper :: (IOish m, GmEnv m, GmLog m) => m ()
+prepareCabalHelper :: (IOish m, GmEnv m, GmOut m, GmLog m) => m ()
 prepareCabalHelper = do
   crdl <- cradle
   let projdir = cradleRootDir crdl
@@ -147,19 +147,19 @@ getStackPackageDbStack = do
         localDb <- liftIO $ readProcess stack ["path", "--local-pkg-db"] ""
         return $ map (PackageDb . takeWhile (/='\n')) [snapshotDb, localDb]
 
-patchStackPrograms :: IOish m => OutputOpts -> Cradle -> Programs -> m Programs
-patchStackPrograms _oopts crdl progs
+patchStackPrograms :: (IOish m, GmOut m) => Cradle -> Programs -> m Programs
+patchStackPrograms crdl progs
     | cradleProjectType crdl /= StackProject = return progs
-patchStackPrograms oopts crdl progs = do
+patchStackPrograms crdl progs = do
   let projdir = cradleRootDir crdl
-  Just ghc <- liftIO $ getStackGhcPath oopts projdir
-  Just ghcPkg <- liftIO $ getStackGhcPkgPath oopts projdir
+  Just ghc <- getStackGhcPath projdir
+  Just ghcPkg <- getStackGhcPkgPath projdir
   return $ progs {
       ghcProgram = ghc
     , ghcPkgProgram = ghcPkg
     }
 
-withCabal :: (IOish m, GmEnv m, GmLog m) => m a -> m a
+withCabal :: (IOish m, GmEnv m, GmOut m, GmLog m) => m a -> m a
 withCabal action = do
     crdl <- cradle
     opts <- options
@@ -177,7 +177,7 @@ withCabal action = do
     pkgDbStackOutOfSync <-
          case mCusPkgDbStack of
            Just cusPkgDbStack -> do
-             pkgDb <- runQuery'' readProc (helperProgs $ programs opts) projdir distdir $
+             pkgDb <- runQuery'' readProc (helperProgs $ optPrograms opts) projdir distdir $
                  map chPkgToGhcPkg <$> packageDbStack
              return $ pkgDb /= cusPkgDbStack
 
@@ -199,10 +199,10 @@ withCabal action = do
         || isSetupConfigOutOfDate mCabalSandboxConfig mCabalConfig) $
           case projType of
             CabalProject ->
-                cabalReconfigure readProc (programs opts) crdl projdir distdir
+                cabalReconfigure readProc (optPrograms opts) crdl projdir distdir
             StackProject ->
 
-                stackReconfigure crdl (programs opts)
+                stackReconfigure crdl (optPrograms opts)
             _ ->
                 error $ "withCabal: unsupported project type: " ++ show projType
 
@@ -216,7 +216,7 @@ withCabal action = do
                 [ "--with-ghc=" ++ T.ghcProgram progs ]
                 -- Only pass ghc-pkg if it was actually set otherwise we
                 -- might break cabal's guessing logic
-                ++ if T.ghcPkgProgram progs /= T.ghcPkgProgram (programs defaultOptions)
+                ++ if T.ghcPkgProgram progs /= T.ghcPkgProgram (optPrograms defaultOptions)
                      then [ "--with-ghc-pkg=" ++ T.ghcPkgProgram progs ]
                      else []
                 ++ map pkgDbArg cusPkgStack
@@ -277,7 +277,7 @@ helperProgs progs = CH.Programs {
     ghcPkgProgram = T.ghcPkgProgram progs
   }
 
-chCached :: (Applicative m, IOish m, GmEnv m, GmState m, GmLog m, Serialize a)
+chCached :: (Applicative m, IOish m, Gm m, Serialize a)
   => (FilePath -> Cached m GhcModState ChCacheData a) -> m a
 chCached c = do
   root <- cradleRootDir <$> cradle
@@ -289,10 +289,8 @@ chCached c = do
    -- changes the cache files will be gone anyways ;)
    cacheInputData root = do
                opts <- options
-               let oopts = outputOpts opts
-                   progs = programs opts
                crdl <- cradle
-               progs' <- patchStackPrograms oopts crdl progs
+               progs' <- patchStackPrograms crdl (optPrograms opts)
                return $ ( helperProgs progs'
                         , root
                         , (gmVer, chVer)

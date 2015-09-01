@@ -251,27 +251,27 @@ globalArgSpec =
       [ option "v" ["verbose"] "Increase or set log level. (0-7)" $
           optArg "LEVEL" $ \ml o -> Right $ case ml of
               Nothing ->
-                  modify (lLogLevel . lOutputOpts) increaseLogLevel o
+                  modify (lOoptLogLevel . lOptOutput) increaseLogLevel o
               Just l ->
-                  set (lLogLevel . lOutputOpts) (toEnum $ min 7 $ read l) o
+                  set (lOoptLogLevel . lOptOutput) (toEnum $ min 7 $ read l) o
 
       , option "s" [] "Be silent, set log level to 0" $
-          NoArg $ \o -> Right $ set (lLogLevel . lOutputOpts) (toEnum 0) o
+          NoArg $ \o -> Right $ set (lOoptLogLevel . lOptOutput) (toEnum 0) o
 
       , option "l" ["tolisp"] "Format output as an S-Expression" $
-          NoArg $ \o -> Right $ set (lOutputStyle . lOutputOpts) LispStyle o
+          NoArg $ \o -> Right $ set (lOoptStyle . lOptOutput) LispStyle o
 
       , option "b" ["boundary", "line-seperator"] "Output line separator"$
-          reqArg "SEP" $ \s o -> Right $ set (lLineSeparator . lOutputOpts) (LineSeparator s) o
+          reqArg "SEP" $ \s o -> Right $ set (lOoptLineSeparator . lOptOutput) (LineSeparator s) o
 
       , option "" ["line-prefix"] "Output line separator"$
           reqArg "OUT,ERR" $ \s o -> let
                 [out, err] = splitOn "," s
-              in Right $ set (lLinePrefix . lOutputOpts) (Just (out, err)) o
+              in Right $ set (lOoptLinePrefix . lOptOutput) (Just (out, err)) o
 
       , option "g" ["ghcOpt", "ghc-option"] "Option to be passed to GHC" $
           reqArg "OPT" $ \g o -> Right $
-              o { ghcUserOptions = g : ghcUserOptions o }
+              o { optGhcUserOptions = g : optGhcUserOptions o }
 
 {-
 File map docs:
@@ -313,19 +313,19 @@ Exposed functions:
                        (s,"") -> (s, Nothing)
                        (f,t)  -> (f, Just t)
              in
-             Right $ o { fileMappings = m : fileMappings o }
+             Right $ o { optFileMappings = m : optFileMappings o }
 
       , option "" ["with-ghc"] "GHC executable to use" $
-          reqArg "PATH" $ \p o -> Right $ set (lGhcProgram . lPrograms) p o
+          reqArg "PATH" $ \p o -> Right $ set (lGhcProgram . lOptPrograms) p o
 
       , option "" ["with-ghc-pkg"] "ghc-pkg executable to use (only needed when guessing from GHC path fails)" $
-          reqArg "PATH" $ \p o -> Right $ set (lGhcPkgProgram . lPrograms) p o
+          reqArg "PATH" $ \p o -> Right $ set (lGhcPkgProgram . lOptPrograms) p o
 
       , option "" ["with-cabal"] "cabal-install executable to use" $
-          reqArg "PATH" $ \p o -> Right $ set (lCabalProgram . lPrograms) p o
+          reqArg "PATH" $ \p o -> Right $ set (lCabalProgram . lOptPrograms) p o
 
       , option "" ["with-stack"] "stack executable to use" $
-          reqArg "PATH" $ \p o -> Right $ set (lStackProgram . lPrograms) p o
+          reqArg "PATH" $ \p o -> Right $ set (lStackProgram . lOptPrograms) p o
 
       , option "" ["version"] "print version information" $
           NoArg $ \_ -> Left ["version"]
@@ -406,7 +406,7 @@ progMain (globalOptions,cmdArgs) = hndle $ runGhcModT globalOptions $ handler $ 
     case globalCommands cmdArgs of
       Just s -> gmPutStr s
       Nothing -> do
-        forM_ (reverse $ fileMappings globalOptions) $ uncurry loadMMappedFiles
+        forM_ (reverse $ optFileMappings globalOptions) $ uncurry loadMMappedFiles
         ghcCommands cmdArgs
  where
    hndle action = do
@@ -559,7 +559,7 @@ exitError msg = gmErrStrLn (dropWhileEnd (=='\n') msg) >> liftIO exitFailure
 
 exitError' :: Options -> String -> IO a
 exitError' opts msg = do
-    gmUnsafeErrStr (outputOpts opts) msg
+    gmUnsafeErrStr (optOutput opts) msg
     liftIO exitFailure
 
 fatalError :: String -> a
@@ -654,24 +654,24 @@ locAction' cmd _ _ = throw $ InvalidCommandLine (Left cmd)
 modulesArgSpec :: [OptDescr (Options -> Either [String] Options)]
 modulesArgSpec =
     [ option "d" ["detailed"] "Print package modules belong to." $
-             NoArg $ \o -> Right $ o { detailed = True }
+             NoArg $ \o -> Right $ o { optDetailed = True }
     ]
 
 
 hlintArgSpec :: [OptDescr (Options -> Either [String] Options)]
 hlintArgSpec =
     [ option "h" ["hlintOpt"] "Option to be passed to hlint" $
-             reqArg "hlintOpt" $ \h o -> Right $ o { hlintOpts = h : hlintOpts o }
+             reqArg "hlintOpt" $ \h o -> Right $ o { optHlintOpts = h : optHlintOpts o }
     ]
 
 browseArgSpec :: [OptDescr (Options -> Either [String] Options)]
 browseArgSpec =
     [ option "o" ["operators"] "Also print operators." $
-             NoArg $ \o -> Right $ o { operators = True }
+             NoArg $ \o -> Right $ o { optOperators = True }
     , option "d" ["detailed"] "Print symbols with accompanying signature." $
-             NoArg $ \o -> Right $ o { detailed = True }
+             NoArg $ \o -> Right $ o { optDetailed = True }
     , option "q" ["qualified"] "Qualify symbols" $
-             NoArg $ \o -> Right $ o { qualified = True }
+             NoArg $ \o -> Right $ o { optQualified = True }
     ]
 
 nukeCaches :: IOish m => GhcModT m ()

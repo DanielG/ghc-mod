@@ -30,7 +30,6 @@ import Language.Haskell.GhcMod.DynFlags (withDynFlags)
 import Language.Haskell.GhcMod.Monad.Types
 import Language.Haskell.GhcMod.Error
 import Language.Haskell.GhcMod.Utils (mkRevRedirMapFunc)
-import Language.Haskell.GhcMod.Types
 import qualified Language.Haskell.GhcMod.Gap as Gap
 import Prelude
 
@@ -76,13 +75,13 @@ appendLogRef rfm df (LogRef ref) _ sev src st msg = do
 
 -- | Logged messages are returned as 'String'.
 --   Right is success and Left is failure.
-withLogger :: (GmGhc m, GmEnv m, GmState m)
+withLogger :: (GmGhc m, GmEnv m, GmOut m, GmState m)
            => (DynFlags -> DynFlags)
            -> m a
            -> m (Either String (String, a))
 withLogger f action = do
   env <- G.getSession
-  oopts <- outputOpts <$> options
+  oopts <- outputOpts
   let conv = convert oopts
   eres <- withLogger' env $ \setDf ->
       withDynFlags (f . setDf) action

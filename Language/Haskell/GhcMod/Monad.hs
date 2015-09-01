@@ -16,7 +16,8 @@
 
 {-# LANGUAGE CPP #-}
 module Language.Haskell.GhcMod.Monad (
-    runGhcModT
+    runGmOutT
+  , runGhcModT
   , runGhcModT'
   , runGhcModT''
   , hoistGhcModT
@@ -51,26 +52,24 @@ import Exception (ExceptionMonad(..))
 import System.Directory
 import Prelude
 
-withCradle :: IOish m => OutputOpts -> FilePath -> (Cradle -> m a) -> m a
-withCradle oopts cradledir f =
-    gbracket (liftIO $ findCradle' oopts cradledir) (liftIO . cleanupCradle) f
+withCradle :: (IOish m, GmOut m) => FilePath -> (Cradle -> m a) -> m a
+withCradle cradledir f =
+    gbracket (findCradle' cradledir) (liftIO . cleanupCradle) f
 
-withGhcModEnv :: IOish m => FilePath -> Options -> (GhcModEnv -> m a) -> m a
+withGhcModEnv :: (IOish m, GmOut m) => FilePath -> Options -> (GhcModEnv -> m a) -> m a
 withGhcModEnv dir opts f =
-    withCradle (outputOpts opts) dir (withGhcModEnv' opts f)
+    withCradle dir (withGhcModEnv' opts f)
 
-withGhcModEnv' :: IOish m => Options -> (GhcModEnv -> m a) -> Cradle -> m a
+withGhcModEnv' :: (IOish m, GmOut m) => Options -> (GhcModEnv -> m a) -> Cradle -> m a
 withGhcModEnv' opts f crdl = do
     olddir <- liftIO getCurrentDirectory
-    c <- liftIO newChan
-    let outp = case linePrefix $ outputOpts opts of
-                 Just _ -> GmOutputChan c
-                 Nothing -> GmOutputStdio
-    gbracket_ (setup c) (teardown olddir) (f $ GhcModEnv opts crdl outp)
+    gbracket_ setup (teardown olddir) (f $ GhcModEnv opts crdl)
  where
-   setup c = liftIO $ do
-     setCurrentDirectory $ cradleRootDir crdl
-     forkIO $ stdoutGateway c
+   setup = do
+     c <- gmoChan <$> gmoAsk
+     liftIO $ do
+       setCurrentDirectory $ cradleRootDir crdl
+       forkIO $ stdoutGateway c
 
    teardown olddir tid = liftIO $ do
      setCurrentDirectory olddir
@@ -92,10 +91,12 @@ runGhcModT' :: IOish m
             -> Options
             -> GhcModT m a
             -> m (Either GhcModError a, GhcModLog)
-runGhcModT' dir opt action = liftIO (canonicalizePath dir) >>= \dir' ->
-    withGhcModEnv dir' opt $ \env ->
-      first (fst <$>) <$> runGhcModT'' env defaultGhcModState
-        (gmSetLogLevel (logLevel $ outputOpts opt) >> action)
+runGhcModT' dir opt action = liftIO (canonicalizePath dir) >>= \dir' -> do
+    gmo <- GhcModOut (optOutput opt) <$> liftIO newChan
+    runGmOutT gmo $
+      withGhcModEnv dir' opt $ \env ->
+        first (fst <$>) <$> runGhcModT'' env defaultGhcModState
+          (gmSetLogLevel (ooptLogLevel $ optOutput opt) >> action)
 
 -- | @hoistGhcModT result@. Embed a GhcModT computation's result into a GhcModT
 -- computation. Note that if the computation that returned @result@ modified the
@@ -108,6 +109,7 @@ hoistGhcModT (r,l) = do
     Left e -> throwError e
     Right a -> return a
 
+
 -- | Run a computation inside @GhcModT@ providing the RWST environment and
 -- initial state. This is a low level function, use it only if you know what to
 -- do with 'GhcModEnv' and 'GhcModState'.
@@ -117,6 +119,9 @@ runGhcModT'' :: IOish m
              => GhcModEnv
              -> GhcModState
              -> GhcModT m a
-             -> m (Either GhcModError (a, GhcModState), GhcModLog)
+             -> GmOutT m (Either GhcModError (a, GhcModState), GhcModLog)
 runGhcModT'' r s a = do
-  flip runReaderT r $ runJournalT $ runErrorT $ runStateT (unGhcModT a) s
+  flip runReaderT r $ runJournalT $ runErrorT $ runStateT (unGmT a) s
+
+runGmOutT :: IOish m => GhcModOut -> GmOutT m a -> m a
+runGmOutT gmo ma = flip runReaderT gmo $ unGmOutT ma

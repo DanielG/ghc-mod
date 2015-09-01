@@ -90,51 +90,51 @@ data Programs = Programs {
 
 data OutputOpts = OutputOpts {
   -- | Verbosity
-    logLevel      :: GmLogLevel
-  , outputStyle   :: OutputStyle
+    ooptLogLevel      :: GmLogLevel
+  , ooptStyle         :: OutputStyle
   -- | Line separator string.
-  , lineSeparator :: LineSeparator
+  , ooptLineSeparator :: LineSeparator
   -- | Stdout/err line multiplexing using prefix encoding. @fst@ is stdout,
   -- @snd@ is stderr prefix.
-  , linePrefix :: Maybe (String, String)
+  , ooptLinePrefix    :: Maybe (String, String)
   } deriving (Show)
 
 data Options = Options {
-    outputOpts    :: OutputOpts
-  , programs      :: Programs
+    optOutput         :: OutputOpts
+  , optPrograms       :: Programs
     -- | GHC command line options set on the @ghc-mod@ command line
-  , ghcUserOptions:: [GHCOption]
+  , optGhcUserOptions :: [GHCOption]
   -- | If 'True', 'browse' also returns operators.
-  , operators     :: Bool
+  , optOperators      :: Bool
   -- | If 'True', 'browse' also returns types.
-  , detailed      :: Bool
+  , optDetailed       :: Bool
   -- | If 'True', 'browse' will return fully qualified name
-  , qualified     :: Bool
-  , hlintOpts     :: [String]
-  , fileMappings  :: [(FilePath, Maybe FilePath)]
+  , optQualified      :: Bool
+  , optHlintOpts      :: [String]
+  , optFileMappings   :: [(FilePath, Maybe FilePath)]
   } deriving (Show)
 
 -- | A default 'Options'.
 defaultOptions :: Options
 defaultOptions = Options {
-    outputOpts     = OutputOpts {
-      outputStyle    = PlainStyle
-    , lineSeparator  = LineSeparator "\0"
-    , linePrefix     = Nothing
-    , logLevel       = GmWarning
+    optOutput     = OutputOpts {
+      ooptLogLevel       = GmWarning
+    , ooptStyle          = PlainStyle
+    , ooptLineSeparator  = LineSeparator "\0"
+    , ooptLinePrefix     = Nothing
     }
-  , programs       = Programs {
+  , optPrograms       = Programs {
       ghcProgram     = "ghc"
     , ghcPkgProgram  = "ghc-pkg"
     , cabalProgram   = "cabal"
     , stackProgram   = "stack"
     }
-  , ghcUserOptions = []
-  , operators      = False
-  , detailed       = False
-  , qualified      = False
-  , hlintOpts      = []
-  , fileMappings   = []
+  , optGhcUserOptions = []
+  , optOperators      = False
+  , optDetailed       = False
+  , optQualified      = False
+  , optHlintOpts      = []
+  , optFileMappings   = []
   }
 
 ----------------------------------------------------------------
@@ -158,7 +158,7 @@ data Cradle = Cradle {
   } deriving (Eq, Show)
 
 
-data GmStream = GmOut | GmErr
+data GmStream = GmOutStream | GmErrStream
                 deriving (Show)
 
 data GmLineType = GmTerminated | GmPartial
@@ -170,13 +170,14 @@ data GmLines a = GmLines GmLineType a
 unGmLine :: GmLines a -> a
 unGmLine (GmLines _ s) = s
 
-data GmOutput = GmOutputStdio
-              | GmOutputChan (Chan (GmStream, GmLines String))
-
 data GhcModEnv = GhcModEnv {
       gmOptions    :: Options
     , gmCradle     :: Cradle
-    , gmOutput     :: GmOutput
+    }
+
+data GhcModOut = GhcModOut {
+      gmoOptions :: OutputOpts
+    , gmoChan    :: Chan (GmStream, GmLines String)
     }
 
 data GhcModLog = GhcModLog {

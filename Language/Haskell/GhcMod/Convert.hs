@@ -25,11 +25,11 @@ inter _ [] = id
 inter c bs = foldr1 (\x y -> x . (c:) . y) bs
 
 convert' :: (ToString a, IOish m, GmEnv m) => a -> m String
-convert' x = flip convert x . outputOpts <$> options
+convert' x = flip convert x . optOutput <$> options
 
 convert :: ToString a => OutputOpts -> a -> String
-convert opt@OutputOpts { outputStyle = LispStyle  } x = toLisp opt x "\n"
-convert opt@OutputOpts { outputStyle = PlainStyle } x
+convert opt@OutputOpts { ooptStyle = LispStyle  } x = toLisp opt x "\n"
+convert opt@OutputOpts { ooptStyle = PlainStyle } x
   | str == "\n" = ""
   | otherwise   = str
   where
@@ -43,7 +43,7 @@ lineSep :: OutputOpts -> String
 lineSep oopts = interpret lsep
   where
     interpret s = read $ "\"" ++ s ++ "\""
-    LineSeparator lsep = lineSeparator oopts
+    LineSeparator lsep = ooptLineSeparator oopts
 
 -- |
 --

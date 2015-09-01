@@ -6,7 +6,6 @@ module Language.Haskell.GhcMod.CaseSplit (
 
 import Data.List (find, intercalate)
 import Data.Maybe (isJust)
-import Data.Functor
 import qualified Data.Text as T
 import qualified Data.Text.IO as T (readFile)
 import System.FilePath
@@ -50,7 +49,7 @@ splits :: IOish m
        -> GhcModT m String
 splits file lineNo colNo =
   ghandle handler $ runGmlT' [Left file] deferErrors $ do
-      oopts <- outputOpts <$> options
+      oopts <- outputOpts
       crdl <- cradle
       style <- getStyle
       dflag <- G.getSessionDynFlags
@@ -70,7 +69,7 @@ splits file lineNo colNo =
    handler (SomeException ex) = do
      gmLog GmException "splits" $
            text "" $$ nest 4 (showDoc ex)
-     emptyResult =<< outputOpts <$> options
+     emptyResult =<< outputOpts
 
 ----------------------------------------------------------------
 -- a. Code for getting the information of the variable

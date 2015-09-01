@@ -65,7 +65,7 @@ decreaseLogLevel l = pred l
 -- True
 -- >>> Just GmDebug <= Just GmException
 -- False
-gmLog :: (MonadIO m, GmLog m, GmEnv m) => GmLogLevel -> String -> Doc -> m ()
+gmLog :: (MonadIO m, GmLog m, GmOut m) => GmLogLevel -> String -> Doc -> m ()
 gmLog level loc' doc = do
   GhcModLog { gmLogLevel = Just level' } <- gmlHistory
 
@@ -78,7 +78,7 @@ gmLog level loc' doc = do
 
   gmlJournal (GhcModLog Nothing (Last Nothing) [(level, loc', msgDoc)])
 
-gmVomit :: (MonadIO m, GmLog m, GmEnv m) => String -> Doc -> String -> m ()
+gmVomit :: (MonadIO m, GmLog m, GmOut m, GmEnv m) => String -> Doc -> String -> m ()
 gmVomit filename doc content = do
   gmLog GmVomit "" $ doc <+>: text content
 
