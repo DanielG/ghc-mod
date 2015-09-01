@@ -66,7 +66,7 @@ toGmLines s = GmLines GmPartial s
 outputFns :: (GmOut m, MonadIO m')
           => m (GmLines String -> m' (), GmLines String -> m' ())
 outputFns =
-  outputFns' <$> gmoAsk
+  outputFns' `liftM` gmoAsk
 
 pfxFns :: Maybe (String, String) -> (GmLines String -> GmLines String, GmLines String -> GmLines String)
 pfxFns lpfx = case lpfx of
