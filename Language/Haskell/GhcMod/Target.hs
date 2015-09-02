@@ -288,6 +288,7 @@ resolveGmComponent :: (IOish m, Gm m)
     -> m (GmComponent 'GMCResolved (Set ModulePath))
 resolveGmComponent mums c@GmComponent {..} = do
   distDir <- cradleDistDir <$> cradle
+  gmLog GmDebug "resolveGmComponent" $ text $ show $ ghcOpts distDir
   withLightHscEnv (ghcOpts distDir) $ \env -> do
     let srcDirs = if null gmcSourceDirs then [""] else gmcSourceDirs
     let mg = gmcHomeModuleGraph
@@ -313,6 +314,7 @@ resolveEntrypoint :: (IOish m, Gm m)
     -> GmComponent 'GMCRaw ChEntrypoint
     -> m (GmComponent 'GMCRaw (Set ModulePath))
 resolveEntrypoint Cradle {..} c@GmComponent {..} = do
+    gmLog GmDebug "resolveEntrypoint" $ text $ show $ gmcGhcSrcOpts
     withLightHscEnv gmcGhcSrcOpts $ \env -> do
       let srcDirs = if null gmcSourceDirs then [""] else gmcSourceDirs
       eps <- liftIO $ resolveChEntrypoints cradleRootDir gmcEntrypoints

@@ -15,6 +15,7 @@ import Language.Haskell.GhcMod.Internal
 import Language.Haskell.GhcMod.Target
 import Language.Haskell.GhcMod.Pretty
 import Language.Haskell.GhcMod.Utils
+import Language.Haskell.GhcMod.PathsAndFiles
 
 ----------------------------------------------------------------
 
@@ -27,7 +28,7 @@ debugInfo = do
     cabal <-
         case cradleProjectType of
           CabalProject -> cabalDebug
-          StackProject -> cabalDebug
+          StackProject -> (++) <$> stackPaths <*> cabalDebug
           _ -> return []
 
     pkgOpts <- packageGhcOptions
@@ -41,6 +42,16 @@ debugInfo = do
       , "GHC user options:\n"    ++ render (nest 4 $
               fsep $ map text optGhcUserOptions)
       ] ++ cabal
+
+stackPaths :: IOish m => GhcModT m [String]
+stackPaths = do
+    Cradle {..} <- cradle
+    Just ghc <- getStackGhcPath cradleRootDir
+    Just ghcPkg <- getStackGhcPkgPath cradleRootDir
+    return $
+         [ "Stack ghc executable:    " ++ show ghc
+         , "Stack ghc-pkg executable:" ++ show ghcPkg
+         ]
 
 cabalDebug :: IOish m => GhcModT m [String]
 cabalDebug = do
