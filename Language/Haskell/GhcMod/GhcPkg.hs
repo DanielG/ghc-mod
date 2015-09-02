@@ -6,6 +6,7 @@ module Language.Haskell.GhcMod.GhcPkg (
   , ghcDbOpt
   , getPackageDbStack
   , getPackageCachePaths
+  , getGhcPkgProgram
   ) where
 
 import Config (cProjectVersion, cTargetPlatformString, cProjectVersionInt)
@@ -58,6 +59,18 @@ ghcDbOpt (PackageDb pkgDb)
   | otherwise        = ["-no-user-package-db",   "-package-db",   pkgDb]
 
 ----------------------------------------------------------------
+
+getGhcPkgProgram :: IOish m => GhcModT m FilePath
+getGhcPkgProgram = do
+  crdl <- cradle
+  progs <- optPrograms <$> options
+  case cradleProjectType crdl of
+    StackProject -> do
+        Just ghcPkg <- getStackGhcPkgPath (cradleRootDir crdl)
+        return ghcPkg
+    _ ->
+        return $ ghcPkgProgram progs
+
 
 getPackageDbStack :: IOish m => GhcModT m [GhcPkgDb]
 getPackageDbStack = do
