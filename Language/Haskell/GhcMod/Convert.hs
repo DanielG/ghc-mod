@@ -47,9 +47,9 @@ lineSep oopts = interpret lsep
 
 -- |
 --
--- >>> toLisp (outputOpts defaultOptions) "fo\"o" ""
+-- >>> toLisp (optOutput defaultOptions) "fo\"o" ""
 -- "\"fo\\\"o\""
--- >>> toPlain (outputOpts defaultOptions) "foo" ""
+-- >>> toPlain (optOutput defaultOptions) "foo" ""
 -- "foo"
 instance ToString String where
   toLisp  oopts = quote oopts
@@ -57,9 +57,9 @@ instance ToString String where
 
 -- |
 --
--- >>> toLisp (outputOpts defaultOptions) ["foo", "bar", "ba\"z"] ""
+-- >>> toLisp (optOutput defaultOptions) ["foo", "bar", "ba\"z"] ""
 -- "(\"foo\" \"bar\" \"ba\\\"z\")"
--- >>> toPlain (outputOpts defaultOptions) ["foo", "bar", "baz"] ""
+-- >>> toPlain (optOutput defaultOptions) ["foo", "bar", "baz"] ""
 -- "foo\nbar\nbaz"
 instance ToString [String] where
   toLisp  oopts = toSexp1 oopts
@@ -72,9 +72,9 @@ instance ToString [ModuleString] where
 -- |
 --
 -- >>> let inp = [((1,2,3,4),"foo"),((5,6,7,8),"bar")] :: [((Int,Int,Int,Int),String)]
--- >>> toLisp (outputOpts defaultOptions) inp ""
+-- >>> toLisp (optOutput defaultOptions) inp ""
 -- "((1 2 3 4 \"foo\") (5 6 7 8 \"bar\"))"
--- >>> toPlain (outputOpts defaultOptions) inp ""
+-- >>> toPlain (optOutput defaultOptions) inp ""
 -- "1 2 3 4 \"foo\"\n5 6 7 8 \"bar\""
 instance ToString [((Int,Int,Int,Int),String)] where
   toLisp  oopts = toSexp2 . map toS
