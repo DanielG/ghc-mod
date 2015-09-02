@@ -209,6 +209,12 @@ withCabal action = do
     action
 
  where
+   writeAutogen projdir distdir = do
+     readProc <- gmReadProcess
+     gmLog GmDebug "" $ strDoc $ "writing Cabal autogen files"
+     liftIO $ writeAutogenFiles readProc projdir distdir
+
+
    cabalReconfigure readProc progs crdl projdir distdir = do
      withDirectory_ (cradleRootDir crdl) $ do
         cusPkgStack <- maybe [] ((PackageDb "clear"):) <$> getCustomPkgDbStack
@@ -221,16 +227,19 @@ withCabal action = do
                      else []
                 ++ map pkgDbArg cusPkgStack
         liftIO $ void $ readProc (T.cabalProgram progs) ("configure":progOpts) ""
-        gmLog GmDebug "" $ strDoc $ "writing Cabal autogen files"
-        liftIO $ writeAutogenFiles readProc projdir distdir
+        writeAutogen projdir distdir
 
    stackReconfigure crdl progs = do
+     let projdir = cradleRootDir crdl
+         distdir = projdir </> cradleDistDir crdl
+
      withDirectory_ (cradleRootDir crdl) $ do
        supported <- haveStackSupport
        if supported
           then do
             spawn [T.stackProgram progs, "build", "--only-dependencies"]
             spawn [T.stackProgram progs, "build", "--only-configure"]
+            writeAutogen projdir distdir
           else
             gmLog GmWarning "" $ strDoc $ "Stack project configuration is out of date, please reconfigure manually using 'stack build' as your stack version is too old (need at least 1.4.0.0)"
 
