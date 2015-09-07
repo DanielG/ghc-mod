@@ -94,13 +94,16 @@
     (ghc-start-process name buf))
    (t cpro)))
 
+(defvar ghc-process-wrapper-function #'identity)
+
 (defun ghc-start-process (name buf)
   (let* ((process-connection-type nil) ;; using PIPE due to ^D
 	 (opts (append ghc-debug-options
 		       '("-b" "\n" "-l" "--line-prefix=O: ,E: ")
 		       (ghc-make-ghc-options)
 		       '("legacy-interactive")))
-	 (pro (apply 'start-process name buf ghc-command opts)))
+	 (command (funcall ghc-process-wrapper-function (append (list ghc-command) opts)))
+	 (pro (apply 'start-process name buf (car command) (cdr command))))
     (set-process-filter pro 'ghc-process-filter)
     (set-process-sentinel pro 'ghc-process-sentinel)
     (set-process-query-on-exit-flag pro nil)
