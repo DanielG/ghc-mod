@@ -21,7 +21,6 @@ module Language.Haskell.GhcMod.CabalHelper
   , getGhcMergedPkgOptions
   , getCabalPackageDbStack
   , getStackPackageDbStack
-  , getCustomPkgDbStack
   , prepareCabalHelper
   )
 #endif
@@ -43,6 +42,7 @@ import Language.Haskell.GhcMod.Utils
 import Language.Haskell.GhcMod.PathsAndFiles
 import Language.Haskell.GhcMod.Logging
 import Language.Haskell.GhcMod.Output
+import Language.Haskell.GhcMod.CustomPackageDb
 import System.FilePath
 import System.Directory (findExecutable)
 import System.Process
@@ -138,18 +138,6 @@ prepareCabalHelper = do
   readProc <- gmReadProcess
   when (cradleProjectType crdl == CabalProject || cradleProjectType crdl == StackProject) $
        withCabal $ liftIO $ prepare readProc projdir distdir
-
-parseCustomPackageDb :: String -> [GhcPkgDb]
-parseCustomPackageDb src = map parsePkgDb $ filter (not . null) $ lines src
- where
-   parsePkgDb "global" = GlobalDb
-   parsePkgDb "user" = UserDb
-   parsePkgDb s = PackageDb s
-
-getCustomPkgDbStack :: (IOish m, GmEnv m) => m (Maybe [GhcPkgDb])
-getCustomPkgDbStack = do
-    mCusPkgDbFile <- liftIO . (traverse readFile <=< findCustomPackageDbFile) . cradleRootDir =<< cradle
-    return $ parseCustomPackageDb <$> mCusPkgDbFile
 
 getStackPackageDbStack :: IOish m => m [GhcPkgDb]
 getStackPackageDbStack = do

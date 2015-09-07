@@ -37,6 +37,7 @@ import Language.Haskell.GhcMod.Types
 import Language.Haskell.GhcMod.Utils as U
 import Language.Haskell.GhcMod.FileMapping
 import Language.Haskell.GhcMod.LightGhc
+import Language.Haskell.GhcMod.CustomPackageDb
 
 import Data.Maybe
 import Data.Monoid as Monoid
@@ -270,10 +271,11 @@ packageGhcOptions = do
       _ -> sandboxOpts crdl
 
 -- also works for plain projects!
-sandboxOpts :: MonadIO m => Cradle -> m [String]
+sandboxOpts :: (IOish m, GmEnv m) => Cradle -> m [String]
 sandboxOpts crdl = do
+    mCusPkgDb <- getCustomPkgDbStack
     pkgDbStack <- liftIO $ getSandboxPackageDbStack
-    let pkgOpts = ghcDbStackOpts pkgDbStack
+    let pkgOpts = ghcDbStackOpts $ fromMaybe pkgDbStack mCusPkgDb
     return $ ["-i" ++ d | d <- [wdir,rdir]] ++ pkgOpts ++ ["-Wall"]
   where
     (wdir, rdir) = (cradleCurrentDir crdl, cradleRootDir crdl)

@@ -264,8 +264,9 @@ pkgDbStackCacheFile :: FilePath -> FilePath
 pkgDbStackCacheFile dist =
     setupConfigPath dist <.> "ghc-mod.package-db-stack"
 
--- | @findCustomPackageDbFile dir@. Searches for a @.ghc-mod.cradle@ file in @dir@.
--- If it exists in the given directory it is returned otherwise @findCradleFile@ returns @Nothing@
+-- | @findCustomPackageDbFile dir@. Searches for a @ghc-mod.package-db-stack@ file in @dir@.
+-- If it exists in the given directory it is returned otherwise @findCradleFile@
+-- returns @Nothing@
 findCustomPackageDbFile :: FilePath -> IO (Maybe FilePath)
 findCustomPackageDbFile directory = do
     let path = directory </> "ghc-mod.package-db-stack"

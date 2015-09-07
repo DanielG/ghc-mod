@@ -110,6 +110,7 @@ Library
                         Language.Haskell.GhcMod.Check
                         Language.Haskell.GhcMod.Convert
                         Language.Haskell.GhcMod.Cradle
+                        Language.Haskell.GhcMod.CustomPackageDb
                         Language.Haskell.GhcMod.Debug
                         Language.Haskell.GhcMod.Doc
                         Language.Haskell.GhcMod.DynFlags

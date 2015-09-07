@@ -22,6 +22,7 @@ import Language.Haskell.GhcMod.Types
 import Language.Haskell.GhcMod.Monad.Types
 import Language.Haskell.GhcMod.CabalHelper
 import Language.Haskell.GhcMod.PathsAndFiles
+import Language.Haskell.GhcMod.CustomPackageDb
 
 ghcVersion :: Int
 ghcVersion = read cProjectVersionInt
