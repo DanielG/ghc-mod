@@ -58,10 +58,8 @@ getGhcMergedPkgOptions :: (Applicative m, IOish m, Gm m)
 getGhcMergedPkgOptions = chCached $ \distdir -> Cached {
   cacheLens = Just (lGmcMergedPkgOptions . lGmCaches),
   cacheFile = mergedPkgOptsCacheFile distdir,
-  cachedAction = \ _tcf (progs, rootdir, _) _ma -> do
-    readProc <- gmReadProcess
-    opts <- withCabal $ runQuery'' readProc progs rootdir distdir $
-                ghcMergedPkgOptions
+  cachedAction = \_tcf (_progs, _projdir, _ver) _ma -> do
+    opts <- withCabal $ runCHQuery ghcMergedPkgOptions
     return ([setupConfigPath distdir], opts)
  }
 
@@ -69,10 +67,10 @@ getCabalPackageDbStack :: (IOish m, Gm m) => m [GhcPkgDb]
 getCabalPackageDbStack = chCached $ \distdir -> Cached {
   cacheLens = Just (lGmcPackageDbStack . lGmCaches),
   cacheFile = pkgDbStackCacheFile distdir,
-  cachedAction = \ _tcf (progs, rootdir, _) _ma -> do
+  cachedAction = \_tcf (_progs, _projdir, _ver) _ma -> do
     crdl <- cradle
-    readProc <- gmReadProcess
-    dbs <- withCabal $ map chPkgToGhcPkg <$> runQuery'' readProc progs rootdir distdir packageDbStack
+    dbs <- withCabal $ map chPkgToGhcPkg <$>
+             runCHQuery packageDbStack
     return ([setupConfigFile crdl, sandboxConfigFile crdl], dbs)
  }
 
@@ -91,9 +89,8 @@ getComponents :: (Applicative m, IOish m, Gm m)
 getComponents = chCached$ \distdir -> Cached {
     cacheLens = Just (lGmcComponents . lGmCaches),
     cacheFile = cabalHelperCacheFile distdir,
-    cachedAction = \ _tcf (progs, rootdir, _vers) _ma -> do
-      readProc <- gmReadProcess
-      runQuery'' readProc progs rootdir distdir $ do
+    cachedAction = \ _tcf (_progs, _projdir, _ver) _ma -> do
+      runCHQuery $ do
         q <- join7
                <$> ghcOptions
                <*> ghcPkgOptions
@@ -115,6 +112,23 @@ getComponents = chCached$ \distdir -> Cached {
                  , (a', c) <- lc
                  , a == a'
                  ]
+runCHQuery :: (IOish m, GmOut m, GmEnv m) => Query m b -> m b
+runCHQuery a = do
+  crdl <- cradle
+  let projdir = cradleRootDir crdl
+      distdir = projdir </> cradleDistDir crdl
+
+  opts <- options
+  progs <- patchStackPrograms crdl (optPrograms opts)
+
+  readProc <- gmReadProcess
+
+  let qe = (defaultQueryEnv projdir distdir) {
+               qeReadProcess = readProc
+             , qePrograms = helperProgs progs
+             }
+  runQuery qe a
+
 
 prepareCabalHelper :: (IOish m, GmEnv m, GmOut m, GmLog m) => m ()
 prepareCabalHelper = do
@@ -177,8 +191,11 @@ withCabal action = do
     pkgDbStackOutOfSync <-
          case mCusPkgDbStack of
            Just cusPkgDbStack -> do
-             pkgDb <- runQuery'' readProc (helperProgs $ optPrograms opts) projdir distdir $
-                 map chPkgToGhcPkg <$> packageDbStack
+             let qe = (defaultQueryEnv projdir distdir) {
+                          qeReadProcess = readProc
+                        , qePrograms = helperProgs $ optPrograms opts
+                        }
+             pkgDb <- runQuery qe $ map chPkgToGhcPkg <$> packageDbStack
              return $ pkgDb /= cusPkgDbStack
 
            Nothing -> return False
@@ -289,19 +306,19 @@ helperProgs progs = CH.Programs {
 chCached :: (Applicative m, IOish m, Gm m, Serialize a)
   => (FilePath -> Cached m GhcModState ChCacheData a) -> m a
 chCached c = do
-  root <- cradleRootDir <$> cradle
-  dist <- cradleDistDir <$> cradle
-  d <- cacheInputData root
-  withCabal $ cached root (c dist) d
+  projdir <- cradleRootDir <$> cradle
+  distdir <- (projdir </>) . cradleDistDir <$> cradle
+  d <- cacheInputData projdir
+  withCabal $ cached projdir (c distdir) d
  where
    -- we don't need to include the disdir in the cache input because when it
    -- changes the cache files will be gone anyways ;)
-   cacheInputData root = do
+   cacheInputData projdir = do
                opts <- options
                crdl <- cradle
                progs' <- patchStackPrograms crdl (optPrograms opts)
                return $ ( helperProgs progs'
-                        , root
+                        , projdir
                         , (gmVer, chVer)
                         )
 
