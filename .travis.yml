@@ -31,17 +31,13 @@ before_install:
   - stack --version
 
 install:
+  - export CABAL_VER="$(ghc-pkg describe ghc | sed -n '/^depends:/,/^[a-z]/p' | head -n-1 | sed '1{s/^depends://}' | grep " *Cabal" | tr -d "[:space:]" | sed 's/^Cabal-\([0-9.]*\)-.*/\1/g')"
+  - echo $CABAL_VER
   - cabal update
-#  - ( $CABAL122 && cabal install cabal-install --constraint "Cabal >= 1.22" && ghc-pkg unregister Cabal ) || true
-  - echo $PATH
-  - which cabal
-  - if [ -n "$(cabal --version | grep 'Cabal library' | awk '{ print $3 }' | tail -n1 | sed -n '/^1.18/p')" ]; then cabal install cabal-install --constraint "Cabal == 1.18.* && > 1.18.0"; fi
   - cabal install happy
   - happy --version
-#  - ls -lR ~/.ghc
-#  - ls -lR ~/.cabal
   - git clone --depth=1 https://github.com/DanielG/cabal-helper.git
-  - cabal install cabal-helper/
+  - cabal install cabal-helper/ --constraint "Cabal == ${CABAL_VER}"
   - cabal install -j --only-dependencies --enable-tests
 
 
