@@ -29,16 +29,13 @@ import qualified Data.Map as M
 import Data.Maybe (fromMaybe)
 import Data.Either (rights)
 import Data.List (inits)
-import System.FilePath (joinPath, splitPath, normalise)
 import Exception
 import Language.Haskell.GhcMod.Error
 import Language.Haskell.GhcMod.Types
 import Language.Haskell.GhcMod.Monad.Types
-import System.Directory (getCurrentDirectory, setCurrentDirectory, doesFileExist,
-                         getTemporaryDirectory, canonicalizePath)
+import System.Directory
 import System.Environment
-import System.FilePath (splitDrive, takeDirectory, takeFileName, pathSeparators,
-                        (</>), makeRelative)
+import System.FilePath
 import System.IO.Temp (createTempDirectory)
 import System.Process (readProcess)
 import Text.Printf
@@ -208,3 +205,17 @@ findFilesWith' f (d:ds) fileName = do
                files <- findFilesWith' f ds fileName
                return $ file : files
         else findFilesWith' f ds fileName
+
+
+-- Copyright   :  (c) The University of Glasgow 2001
+-- | Make a path absolute by prepending the current directory (if it isn't
+-- already absolute) and applying 'normalise' to the result.
+--
+-- If the path is already absolute, the operation never fails.  Otherwise, the
+-- operation may fail with the same exceptions as 'getCurrentDirectory'.
+makeAbsolute' :: FilePath -> IO FilePath
+makeAbsolute' = (normalise <$>) . absolutize
+  where absolutize path -- avoid the call to `getCurrentDirectory` if we can
+          | isRelative path = (</> path) . addTrailingPathSeparator <$>
+                              getCurrentDirectory
+          | otherwise       = return path

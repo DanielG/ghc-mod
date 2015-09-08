@@ -171,7 +171,7 @@ takeExtension' p =
 -- it's parent directories.
 findFileInParentsP :: (FilePath -> Bool) -> FilePath
                    -> IO [(DirPath, [FileName])]
-findFileInParentsP p dir' = makeAbsolute dir' >>= \dir ->
+findFileInParentsP p dir' = U.makeAbsolute' dir' >>= \dir ->
     getFilesP p `zipMapM` parents dir
 
 -- | @getFilesP p dir@. Find all __files__ satisfying @p@ in @.cabal@ in @dir@.
