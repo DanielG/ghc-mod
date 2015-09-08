@@ -2,6 +2,7 @@ module GhcPkgSpec where
 
 import Language.Haskell.GhcMod.GhcPkg
 import Language.Haskell.GhcMod.CabalHelper
+import Language.Haskell.GhcMod.CustomPackageDb
 import Test.Hspec
 import System.Process (system)
 

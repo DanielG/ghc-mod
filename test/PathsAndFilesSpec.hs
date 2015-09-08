@@ -3,6 +3,7 @@ module PathsAndFilesSpec where
 
 import Language.Haskell.GhcMod.PathsAndFiles
 import Language.Haskell.GhcMod.Cradle
+import qualified Language.Haskell.GhcMod.Utils as U
 
 import Control.Monad.Trans.Maybe
 import System.Directory
@@ -25,10 +26,12 @@ spec = do
 
     describe "findCabalFile" $ do
         it "works" $ do
-            findCabalFile "test/data/cabal-project" `shouldReturn` Just "test/data/cabal-project/cabalapi.cabal"
+            p <- U.makeAbsolute' "test/data/cabal-project/cabalapi.cabal"
+            findCabalFile "test/data/cabal-project" `shouldReturn` Just p
 
         it "finds cabal files in parent directories" $ do
-            findCabalFile "test/data/cabal-project/subdir1/subdir2" `shouldReturn` Just "test/data/cabal-project/cabalapi.cabal"
+            p <- U.makeAbsolute' "test/data/cabal-project/cabalapi.cabal"
+            findCabalFile "test/data/cabal-project/subdir1/subdir2" `shouldReturn` Just p
 
     describe "findStackConfigFile" $ do
         it "works" $ do
@@ -36,7 +39,9 @@ spec = do
 
     describe "findCabalSandboxDir" $ do
         it "works" $ do
-            findCabalSandboxDir "test/data/cabal-project" `shouldReturn` Just "test/data/cabal-project"
+            p <- U.makeAbsolute' "test/data/cabal-project/cabalapi.cabal"
+            findCabalSandboxDir "test/data/cabal-project" `shouldReturn` Just p
 
         it "finds sandboxes in parent directories" $ do
-            findCabalSandboxDir "test/data/cabal-project/subdir1/subdir2" `shouldReturn` Just "test/data/cabal-project"
+            p <- U.makeAbsolute' "test/data/cabal-project/"
+            findCabalSandboxDir "test/data/cabal-project/subdir1/subdir2" `shouldReturn` Just p

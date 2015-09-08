@@ -243,6 +243,7 @@ Test-Suite spec
                         Spec
                         TestUtils
                         BrowseSpec
+                        CustomPackageDbSpec
                         CheckSpec
                         FlagSpec
                         InfoSpec
