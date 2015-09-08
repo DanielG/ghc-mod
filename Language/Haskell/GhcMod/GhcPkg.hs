@@ -87,6 +87,7 @@ getPackageDbStack = do
         getCabalPackageDbStack
     (StackProject StackEnv {..}) ->
         return $ map PackageDb [seSnapshotPkgDb, seLocalPkgDb]
+    ExplicitProject -> return []
   return $ fromMaybe stack mCusPkgStack
 
 getPackageCachePaths :: IOish m => FilePath -> GhcModT m [FilePath]

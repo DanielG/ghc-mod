@@ -143,6 +143,7 @@ data Project = CabalProject
              | SandboxProject
              | PlainProject
              | StackProject StackEnv
+             | ExplicitProject
                deriving (Eq, Show)
 
 isCabalHelperProject :: Project -> Bool

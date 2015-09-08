@@ -160,11 +160,18 @@ targetGhcOptions crdl sefnmn = do
     when (Set.null sefnmn) $ error "targetGhcOptions: no targets given"
 
     case cradleProject crdl of
-      proj
-          | isCabalHelperProject proj -> cabalOpts crdl
-          | otherwise -> sandboxOpts crdl
+      proj | isCabalHelperProject proj -> cabalOpts crdl
+      ExplicitProject -> explicitOpts crdl
+      _  -> sandboxOpts crdl
  where
    zipMap f l = l `zip` (f `map` l)
+
+   explicitOpts :: Cradle -> GhcModT m [String]
+   explicitOpts Cradle {..} = case cradleCabalFile of
+       Nothing -> return []
+       Just optionsFile -> do
+           contents <- liftIO $ readFile optionsFile
+           return $ lines contents
 
    cabalOpts :: Cradle -> GhcModT m [String]
    cabalOpts Cradle{..} = do
