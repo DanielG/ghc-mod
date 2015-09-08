@@ -216,6 +216,5 @@ findFilesWith' f (d:ds) fileName = do
 makeAbsolute' :: FilePath -> IO FilePath
 makeAbsolute' = (normalise <$>) . absolutize
   where absolutize path -- avoid the call to `getCurrentDirectory` if we can
-          | isRelative path = (</> path) . addTrailingPathSeparator <$>
-                              getCurrentDirectory
+          | isRelative path = (</> path) <$> getCurrentDirectory
           | otherwise       = return path

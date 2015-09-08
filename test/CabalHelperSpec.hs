@@ -9,7 +9,6 @@ import Language.Haskell.GhcMod.Error
 import Test.Hspec
 import System.Directory
 import System.FilePath
-import System.Process (readProcess, system)
 import Prelude
 
 import Dir

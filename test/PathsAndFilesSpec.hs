@@ -35,13 +35,14 @@ spec = do
 
     describe "findStackConfigFile" $ do
         it "works" $ do
-            findStackConfigFile "test/data/stack-project" `shouldReturn` Just "test/data/stack-project/stack.yaml"
+            p <- U.makeAbsolute' "test/data/stack-project/stack.yaml"
+            findStackConfigFile "test/data/stack-project" `shouldReturn` Just p
 
     describe "findCabalSandboxDir" $ do
         it "works" $ do
-            p <- U.makeAbsolute' "test/data/cabal-project/cabalapi.cabal"
+            p <- U.makeAbsolute' "test/data/cabal-project"
             findCabalSandboxDir "test/data/cabal-project" `shouldReturn` Just p
 
         it "finds sandboxes in parent directories" $ do
-            p <- U.makeAbsolute' "test/data/cabal-project/"
+            p <- U.makeAbsolute' "test/data/cabal-project"
             findCabalSandboxDir "test/data/cabal-project/subdir1/subdir2" `shouldReturn` Just p
