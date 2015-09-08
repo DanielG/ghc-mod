@@ -47,6 +47,7 @@ findCradle' Programs { stackProgram, cabalProgram } dir = run $
     msum [ stackCradle stackProgram dir
          , cabalCradle cabalProgram dir
          , sandboxCradle dir
+         , explicitCradle dir
          , plainCradle dir
          ]
  where run a = fillTempDir =<< (fromJustNote "findCradle'" <$> runMaybeT a)
@@ -183,4 +184,16 @@ plainCradle wdir = do
       , cradleTempDir    = error "tmpDir"
       , cradleCabalFile  = Nothing
       , cradleDistDir    = "dist"
+      }
+
+explicitCradle :: IOish m => FilePath -> MaybeT m Cradle
+explicitCradle wdir = do
+    optionsFile <- MaybeT $ liftIO $ findExplicitOptionsFile wdir
+    return $ Cradle {
+        cradleProject    = ExplicitProject
+      , cradleCurrentDir = wdir
+      , cradleRootDir    = takeDirectory optionsFile
+      , cradleTempDir    = error "tmpDir"
+      , cradleCabalFile  = Just optionsFile
+      , cradleDistDir    = ""
       }
