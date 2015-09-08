@@ -242,8 +242,8 @@ withCabal action = do
        supported <- haveStackSupport
        if supported
           then do
-            spawn [T.stackProgram progs, "build", "--only-dependencies"]
-            spawn [T.stackProgram progs, "build", "--only-configure"]
+            spawn [T.stackProgram progs, "build", "--only-dependencies", "."]
+            spawn [T.stackProgram progs, "build", "--only-configure", "."]
             writeAutogen projdir distdir
           else
             gmLog GmWarning "" $ strDoc $ "Stack project configuration is out of date, please reconfigure manually using 'stack build' as your stack version is too old (need at least 0.1.4.0)"

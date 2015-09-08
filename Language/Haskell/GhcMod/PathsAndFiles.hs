@@ -20,6 +20,7 @@ module Language.Haskell.GhcMod.PathsAndFiles (
   ) where
 
 import Config (cProjectVersion)
+import Control.Arrow (second)
 import Control.Applicative
 import Control.Exception as E
 import Control.Monad
@@ -77,7 +78,12 @@ findCabalFile dir = do
    appendDir d fs = (d </>) `map` fs
 
 findStackConfigFile :: FilePath -> IO (Maybe FilePath)
-findStackConfigFile dir = mightExist (dir </> "stack.yaml")
+findStackConfigFile dir = do
+    fs <- map (second listToMaybe) <$> findFileInParentsP  (=="stack.yaml") dir
+    case find (isJust . snd) fs of
+      Nothing           -> return Nothing
+      Just (d, Just a)  -> return $ Just $ d </> a
+      Just (_, Nothing) -> error "findStackConfigFile"
 
 getStackDistDir :: (IOish m, GmOut m) => FilePath -> m (Maybe FilePath)
 getStackDistDir projdir = U.withDirectory_ projdir $ runMaybeT $ do
@@ -165,7 +171,7 @@ takeExtension' p =
 -- it's parent directories.
 findFileInParentsP :: (FilePath -> Bool) -> FilePath
                    -> IO [(DirPath, [FileName])]
-findFileInParentsP p dir =
+findFileInParentsP p dir' = makeAbsolute dir' >>= \dir ->
     getFilesP p `zipMapM` parents dir
 
 -- | @getFilesP p dir@. Find all __files__ satisfying @p@ in @.cabal@ in @dir@.
