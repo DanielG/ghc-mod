@@ -3,18 +3,19 @@
 module Language.Haskell.GhcMod.DynFlags where
 
 import Control.Applicative
-import Control.Monad (void)
-import GHC (DynFlags(..), GhcMode(..), GhcLink(..), HscTarget(..))
+import Control.Monad
+import GHC
 import qualified GHC as G
 import GHC.Paths (libdir)
-import GhcMonad
 import qualified Language.Haskell.GhcMod.Gap as Gap
 import Language.Haskell.GhcMod.Types
+import Language.Haskell.GhcMod.DebugLogger
 import System.IO.Unsafe (unsafePerformIO)
 import Prelude
 
-setEmptyLogger :: DynFlags -> DynFlags
-setEmptyLogger df = Gap.setLogAction df $ \_ _ _ _ _ -> return ()
+setDebugLogger :: (String -> IO ()) -> DynFlags -> DynFlags
+setDebugLogger put df = do
+  Gap.setLogAction df (debugLogAction put)
 
 -- * Fast
 -- * Friendly to foreign export

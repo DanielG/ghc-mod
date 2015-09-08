@@ -22,9 +22,15 @@ module Language.Haskell.GhcMod.Output (
   , gmErrStr
   , gmPutStrLn
   , gmErrStrLn
+
+  , gmPutStrIO
+  , gmErrStrIO
+
   , gmReadProcess
+
   , gmUnsafePutStr
   , gmUnsafeErrStr
+
   , stdoutGateway
   ) where
 
@@ -105,15 +111,21 @@ gmPutStr, gmPutStrLn, gmErrStr, gmErrStrLn
     :: (MonadIO m, GmOut m) => String -> m ()
 
 gmPutStr str = do
-  putOut <- fst `liftM` outputFns
-  putOut $ toGmLines str
+  putOut <- gmPutStrIO
+  putOut str
+
+gmErrStr str = do
+  putErr <- gmErrStrIO
+  putErr str
 
 gmPutStrLn = gmPutStr . (++"\n")
 gmErrStrLn = gmErrStr . (++"\n")
 
-gmErrStr str = do
-  putErr <- snd `liftM` outputFns
-  putErr $ toGmLines str
+gmPutStrIO, gmErrStrIO :: (GmOut m, MonadIO mi) => m (String -> mi ())
+
+gmPutStrIO = ((. toGmLines) . fst) `liftM` outputFns
+gmErrStrIO = ((. toGmLines) . snd) `liftM` outputFns
+
 
 -- | Only use these when you're sure there are no other writers on stdout
 gmUnsafePutStr, gmUnsafeErrStr

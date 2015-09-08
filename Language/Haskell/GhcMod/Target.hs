@@ -38,6 +38,7 @@ import Language.Haskell.GhcMod.Utils as U
 import Language.Haskell.GhcMod.FileMapping
 import Language.Haskell.GhcMod.LightGhc
 import Language.Haskell.GhcMod.CustomPackageDb
+import Language.Haskell.GhcMod.Output
 
 import Data.Maybe
 import Data.Monoid as Monoid
@@ -131,8 +132,9 @@ runGmlTWith efnmns' mdf wrapper action = do
       (text "Initializing GHC session with following options")
       (intercalate " " $ map (("\""++) . (++"\"")) opts')
 
+    putErr <- gmErrStrIO
     initSession opts' $
-        setModeSimple >>> setEmptyLogger >>> mdf
+        setModeSimple >>> setDebugLogger putErr >>> mdf
 
     mappedStrs <- getMMappedFilePaths
     let targetStrs = mappedStrs ++ map moduleNameString mns ++ cfns
