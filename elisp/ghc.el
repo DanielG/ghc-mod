@@ -117,6 +117,7 @@
     (define-key haskell-mode-map ghc-next-hole-key   'ghc-goto-next-hole)
     (ghc-comp-init)
     (setq ghc-initialized t)
+    (add-hook 'kill-buffer-hook 'ghc-kill-process)
     (defadvice save-buffer (after ghc-check-syntax-on-save activate)
       "Check syntax with GHC when a haskell-mode buffer is saved."
       (when (eq 'haskell-mode major-mode) (ghc-check-syntax))))
