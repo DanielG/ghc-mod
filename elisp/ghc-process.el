@@ -215,8 +215,8 @@
   (let* ((name ghc-process-process-name)
 	 (cpro (if name (get-process name))))
     (if (not cpro)
-	(message "No process")
+	(message "No ghc-mod process")
       (delete-process cpro)
-      (message "A process was killed"))))
+      (message "ghc-mod process was killed"))))
 
 (provide 'ghc-process)
