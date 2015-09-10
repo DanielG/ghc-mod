@@ -223,22 +223,19 @@ withInteractiveContext action = gbracket setup teardown body
         topImports >>= setCtx
         action
     topImports = do
-        mss <- getModuleGraph
-        mns <- map modName <$> filterM isTop mss
-        let ii = map IIModule mns
+        ms <- filterM moduleIsInterpreted =<< map ms_mod <$> getModuleGraph
+        liftIO $ print (map modName ms)
+        let iis = map (IIModule . modName) ms
 #if __GLASGOW_HASKELL__ >= 704
-        return ii
+        return iis
 #else
-        return (ii,[])
+        return (iis,[])
 #endif
-    isTop mos = lookupMod mos ||> returnFalse
-    lookupMod mos = lookupModule (ms_mod_name mos) Nothing >> return True
-    returnFalse = return False
 #if __GLASGOW_HASKELL__ >= 706
-    modName = moduleName . ms_mod
+    modName = moduleName
     setCtx = setContext
 #elif __GLASGOW_HASKELL__ >= 704
-    modName = ms_mod
+    modName = id
     setCtx = setContext
 #else
     modName = ms_mod

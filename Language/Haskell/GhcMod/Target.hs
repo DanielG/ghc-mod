@@ -409,11 +409,13 @@ resolveGmComponents mumns cs = do
 -- | Set the files as targets and load them.
 loadTargets :: IOish m => [GHCOption] -> [FilePath] -> GmlT m ()
 loadTargets opts targetStrs = do
-    targets <-
+    targets' <-
         withLightHscEnv opts $ \env ->
                 liftM (nubBy ((==) `on` targetId))
                   (mapM ((`guessTarget` Nothing) >=> mapFile env) targetStrs)
               >>= mapM relativize
+
+    let targets = map (\t -> t { targetAllowObjCode = False }) targets'
 
     gmLog GmDebug "loadTargets" $
           text "Loading" <+>: fsep (map (text . showTargetId) targets)
