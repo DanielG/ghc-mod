@@ -69,8 +69,13 @@ initSession :: IOish m
 initSession opts mdf = do
    s <- gmsGet
    case gmGhcSession s of
-     Just GmGhcSession {..} -> when (gmgsOptions /= opts) $ putNewSession s
-     Nothing -> putNewSession s
+     Just GmGhcSession {..} | gmgsOptions /= opts-> do
+         gmLog GmDebug "initSession" $ text "Flags changed, creating new session"
+         putNewSession s
+     Just _ -> return ()
+     Nothing -> do
+         gmLog GmDebug "initSession" $ text "Session not initialized, creating new one"
+         putNewSession s
 
  where
    putNewSession s = do

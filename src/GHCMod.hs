@@ -462,6 +462,11 @@ legacyInteractiveLoop symdbreq world = do
     -- after blocking, we need to see if the world has changed.
 
     changed <- didWorldChange world
+
+    world' <- if changed
+                then getCurrentWorld -- TODO: gah, we're hitting the fs twice
+                else return world
+
     when changed $ do
         dropSession
 
@@ -500,7 +505,7 @@ legacyInteractiveLoop symdbreq world = do
         _        -> fatalError $ "unknown command: `" ++ cmd ++ "'"
 
     gmPutStr res >> gmPutStrLn "OK" >> liftIO (hFlush stdout)
-    legacyInteractiveLoop symdbreq world
+    legacyInteractiveLoop symdbreq world'
  where
    interactiveHandlers =
           [ GHandler $ \e@(FatalError _) -> throw e
