@@ -10,8 +10,6 @@ import ErrUtils
 import DynFlags (LogAction)
 
 import Language.Haskell.GhcMod.Error
-import Language.Haskell.GhcMod.Output
-import Language.Haskell.GhcMod.Monad.Types
 import Prelude
 
 debugLogAction :: (String -> IO ()) -> LogAction

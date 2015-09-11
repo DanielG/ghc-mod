@@ -242,10 +242,6 @@ withInteractiveContext action = gbracket setup teardown body
     setCtx = uncurry setContext
 #endif
 
--- | Try the left action, if an IOException occurs try the right action.
-(||>) :: ExceptionMonad m => m a -> m a -> m a
-x ||> y = x `gcatch` (\(_ :: IOException) -> y)
-
 showSeverityCaption :: Severity -> String
 #if __GLASGOW_HASKELL__ >= 706
 showSeverityCaption SevWarning = "Warning: "
