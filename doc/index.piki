@@ -1,7 +1,7 @@
 *Happy Haskell Programming
 
 The ["ghc-mod command" ghc-mod.html] and ["ghc-modi command" ghc-modi.html] are backend commands to enrich Haskell programming on editors
-including Emacs, Vim, and Sublime.
+including Emacs, Vim, Atom, and Sublime.
 ghc-mod and ghc-modi are based on the ["ghc-mod library" http://hackage.haskell.org/packages/archive/ghc-mod/latest/doc/html/Language-Haskell-GhcMod.html]
 which is a wrapper of ["GHC API" http://www.haskell.org/ghc/docs/latest/html/libraries/ghc/] and [Cabal http://hackage.haskell.org/package/Cabal].
 
@@ -19,6 +19,10 @@ The ["source repository of ghc-mod" https://github.com/kazu-yamamoto/ghc-mod] is
 
 -[ghcmod-vim https://github.com/eagletmt/ghcmod-vim]
 -[syntastic https://github.com/scrooloose/syntastic]
+
+**Atom
+
+-[ide-haskel https://atom.io/packages/ide-haskell]
 
 **Sublime
 
