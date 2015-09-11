@@ -224,7 +224,6 @@ withInteractiveContext action = gbracket setup teardown body
         action
     topImports = do
         ms <- filterM moduleIsInterpreted =<< map ms_mod <$> getModuleGraph
-        liftIO $ print (map modName ms)
         let iis = map (IIModule . modName) ms
 #if __GLASGOW_HASKELL__ >= 704
         return iis
