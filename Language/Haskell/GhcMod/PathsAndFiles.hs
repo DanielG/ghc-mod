@@ -33,6 +33,7 @@ import Data.Maybe
 import Data.Traversable hiding (mapM)
 import Distribution.Helper (buildPlatform)
 import System.Directory
+import System.Environment
 import System.FilePath
 import System.Process
 import System.Info.Extra
@@ -89,10 +90,11 @@ findStackConfigFile dir = do
 getStackEnv :: (IOish m, GmOut m) => FilePath -> m (Maybe StackEnv)
 getStackEnv projdir = U.withDirectory_ projdir $ runMaybeT $ do
     env <- map (liToTup . splitOn ": ") . lines <$> readStack ["path"]
+    pathEnvVar <- MaybeT $ liftIO $ lookupEnv "path"
     let look k = fromJust $ lookup k env
     return StackEnv {
         seDistDir       = look "dist-dir"
-      , seBinPath       = splitSearchPath $ look "bin-path"
+      , seBinPath       = splitSearchPath pathEnvVar
       , seSnapshotPkgDb = look "snapshot-pkg-db"
       , seLocalPkgDb    = look "local-pkg-db"
       }
