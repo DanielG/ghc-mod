@@ -4,6 +4,7 @@ module Language.Haskell.GhcMod.Gap (
     Language.Haskell.GhcMod.Gap.ClsInst
   , mkTarget
   , withStyle
+  , GmLogAction
   , setLogAction
   , getSrcSpan
   , getSrcFile
@@ -135,9 +136,13 @@ withStyle = withPprStyleDoc
 withStyle _ = withPprStyleDoc
 #endif
 
-setLogAction :: DynFlags
-             -> (DynFlags -> Severity -> SrcSpan -> PprStyle -> SDoc -> IO ())
-             -> DynFlags
+#if __GLASGOW_HASKELL__ >= 706
+type GmLogAction = LogAction
+#else
+type GmLogAction = DynFlags -> LogAction
+#endif
+
+setLogAction :: DynFlags -> GmLogAction -> DynFlags
 setLogAction df f =
 #if __GLASGOW_HASKELL__ >= 706
     df { log_action = f }
