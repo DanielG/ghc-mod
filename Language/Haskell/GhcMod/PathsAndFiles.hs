@@ -27,6 +27,7 @@ import Control.Monad
 import Control.Monad.Trans.Maybe
 import Control.Monad.Trans.Class
 import Data.List
+import Data.List.Split
 import Data.Char
 import Data.Maybe
 import Data.Traversable hiding (mapM)
@@ -85,22 +86,29 @@ findStackConfigFile dir = do
       Just (d, Just a)  -> return $ Just $ d </> a
       Just (_, Nothing) -> error "findStackConfigFile"
 
-getStackDistDir :: (IOish m, GmOut m) => FilePath -> m (Maybe FilePath)
-getStackDistDir projdir = U.withDirectory_ projdir $ runMaybeT $ do
-    takeWhile (/='\n') <$> readStack ["path", "--dist-dir"]
+getStackEnv :: (IOish m, GmOut m) => FilePath -> m (Maybe StackEnv)
+getStackEnv projdir = U.withDirectory_ projdir $ runMaybeT $ do
+    env <- map (liToTup . splitOn ": ") . lines <$> readStack ["path"]
+    let look k = fromJust $ lookup k env
+    return StackEnv {
+        seDistDir       = look "dist-dir"
+      , seBinPath       = splitSearchPath $ look "bin-path"
+      , seSnapshotPkgDb = look "snapshot-pkg-db"
+      , seLocalPkgDb    = look "local-pkg-db"
+      }
+ where
+   liToTup [k,v] = (k,v)
+   liToTup _ = error "getStackEnv"
 
-getStackGhcPath :: (IOish m, GmOut m) => FilePath -> m (Maybe FilePath)
+getStackGhcPath :: IOish m => StackEnv -> m (Maybe FilePath)
 getStackGhcPath = findExecutablesInStackBinPath "ghc"
 
-getStackGhcPkgPath :: (IOish m, GmOut m) => FilePath -> m (Maybe FilePath)
+getStackGhcPkgPath :: IOish m => StackEnv -> m (Maybe FilePath)
 getStackGhcPkgPath = findExecutablesInStackBinPath  "ghc-pkg"
 
-findExecutablesInStackBinPath :: (IOish m, GmOut m) => String -> FilePath -> m (Maybe FilePath)
-findExecutablesInStackBinPath exe projdir =
-    U.withDirectory_ projdir $ runMaybeT $ do
-      path <- splitSearchPath . takeWhile (/='\n')
-                <$> readStack ["path", "--bin-path"]
-      MaybeT $ liftIO $ listToMaybe <$> findExecutablesInDirectories' path exe
+findExecutablesInStackBinPath :: IOish m => String -> StackEnv -> m (Maybe FilePath)
+findExecutablesInStackBinPath exe StackEnv {..} =
+    liftIO $ listToMaybe <$> findExecutablesInDirectories' seBinPath exe
 
 findExecutablesInDirectories' :: [FilePath] -> String -> IO [FilePath]
 findExecutablesInDirectories' path binary =

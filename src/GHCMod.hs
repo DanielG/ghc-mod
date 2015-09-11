@@ -679,7 +679,7 @@ nukeCaches = do
   chdir <- liftIO $ (</> "cabal-helper") <$> getAppUserDataDirectory "ghc-mod"
   c <- cradle
 
-  when (cradleProjectType c == CabalProject || cradleProjectType c == StackProject) $ do
+  when (isCabalHelperProject $ cradleProject c) $ do
     let root = cradleRootDir c
     let dist = cradleDistDir c
     liftIO $ (trySome . removeDirectoryRecursive) `mapM_` [chdir, root </> dist]

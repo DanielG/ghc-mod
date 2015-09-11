@@ -26,9 +26,9 @@ debugInfo = do
     Cradle {..} <- cradle
 
     cabal <-
-        case cradleProjectType of
+        case cradleProject of
           CabalProject -> cabalDebug
-          StackProject -> (++) <$> stackPaths <*> cabalDebug
+          StackProject {} -> (++) <$> stackPaths <*> cabalDebug
           _ -> return []
 
     pkgOpts <- packageGhcOptions
@@ -45,9 +45,9 @@ debugInfo = do
 
 stackPaths :: IOish m => GhcModT m [String]
 stackPaths = do
-    Cradle {..} <- cradle
-    Just ghc <- getStackGhcPath cradleRootDir
-    Just ghcPkg <- getStackGhcPkgPath cradleRootDir
+    Cradle { cradleProject = StackProject senv } <- cradle
+    ghc <- getStackGhcPath senv
+    ghcPkg <- getStackGhcPkgPath senv
     return $
          [ "Stack ghc executable:    " ++ show ghc
          , "Stack ghc-pkg executable:" ++ show ghcPkg
@@ -64,7 +64,7 @@ cabalDebug = do
 
     return $
          [ "Cabal file:           " ++ show cradleCabalFile
-         , "Cabal Project Type:   " ++ show cradleProjectType
+         , "Project:   " ++ show cradleProject
          , "Cabal entrypoints:\n"       ++ render (nest 4 $
               mapDoc gmComponentNameDoc smpDoc entrypoints)
          , "Cabal components:\n"        ++ render (nest 4 $

@@ -65,9 +65,9 @@ getGhcPkgProgram :: IOish m => GhcModT m FilePath
 getGhcPkgProgram = do
   crdl <- cradle
   progs <- optPrograms <$> options
-  case cradleProjectType crdl of
-    StackProject -> do
-        Just ghcPkg <- getStackGhcPkgPath (cradleRootDir crdl)
+  case cradleProject crdl of
+    (StackProject senv) -> do
+        Just ghcPkg <- getStackGhcPkgPath senv
         return ghcPkg
     _ ->
         return $ ghcPkgProgram progs
@@ -77,7 +77,7 @@ getPackageDbStack :: IOish m => GhcModT m [GhcPkgDb]
 getPackageDbStack = do
   crdl <- cradle
   mCusPkgStack <- getCustomPkgDbStack
-  stack <- case cradleProjectType crdl of
+  stack <- case cradleProject crdl of
     PlainProject ->
         return [GlobalDb, UserDb]
     SandboxProject -> do
@@ -85,8 +85,8 @@ getPackageDbStack = do
         return $ [GlobalDb, db]
     CabalProject ->
         getCabalPackageDbStack
-    StackProject ->
-        getStackPackageDbStack
+    (StackProject StackEnv {..}) ->
+        return $ map PackageDb [seSnapshotPkgDb, seLocalPkgDb]
   return $ fromMaybe stack mCusPkgStack
 
 getPackageCachePaths :: IOish m => FilePath -> GhcModT m [FilePath]

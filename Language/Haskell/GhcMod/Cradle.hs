@@ -69,7 +69,7 @@ cabalCradle wdir = do
     let cabalDir = takeDirectory cabalFile
 
     return Cradle {
-        cradleProjectType = CabalProject
+        cradleProject    = CabalProject
       , cradleCurrentDir = wdir
       , cradleRootDir    = cabalDir
       , cradleTempDir    = error "tmpDir"
@@ -89,22 +89,22 @@ stackCradle wdir = do
     -- rather than stack, or maybe that's just me ;)
     whenM (liftIO $ doesFileExist $ setupConfigPath "dist") $ mzero
 
-    distDir <- MaybeT $ getStackDistDir cabalDir
+    senv <- MaybeT $ getStackEnv cabalDir
 
     return Cradle {
-        cradleProjectType = StackProject
+        cradleProject    = StackProject senv
       , cradleCurrentDir = wdir
       , cradleRootDir    = cabalDir
       , cradleTempDir    = error "tmpDir"
       , cradleCabalFile  = Just cabalFile
-      , cradleDistDir    = distDir
+      , cradleDistDir    = seDistDir senv
       }
 
 sandboxCradle :: IOish m => FilePath -> MaybeT m Cradle
 sandboxCradle wdir = do
     sbDir <- MaybeT $ liftIO $ findCabalSandboxDir wdir
     return Cradle {
-        cradleProjectType = SandboxProject
+        cradleProject    = SandboxProject
       , cradleCurrentDir = wdir
       , cradleRootDir    = sbDir
       , cradleTempDir    = error "tmpDir"
@@ -115,7 +115,7 @@ sandboxCradle wdir = do
 plainCradle :: IOish m => FilePath -> MaybeT m Cradle
 plainCradle wdir = do
     return $ Cradle {
-        cradleProjectType = PlainProject
+        cradleProject    = PlainProject
       , cradleCurrentDir = wdir
       , cradleRootDir    = wdir
       , cradleTempDir    = error "tmpDir"

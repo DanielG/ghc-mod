@@ -139,12 +139,27 @@ defaultOptions = Options {
 
 ----------------------------------------------------------------
 
-data ProjectType = CabalProject | SandboxProject | PlainProject | StackProject
-                 deriving (Eq, Show)
+data Project = CabalProject
+             | SandboxProject
+             | PlainProject
+             | StackProject StackEnv
+               deriving (Eq, Show)
+
+isCabalHelperProject :: Project -> Bool
+isCabalHelperProject StackProject {} = True
+isCabalHelperProject CabalProject {} = True
+isCabalHelperProject _ = False
+
+data StackEnv = StackEnv {
+      seDistDir       :: FilePath
+    , seBinPath       :: [FilePath]
+    , seSnapshotPkgDb :: FilePath
+    , seLocalPkgDb    :: FilePath
+    } deriving (Eq, Show)
 
 -- | The environment where this library is used.
 data Cradle = Cradle {
-    cradleProjectType:: ProjectType
+    cradleProject    :: Project
   -- | The directory where this library is executed.
   , cradleCurrentDir :: FilePath
   -- | The project root directory.

@@ -3,7 +3,7 @@
 module Language.Haskell.GhcMod (
   -- * Cradle
     Cradle(..)
-  , ProjectType(..)
+  , Project(..)
   , findCradle
   -- * Options
   , Options(..)

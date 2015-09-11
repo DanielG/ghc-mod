@@ -150,10 +150,10 @@ targetGhcOptions :: forall m. IOish m
 targetGhcOptions crdl sefnmn = do
     when (Set.null sefnmn) $ error "targetGhcOptions: no targets given"
 
-    case cradleProjectType crdl of
-      CabalProject -> cabalOpts crdl
-      StackProject -> cabalOpts crdl
-      _ -> sandboxOpts crdl
+    case cradleProject crdl of
+      proj
+          | isCabalHelperProject proj -> cabalOpts crdl
+          | otherwise -> sandboxOpts crdl
  where
    zipMap f l = l `zip` (f `map` l)
 
@@ -267,10 +267,10 @@ packageGhcOptions :: (Applicative m, IOish m, Gm m)
                   => m [GHCOption]
 packageGhcOptions = do
     crdl <- cradle
-    case cradleProjectType crdl of
-      CabalProject -> getGhcMergedPkgOptions
-      StackProject -> getGhcMergedPkgOptions
-      _ -> sandboxOpts crdl
+    case cradleProject crdl of
+      proj
+          | isCabalHelperProject proj -> getGhcMergedPkgOptions
+          | otherwise -> sandboxOpts crdl
 
 -- also works for plain projects!
 sandboxOpts :: (IOish m, GmEnv m) => Cradle -> m [String]

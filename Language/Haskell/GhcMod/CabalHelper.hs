@@ -20,7 +20,6 @@ module Language.Haskell.GhcMod.CabalHelper
   ( getComponents
   , getGhcMergedPkgOptions
   , getCabalPackageDbStack
-  , getStackPackageDbStack
   , prepareCabalHelper
   )
 #endif
@@ -44,7 +43,6 @@ import Language.Haskell.GhcMod.Logging
 import Language.Haskell.GhcMod.Output
 import Language.Haskell.GhcMod.CustomPackageDb
 import System.FilePath
-import System.Directory (findExecutable)
 import System.Process
 import System.Exit
 import Prelude hiding ((.))
@@ -136,30 +134,18 @@ prepareCabalHelper = do
   let projdir = cradleRootDir crdl
       distdir = projdir </> cradleDistDir crdl
   readProc <- gmReadProcess
-  when (cradleProjectType crdl == CabalProject || cradleProjectType crdl == StackProject) $
+  when (isCabalHelperProject $ cradleProject crdl) $
        withCabal $ liftIO $ prepare readProc projdir distdir
 
-getStackPackageDbStack :: IOish m => m [GhcPkgDb]
-getStackPackageDbStack = do
-    mstack <- liftIO $ findExecutable "stack"
-    case mstack of
-      Nothing -> return []
-      Just stack -> do
-        snapshotDb <- liftIO $ readProcess stack ["path", "--snapshot-pkg-db"] ""
-        localDb <- liftIO $ readProcess stack ["path", "--local-pkg-db"] ""
-        return $ map (PackageDb . takeWhile (/='\n')) [snapshotDb, localDb]
-
 patchStackPrograms :: (IOish m, GmOut m) => Cradle -> Programs -> m Programs
-patchStackPrograms crdl progs
-    | cradleProjectType crdl /= StackProject = return progs
-patchStackPrograms crdl progs = do
-  let projdir = cradleRootDir crdl
-  Just ghc <- getStackGhcPath projdir
-  Just ghcPkg <- getStackGhcPkgPath projdir
+patchStackPrograms Cradle { cradleProject = (StackProject senv) } progs = do
+  Just ghc <- getStackGhcPath senv
+  Just ghcPkg <- getStackGhcPkgPath senv
   return $ progs {
       ghcProgram = ghc
     , ghcPkgProgram = ghcPkg
     }
+patchStackPrograms _crdl progs = return progs
 
 withCabal :: (IOish m, GmEnv m, GmOut m, GmLog m) => m a -> m a
 withCabal action = do
@@ -188,7 +174,7 @@ withCabal action = do
 
            Nothing -> return False
 
-    projType <- cradleProjectType <$> cradle
+    proj <- cradleProject <$> cradle
 
     when (isSetupConfigOutOfDate mCabalFile mCabalConfig) $
       gmLog GmDebug "" $ strDoc $ "setup configuration is out of date, reconfiguring Cabal project."
@@ -202,14 +188,14 @@ withCabal action = do
     when ( isSetupConfigOutOfDate mCabalFile mCabalConfig
         || pkgDbStackOutOfSync
         || isSetupConfigOutOfDate mCabalSandboxConfig mCabalConfig) $
-          case projType of
+          case proj of
             CabalProject ->
                 cabalReconfigure readProc (optPrograms opts) crdl projdir distdir
-            StackProject ->
+            StackProject {} ->
 
                 stackReconfigure crdl (optPrograms opts)
             _ ->
-                error $ "withCabal: unsupported project type: " ++ show projType
+                error $ "withCabal: unsupported project type: " ++ show proj
 
     action
 
