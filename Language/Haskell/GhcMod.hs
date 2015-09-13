@@ -12,7 +12,9 @@ module Language.Haskell.GhcMod (
   , FileMapping(..)
   , defaultOptions
   -- * Logging
-  , GmLogLevel
+  , GmLogLevel(..)
+  , OutputOpts(..)
+  , LineSeparator(..)
   , increaseLogLevel
   , decreaseLogLevel
   , gmSetLogLevel
