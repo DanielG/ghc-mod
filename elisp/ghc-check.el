@@ -170,7 +170,7 @@ nil            do not display errors/warnings.
 	  ;; If this is a bottleneck for a large code, let's fix.
 	  (goto-char (point-min))
 	  (cond
-	   ((string= (file-truename ofile) (file-truename file))
+	   ((file-equal-p ofile file)
             (if hole
               (progn
                 (forward-line (1- line))
