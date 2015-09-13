@@ -165,17 +165,12 @@ nil            do not display errors/warnings.
 	      (err  (ghc-hilit-info-get-err  info))
               (hole (ghc-hilit-info-get-hole info))
               (coln (ghc-hilit-info-get-coln info))
-              (is-same-file
-               (or (file-equal-p ofile file)
-                   (string= (file-truename ofile) (file-truename file)))
-                                        ; In case non-existent
-               )
 	      beg end ovl)
 	  ;; FIXME: This is the Shlemiel painter's algorithm.
 	  ;; If this is a bottleneck for a large code, let's fix.
 	  (goto-char (point-min))
 	  (cond
-	   (is-same-file
+	   ((file-equal-p ofile file)
             (if hole
               (progn
                 (forward-line (1- line))
