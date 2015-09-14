@@ -35,53 +35,53 @@
   (ghc-run-ghc-mod '("root")))
 
 (defun ghc-with-process (cmd callback &optional hook1 hook2)
-  (let ((root (ghc-get-project-root)))
-    (unless ghc-process-process-name
-      (setq ghc-process-process-name root))
-    (when (and ghc-process-process-name (not ghc-process-running))
-      (setq ghc-process-running t)
-      (if hook1 (funcall hook1))
-      (let* ((cbuf (current-buffer))
-	     (name ghc-process-process-name)
-	     (buf (get-buffer-create (concat " ghc-mod:" name)))
-	     (file (buffer-file-name))
-	     (cpro (get-process name)))
-	(ghc-with-current-buffer buf
-	  (setq ghc-process-original-buffer cbuf)
-	  (setq ghc-process-original-file file)
-	  (setq ghc-process-hook hook2)
-	  (setq ghc-process-root root)
-	  (let ((pro (ghc-get-process cpro name buf))
-		(map-cmd (format "map-file %s\n" file)))
-	    ;; map-file
-	    (setq ghc-process-file-mapping t)
-	    (setq ghc-process-callback nil)
-	    (erase-buffer)
-	    (when ghc-debug
-	      (ghc-with-debug-buffer
-	       (insert (format "%% %s" map-cmd))
-	       (insert "CONTENTS + EOT\n")))
-	    (process-send-string pro map-cmd)
-	    (with-current-buffer cbuf
-	      (save-restriction
-		(widen)
-		(process-send-region pro (point-min) (point-max))))
-	    (process-send-string pro "\004\n")
-	    (condition-case nil
-		(let ((inhibit-quit nil))
-		  (while ghc-process-file-mapping
-		    (accept-process-output pro 0.1 nil t)))
-	      (quit
-	       (setq ghc-process-running nil)
-	       (setq ghc-process-file-mapping nil)))
-	    ;; command
-	    (setq ghc-process-callback callback)
-	    (erase-buffer)
-	    (when ghc-debug
-	      (ghc-with-debug-buffer
-	       (insert (format "%% %s" cmd))))
-	    (process-send-string pro cmd)
-	    pro))))))
+  (unless ghc-process-process-name
+    (setq ghc-process-process-name (ghc-get-project-root)))
+  (when (and ghc-process-process-name (not ghc-process-running))
+    (setq ghc-process-running t)
+    (if hook1 (funcall hook1))
+    (let* ((cbuf (current-buffer))
+	   (name ghc-process-process-name)
+	   (root ghc-process-process-name)
+	   (buf (get-buffer-create (concat " ghc-mod:" name)))
+	   (file (buffer-file-name))
+	   (cpro (get-process name)))
+      (ghc-with-current-buffer buf
+        (setq ghc-process-original-buffer cbuf)
+	(setq ghc-process-original-file file)
+	(setq ghc-process-hook hook2)
+	(setq ghc-process-root root)
+	(let ((pro (ghc-get-process cpro name buf))
+	      (map-cmd (format "map-file %s\n" file)))
+	  ;; map-file
+	  (setq ghc-process-file-mapping t)
+	  (setq ghc-process-callback nil)
+	  (erase-buffer)
+	  (when ghc-debug
+	    (ghc-with-debug-buffer
+	     (insert (format "%% %s" map-cmd))
+	     (insert "CONTENTS + EOT\n")))
+	  (process-send-string pro map-cmd)
+	  (with-current-buffer cbuf
+	    (save-restriction
+	      (widen)
+	      (process-send-region pro (point-min) (point-max))))
+	  (process-send-string pro "\004\n")
+	  (condition-case nil
+	      (let ((inhibit-quit nil))
+		(while ghc-process-file-mapping
+		  (accept-process-output pro 0.1 nil t)))
+	    (quit
+	     (setq ghc-process-running nil)
+	     (setq ghc-process-file-mapping nil)))
+	  ;; command
+	  (setq ghc-process-callback callback)
+	  (erase-buffer)
+	  (when ghc-debug
+	    (ghc-with-debug-buffer
+	     (insert (format "%% %s" cmd))))
+	  (process-send-string pro cmd)
+	  pro)))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
