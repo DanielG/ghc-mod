@@ -17,9 +17,9 @@
 {-# LANGUAGE CPP #-}
 module Language.Haskell.GhcMod.Monad (
     runGmOutT
+  , runGmOutT'
   , runGhcModT
   , runGhcModT'
-  , runGhcModT''
   , hoistGhcModT
   , runGmlT
   , runGmlT'
@@ -60,45 +60,42 @@ withGhcModEnv = withGhcModEnv' withCradle
 
 withGhcModEnv' :: (IOish m, GmOut m) => (FilePath -> (Cradle -> m a) -> m a) -> FilePath -> Options -> (GhcModEnv -> m a) -> m a
 withGhcModEnv' withCradle dir opts f =
-    withStdoutGateway $
-      withCradle dir $ \crdl ->
-        withCradleRootDir crdl $
-          f $ GhcModEnv opts crdl
+    withCradle dir $ \crdl ->
+      withCradleRootDir crdl $
+        f $ GhcModEnv opts crdl
  where
-   withStdoutGateway a = do
-       c <- gmoChan <$> gmoAsk
-       gbracket_ (liftIO $ forkIO $ stdoutGateway c) (liftIO . killThread) a
+   withCradleRootDir (cradleRootDir -> projdir) a = do
+       cdir <- liftIO $ getCurrentDirectory
+       eq <- liftIO $ pathsEqual projdir cdir
+       if not eq
+          then throw $ GMEWrongWorkingDirectory projdir cdir
+          else a
 
-   withCradleRootDir (cradleRootDir -> projdir) a =
-       gbracket_ (liftIO $ swapCurrentDirectory projdir)
-                 (liftIO . setCurrentDirectory) a
+   pathsEqual a b = do
+     ca <- canonicalizePath a
+     cb <- canonicalizePath b
+     return $ ca == cb
 
-   swapCurrentDirectory ndir = do
-     odir <- canonicalizePath =<< getCurrentDirectory
-     setCurrentDirectory ndir
-     return odir
+runGmOutT :: IOish m => Options -> GmOutT m a -> m a
+runGmOutT opts ma = do
+    gmo <- GhcModOut (optOutput opts) <$> liftIO newChan
+    runGmOutT' gmo ma
 
-   gbracket_ ma mb mc = gbracket ma mb (const mc)
+runGmOutT' :: IOish m => GhcModOut -> GmOutT m a -> m a
+runGmOutT' gmo ma = do
+    gbracket_ (liftIO $ forkIO $ stdoutGateway $ gmoChan gmo)
+              (liftIO . killThread)
+              (flip runReaderT gmo $ unGmOutT ma)
 
 -- | Run a @GhcModT m@ computation.
-runGhcModT :: IOish m
+runGhcModT :: (IOish m, GmOut m)
            => Options
            -> GhcModT m a
            -> m (Either GhcModError a, GhcModLog)
-runGhcModT opt action = do
-    dir <- liftIO getCurrentDirectory
-    runGhcModT' dir opt action
-
-runGhcModT' :: IOish m
-            => FilePath
-            -> Options
-            -> GhcModT m a
-            -> m (Either GhcModError a, GhcModLog)
-runGhcModT' dir opt action = liftIO (canonicalizePath dir) >>= \dir' -> do
-    gmo <- GhcModOut (optOutput opt) <$> liftIO newChan
-    runGmOutT gmo $
+runGhcModT opt action = liftIO (getCurrentDirectory >>= canonicalizePath) >>= \dir' -> do
+    runGmOutT opt $
       withGhcModEnv dir' opt $ \env ->
-        first (fst <$>) <$> runGhcModT'' env defaultGhcModState
+        first (fst <$>) <$> runGhcModT' env defaultGhcModState
           (gmSetLogLevel (ooptLogLevel $ optOutput opt) >> action)
 
 -- | @hoistGhcModT result@. Embed a GhcModT computation's result into a GhcModT
@@ -118,13 +115,13 @@ hoistGhcModT (r,l) = do
 -- do with 'GhcModEnv' and 'GhcModState'.
 --
 -- You should probably look at 'runGhcModT' instead.
-runGhcModT'' :: IOish m
+runGhcModT' :: IOish m
              => GhcModEnv
              -> GhcModState
              -> GhcModT m a
              -> GmOutT m (Either GhcModError (a, GhcModState), GhcModLog)
-runGhcModT'' r s a = do
+runGhcModT' r s a = do
   flip runReaderT r $ runJournalT $ runErrorT $ runStateT (unGmT a) s
 
-runGmOutT :: IOish m => GhcModOut -> GmOutT m a -> m a
-runGmOutT gmo ma = flip runReaderT gmo $ unGmOutT ma
+gbracket_ :: ExceptionMonad m => m a -> (a -> m b) -> m c -> m c
+gbracket_ ma mb mc = gbracket ma mb (const mc)

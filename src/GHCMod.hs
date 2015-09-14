@@ -18,6 +18,7 @@ import Exception
 import Language.Haskell.GhcMod
 import Language.Haskell.GhcMod.Internal hiding (MonadIO,liftIO)
 import Language.Haskell.GhcMod.Types
+import Language.Haskell.GhcMod.Monad
 import Paths_ghc_mod
 import System.Console.GetOpt (OptDescr(..), ArgDescr(..), ArgOrder(..))
 import qualified System.Console.GetOpt as O
@@ -402,24 +403,10 @@ main = do
           ]
 
 progMain :: (Options,[String]) -> IO ()
-progMain (globalOptions,cmdArgs) = hndle $ runGhcModT globalOptions $ handler $ do
+progMain (globalOptions,cmdArgs) = runGmOutT globalOptions $
     case globalCommands cmdArgs of
       Just s -> gmPutStr s
-      Nothing -> do
-        forM_ (reverse $ optFileMappings globalOptions) $ uncurry loadMMappedFiles
-        ghcCommands cmdArgs
- where
-   hndle action = do
-     (e, _l) <- liftIO . evaluate =<< action
-     case e of
-       Right _ ->
-           return ()
-       Left ed ->
-           exitError' globalOptions $ renderStyle ghcModStyle (gmeDoc ed)
-   loadMMappedFiles from (Just to) = loadMappedFile from to
-   loadMMappedFiles from (Nothing) = do
-       src <- liftIO getFileSourceFromStdin
-       loadMappedFileSource from src
+      Nothing -> wrapGhcCommands globalOptions cmdArgs
 
 globalCommands :: [String] -> Maybe String
 globalCommands (cmd:_)
@@ -433,7 +420,8 @@ legacyInteractive = do
     opt <- options
     prepareCabalHelper
     tmpdir <- cradleTempDir <$> cradle
-    symdbreq <- liftIO $ newSymDbReq opt tmpdir
+    gmo <- gmoAsk
+    symdbreq <- liftIO $ newSymDbReq opt gmo tmpdir
     world <- getCurrentWorld
     legacyInteractiveLoop symdbreq world
 
@@ -523,6 +511,31 @@ getFileSourceFromStdin = do
         else loop' (acc++line++"\n")
   loop' ""
 
+-- Someone please already rewrite the cmdline parsing code *weep* :'(
+wrapGhcCommands :: (IOish m, GmOut m) => Options -> [String] -> m ()
+wrapGhcCommands _opts []            = fatalError "No command given (try --help)"
+wrapGhcCommands _opts ("root":_) = gmPutStr =<< rootInfo
+wrapGhcCommands opts args = do
+    handleGmError $ runGhcModT opts $ handler $ do
+      forM_ (reverse $ optFileMappings opts) $
+        uncurry loadMMappedFiles
+
+      ghcCommands args
+ where
+   handleGmError action = do
+     (e, _l) <- liftIO . evaluate =<< action
+     case e of
+       Right _ ->
+           return ()
+       Left ed ->
+           exitError $ renderStyle ghcModStyle (gmeDoc ed)
+
+   loadMMappedFiles from (Just to) = loadMappedFile from to
+   loadMMappedFiles from (Nothing) = do
+       src <- liftIO getFileSourceFromStdin
+       loadMappedFileSource from src
+
+
 ghcCommands :: IOish m => [String] -> GhcModT m ()
 ghcCommands []         = fatalError "No command given (try --help)"
 ghcCommands (cmd:args) = gmPutStr =<< action args
@@ -544,7 +557,7 @@ ghcCommands (cmd:args) = gmPutStr =<< action args
      "auto"    -> autoCmd
      "find"    -> findSymbolCmd
      "lint"    -> lintCmd
-     "root"    -> rootInfoCmd
+--     "root"    -> rootInfoCmd
      "doc"     -> pkgDocCmd
      "dumpsym" -> dumpSymbolCmd
      "boot"    -> bootCmd
@@ -559,7 +572,7 @@ newtype InvalidCommandLine = InvalidCommandLine (Either String String)
     deriving (Show, Typeable)
 instance Exception InvalidCommandLine
 
-exitError :: IOish m => String -> GhcModT m a
+exitError :: (MonadIO m, GmOut m) => String -> m a
 exitError msg = gmErrStrLn (dropWhileEnd (=='\n') msg) >> liftIO exitFailure
 
 exitError' :: Options -> String -> IO a
@@ -595,7 +608,7 @@ catchArgs cmd action =
 
 modulesCmd, languagesCmd, flagsCmd, browseCmd, checkSyntaxCmd, expandTemplateCmd,
   debugInfoCmd, componentInfoCmd, infoCmd, typesCmd, splitsCmd, sigCmd,
-  refineCmd, autoCmd, findSymbolCmd, lintCmd, rootInfoCmd, pkgDocCmd,
+  refineCmd, autoCmd, findSymbolCmd, lintCmd, pkgDocCmd,
   dumpSymbolCmd, bootCmd, legacyInteractiveCmd, nukeCachesCmd
   :: IOish m => [String] -> GhcModT m String
 
@@ -604,7 +617,6 @@ modulesCmd    = withParseCmd' "modules" s $ \[] -> modules
 languagesCmd  = withParseCmd' "lang"    [] $ \[] -> languages
 flagsCmd      = withParseCmd' "flag"    [] $ \[] -> flags
 debugInfoCmd  = withParseCmd' "debug"   [] $ \[] -> debugInfo
-rootInfoCmd   = withParseCmd' "root"    [] $ \[] -> rootInfo
 componentInfoCmd = withParseCmd' "debugComponent" [] $ \ts -> componentInfo ts
 -- internal
 bootCmd       = withParseCmd' "boot" [] $ \[] -> boot

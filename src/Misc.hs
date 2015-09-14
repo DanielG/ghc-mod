@@ -8,21 +8,22 @@ module Misc (
   ) where
 
 import Control.Concurrent.Async (Async, async, wait)
-import CoreMonad (liftIO)
 import Data.IORef (IORef, newIORef, readIORef, writeIORef)
 import Prelude
 
 import Language.Haskell.GhcMod
 import Language.Haskell.GhcMod.Internal hiding (MonadIO,liftIO)
+import Language.Haskell.GhcMod.Types
+import Language.Haskell.GhcMod.Monad
 
 ----------------------------------------------------------------
 
 type SymDbReqAction = (Either GhcModError SymbolDb, GhcModLog)
 data SymDbReq = SymDbReq (IORef (Async SymDbReqAction)) (IO SymDbReqAction)
 
-newSymDbReq :: Options -> FilePath -> IO SymDbReq
-newSymDbReq opt dir = do
-    let act = runGhcModT opt $ loadSymbolDb dir
+newSymDbReq :: Options -> GhcModOut -> FilePath -> IO SymDbReq
+newSymDbReq opt gmo tmpdir = do
+    let act = runGmOutT' gmo $ runGhcModT opt $ loadSymbolDb tmpdir
     req <- async act
     ref <- newIORef req
     return $ SymDbReq ref act

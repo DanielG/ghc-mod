@@ -8,7 +8,6 @@ import qualified Data.Set as Set
 import Data.Char
 import Data.List.Split
 import Text.PrettyPrint
-import Language.Haskell.GhcMod.Convert
 import Language.Haskell.GhcMod.Monad
 import Language.Haskell.GhcMod.Types
 import Language.Haskell.GhcMod.Internal
@@ -16,6 +15,7 @@ import Language.Haskell.GhcMod.Target
 import Language.Haskell.GhcMod.Pretty
 import Language.Haskell.GhcMod.Utils
 import Language.Haskell.GhcMod.PathsAndFiles
+import Language.Haskell.GhcMod.Cradle
 
 ----------------------------------------------------------------
 
@@ -138,5 +138,5 @@ mapDoc kd ad m = vcat $
 ----------------------------------------------------------------
 
 -- | Obtaining root information.
-rootInfo :: IOish m => GhcModT m String
-rootInfo = convert' =<< cradleRootDir <$> cradle
+rootInfo :: (IOish m, GmOut m) => m String
+rootInfo = (++"\n") . cradleRootDir <$> findCradle

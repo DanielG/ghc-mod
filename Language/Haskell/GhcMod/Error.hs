@@ -33,7 +33,7 @@ module Language.Haskell.GhcMod.Error (
   , module Control.Exception
   ) where
 
-import Control.Arrow
+import Control.Arrow hiding ((<+>))
 import Control.Exception
 import Control.Monad.Error hiding (MonadIO, liftIO)
 import qualified Data.Set as Set
@@ -143,6 +143,11 @@ gmeDoc e = case e of
     GMEStackBootrap msg ->
         (text $ "Boostrapping stack project failed")
           <+>: text msg
+    GMEWrongWorkingDirectory projdir cdir ->
+        (text $ "You must run ghc-mod in the project directory as returned by `ghc-mod root`.")
+          <+> text "Currently in:" <+> showDoc cdir
+          <> text "but should be in" <+> showDoc projdir
+          <> text "."
 
 ghcExceptionDoc :: GhcException -> Doc
 ghcExceptionDoc e@(CmdLineError _) =

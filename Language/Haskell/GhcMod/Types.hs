@@ -403,6 +403,9 @@ data GhcModError
 
   | GMEStackBootrap String
     -- ^ Bootstrapping @stack@ environment failed (process exited with failure)
+
+  | GMEWrongWorkingDirectory FilePath FilePath
+
     deriving (Eq,Show,Typeable)
 
 instance Error GhcModError where
