@@ -26,7 +26,6 @@ module Language.Haskell.GhcMod.Monad (
   , runGmlTWith
   , runGmPkgGhc
   , withGhcModEnv
-  , withGhcModEnv'
   , module Language.Haskell.GhcMod.Monad.Types
   ) where
 
@@ -52,28 +51,23 @@ import Exception (ExceptionMonad(..))
 import System.Directory
 import Prelude
 
-withCradle :: (IOish m, GmOut m) => FilePath -> (Cradle -> m a) -> m a
-withCradle cradledir f =
-    gbracket (findCradle' cradledir) (liftIO . cleanupCradle) f
-
 withGhcModEnv :: (IOish m, GmOut m) => FilePath -> Options -> (GhcModEnv -> m a) -> m a
 withGhcModEnv dir opts f =
-    withCradle dir (withGhcModEnv' opts f)
-
-withGhcModEnv' :: (IOish m, GmOut m) => Options -> (GhcModEnv -> m a) -> Cradle -> m a
-withGhcModEnv' opts f crdl = do
-    olddir <- liftIO getCurrentDirectory
-    gbracket_ setup (teardown olddir) (f $ GhcModEnv opts crdl)
+    withStdoutGateway $
+      withCradle $ \crdl ->
+        withCradleRootDir crdl $
+          f $ GhcModEnv opts crdl
  where
-   setup = do
-     c <- gmoChan <$> gmoAsk
-     liftIO $ do
-       setCurrentDirectory $ cradleRootDir crdl
-       forkIO $ stdoutGateway c
+   withStdoutGateway a = do
+       c <- gmoChan <$> gmoAsk
+       gbracket_ (liftIO $ forkIO $ stdoutGateway c) (liftIO . killThread) a
 
-   teardown olddir tid = liftIO $ do
-     setCurrentDirectory olddir
-     killThread tid
+   withCradle =
+       gbracket (findCradle' dir) (liftIO . cleanupCradle)
+
+   withCradleRootDir (cradleRootDir -> projdir) =
+       gbracket_ (liftIO $ setCurrentDirectory projdir >> getCurrentDirectory)
+                 (liftIO . setCurrentDirectory)
 
    gbracket_ ma mb mc = gbracket ma mb (const mc)
 
