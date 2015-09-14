@@ -26,6 +26,7 @@ module Language.Haskell.GhcMod.Monad (
   , runGmlTWith
   , runGmPkgGhc
   , withGhcModEnv
+  , withGhcModEnv'
   , module Language.Haskell.GhcMod.Monad.Types
   ) where
 
@@ -52,18 +53,21 @@ import System.Directory
 import Prelude
 
 withGhcModEnv :: (IOish m, GmOut m) => FilePath -> Options -> (GhcModEnv -> m a) -> m a
-withGhcModEnv dir opts f =
+withGhcModEnv = withGhcModEnv' withCradle
+ where
+   withCradle dir =
+       gbracket (findCradle' dir) (liftIO . cleanupCradle)
+
+withGhcModEnv' :: (IOish m, GmOut m) => (FilePath -> (Cradle -> m a) -> m a) -> FilePath -> Options -> (GhcModEnv -> m a) -> m a
+withGhcModEnv' withCradle dir opts f =
     withStdoutGateway $
-      withCradle $ \crdl ->
+      withCradle dir $ \crdl ->
         withCradleRootDir crdl $
           f $ GhcModEnv opts crdl
  where
    withStdoutGateway a = do
        c <- gmoChan <$> gmoAsk
        gbracket_ (liftIO $ forkIO $ stdoutGateway c) (liftIO . killThread) a
-
-   withCradle =
-       gbracket (findCradle' dir) (liftIO . cleanupCradle)
 
    withCradleRootDir (cradleRootDir -> projdir) =
        gbracket_ (liftIO $ setCurrentDirectory projdir >> getCurrentDirectory)

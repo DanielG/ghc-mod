@@ -41,18 +41,17 @@ findCradle' dir = run $
          ]
  where run a = fillTempDir =<< (fromJust <$> runMaybeT a)
 
-findSpecCradle :: FilePath -> IO Cradle
+findSpecCradle :: (IOish m, GmOut m) => FilePath -> m Cradle
 findSpecCradle dir = do
-    let cfs = [cabalCradle, sandboxCradle]
+    let cfs = [stackCradle, cabalCradle, sandboxCradle]
     cs <- catMaybes <$> mapM (runMaybeT . ($ dir)) cfs
     gcs <- filterM isNotGmCradle cs
     fillTempDir =<< case gcs of
                       [] -> fromJust <$> runMaybeT (plainCradle dir)
                       c:_ -> return c
  where
-   isNotGmCradle :: Cradle -> IO Bool
-   isNotGmCradle crdl = do
-     not <$> doesFileExist (cradleRootDir crdl </> "ghc-mod.cabal")
+   isNotGmCradle crdl =
+     liftIO $ not <$> doesFileExist (cradleRootDir crdl </> "ghc-mod.cabal")
 
 cleanupCradle :: Cradle -> IO ()
 cleanupCradle crdl = removeDirectoryRecursive $ cradleTempDir crdl

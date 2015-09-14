@@ -44,12 +44,12 @@ extract action = do
     Right a ->  return a
     Left e -> error $ show e
 
-withSpecCradle :: IOish m => FilePath -> (Cradle -> m a) -> m a
+withSpecCradle :: (IOish m, GmOut m) => FilePath -> (Cradle -> m a) -> m a
 withSpecCradle cradledir f =
-    gbracket (liftIO $ findSpecCradle cradledir) (liftIO . cleanupCradle) f
+    gbracket (findSpecCradle cradledir) (liftIO . cleanupCradle) f
 
 withGhcModEnvSpec :: (IOish m, GmOut m) => FilePath -> Options -> (GhcModEnv -> m a) -> m a
-withGhcModEnvSpec dir opt f = withSpecCradle dir $ withGhcModEnv' opt f
+withGhcModEnvSpec = withGhcModEnv' withSpecCradle
 
 runGhcModTSpec :: Options -> GhcModT IO a -> IO (Either GhcModError a, GhcModLog)
 runGhcModTSpec opt action = do
