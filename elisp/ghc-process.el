@@ -122,7 +122,7 @@
 	  (insert string)
 	  (goto-char (point-min))
 	  (let ((cont t) end out)
-	    (while (and cont (not (eobp)))
+	    (while (and cont (not (eobp)) ghc-process-running)
 	      (cond
 	       ((looking-at "^O: ")
 		(setq out t))
@@ -170,7 +170,8 @@
 	  (setq ghc-process-running nil)))))))
 
 (defun ghc-process-sentinel (_process _event)
-  (setq ghc-process-running nil))
+  (setq ghc-process-running nil)
+  (setq ghc-process-file-mapping nil))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
