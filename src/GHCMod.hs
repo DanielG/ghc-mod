@@ -564,7 +564,7 @@ exitError msg = gmErrStrLn (dropWhileEnd (=='\n') msg) >> liftIO exitFailure
 
 exitError' :: Options -> String -> IO a
 exitError' opts msg = do
-    gmUnsafeErrStr (optOutput opts) msg
+    gmUnsafeErrStr (optOutput opts) $ dropWhileEnd (=='\n') msg ++ "\n"
     liftIO exitFailure
 
 fatalError :: String -> a
