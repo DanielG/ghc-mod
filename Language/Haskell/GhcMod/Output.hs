@@ -32,6 +32,7 @@ module Language.Haskell.GhcMod.Output (
   , gmUnsafeErrStr
 
   , stdoutGateway
+  , flushStdoutGateway
   ) where
 
 import Data.List
@@ -89,14 +90,14 @@ stdioOutputFns lpfx = let
     , liftIO . hPutStr stderr . unGmLine . errPfx)
 
 chanOutputFns :: MonadIO m
-              => Chan (GmStream, GmLines String)
+              => Chan (Either (MVar ()) (GmStream, GmLines String))
               -> Maybe (String, String)
               -> (GmLines String -> m (), GmLines String -> m ())
 chanOutputFns c lpfx = let
     (outPfx, errPfx) = pfxFns lpfx
   in
-    ( liftIO . writeChan c . (,) GmOutStream . outPfx
-    , liftIO . writeChan c . (,) GmErrStream . errPfx)
+    ( liftIO . writeChan c . Right . (,) GmOutStream . outPfx
+    , liftIO . writeChan c . Right . (,) GmErrStream . errPfx)
 
 outputFns' ::
   MonadIO m => GhcModOut -> (GmLines String -> m (), GmLines String -> m ())
@@ -142,23 +143,47 @@ gmReadProcess = do
     Nothing ->
         return $ readProcess
 
-stdoutGateway :: Chan (GmStream, GmLines String) -> IO ()
+flushStdoutGateway :: Chan (Either (MVar ()) (GmStream, GmLines String)) -> IO ()
+flushStdoutGateway c = do
+  mv <- newEmptyMVar
+  writeChan c $ Left mv
+  takeMVar mv
+
+stdoutGateway :: Chan (Either (MVar ()) (GmStream, GmLines String)) -> IO ()
 stdoutGateway chan = go ("", "")
  where
-   go buf@(obuf, ebuf) = do
-     (stream, GmLines ty l) <- readChan chan
-     case ty of
-       GmTerminated ->
-           case stream of
-             GmOutStream -> putStr (obuf++l) >> hFlush stdout >> go ("", ebuf)
-             GmErrStream -> putStr (ebuf++l) >> hFlush stdout >> go (obuf, "")
-       GmPartial -> case reverse $ lines l of
-                      [] -> go buf
-                      [x] -> go (appendBuf stream buf x)
-                      x:xs -> do
-                        putStr $ unlines $ reverse xs
-                        hFlush stdout
-                        go (appendBuf stream buf x)
+   go :: (String, String) -> IO ()
+   go buf = do
+     cmd <- readChan chan
+     case cmd of
+       Left mv -> do
+           let flush (obuf, ebuf) = do
+                 -- Add newline to unterminated stderr but not to stdout
+                 -- otherwise emacs will get confused etc
+                 putStr $ ebuf ++ if null ebuf || last ebuf /= '\n'
+                                    then "" else "\n"
+                 putStr obuf
+           work (GmOutStream, GmLines GmPartial "") buf flush
+           putMVar mv ()
+       Right l ->
+           work l buf go
+
+   work (stream, GmLines ty l) buf@(obuf, ebuf) cont = case ty of
+           GmTerminated ->
+              case stream of
+                GmOutStream ->
+                    putStr (obuf++l) >> hFlush stdout >> cont ("", ebuf)
+                GmErrStream ->
+                    putStr (ebuf++l) >> hFlush stdout >> cont (obuf, "")
+
+           GmPartial ->
+              case reverse $ lines l of
+                [] -> cont buf
+                [x] -> cont (appendBuf stream buf x)
+                x:xs -> do
+                  putStr $ unlines $ reverse xs
+                  hFlush stdout
+                  cont (appendBuf stream buf x)
 
    appendBuf GmOutStream (obuf, ebuf) s = (obuf++s, ebuf)
    appendBuf GmErrStream (obuf, ebuf) s = (obuf, ebuf++s)

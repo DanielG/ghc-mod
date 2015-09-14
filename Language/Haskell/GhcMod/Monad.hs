@@ -47,7 +47,7 @@ import Control.Monad.Reader (runReaderT)
 import Control.Monad.State.Strict (runStateT)
 import Control.Monad.Trans.Journal (runJournalT)
 
-import Exception (ExceptionMonad(..))
+import Exception
 
 import System.Directory
 import Prelude
@@ -82,9 +82,9 @@ runGmOutT opts ma = do
     runGmOutT' gmo ma
 
 runGmOutT' :: IOish m => GhcModOut -> GmOutT m a -> m a
-runGmOutT' gmo ma = do
-    gbracket_ (liftIO $ forkIO $ stdoutGateway $ gmoChan gmo)
-              (liftIO . killThread)
+runGmOutT' gmo@(gmoChan -> chan) ma = do
+    gbracket_ (liftIO $ forkIO $ stdoutGateway chan)
+              (const $ liftIO $ flushStdoutGateway chan)
               (flip runReaderT gmo $ unGmOutT ma)
 
 -- | Run a @GhcModT m@ computation.

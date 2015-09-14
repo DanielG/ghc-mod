@@ -192,7 +192,7 @@ data GhcModEnv = GhcModEnv {
 
 data GhcModOut = GhcModOut {
       gmoOptions :: OutputOpts
-    , gmoChan    :: Chan (GmStream, GmLines String)
+    , gmoChan    :: Chan (Either (MVar ()) (GmStream, GmLines String))
     }
 
 data GhcModLog = GhcModLog {
