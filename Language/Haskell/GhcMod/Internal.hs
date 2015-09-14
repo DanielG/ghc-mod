@@ -24,7 +24,6 @@ module Language.Haskell.GhcMod.Internal (
   , CompilerMode(..)
   , GhcModLog
   , GmLog(..)
-  , GmLogLevel(..)
   , gmSetLogLevel
   -- * Monad utilities
   , runGhcModT'
