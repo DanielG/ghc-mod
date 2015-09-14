@@ -20,7 +20,6 @@ import Language.Haskell.GhcMod.Types
 
 import Control.Arrow
 import Control.Category
-import Control.Concurrent
 import Control.Applicative
 import Control.Monad.Error (ErrorT, runErrorT)
 import Control.Monad.Trans.Journal
@@ -45,11 +44,21 @@ extract action = do
     Left e -> error $ show e
 
 withSpecCradle :: (IOish m, GmOut m) => FilePath -> (Cradle -> m a) -> m a
-withSpecCradle cradledir f =
-    gbracket (findSpecCradle cradledir) (liftIO . cleanupCradle) f
+withSpecCradle cradledir f = do
+    gbracket (findSpecCradle cradledir) (liftIO . cleanupCradle) $ \crdl ->
+      bracketWorkingDirectory (cradleRootDir crdl) $
+        f crdl
 
-withGhcModEnvSpec :: (IOish m, GmOut m) => FilePath -> Options -> (GhcModEnv -> m a) -> m a
-withGhcModEnvSpec = withGhcModEnv' withSpecCradle
+bracketWorkingDirectory ::
+    (ExceptionMonad m, MonadIO m) => FilePath -> m c -> m c
+bracketWorkingDirectory dir a =
+    gbracket (swapWorkingDirectory dir) (liftIO . setCurrentDirectory) (const a)
+
+swapWorkingDirectory :: MonadIO m => FilePath -> m FilePath
+swapWorkingDirectory ndir = liftIO $ do
+  odir <- getCurrentDirectory >>= canonicalizePath
+  setCurrentDirectory $ ndir
+  return odir
 
 runGhcModTSpec :: Options -> GhcModT IO a -> IO (Either GhcModError a, GhcModLog)
 runGhcModTSpec opt action = do
@@ -59,10 +68,9 @@ runGhcModTSpec opt action = do
 runGhcModTSpec' :: IOish m
     => FilePath -> Options -> GhcModT m b -> m (Either GhcModError b, GhcModLog)
 runGhcModTSpec' dir opt action = liftIO (canonicalizePath dir) >>= \dir' -> do
-  gmo <- GhcModOut (optOutput opt) <$> liftIO newChan
-  runGmOutT gmo $
-    withGhcModEnvSpec dir' opt $ \env -> do
-      first (fst <$>) <$> runGhcModT'' env defaultGhcModState
+  runGmOutT opt $
+    withGhcModEnv' withSpecCradle dir' opt $ \env -> do
+      first (fst <$>) <$> runGhcModT' env defaultGhcModState
         (gmSetLogLevel (ooptLogLevel $ optOutput opt) >> action)
 
 -- | Run GhcMod
@@ -91,8 +99,7 @@ runNullLog action = do
   return a
 
 runGmOutDef :: IOish m => GmOutT m a -> m a
-runGmOutDef =
-    runGmOutT (GhcModOut (optOutput defaultOptions) (error "no chan"))
+runGmOutDef = runGmOutT defaultOptions
 
 shouldReturnError :: Show a
                   => IO (Either GhcModError a, GhcModLog)

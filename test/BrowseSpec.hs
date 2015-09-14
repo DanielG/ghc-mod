@@ -28,7 +28,7 @@ spec = do
 
     describe "`browse' in a project directory" $ do
         it "can list symbols defined in a a local module" $ do
-            withDirectory_ "test/data/ghc-mod-check/lib" $ do
+            withDirectory_ "test/data/ghc-mod-check/" $ do
                 syms <- runD $ lines <$> browse "Data.Foo"
                 syms `shouldContain` ["foo"]
                 syms `shouldContain` ["fibonacci"]
