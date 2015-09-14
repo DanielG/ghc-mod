@@ -43,7 +43,7 @@ findCradle' dir = run $
 
 findSpecCradle :: (IOish m, GmOut m) => FilePath -> m Cradle
 findSpecCradle dir = do
-    let cfs = [stackCradle, cabalCradle, sandboxCradle]
+    let cfs = [stackCradleSpec, cabalCradle, sandboxCradle]
     cs <- catMaybes <$> mapM (runMaybeT . ($ dir)) cfs
     gcs <- filterM isNotGmCradle cs
     fillTempDir =<< case gcs of
@@ -98,6 +98,19 @@ stackCradle wdir = do
       , cradleCabalFile  = Just cabalFile
       , cradleDistDir    = seDistDir senv
       }
+
+stackCradleSpec :: (IOish m, GmOut m) => FilePath -> MaybeT m Cradle
+stackCradleSpec wdir = do
+  crdl <- stackCradle wdir
+  case crdl of
+    Cradle { cradleProject = StackProject StackEnv { seDistDir } } -> do
+      b <- isGmDistDir seDistDir
+      when b mzero
+      return crdl
+    _ -> error "stackCradleSpec"
+ where
+   isGmDistDir dir =
+       liftIO $ not <$> doesFileExist (dir </> ".." </> "ghc-mod.cabal")
 
 sandboxCradle :: IOish m => FilePath -> MaybeT m Cradle
 sandboxCradle wdir = do

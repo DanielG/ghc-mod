@@ -69,9 +69,14 @@ withGhcModEnv' withCradle dir opts f =
        c <- gmoChan <$> gmoAsk
        gbracket_ (liftIO $ forkIO $ stdoutGateway c) (liftIO . killThread) a
 
-   withCradleRootDir (cradleRootDir -> projdir) =
-       gbracket_ (liftIO $ setCurrentDirectory projdir >> getCurrentDirectory)
-                 (liftIO . setCurrentDirectory)
+   withCradleRootDir (cradleRootDir -> projdir) a =
+       gbracket_ (liftIO $ swapCurrentDirectory projdir)
+                 (liftIO . setCurrentDirectory) a
+
+   swapCurrentDirectory ndir = do
+     odir <- canonicalizePath =<< getCurrentDirectory
+     setCurrentDirectory ndir
+     return odir
 
    gbracket_ ma mb mc = gbracket ma mb (const mc)
 
