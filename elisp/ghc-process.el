@@ -34,7 +34,7 @@
 (defun ghc-get-project-root ()
   (ghc-run-ghc-mod '("root")))
 
-(defun ghc-with-process (cmd callback &optional hook1 hook2)
+(defun ghc-with-process (cmd callback &optional hook1 hook2 skip-map-file)
   (unless ghc-process-process-name
     (setq ghc-process-process-name (ghc-get-project-root)))
   (when (and ghc-process-process-name (not ghc-process-running))
@@ -54,26 +54,27 @@
 	(let ((pro (ghc-get-process cpro name buf))
 	      (map-cmd (format "map-file %s\n" file)))
 	  ;; map-file
-	  (setq ghc-process-file-mapping t)
-	  (setq ghc-process-callback nil)
-	  (erase-buffer)
-	  (when ghc-debug
-	    (ghc-with-debug-buffer
-	     (insert (format "%% %s" map-cmd))
-	     (insert "CONTENTS + EOT\n")))
-	  (process-send-string pro map-cmd)
-	  (with-current-buffer cbuf
-	    (save-restriction
-	      (widen)
-	      (process-send-region pro (point-min) (point-max))))
-	  (process-send-string pro "\004\n")
-	  (condition-case nil
-	      (let ((inhibit-quit nil))
-		(while ghc-process-file-mapping
-		  (accept-process-output pro 0.1 nil t)))
-	    (quit
-	     (setq ghc-process-running nil)
-	     (setq ghc-process-file-mapping nil)))
+	  (unless skip-map-file
+	    (setq ghc-process-file-mapping t)
+	    (setq ghc-process-callback nil)
+	    (erase-buffer)
+	    (when ghc-debug
+	      (ghc-with-debug-buffer
+	       (insert (format "%% %s" map-cmd))
+	       (insert "CONTENTS + EOT\n")))
+	    (process-send-string pro map-cmd)
+	    (with-current-buffer cbuf
+	      (save-restriction
+		(widen)
+		(process-send-region pro (point-min) (point-max))))
+	    (process-send-string pro "\004\n")
+	    (condition-case nil
+		(let ((inhibit-quit nil))
+		  (while ghc-process-file-mapping
+		    (accept-process-output pro 0.1 nil t)))
+	      (quit
+	       (setq ghc-process-running nil)
+	       (setq ghc-process-file-mapping nil))))
 	  ;; command
 	  (setq ghc-process-callback callback)
 	  (erase-buffer)
@@ -179,12 +180,12 @@
 (defvar ghc-process-num-of-results nil)
 (defvar ghc-process-results nil)
 
-(defun ghc-sync-process (cmd &optional n hook)
+(defun ghc-sync-process (cmd &optional n hook skip-map-file)
   (unless ghc-process-running
     (setq ghc-process-rendezvous nil)
     (setq ghc-process-results nil)
     (setq ghc-process-num-of-results (or n 1))
-    (let ((pro (ghc-with-process cmd 'ghc-process-callback nil hook)))
+    (let ((pro (ghc-with-process cmd 'ghc-process-callback nil hook skip-map-file)))
       ;; ghc-process-running is now t.
       ;; But if the process exits abnormally, it is set to nil.
       (condition-case nil

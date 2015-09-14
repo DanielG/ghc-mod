@@ -101,7 +101,7 @@ unloaded modules are loaded")
 (defun ghc-boot (n)
   (prog2
       (message "Initializing...")
-      (ghc-sync-process "boot\n" n)
+      (ghc-sync-process "boot\n" n nil 'skip-map-file)
     (message "Initializing...done")))
 
 (defun ghc-load-modules (mods)
