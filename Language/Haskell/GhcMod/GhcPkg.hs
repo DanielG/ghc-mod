@@ -23,6 +23,7 @@ import Language.Haskell.GhcMod.Monad.Types
 import Language.Haskell.GhcMod.CabalHelper
 import Language.Haskell.GhcMod.PathsAndFiles
 import Language.Haskell.GhcMod.CustomPackageDb
+import Language.Haskell.GhcMod.Stack
 
 ghcVersion :: Int
 ghcVersion = read cProjectVersionInt
@@ -71,7 +72,6 @@ getGhcPkgProgram = do
         return ghcPkg
     _ ->
         return $ ghcPkgProgram progs
-
 
 getPackageDbStack :: IOish m => GhcModT m [GhcPkgDb]
 getPackageDbStack = do

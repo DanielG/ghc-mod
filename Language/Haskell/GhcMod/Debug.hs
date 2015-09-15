@@ -14,8 +14,8 @@ import Language.Haskell.GhcMod.Internal
 import Language.Haskell.GhcMod.Target
 import Language.Haskell.GhcMod.Pretty
 import Language.Haskell.GhcMod.Utils
-import Language.Haskell.GhcMod.PathsAndFiles
 import Language.Haskell.GhcMod.Cradle
+import Language.Haskell.GhcMod.Stack
 
 ----------------------------------------------------------------
 

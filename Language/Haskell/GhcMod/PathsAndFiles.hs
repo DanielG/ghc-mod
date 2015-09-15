@@ -86,46 +86,6 @@ findStackConfigFile dir = do
       Just (d, Just a)  -> return $ Just $ d </> a
       Just (_, Nothing) -> error "findStackConfigFile"
 
-getStackEnv :: (IOish m, GmOut m) => FilePath -> m (Maybe StackEnv)
-getStackEnv projdir = U.withDirectory_ projdir $ runMaybeT $ do
-    env <- map (liToTup . splitOn ": ") . lines <$> readStack ["path"]
-    let look k = fromJust $ lookup k env
-    return StackEnv {
-        seDistDir       = look "dist-dir"
-      , seBinPath       = splitSearchPath $ look "bin-path"
-      , seSnapshotPkgDb = look "snapshot-pkg-db"
-      , seLocalPkgDb    = look "local-pkg-db"
-      }
- where
-   liToTup [k,v] = (k,v)
-   liToTup _ = error "getStackEnv"
-
-getStackGhcPath :: IOish m => StackEnv -> m (Maybe FilePath)
-getStackGhcPath = findExecutablesInStackBinPath "ghc"
-
-getStackGhcPkgPath :: IOish m => StackEnv -> m (Maybe FilePath)
-getStackGhcPkgPath = findExecutablesInStackBinPath  "ghc-pkg"
-
-findExecutablesInStackBinPath :: IOish m => String -> StackEnv -> m (Maybe FilePath)
-findExecutablesInStackBinPath exe StackEnv {..} =
-    liftIO $ listToMaybe <$> findExecutablesInDirectories' seBinPath exe
-
-findExecutablesInDirectories' :: [FilePath] -> String -> IO [FilePath]
-findExecutablesInDirectories' path binary =
-    U.findFilesWith' isExecutable path (binary <.> exeExtension)
-   where isExecutable file = do
-             perms <- getPermissions file
-             return $ executable perms
-
-         exeExtension = if isWindows then "exe" else ""
-
-readStack :: (IOish m, GmOut m) => [String] -> MaybeT m String
-readStack args = do
-  stack <- MaybeT $ liftIO $ findExecutable "stack"
-  readProc <- lift gmReadProcess
-  liftIO $ flip E.catch (\(e :: IOError) -> throw $ GMEStackBootrap $ show e) $ do
-    evaluate =<< readProc stack args ""
-
 -- | Get path to sandbox config file
 getSandboxDb :: Cradle -> IO (Maybe GhcPkgDb)
 getSandboxDb crdl = do

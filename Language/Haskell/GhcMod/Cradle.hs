@@ -14,6 +14,7 @@ import Language.Haskell.GhcMod.PathsAndFiles
 import Language.Haskell.GhcMod.Monad.Types
 import Language.Haskell.GhcMod.Types
 import Language.Haskell.GhcMod.Utils
+import Language.Haskell.GhcMod.Stack
 
 import Control.Applicative
 import Control.Monad

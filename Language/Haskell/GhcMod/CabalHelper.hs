@@ -42,6 +42,7 @@ import Language.Haskell.GhcMod.PathsAndFiles
 import Language.Haskell.GhcMod.Logging
 import Language.Haskell.GhcMod.Output
 import Language.Haskell.GhcMod.CustomPackageDb
+import Language.Haskell.GhcMod.Stack
 import System.FilePath
 import System.Process
 import System.Exit
@@ -136,16 +137,6 @@ prepareCabalHelper = do
   readProc <- gmReadProcess
   when (isCabalHelperProject $ cradleProject crdl) $
        withCabal $ liftIO $ prepare readProc projdir distdir
-
-patchStackPrograms :: (IOish m, GmOut m) => Cradle -> Programs -> m Programs
-patchStackPrograms Cradle { cradleProject = (StackProject senv) } progs = do
-  Just ghc <- getStackGhcPath senv
-  Just ghcPkg <- getStackGhcPkgPath senv
-  return $ progs {
-      ghcProgram = ghc
-    , ghcPkgProgram = ghcPkg
-    }
-patchStackPrograms _crdl progs = return progs
 
 withCabal :: (IOish m, GmEnv m, GmOut m, GmLog m) => m a -> m a
 withCabal action = do
