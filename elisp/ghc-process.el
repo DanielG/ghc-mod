@@ -214,11 +214,12 @@
 
 (defun ghc-kill-process ()
   (interactive)
-  (let* ((name ghc-process-process-name)
-	 (cpro (if name (get-process name))))
-    (if (not cpro)
-	(message "No ghc-mod process")
-      (delete-process cpro)
-      (message "ghc-mod process was killed"))))
+  (when (eq major-mode 'haskell-mode)
+    (let* ((name ghc-process-process-name)
+	   (cpro (if name (get-process name))))
+      (if (not cpro)
+	  (message "No ghc-mod process")
+	(delete-process cpro)
+	(message "ghc-mod process was killed")))))
 
 (provide 'ghc-process)
