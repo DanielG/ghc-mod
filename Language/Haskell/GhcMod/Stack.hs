@@ -86,4 +86,4 @@ readStack args = do
   lift $ flip gcatch (\(e :: IOError) -> exToErr e) $ do
     liftIO $ evaluate =<< readProc stack args ""
  where
-   exToErr = throw . GMEStackBootrap . show
+   exToErr = throw . GMEStackBootstrap . GMEString . show

@@ -379,11 +379,11 @@ data GhcModError
   | GMECabalConfigure GhcModError
   -- ^ Configuring a cabal project failed.
 
-  | GMECabalFlags GhcModError
-  -- ^ Retrieval of the cabal configuration flags failed.
+  | GMEStackConfigure GhcModError
+  -- ^ Configuring a stack project failed.
 
-  | GMECabalComponent ChComponentName
-  -- ^ Cabal component could not be found
+  | GMEStackBootstrap GhcModError
+    -- ^ Bootstrapping @stack@ environment failed (process exited with failure)
 
   | GMECabalCompAssignment [(Either FilePath ModuleName, Set ChComponentName)]
   -- ^ Could not find a consistent component assignment for modules
@@ -398,12 +398,6 @@ data GhcModError
   | GMETooManyCabalFiles [FilePath]
   -- ^ Too many cabal files found.
 
-  | GMECabalStateFile GMConfigStateFileError
-    -- ^ Reading Cabal's state configuration file falied somehow.
-
-  | GMEStackBootrap String
-    -- ^ Bootstrapping @stack@ environment failed (process exited with failure)
-
   | GMEWrongWorkingDirectory FilePath FilePath
 
     deriving (Eq,Show,Typeable)
@@ -413,15 +407,6 @@ instance Error GhcModError where
   strMsg = GMEString
 
 instance Exception GhcModError
-
-data GMConfigStateFileError
-  = GMConfigStateFileNoHeader
-  | GMConfigStateFileBadHeader
-  | GMConfigStateFileNoParse
-  | GMConfigStateFileMissing
---  | GMConfigStateFileBadVersion PackageIdentifier PackageIdentifier (Either ConfigStateFileError LocalBuildInfo)
-  deriving (Eq, Show, Read, Typeable)
-
 
 deriving instance Generic Version
 instance Serialize Version
