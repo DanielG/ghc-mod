@@ -46,6 +46,8 @@
 	   (buf (get-buffer-create (concat " ghc-mod:" name)))
 	   (file (buffer-file-name))
 	   (cpro (get-process name)))
+      ;; setting root in the original buffer, sigh
+      (setq ghc-process-root root)
       (ghc-with-current-buffer buf
         (setq ghc-process-original-buffer cbuf)
 	(setq ghc-process-original-file file)

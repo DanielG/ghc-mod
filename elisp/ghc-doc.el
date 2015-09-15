@@ -41,14 +41,16 @@
 (ghc-defstruct pkg-ver-path pkg ver path)
 
 (defun ghc-resolve-document-path (mod)
-  (with-temp-buffer
-    (ghc-call-process ghc-module-command nil t nil "doc" mod)
-    (goto-char (point-min))
-    (when (looking-at "^\\([^ ]+\\)-\\([0-9]*\\(\\.[0-9]+\\)*\\) \\(.*\\)$")
-      (ghc-make-pkg-ver-path
-       :pkg (match-string-no-properties 1)
-       :ver (match-string-no-properties 2)
-       :path (match-string-no-properties 4)))))
+  (let ((root ghc-process-root))
+    (with-temp-buffer
+      (let ((default-directory root))
+	(ghc-call-process ghc-module-command nil t nil "doc" mod))
+      (goto-char (point-min))
+      (when (looking-at "^\\([^ ]+\\)-\\([0-9]*\\(\\.[0-9]+\\)*\\) \\(.*\\)$")
+	(ghc-make-pkg-ver-path
+	 :pkg (match-string-no-properties 1)
+	 :ver (match-string-no-properties 2)
+	 :path (match-string-no-properties 4))))))
 
 (defconst ghc-doc-local-format "file://%s/%s.html")
 (defconst ghc-doc-hackage-format
