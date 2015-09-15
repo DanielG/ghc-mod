@@ -207,12 +207,13 @@
 (defun ghc-run-ghc-mod (cmds &optional prog)
   (let ((target (or prog ghc-module-command)))
     (ghc-executable-find target
-      (let ((cdir default-directory))
+      (let ((cdir (or ghc-process-root  ;; ghc-mod version/debug
+		      default-directory))) ;; ghc-mod root
 	(with-temp-buffer
-	  (cd cdir)
-	  (apply 'ghc-call-process target nil t nil
-		 (append (ghc-make-ghc-options) cmds))
-	  (buffer-substring (point-min) (1- (point-max))))))))
+	  (let ((default-directory cdir))
+	    (apply 'ghc-call-process target nil t nil
+		   (append (ghc-make-ghc-options) cmds))
+	    (buffer-substring (point-min) (1- (point-max)))))))))
 
 (defmacro ghc-executable-find (cmd &rest body)
   ;; (declare (indent 1))

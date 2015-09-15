@@ -42,7 +42,7 @@
     (if hook1 (funcall hook1))
     (let* ((cbuf (current-buffer))
 	   (name ghc-process-process-name)
-	   (root ghc-process-process-name)
+	   (root (file-name-as-directory ghc-process-process-name))
 	   (buf (get-buffer-create (concat " ghc-mod:" name)))
 	   (file (buffer-file-name))
 	   (cpro (get-process name)))
@@ -51,7 +51,7 @@
 	(setq ghc-process-original-file file)
 	(setq ghc-process-hook hook2)
 	(setq ghc-process-root root)
-	(let ((pro (ghc-get-process cpro name buf))
+	(let ((pro (ghc-get-process cpro name buf root))
 	      (map-cmd (format "map-file %s\n" file)))
 	  ;; map-file
 	  (unless skip-map-file
@@ -86,18 +86,18 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defun ghc-get-process (cpro name buf)
-  (let ((default-directory name))
-    (cond
-     ((not cpro)
-      (ghc-start-process name buf))
-     ((not (eq (process-status cpro) 'run))
-      (delete-process cpro)
-      (ghc-start-process name buf))
-     (t cpro))))
+(defun ghc-get-process (cpro name buf root)
+  (cond
+   ((not cpro)
+    (ghc-start-process name buf root))
+   ((not (eq (process-status cpro) 'run))
+    (delete-process cpro)
+    (ghc-start-process name buf root))
+   (t cpro)))
 
-(defun ghc-start-process (name buf)
-  (let* ((process-connection-type nil) ;; using PIPE due to ^D
+(defun ghc-start-process (name buf root)
+  (let* ((default-directory root)
+	 (process-connection-type nil) ;; using PIPE due to ^D
 	 (opts (append ghc-debug-options
 		       '("-b" "\n" "-l" "--line-prefix=O: ,E: ")
 		       (ghc-make-ghc-options)
