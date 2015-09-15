@@ -87,13 +87,14 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defun ghc-get-process (cpro name buf)
-  (cond
-   ((not cpro)
-    (ghc-start-process name buf))
-   ((not (eq (process-status cpro) 'run))
-    (delete-process cpro)
-    (ghc-start-process name buf))
-   (t cpro)))
+  (let ((default-directory name))
+    (cond
+     ((not cpro)
+      (ghc-start-process name buf))
+     ((not (eq (process-status cpro) 'run))
+      (delete-process cpro)
+      (ghc-start-process name buf))
+     (t cpro))))
 
 (defun ghc-start-process (name buf)
   (let* ((process-connection-type nil) ;; using PIPE due to ^D
