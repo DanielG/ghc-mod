@@ -189,7 +189,10 @@ targetGhcOptions crdl sefnmn = do
 
     case cradleProject crdl of
       proj | isCabalHelperProject proj -> cabalOpts crdl
-      ExplicitProject -> explicitOpts crdl
+      ExplicitProject -> do
+        opts <- explicitOpts crdl
+        dbStack <- maybe [] id <$> getCustomPkgDbStack
+        return $ opts ++ ghcDbStackOpts dbStack
       _  -> sandboxOpts crdl
  where
    zipMap f l = l `zip` (f `map` l)
