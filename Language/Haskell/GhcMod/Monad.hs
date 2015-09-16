@@ -78,14 +78,17 @@ withGhcModEnv' withCradle dir opts f =
 
 runGmOutT :: IOish m => Options -> GmOutT m a -> m a
 runGmOutT opts ma = do
-    gmo <- GhcModOut (optOutput opts) <$> liftIO newChan
-    runGmOutT' gmo ma
+    gmo@GhcModOut{..} <- GhcModOut (optOutput opts) <$> liftIO newChan
+    let action = runGmOutT' gmo ma
+    case ooptLinePrefix $ optOutput opts of
+      Nothing -> action
+      Just pfxs ->
+        gbracket_ (liftIO $ forkIO $ stdoutGateway pfxs gmoChan)
+                  (const $ liftIO $ flushStdoutGateway gmoChan)
+                  action
 
 runGmOutT' :: IOish m => GhcModOut -> GmOutT m a -> m a
-runGmOutT' gmo@(gmoChan -> chan) ma = do
-    gbracket_ (liftIO $ forkIO $ stdoutGateway chan)
-              (const $ liftIO $ flushStdoutGateway chan)
-              (flip runReaderT gmo $ unGmOutT ma)
+runGmOutT' gmo ma = flip runReaderT gmo $ unGmOutT ma
 
 -- | Run a @GhcModT m@ computation.
 runGhcModT :: (IOish m, GmOut m)
