@@ -42,7 +42,7 @@ import Control.Monad
 import Control.Monad.State.Strict
 import Control.DeepSeq
 import Control.Exception
-import Control.Concurrent (forkIO, killThread, myThreadId)
+import Control.Concurrent (forkIO, killThread)
 import Control.Concurrent.MVar
 import Control.Concurrent.Chan
 import Pipes
@@ -171,8 +171,8 @@ stdoutGateway (outPf, errPf) chan = do
 zoom :: Monad m => (f L.:-> o) -> StateT o m a -> StateT f m a
 zoom l (StateT a) =
     StateT $ \f -> do
-      (a, s') <- a $ L.get l f
-      return (a, L.set l s' f)
+      (a', s') <- a $ L.get l f
+      return (a', L.set l s' f)
 
 readProcessStderrChan ::
     GmOut m => m (FilePath -> [String] -> String -> IO String)
