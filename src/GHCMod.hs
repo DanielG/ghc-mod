@@ -399,7 +399,7 @@ main = do
       Left e -> throw e
       Right res@(globalOptions,_) -> catches (progMain res) [
             Handler $ \(e :: GhcModError) ->
-              exitError' globalOptions $ renderStyle ghcModStyle (gmeDoc e)
+              runGmOutT globalOptions $ exitError $ renderStyle ghcModStyle (gmeDoc e)
           ]
 
 progMain :: (Options,[String]) -> IO ()
@@ -574,11 +574,6 @@ instance Exception InvalidCommandLine
 
 exitError :: (MonadIO m, GmOut m) => String -> m a
 exitError msg = gmErrStrLn (dropWhileEnd (=='\n') msg) >> liftIO exitFailure
-
-exitError' :: Options -> String -> IO a
-exitError' opts msg = do
-    gmUnsafeErrStr (optOutput opts) $ dropWhileEnd (=='\n') msg ++ "\n"
-    liftIO exitFailure
 
 fatalError :: String -> a
 fatalError s = throw $ FatalError $ "ghc-mod: " ++ s

@@ -62,8 +62,6 @@ module Language.Haskell.GhcMod (
   , gmErrStr
   , gmPutStrLn
   , gmErrStrLn
-  , gmUnsafePutStr
-  , gmUnsafeErrStr
   -- * FileMapping
   , loadMappedFile
   , loadMappedFileSource

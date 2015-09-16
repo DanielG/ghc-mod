@@ -172,18 +172,8 @@ data Cradle = Cradle {
   , cradleDistDir    :: FilePath
   } deriving (Eq, Show)
 
-
 data GmStream = GmOutStream | GmErrStream
                 deriving (Show)
-
-data GmLineType = GmTerminated | GmPartial
-                deriving (Show)
-
-data GmLines a = GmLines GmLineType a
-              deriving (Show, Functor)
-
-unGmLine :: GmLines a -> a
-unGmLine (GmLines _ s) = s
 
 data GhcModEnv = GhcModEnv {
       gmOptions    :: Options
@@ -192,7 +182,7 @@ data GhcModEnv = GhcModEnv {
 
 data GhcModOut = GhcModOut {
       gmoOptions :: OutputOpts
-    , gmoChan    :: Chan (Either (MVar ()) (GmStream, GmLines String))
+    , gmoChan    :: Chan (Either (MVar ()) (GmStream, String))
     }
 
 data GhcModLog = GhcModLog {

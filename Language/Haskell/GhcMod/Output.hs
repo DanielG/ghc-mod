@@ -28,85 +28,56 @@ module Language.Haskell.GhcMod.Output (
 
   , gmReadProcess
 
-  , gmUnsafePutStr
-  , gmUnsafeErrStr
-
   , stdoutGateway
   , flushStdoutGateway
   ) where
 
 import Data.List
+import qualified Data.Label as L
+import qualified Data.Label.Base as LB
 import System.IO
 import System.Exit
 import System.Process
 import Control.Monad
+import Control.Monad.State.Strict
 import Control.DeepSeq
 import Control.Exception
-import Control.Concurrent
+import Control.Concurrent (forkIO, killThread, myThreadId)
+import Control.Concurrent.MVar
+import Control.Concurrent.Chan
+import Pipes
+import Pipes.Lift
 import Prelude
 
-import Language.Haskell.GhcMod.Types hiding (LineSeparator)
-import Language.Haskell.GhcMod.Monad.Types
-
-withLines :: (String -> String) -> String -> String
-withLines f s = let
-    res = unlines $ map f $ lines s
-  in
-    case s of
-      [] -> res
-      _ | not $ isTerminated s ->
-            reverse $ drop 1 $ reverse res
-      _ -> res
-
-isTerminated :: String -> Bool
-isTerminated "" = False
-isTerminated s = isNewline (last s)
-
-isNewline :: Char -> Bool
-isNewline c = c == '\n'
-
-toGmLines :: String -> (GmLines String)
-toGmLines "" = GmLines GmPartial ""
-toGmLines s | isNewline (last s) = GmLines GmTerminated s
-toGmLines s = GmLines GmPartial s
+import Language.Haskell.GhcMod.Types hiding (LineSeparator, MonadIO(..))
+import Language.Haskell.GhcMod.Monad.Types hiding (MonadIO(..))
 
 outputFns :: (GmOut m, MonadIO m')
-          => m (GmLines String -> m' (), GmLines String -> m' ())
+          => m (String -> m' (), String -> m' ())
 outputFns =
   outputFns' `liftM` gmoAsk
 
-pfxFns :: Maybe (String, String) -> (GmLines String -> GmLines String, GmLines String -> GmLines String)
-pfxFns lpfx = case lpfx of
-    Nothing -> ( id, id )
-    Just (op, ep) -> ( fmap $ pfx (op++), fmap $ pfx (ep++) )
-  where
-    pfx f = withLines f
-
-stdioOutputFns :: MonadIO m => Maybe (String, String) -> (GmLines String -> m (), GmLines String -> m ())
-stdioOutputFns lpfx = let
-    (outPfx, errPfx) = pfxFns lpfx
-  in
-    ( liftIO . putStr         . unGmLine . outPfx
-    , liftIO . hPutStr stderr . unGmLine . errPfx)
-
-chanOutputFns :: MonadIO m
-              => Chan (Either (MVar ()) (GmStream, GmLines String))
-              -> Maybe (String, String)
-              -> (GmLines String -> m (), GmLines String -> m ())
-chanOutputFns c lpfx = let
-    (outPfx, errPfx) = pfxFns lpfx
-  in
-    ( liftIO . writeChan c . Right . (,) GmOutStream . outPfx
-    , liftIO . writeChan c . Right . (,) GmErrStream . errPfx)
-
 outputFns' ::
-  MonadIO m => GhcModOut -> (GmLines String -> m (), GmLines String -> m ())
+  MonadIO m => GhcModOut -> (String -> m (), String -> m ())
 outputFns' (GhcModOut oopts c)  = let
   OutputOpts {..} = oopts
  in
   case ooptLinePrefix of
-    Nothing  -> stdioOutputFns ooptLinePrefix
-    Just _ -> chanOutputFns c ooptLinePrefix
+    Nothing -> stdioOutputFns
+    Just _  -> chanOutputFns c
+
+stdioOutputFns :: MonadIO m => (String -> m (), String -> m ())
+stdioOutputFns =
+    ( liftIO . putStr
+    , liftIO . hPutStr stderr
+    )
+
+chanOutputFns :: MonadIO m
+              => Chan (Either (MVar ()) (GmStream, String))
+              -> (String -> m (), String -> m ())
+chanOutputFns c = (write GmOutStream, write GmErrStream)
+ where
+   write stream s = liftIO $ writeChan c $ Right $ (stream,s)
 
 gmPutStr, gmPutStrLn, gmErrStr, gmErrStrLn
     :: (MonadIO m, GmOut m) => String -> m ()
@@ -124,15 +95,9 @@ gmErrStrLn = gmErrStr . (++"\n")
 
 gmPutStrIO, gmErrStrIO :: (GmOut m, MonadIO mi) => m (String -> mi ())
 
-gmPutStrIO = ((. toGmLines) . fst) `liftM` outputFns
-gmErrStrIO = ((. toGmLines) . snd) `liftM` outputFns
+gmPutStrIO = fst `liftM` outputFns
+gmErrStrIO = snd `liftM` outputFns
 
-
--- | Only use these when you're sure there are no other writers on stdout
-gmUnsafePutStr, gmUnsafeErrStr
-    :: MonadIO m => OutputOpts -> String -> m ()
-gmUnsafePutStr oopts = (fst $ stdioOutputFns (ooptLinePrefix oopts)) . toGmLines
-gmUnsafeErrStr oopts = (snd $ stdioOutputFns (ooptLinePrefix oopts)) . toGmLines
 
 gmReadProcess :: GmOut m => m (FilePath -> [String] -> String -> IO String)
 gmReadProcess = do
@@ -143,64 +108,83 @@ gmReadProcess = do
     Nothing ->
         return $ readProcess
 
-flushStdoutGateway :: Chan (Either (MVar ()) (GmStream, GmLines String)) -> IO ()
+flushStdoutGateway :: Chan (Either (MVar ()) (GmStream, String)) -> IO ()
 flushStdoutGateway c = do
   mv <- newEmptyMVar
   writeChan c $ Left mv
   takeMVar mv
 
-stdoutGateway :: Chan (Either (MVar ()) (GmStream, GmLines String)) -> IO ()
-stdoutGateway chan = go ("", "")
+type Line = String
+
+stdoutGateway :: (String, String) -> Chan (Either (MVar ()) (GmStream, String)) -> IO ()
+stdoutGateway (outPf, errPf) chan = do
+  runEffect $ commandProc >-> evalStateP ("","") seperateStreams
  where
-   go :: (String, String) -> IO ()
-   go buf = do
-     cmd <- readChan chan
+   commandProc :: Producer (Either (MVar ()) (GmStream, String)) IO ()
+   commandProc = do
+     cmd <- liftIO $ readChan chan
      case cmd of
        Left mv -> do
-           let flush (obuf, ebuf) = do
-                 -- Add newline to unterminated stderr but not to stdout
-                 -- otherwise emacs will get confused etc
-                 putStr $ ebuf ++ if null ebuf || last ebuf /= '\n'
-                                    then "" else "\n"
-                 putStr obuf
-           work (GmOutStream, GmLines GmPartial "") buf flush
-           putMVar mv ()
-       Right l ->
-           work l buf go
+           yield $ Left mv
+       Right input -> do
+           yield $ Right input
+           commandProc
 
-   work (stream, GmLines ty l) buf@(obuf, ebuf) cont = case ty of
-           GmTerminated ->
-              case stream of
-                GmOutStream ->
-                    putStr (obuf++l) >> hFlush stdout >> cont ("", ebuf)
-                GmErrStream ->
-                    putStr (ebuf++l) >> hFlush stdout >> cont (obuf, "")
+   seperateStreams :: Consumer (Either (MVar ()) (GmStream, String)) (StateT (String, String) IO) ()
+   seperateStreams  = do
+       ecmd <- await
+       case ecmd of
+         Left mv -> do
+           -- flush buffers
+           (\s -> lift $ zoom (streamLens s) $ sGetLine Nothing)
+               `mapM_` [GmOutStream, GmErrStream]
 
-           GmPartial ->
-              case reverse $ lines l of
-                [] -> cont buf
-                [x] -> cont (appendBuf stream buf x)
-                x:xs -> do
-                  putStr $ unlines $ reverse xs
-                  hFlush stdout
-                  cont (appendBuf stream buf x)
+           liftIO $ putMVar mv ()
+         Right (stream, str) -> do
+           ls <- lift $ zoom (streamLens stream) $ sGetLine (Just str)
+           case ls of
+               [] -> return ()
+               _  -> liftIO $ putStr $ unlines $ map (streamPf stream++) ls
 
-   appendBuf GmOutStream (obuf, ebuf) s = (obuf++s, ebuf)
-   appendBuf GmErrStream (obuf, ebuf) s = (obuf, ebuf++s)
+           liftIO $ hFlush stdout
+           seperateStreams
 
+   sGetLine :: (Maybe String) -> StateT String IO [Line]
+   sGetLine mstr' = do
+     buf <- get
+     let mstr = (buf++) <$> mstr'
+     case mstr of
+       Nothing -> put "" >> return [buf]
+       Just "" -> return []
+       Just s | last s == '\n' -> put "" >> return (lines s)
+              | otherwise -> do
+                  let (p:ls') = reverse $ lines s
+                  put p
+                  return $ reverse $ ls'
+
+   streamLens GmOutStream = LB.fst
+   streamLens GmErrStream = LB.snd
+
+   streamPf GmOutStream = outPf
+   streamPf GmErrStream = errPf
+
+zoom :: Monad m => (f L.:-> o) -> StateT o m a -> StateT f m a
+zoom l (StateT a) =
+    StateT $ \f -> do
+      (a, s') <- a $ L.get l f
+      return (a, L.set l s' f)
 
 readProcessStderrChan ::
     GmOut m => m (FilePath -> [String] -> String -> IO String)
 readProcessStderrChan = do
-  (_, e :: GmLines String -> IO ()) <- outputFns
+  (_, e :: String -> IO ()) <- outputFns
   return $ readProcessStderrChan' e
 
 readProcessStderrChan' ::
-     (GmLines String -> IO ())
-  -> FilePath -> [String] -> String -> IO String
+    (String -> IO ()) -> FilePath -> [String] -> String -> IO String
 readProcessStderrChan' pute = go pute
  where
-   go :: (GmLines String -> IO ()) -> FilePath -> [String] -> String -> IO String
+   go :: (String -> IO ()) -> FilePath -> [String] -> String -> IO String
    go putErr exe args input = do
      let cp = (proc exe args) {
                 std_out = CreatePipe
@@ -233,7 +217,7 @@ readProcessStderrChan' pute = go pute
     where
       ignoreSEx = handle (\(SomeException _) -> return ())
       reader h = ignoreSEx $ do
-        putErr . toGmLines . (++"\n") =<< hGetLine h
+        putErr . (++"\n") =<< hGetLine h
         reader h
 
 withForkWait :: IO () -> (IO () ->  IO a) -> IO a
