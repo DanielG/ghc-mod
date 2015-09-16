@@ -1,9 +1,27 @@
+2015-09-16 v5.4.0.0
+	* Add support for the Stack build tool
+	* Fix #554, `module not interpreted` errors when using the `type`
+	  command
+	* Merge #484, support for file redirection
+	* Add support for file redirection to Emacs frontend so
+	  all commands should work even with unsaved files now!
+	* Support inserting holes in type signatures
+	* Merge #543, Fix URL anchors being dropped in OS X
+	* Fix GHC session always being dropped in interactive mode (caused
+	  super slowness)
+	* Expose all internal modules because API will get a major
+	  redesign soon anyways
+        * ghc-mod(i) executable must now be run in project directory for
+          commands other than `root`
+        * Add --line-prefix option for multiplexing stdout/err onto one stream
+
 2015-08-14 v5.3.0.0
 	* Re-license majority of code under the AGPL-3
 	* Add support for GHC 7.10 and Cabal 1.22
 	* Remove `cabalDependPackages', `cabalAllTargets'
 	* Merge #434, Fix finding sandbox config file and directory.
-	* Merge #431, Re-add output line separator global option for expand command.
+	* Merge #431, Re-add output line separator global option for expand
+          command.
 	* Merge #470, Support for overriding the package-db stack
 	* Merge #486, Fix ineffective cache invalidation for `find`
 
