@@ -13,6 +13,10 @@ import Language.Haskell.GhcMod.DebugLogger
 import System.IO.Unsafe (unsafePerformIO)
 import Prelude
 
+setEmptyLogger :: DynFlags -> DynFlags
+setEmptyLogger df =
+    Gap.setLogAction df $ \_ _ _ _ _ -> return ()
+
 setDebugLogger :: (String -> IO ()) -> DynFlags -> DynFlags
 setDebugLogger put df = do
   Gap.setLogAction df (debugLogAction put)

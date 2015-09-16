@@ -137,9 +137,13 @@ runGmlTWith efnmns' mdf wrapper action = do
       (text "Initializing GHC session with following options")
       (intercalate " " $ map (("\""++) . (++"\"")) opts')
 
+    GhcModLog { gmLogLevel = Just level } <- gmlHistory
     putErr <- gmErrStrIO
+    let setLogger | level >= GmDebug = setDebugLogger putErr
+                  | otherwise = setEmptyLogger
+
     initSession opts' $
-        setModeSimple >>> setDebugLogger putErr >>> mdf
+        setModeSimple >>> setLogger >>> mdf
 
     mappedStrs <- getMMappedFilePaths
     let targetStrs = mappedStrs ++ map moduleNameString mns ++ cfns
@@ -441,6 +445,9 @@ loadTargets opts targetStrs = do
             loadTargets' Intelligent
           else
             loadTargets' Simple
+
+    gmLog GmDebug "loadTargets" $ text "Loading done"
+
   where
     relativize (Target (TargetFile filePath phase) taoc src) = do
       crdl <- cradle
