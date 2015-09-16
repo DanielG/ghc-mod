@@ -1,10 +1,29 @@
 {-# LANGUAGE OverloadedStrings #-}
-module CLI where
+module CLI (
+  LogLevel(..),
+  Component(..),
+  Command(..),
+  Options(..),
 
-import Data.Text
+  run
+) where
+
+import Data.Text hiding (empty)
 import Options.Applicative
 
-type LogLevel = Int
+--------------------------------------------------------------------------------
+                             -- Types --
+--------------------------------------------------------------------------------
+data LogLevel
+  = Silent
+  | Panic
+  | Exception
+  | Error
+  | Warning
+  | Info
+  | Debug
+  | Vomit
+    deriving Show
 
 data Component
   = Module Text
@@ -17,9 +36,9 @@ data Command
   | Browse
   | Check
   | Expand
-  | Debug
+  | CDebug
   | DebugComponent
-  | Info
+  | CInfo
   | Type
   | Split
   | Sig
@@ -50,9 +69,23 @@ data Options =
             }
     deriving Show
 
+--------------------------------------------------------------------------------
+                           -- Interface --
+--------------------------------------------------------------------------------
 run :: IO Options
 run =
-  execParser (info optionsParser (fullDesc <> progDesc "ghc-mod" <> header "ghc-mod"))
+  execParser (info optionsParser $ fullDesc <> progDesc "ghc-mod")
+
+parseLogLevel :: Int -> LogLevel
+parseLogLevel n
+  | n <= 0    = Silent
+  | n == 1    = Panic
+  | n == 2    = Exception
+  | n == 3    = Error
+  | n == 4    = Warning
+  | n == 5    = Info
+  | n == 6    = Debug
+  | otherwise = Vomit
 
 optionsParser :: Parser Options
 optionsParser =
@@ -68,16 +101,19 @@ optionsParser =
           <*> withStack
           <*> commandsParser
 
-    where silent =
-            option auto (long "silent"
-                         <> short 's'
-                         <> help "Be silent, set log level to 0")
+    where silent :: Parser LogLevel
+          silent =
+            (\b -> if b then Silent else Error) <$>
+              switch (long "silent"
+                      <> short 's'
+                      <> help "Be silent, set log level to 0")
 
           verbosity =
-            option auto (long "verbose"
-                         <> short 'v'
-                         <> help "Increase or set log level. (0-7)"
-                         <> value 3)
+            parseLogLevel <$>
+              option auto (long "verbose"
+                           <> short 'v'
+                           <> help "Increase or set log level. (0-7)"
+                           <> value 3)
 
           toLisp =
             switch (long "tolisp"
@@ -91,10 +127,10 @@ optionsParser =
                          <> value "\n")
 
           linePrefix =
-            (((\[x,y] -> (x,y)) . splitOn ",") <$> (
+            ((\[x,y] -> (x,y)) . splitOn ",") <$>
                 option auto (long "line-prefix"
                              <> value ","
-                             <> help "Output line separator")))
+                             <> help "Output line separator")
 
           ghcOption =
             option auto (long "ghc-option"
@@ -102,10 +138,10 @@ optionsParser =
                          <> help "Option to be passed to GHC")
 
           mapFile =
-            ((\[x,y] -> (show x, show y)) . splitOn ",") <$> (
+            ((\[x,y] -> (show x, show y)) . splitOn ",") <$>
               option auto (long "map-file"
                            <> value ","
-                           <> help "Redirect one file to another, --map-file \"file1.hs=file2.hs\""))
+                           <> help "Redirect one file to another, --map-file \"file1.hs=file2.hs\"")
 
           withGhc =
             option auto (long "with-ghc"
@@ -144,11 +180,11 @@ commandsParser =
            <> command "expand" (
                  info (pure Expand) (desc "TODO") )
            <> command "debug" (
-                 info (pure Debug) (desc "Output ghc-mod debug info: paths, etc."))
+                 info (pure CDebug) (desc "Output ghc-mod debug info: paths, etc."))
            <> command "debug-component" (
                  info (pure DebugComponent) (desc "Output ghc-mod debug info for a module"))
            <> command "info" (
-                 info (pure Info) (desc "ghci's :info command"))
+                 info (pure CInfo) (desc "ghci's :info command"))
            <> command "type" (
                  info (pure Type) (desc "ghci's :type command"))
            <> command "split" (
