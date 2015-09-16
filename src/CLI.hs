@@ -89,76 +89,76 @@ parseLogLevel n
 
 optionsParser :: Parser Options
 optionsParser =
-  Options <$> (silent <|> verbosity)
-          <*> toLisp
-          <*> lineSep
-          <*> linePrefix
-          <*> ghcOption
-          <*> mapFile
-          <*> withGhc
-          <*> withGhcPkg
-          <*> withCabal
-          <*> withStack
+  Options <$> (silent' <|> verbosity')
+          <*> toLisp'
+          <*> lineSep'
+          <*> linePrefix'
+          <*> ghcOption'
+          <*> mapFile'
+          <*> withGhc'
+          <*> withGhcPkg'
+          <*> withCabal'
+          <*> withStack'
           <*> commandsParser
 
-    where silent :: Parser LogLevel
-          silent =
+    where
+          silent' =
             (\b -> if b then Silent else Error) <$>
               switch (long "silent"
                       <> short 's'
                       <> help "Be silent, set log level to 0")
 
-          verbosity =
+          verbosity' =
             parseLogLevel <$>
               option auto (long "verbose"
                            <> short 'v'
                            <> help "Increase or set log level. (0-7)"
                            <> value 3)
 
-          toLisp =
+          toLisp' =
             switch (long "tolisp"
                     <> short 'l'
                     <> help "Format output as an S-Expression")
 
-          lineSep =
+          lineSep' =
             option auto (long "line-separator"
                          <> short 'b'
                          <> help "Output line separator"
                          <> value "\n")
 
-          linePrefix =
+          linePrefix' =
             ((\[x,y] -> (x,y)) . splitOn ",") <$>
                 option auto (long "line-prefix"
                              <> value ","
                              <> help "Output line separator")
 
-          ghcOption =
+          ghcOption' =
             option auto (long "ghc-option"
                          <> value []
                          <> help "Option to be passed to GHC")
 
-          mapFile =
+          mapFile' =
             ((\[x,y] -> (show x, show y)) . splitOn ",") <$>
               option auto (long "map-file"
                            <> value ","
                            <> help "Redirect one file to another, --map-file \"file1.hs=file2.hs\"")
 
-          withGhc =
+          withGhc' =
             option auto (long "with-ghc"
                          <> value ""
                          <> help "GHC executable to use")
 
-          withGhcPkg =
+          withGhcPkg' =
             option auto (long "with-ghc-pkg"
                          <> value ""
                          <> help "ghc-pkg executable to use (only needed when guessing from GHC path fails)")
 
-          withCabal =
+          withCabal' =
             option auto (long "with-cabal"
                          <> value ""
                          <> help "cabal-install executable to use")
 
-          withStack =
+          withStack' =
             option auto (long "with-stack"
                          <> value ""
                          <> help "stack executable to use")
