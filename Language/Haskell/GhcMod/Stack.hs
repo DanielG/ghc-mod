@@ -58,6 +58,7 @@ getStackEnv projdir = U.withDirectory_ projdir $ runMaybeT $ do
       }
  where
    liToTup [k,v] = (k,v)
+   liToTup [k] = (k, error "getStackEnv: missing key '"++k++"'")
    liToTup _ = error "getStackEnv"
 
 getStackGhcPath :: IOish m => StackEnv -> m (Maybe FilePath)
