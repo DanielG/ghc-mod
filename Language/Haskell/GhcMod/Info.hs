@@ -3,7 +3,6 @@ module Language.Haskell.GhcMod.Info (
   , types
   ) where
 
-import Control.Applicative
 import Data.Function (on)
 import Data.List (sortBy)
 import Data.Maybe (catMaybes)
@@ -22,6 +21,8 @@ import Language.Haskell.GhcMod.Logging
 import Language.Haskell.GhcMod.Monad
 import Language.Haskell.GhcMod.SrcUtils
 import Language.Haskell.GhcMod.Types
+import Language.Haskell.GhcMod.Utils (mkRevRedirMapFunc)
+import Language.Haskell.GhcMod.FileMapping (fileModSummaryWithMapping)
 
 ----------------------------------------------------------------
 
@@ -33,16 +34,17 @@ info :: IOish m
 info file expr =
   ghandle handler $
     runGmlT' [Left file] deferErrors $
-      withContext $
-        convert <$> options <*> body
+      withInteractiveContext $ do
+        convert' =<< body
   where
     handler (SomeException ex) = do
       gmLog GmException "info" $ text "" $$ nest 4 (showDoc ex)
       convert' "Cannot show info"
 
-    body :: GhcMonad m => m String
+    body :: (GhcMonad m, GmState m, GmEnv m) => m String
     body = do
-      sdoc  <- Gap.infoThing expr
+      m <- mkRevRedirMapFunc
+      sdoc  <- Gap.infoThing m expr
       st    <- getStyle
       dflag <- G.getSessionDynFlags
       return $ showPage dflag st sdoc
@@ -58,9 +60,9 @@ types :: IOish m
 types file lineNo colNo =
   ghandle handler $
     runGmlT' [Left file] deferErrors $
-      withContext $ do
+      withInteractiveContext $ do
         crdl         <- cradle
-        modSum       <- Gap.fileModSummary (cradleCurrentDir crdl </> file)
+        modSum       <- fileModSummaryWithMapping (cradleCurrentDir crdl </> file)
         srcSpanTypes <- getSrcSpanType modSum lineNo colNo
         dflag        <- G.getSessionDynFlags
         st           <- getStyle

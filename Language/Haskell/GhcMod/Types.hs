@@ -1,4 +1,4 @@
-{-# LANGUAGE CPP, DeriveDataTypeable, DeriveFunctor, DeriveGeneric,
+{-# LANGUAGE CPP, DeriveDataTypeable, DeriveFunctor, DeriveGeneric, RankNTypes,
   StandaloneDeriving, DefaultSignatures, FlexibleInstances, TemplateHaskell #-}
 {-# OPTIONS_GHC -fno-warn-orphans -fno-warn-deprecations #-}
 module Language.Haskell.GhcMod.Types (
@@ -27,7 +27,8 @@ import Data.Maybe
 import Data.Typeable (Typeable)
 import Data.IORef
 import Data.Label.Derive
-import Distribution.Helper
+import Distribution.Helper hiding (Programs(..))
+import qualified Distribution.Helper as CabalHelper
 import Exception (ExceptionMonad)
 #if __GLASGOW_HASKELL__ < 708
 import qualified MonadUtils as GHC (MonadIO(..))
@@ -69,57 +70,96 @@ data OutputStyle = LispStyle  -- ^ S expression style.
 -- | The type for line separator. Historically, a Null string is used.
 newtype LineSeparator = LineSeparator String deriving (Show)
 
-data Options = Options {
-    outputStyle   :: OutputStyle
-  -- | Line separator string.
-  , lineSeparator :: LineSeparator
-  -- | Stdout/err line multiplexing using prefix encoding. @fst@ is stdout,
-  -- @snd@ is stderr prefix.
-  , linePrefix :: Maybe (String, String)
-  -- | Verbosity
-  , logLevel      :: GmLogLevel
+data FileMapping =  FileMapping {fmPath :: FilePath, fmTemp :: Bool}
+                  deriving Show
+
+type FileMappingMap = Map FilePath FileMapping
+
+data ProgramSource = ProgramSourceUser | ProgramSourceStack
+
+data Programs = Programs {
   -- | @ghc@ program name.
-  , ghcProgram    :: FilePath
+    ghcProgram    :: FilePath
   -- | @ghc-pkg@ program name.
   , ghcPkgProgram :: FilePath
   -- | @cabal@ program name.
   , cabalProgram  :: FilePath
+  -- | @stack@ program name.
+  , stackProgram   :: FilePath
+  } deriving (Show)
+
+data OutputOpts = OutputOpts {
+  -- | Verbosity
+    ooptLogLevel      :: GmLogLevel
+  , ooptStyle         :: OutputStyle
+  -- | Line separator string.
+  , ooptLineSeparator :: LineSeparator
+  -- | Stdout/err line multiplexing using prefix encoding. @fst@ is stdout,
+  -- @snd@ is stderr prefix.
+  , ooptLinePrefix    :: Maybe (String, String)
+  } deriving (Show)
+
+data Options = Options {
+    optOutput         :: OutputOpts
+  , optPrograms       :: Programs
     -- | GHC command line options set on the @ghc-mod@ command line
-  , ghcUserOptions:: [GHCOption]
+  , optGhcUserOptions :: [GHCOption]
   -- | If 'True', 'browse' also returns operators.
-  , operators     :: Bool
+  , optOperators      :: Bool
   -- | If 'True', 'browse' also returns types.
-  , detailed      :: Bool
+  , optDetailed       :: Bool
   -- | If 'True', 'browse' will return fully qualified name
-  , qualified     :: Bool
-  , hlintOpts     :: [String]
+  , optQualified      :: Bool
+  , optHlintOpts      :: [String]
+  , optFileMappings   :: [(FilePath, Maybe FilePath)]
   } deriving (Show)
 
 -- | A default 'Options'.
 defaultOptions :: Options
 defaultOptions = Options {
-    outputStyle    = PlainStyle
-  , lineSeparator  = LineSeparator "\0"
-  , linePrefix     = Nothing
-  , logLevel       = GmWarning
-  , ghcProgram     = "ghc"
-  , ghcPkgProgram  = "ghc-pkg"
-  , cabalProgram   = "cabal"
-  , ghcUserOptions = []
-  , operators      = False
-  , detailed       = False
-  , qualified      = False
-  , hlintOpts      = []
+    optOutput     = OutputOpts {
+      ooptLogLevel       = GmWarning
+    , ooptStyle          = PlainStyle
+    , ooptLineSeparator  = LineSeparator "\0"
+    , ooptLinePrefix     = Nothing
+    }
+  , optPrograms       = Programs {
+      ghcProgram     = "ghc"
+    , ghcPkgProgram  = "ghc-pkg"
+    , cabalProgram   = "cabal"
+    , stackProgram   = "stack"
+    }
+  , optGhcUserOptions = []
+  , optOperators      = False
+  , optDetailed       = False
+  , optQualified      = False
+  , optHlintOpts      = []
+  , optFileMappings   = []
   }
 
 ----------------------------------------------------------------
 
-data ProjectType = CabalProject | SandboxProject | PlainProject
-                 deriving (Eq, Show)
+data Project = CabalProject
+             | SandboxProject
+             | PlainProject
+             | StackProject StackEnv
+               deriving (Eq, Show)
+
+isCabalHelperProject :: Project -> Bool
+isCabalHelperProject StackProject {} = True
+isCabalHelperProject CabalProject {} = True
+isCabalHelperProject _ = False
+
+data StackEnv = StackEnv {
+      seDistDir       :: FilePath
+    , seBinPath       :: [FilePath]
+    , seSnapshotPkgDb :: FilePath
+    , seLocalPkgDb    :: FilePath
+    } deriving (Eq, Show)
 
 -- | The environment where this library is used.
 data Cradle = Cradle {
-    cradleProjectType:: ProjectType
+    cradleProject    :: Project
   -- | The directory where this library is executed.
   , cradleCurrentDir :: FilePath
   -- | The project root directory.
@@ -128,28 +168,21 @@ data Cradle = Cradle {
   , cradleTempDir    :: FilePath
   -- | The file name of the found cabal file.
   , cradleCabalFile  :: Maybe FilePath
+  -- | The build info directory.
+  , cradleDistDir    :: FilePath
   } deriving (Eq, Show)
 
-
-data GmStream = GmOut | GmErr
+data GmStream = GmOutStream | GmErrStream
                 deriving (Show)
-
-data GmLineType = GmTerminated | GmPartial
-                deriving (Show)
-
-data GmLines a = GmLines GmLineType a
-              deriving (Show, Functor)
-
-unGmLine :: GmLines a -> a
-unGmLine (GmLines _ s) = s
-
-data GmOutput = GmOutputStdio
-              | GmOutputChan (Chan (GmStream, GmLines String))
 
 data GhcModEnv = GhcModEnv {
       gmOptions    :: Options
     , gmCradle     :: Cradle
-    , gmOutput     :: GmOutput
+    }
+
+data GhcModOut = GhcModOut {
+      gmoOptions :: OutputOpts
+    , gmoChan    :: Chan (Either (MVar ()) (GmStream, String))
     }
 
 data GhcModLog = GhcModLog {
@@ -182,13 +215,14 @@ data GhcModState = GhcModState {
     , gmComponents   :: !(Map ChComponentName (GmComponent 'GMCResolved (Set ModulePath)))
     , gmCompilerMode :: !CompilerMode
     , gmCaches       :: !GhcModCaches
+    , gmMMappedFiles :: !FileMappingMap
     }
 
 data CompilerMode = Simple | Intelligent deriving (Eq,Show,Read)
 
 defaultGhcModState :: GhcModState
 defaultGhcModState =
-    GhcModState n Map.empty Simple (GhcModCaches n n n n)
+    GhcModState n Map.empty Simple (GhcModCaches n n n n) Map.empty
  where n = Nothing
 
 ----------------------------------------------------------------
@@ -335,18 +369,18 @@ data GhcModError
   | GMECabalConfigure GhcModError
   -- ^ Configuring a cabal project failed.
 
-  | GMECabalFlags GhcModError
-  -- ^ Retrieval of the cabal configuration flags failed.
+  | GMEStackConfigure GhcModError
+  -- ^ Configuring a stack project failed.
 
-  | GMECabalComponent ChComponentName
-  -- ^ Cabal component could not be found
+  | GMEStackBootstrap GhcModError
+    -- ^ Bootstrapping @stack@ environment failed (process exited with failure)
 
   | GMECabalCompAssignment [(Either FilePath ModuleName, Set ChComponentName)]
   -- ^ Could not find a consistent component assignment for modules
 
-  | GMEProcess String [String] (Either (String, String, Int) GhcModError)
+  | GMEProcess String String [String] (Either Int GhcModError)
   -- ^ Launching an operating system process failed. Fields in
-  -- order: command, arguments, (stdout, stderr, exitcode)
+  -- order: function, command, arguments, (stdout, stderr, exitcode)
 
   | GMENoCabalFile
   -- ^ No cabal file found.
@@ -354,8 +388,8 @@ data GhcModError
   | GMETooManyCabalFiles [FilePath]
   -- ^ Too many cabal files found.
 
-  | GMECabalStateFile GMConfigStateFileError
-    -- ^ Reading Cabal's state configuration file falied somehow.
+  | GMEWrongWorkingDirectory FilePath FilePath
+
     deriving (Eq,Show,Typeable)
 
 instance Error GhcModError where
@@ -364,22 +398,16 @@ instance Error GhcModError where
 
 instance Exception GhcModError
 
-data GMConfigStateFileError
-  = GMConfigStateFileNoHeader
-  | GMConfigStateFileBadHeader
-  | GMConfigStateFileNoParse
-  | GMConfigStateFileMissing
---  | GMConfigStateFileBadVersion PackageIdentifier PackageIdentifier (Either ConfigStateFileError LocalBuildInfo)
-  deriving (Eq, Show, Read, Typeable)
-
-
 deriving instance Generic Version
 instance Serialize Version
 
-instance Serialize Programs
+instance Serialize CabalHelper.Programs
 instance Serialize ChModuleName
 instance Serialize ChComponentName
 instance Serialize ChEntrypoint
 
 mkLabel ''GhcModCaches
 mkLabel ''GhcModState
+mkLabel ''Options
+mkLabel ''OutputOpts
+mkLabel ''Programs

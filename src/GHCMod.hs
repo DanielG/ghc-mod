@@ -3,11 +3,13 @@
 module Main where
 
 import Config (cProjectVersion)
-import MonadUtils (liftIO)
+import Control.Category
 import Control.Applicative
+import Control.Arrow
 import Control.Monad
 import Data.Typeable (Typeable)
 import Data.Version (showVersion)
+import Data.Label
 import Data.List
 import Data.List.Split
 import Data.Char (isSpace)
@@ -15,6 +17,8 @@ import Data.Maybe
 import Exception
 import Language.Haskell.GhcMod
 import Language.Haskell.GhcMod.Internal hiding (MonadIO,liftIO)
+import Language.Haskell.GhcMod.Types
+import Language.Haskell.GhcMod.Monad
 import Paths_ghc_mod
 import System.Console.GetOpt (OptDescr(..), ArgDescr(..), ArgOrder(..))
 import qualified System.Console.GetOpt as O
@@ -22,11 +26,10 @@ import System.FilePath ((</>))
 import System.Directory (setCurrentDirectory, getAppUserDataDirectory,
                         removeDirectoryRecursive)
 import System.Environment (getArgs)
-import System.Exit (exitFailure)
-import System.IO (stdout, hSetEncoding, utf8, hFlush)
-import System.Exit (exitSuccess)
+import System.IO
+import System.Exit
 import Text.PrettyPrint
-import Prelude
+import Prelude hiding ((.))
 
 import Misc
 
@@ -173,7 +176,7 @@ usage =
  \    - lint FILE\n\
  \        Check files using `hlint'.\n\
  \      Flags:\n\
- \        -l\n\
+ \        -h\n\
  \            Option to be passed to hlint.\n\
  \\n\
  \    - root\n\
@@ -247,45 +250,91 @@ intToLogLevel = toEnum
 globalArgSpec :: [OptDescr (Options -> Either [String] Options)]
 globalArgSpec =
       [ option "v" ["verbose"] "Increase or set log level. (0-7)" $
-               optArg "LEVEL" $ \ml o -> Right $ o {
-                   logLevel = case ml of
-                                Nothing -> increaseLogLevel (logLevel o)
-                                Just l -> toEnum $ min 7 $ read l
-                 }
+          optArg "LEVEL" $ \ml o -> Right $ case ml of
+              Nothing ->
+                  modify (lOoptLogLevel . lOptOutput) increaseLogLevel o
+              Just l ->
+                  set (lOoptLogLevel . lOptOutput) (toEnum $ min 7 $ read l) o
 
       , option "s" [] "Be silent, set log level to 0" $
-               NoArg $ \o -> Right $ o { logLevel = toEnum 0 }
+          NoArg $ \o -> Right $ set (lOoptLogLevel . lOptOutput) (toEnum 0) o
 
       , option "l" ["tolisp"] "Format output as an S-Expression" $
-               NoArg $ \o -> Right $ o { outputStyle = LispStyle }
+          NoArg $ \o -> Right $ set (lOoptStyle . lOptOutput) LispStyle o
 
       , option "b" ["boundary", "line-seperator"] "Output line separator"$
-               reqArg "SEP" $ \s o -> Right $ o { lineSeparator = LineSeparator s }
+          reqArg "SEP" $ \s o -> Right $ set (lOoptLineSeparator . lOptOutput) (LineSeparator s) o
+
       , option "" ["line-prefix"] "Output line separator"$
-               reqArg "OUT,ERR" $ \s o -> let
-                     [out, err] = splitOn "," s
-                   in Right $ o { linePrefix = Just (out, err) }
+          reqArg "OUT,ERR" $ \s o -> let
+                [out, err] = splitOn "," s
+              in Right $ set (lOoptLinePrefix . lOptOutput) (Just (out, err)) o
 
       , option "g" ["ghcOpt", "ghc-option"] "Option to be passed to GHC" $
-               reqArg "OPT" $ \g o -> Right $
-                   o { ghcUserOptions = g : ghcUserOptions o }
+          reqArg "OPT" $ \g o -> Right $
+              o { optGhcUserOptions = g : optGhcUserOptions o }
+
+{-
+File map docs:
+
+CLI options:
+* `--map-file "file1.hs=file2.hs"` can be used to tell
+    ghc-mod that it should take source code for `file1.hs` from `file2.hs`.
+    `file1.hs` can be either full path, or path relative to project root.
+    `file2.hs` has to be either relative to project root,
+    or full path (preferred).
+* `--map-file "file.hs"` can be used to tell ghc-mod that it should take
+    source code for `file.hs` from stdin. File end marker is `\EOT\n`,
+    i.e. `\x04\x0A`. `file.hs` may or may not exist, and should be
+    either full path, or relative to project root.
+
+Interactive commands:
+* `map-file file.hs` -- tells ghc-modi to read `file.hs` source from stdin.
+    Works the same as second form of `--map-file` CLI option.
+* `unmap-file file.hs` -- unloads previously mapped file, so that it's
+    no longer mapped. `file.hs` can be full path or relative to
+    project root, either will work.
+
+Exposed functions:
+* `loadMappedFile :: FilePath -> FilePath -> GhcModT m ()` -- maps `FilePath`,
+    given as first argument to take source from `FilePath` given as second
+    argument. Works exactly the same as first form of `--map-file`
+    CLI option.
+* `loadMappedFileSource :: FilePath -> String -> GhcModT m ()` -- maps
+    `FilePath`, given as first argument to have source as given
+    by second argument. Works exactly the same as second form of `--map-file`
+    CLI option, sans reading from stdin.
+* `unloadMappedFile :: FilePath -> GhcModT m ()` -- unmaps `FilePath`, given as
+    first argument, and removes any temporary files created when file was
+    mapped. Works exactly the same as `unmap-file` interactive command
+-}
+      , option "" ["map-file"] "Redirect one file to another, --map-file \"file1.hs=file2.hs\"" $
+          reqArg "OPT" $ \g o ->
+             let m = case second (drop 1) $ span (/='=') g of
+                       (s,"") -> (s, Nothing)
+                       (f,t)  -> (f, Just t)
+             in
+             Right $ o { optFileMappings = m : optFileMappings o }
 
       , option "" ["with-ghc"] "GHC executable to use" $
-               reqArg "PROG" $ \p o -> Right $ o { ghcProgram = p }
+          reqArg "PATH" $ \p o -> Right $ set (lGhcProgram . lOptPrograms) p o
 
       , option "" ["with-ghc-pkg"] "ghc-pkg executable to use (only needed when guessing from GHC path fails)" $
-               reqArg "PROG" $ \p o -> Right $ o { ghcPkgProgram = p }
+          reqArg "PATH" $ \p o -> Right $ set (lGhcPkgProgram . lOptPrograms) p o
 
       , option "" ["with-cabal"] "cabal-install executable to use" $
-               reqArg "PROG" $ \p o -> Right $ o { cabalProgram = p }
+          reqArg "PATH" $ \p o -> Right $ set (lCabalProgram . lOptPrograms) p o
+
+      , option "" ["with-stack"] "stack executable to use" $
+          reqArg "PATH" $ \p o -> Right $ set (lStackProgram . lOptPrograms) p o
 
       , option "" ["version"] "print version information" $
-               NoArg $ \_ -> Left ["version"]
+          NoArg $ \_ -> Left ["version"]
 
       , option "" ["help"] "print this help message" $
-               NoArg $ \_ -> Left ["help"]
-
+          NoArg $ \_ -> Left ["help"]
   ]
+
 
 
 parseGlobalArgs :: [String] -> Either InvalidCommandLine (Options, [String])
@@ -330,6 +379,8 @@ data InteractiveOptions = InteractiveOptions {
 handler :: IOish m => GhcModT m a -> GhcModT m a
 handler = flip gcatches $
           [ GHandler $ \(FatalError msg) -> exitError msg
+          , GHandler $ \e@(ExitSuccess) -> throw e
+          , GHandler $ \e@(ExitFailure _) -> throw e
           , GHandler $ \(InvalidCommandLine e) -> do
                 case e of
                   Left cmd ->
@@ -346,21 +397,16 @@ main = do
     args <- getArgs
     case parseGlobalArgs args of
       Left e -> throw e
-      Right res -> progMain res
+      Right res@(globalOptions,_) -> catches (progMain res) [
+            Handler $ \(e :: GhcModError) ->
+              runGmOutT globalOptions $ exitError $ renderStyle ghcModStyle (gmeDoc e)
+          ]
 
 progMain :: (Options,[String]) -> IO ()
-progMain (globalOptions,cmdArgs) = hndle $ runGhcModT globalOptions $ handler $ do
+progMain (globalOptions,cmdArgs) = runGmOutT globalOptions $
     case globalCommands cmdArgs of
       Just s -> gmPutStr s
-      Nothing -> ghcCommands cmdArgs
- where
-   hndle action = do
-     (e, _l) <- action
-     case e of
-       Right _ ->
-           return ()
-       Left ed ->
-           exitError' globalOptions $ renderStyle ghcModStyle (gmeDoc ed)
+      Nothing -> wrapGhcCommands globalOptions cmdArgs
 
 globalCommands :: [String] -> Maybe String
 globalCommands (cmd:_)
@@ -374,7 +420,8 @@ legacyInteractive = do
     opt <- options
     prepareCabalHelper
     tmpdir <- cradleTempDir <$> cradle
-    symdbreq <- liftIO $ newSymDbReq opt tmpdir
+    gmo <- gmoAsk
+    symdbreq <- liftIO $ newSymDbReq opt gmo tmpdir
     world <- getCurrentWorld
     legacyInteractiveLoop symdbreq world
 
@@ -403,6 +450,11 @@ legacyInteractiveLoop symdbreq world = do
     -- after blocking, we need to see if the world has changed.
 
     changed <- didWorldChange world
+
+    world' <- if changed
+                then getCurrentWorld -- TODO: gah, we're hitting the fs twice
+                else return world
+
     when changed $ do
         dropSession
 
@@ -429,22 +481,64 @@ legacyInteractiveLoop symdbreq world = do
         "boot"   -> bootCmd []
         "browse" -> browseCmd args
 
+        "map-file"   ->  liftIO getFileSourceFromStdin
+                     >>= loadMappedFileSource arg
+                     >>  return ""
+
+        "unmap-file" ->  unloadMappedFile arg
+                     >>  return ""
+
         "quit"   -> liftIO $ exitSuccess
         ""       -> liftIO $ exitSuccess
         _        -> fatalError $ "unknown command: `" ++ cmd ++ "'"
 
     gmPutStr res >> gmPutStrLn "OK" >> liftIO (hFlush stdout)
-    legacyInteractiveLoop symdbreq world
+    legacyInteractiveLoop symdbreq world'
  where
    interactiveHandlers =
           [ GHandler $ \e@(FatalError _) -> throw e
+          , GHandler $ \e@(ExitSuccess) -> throw e
+          , GHandler $ \e@(ExitFailure _) -> throw e
           , GHandler $ \(SomeException e) -> gmErrStrLn (show e) >> return ""
           ]
 
+getFileSourceFromStdin :: IO String
+getFileSourceFromStdin = do
+  let loop' acc = do
+        line <- getLine
+        if not (null line) && last line == '\EOT'
+        then return $ acc ++ init line
+        else loop' (acc++line++"\n")
+  loop' ""
+
+-- Someone please already rewrite the cmdline parsing code *weep* :'(
+wrapGhcCommands :: (IOish m, GmOut m) => Options -> [String] -> m ()
+wrapGhcCommands _opts []            = fatalError "No command given (try --help)"
+wrapGhcCommands _opts ("root":_) = gmPutStr =<< rootInfo
+wrapGhcCommands opts args = do
+    handleGmError $ runGhcModT opts $ handler $ do
+      forM_ (reverse $ optFileMappings opts) $
+        uncurry loadMMappedFiles
+
+      ghcCommands args
+ where
+   handleGmError action = do
+     (e, _l) <- liftIO . evaluate =<< action
+     case e of
+       Right _ ->
+           return ()
+       Left ed ->
+           exitError $ renderStyle ghcModStyle (gmeDoc ed)
+
+   loadMMappedFiles from (Just to) = loadMappedFile from to
+   loadMMappedFiles from (Nothing) = do
+       src <- liftIO getFileSourceFromStdin
+       loadMappedFileSource from src
+
+
 ghcCommands :: IOish m => [String] -> GhcModT m ()
 ghcCommands []         = fatalError "No command given (try --help)"
-ghcCommands (cmd:args) = do
-    gmPutStr =<< action args
+ghcCommands (cmd:args) = gmPutStr =<< action args
  where
    action = case cmd of
      _ | cmd == "list" || cmd == "modules" -> modulesCmd
@@ -463,7 +557,7 @@ ghcCommands (cmd:args) = do
      "auto"    -> autoCmd
      "find"    -> findSymbolCmd
      "lint"    -> lintCmd
-     "root"    -> rootInfoCmd
+--     "root"    -> rootInfoCmd
      "doc"     -> pkgDocCmd
      "dumpsym" -> dumpSymbolCmd
      "boot"    -> bootCmd
@@ -478,12 +572,8 @@ newtype InvalidCommandLine = InvalidCommandLine (Either String String)
     deriving (Show, Typeable)
 instance Exception InvalidCommandLine
 
-exitError :: IOish m => String -> GhcModT m a
+exitError :: (MonadIO m, GmOut m) => String -> m a
 exitError msg = gmErrStrLn (dropWhileEnd (=='\n') msg) >> liftIO exitFailure
-
-exitError' :: Options -> String -> IO a
-exitError' opts msg =
-    gmUnsafeErrStrLn opts (dropWhileEnd (=='\n') msg) >> liftIO exitFailure
 
 fatalError :: String -> a
 fatalError s = throw $ FatalError $ "ghc-mod: " ++ s
@@ -513,7 +603,7 @@ catchArgs cmd action =
 
 modulesCmd, languagesCmd, flagsCmd, browseCmd, checkSyntaxCmd, expandTemplateCmd,
   debugInfoCmd, componentInfoCmd, infoCmd, typesCmd, splitsCmd, sigCmd,
-  refineCmd, autoCmd, findSymbolCmd, lintCmd, rootInfoCmd, pkgDocCmd,
+  refineCmd, autoCmd, findSymbolCmd, lintCmd, pkgDocCmd,
   dumpSymbolCmd, bootCmd, legacyInteractiveCmd, nukeCachesCmd
   :: IOish m => [String] -> GhcModT m String
 
@@ -522,7 +612,6 @@ modulesCmd    = withParseCmd' "modules" s $ \[] -> modules
 languagesCmd  = withParseCmd' "lang"    [] $ \[] -> languages
 flagsCmd      = withParseCmd' "flag"    [] $ \[] -> flags
 debugInfoCmd  = withParseCmd' "debug"   [] $ \[] -> debugInfo
-rootInfoCmd   = withParseCmd' "root"    [] $ \[] -> rootInfo
 componentInfoCmd = withParseCmd' "debugComponent" [] $ \ts -> componentInfo ts
 -- internal
 bootCmd       = withParseCmd' "boot" [] $ \[] -> boot
@@ -577,24 +666,24 @@ locAction' cmd _ _ = throw $ InvalidCommandLine (Left cmd)
 modulesArgSpec :: [OptDescr (Options -> Either [String] Options)]
 modulesArgSpec =
     [ option "d" ["detailed"] "Print package modules belong to." $
-             NoArg $ \o -> Right $ o { detailed = True }
+             NoArg $ \o -> Right $ o { optDetailed = True }
     ]
 
 
 hlintArgSpec :: [OptDescr (Options -> Either [String] Options)]
 hlintArgSpec =
     [ option "h" ["hlintOpt"] "Option to be passed to hlint" $
-             reqArg "hlintOpt" $ \h o -> Right $ o { hlintOpts = h : hlintOpts o }
+             reqArg "hlintOpt" $ \h o -> Right $ o { optHlintOpts = h : optHlintOpts o }
     ]
 
 browseArgSpec :: [OptDescr (Options -> Either [String] Options)]
 browseArgSpec =
     [ option "o" ["operators"] "Also print operators." $
-             NoArg $ \o -> Right $ o { operators = True }
+             NoArg $ \o -> Right $ o { optOperators = True }
     , option "d" ["detailed"] "Print symbols with accompanying signature." $
-             NoArg $ \o -> Right $ o { detailed = True }
+             NoArg $ \o -> Right $ o { optDetailed = True }
     , option "q" ["qualified"] "Qualify symbols" $
-             NoArg $ \o -> Right $ o { qualified = True }
+             NoArg $ \o -> Right $ o { optQualified = True }
     ]
 
 nukeCaches :: IOish m => GhcModT m ()
@@ -602,9 +691,10 @@ nukeCaches = do
   chdir <- liftIO $ (</> "cabal-helper") <$> getAppUserDataDirectory "ghc-mod"
   c <- cradle
 
-  when (cradleProjectType c == CabalProject) $ do
+  when (isCabalHelperProject $ cradleProject c) $ do
     let root = cradleRootDir c
-    liftIO $ (trySome . removeDirectoryRecursive) `mapM_` [chdir, root </> "dist"]
+    let dist = cradleDistDir c
+    liftIO $ (trySome . removeDirectoryRecursive) `mapM_` [chdir, root </> dist]
 
 trySome :: IO a -> IO (Either SomeException a)
 trySome = try

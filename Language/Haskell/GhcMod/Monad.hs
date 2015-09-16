@@ -16,9 +16,10 @@
 
 {-# LANGUAGE CPP #-}
 module Language.Haskell.GhcMod.Monad (
-    runGhcModT
+    runGmOutT
+  , runGmOutT'
+  , runGhcModT
   , runGhcModT'
-  , runGhcModT''
   , hoistGhcModT
   , runGmlT
   , runGmlT'
@@ -46,55 +47,59 @@ import Control.Monad.Reader (runReaderT)
 import Control.Monad.State.Strict (runStateT)
 import Control.Monad.Trans.Journal (runJournalT)
 
-import Exception (ExceptionMonad(..))
+import Exception
 
 import System.Directory
 import Prelude
 
-withCradle :: IOish m => FilePath -> (Cradle -> m a) -> m a
-withCradle cradledir f =
-    gbracket (liftIO $ findCradle' cradledir) (liftIO . cleanupCradle) f
-
-withGhcModEnv :: IOish m => FilePath -> Options -> (GhcModEnv -> m a) -> m a
-withGhcModEnv dir opt f = withCradle dir (withGhcModEnv' opt f)
-
-withGhcModEnv' :: IOish m => Options -> (GhcModEnv -> m a) -> Cradle -> m a
-withGhcModEnv' opt f crdl = do
-    olddir <- liftIO getCurrentDirectory
-    c <- liftIO newChan
-    let outp = case linePrefix opt of
-                 Just _ -> GmOutputChan c
-                 Nothing -> GmOutputStdio
-    gbracket_ (setup c) (teardown olddir) (f $ GhcModEnv opt crdl outp)
+withGhcModEnv :: (IOish m, GmOut m) => FilePath -> Options -> (GhcModEnv -> m a) -> m a
+withGhcModEnv = withGhcModEnv' withCradle
  where
-   setup c = liftIO $ do
-     setCurrentDirectory $ cradleRootDir crdl
-     forkIO $ stdoutGateway c
+   withCradle dir =
+       gbracket (findCradle' dir) (liftIO . cleanupCradle)
 
-   teardown olddir tid = liftIO $ do
-     setCurrentDirectory olddir
-     killThread tid
+withGhcModEnv' :: (IOish m, GmOut m) => (FilePath -> (Cradle -> m a) -> m a) -> FilePath -> Options -> (GhcModEnv -> m a) -> m a
+withGhcModEnv' withCradle dir opts f =
+    withCradle dir $ \crdl ->
+      withCradleRootDir crdl $
+        f $ GhcModEnv opts crdl
+ where
+   withCradleRootDir (cradleRootDir -> projdir) a = do
+       cdir <- liftIO $ getCurrentDirectory
+       eq <- liftIO $ pathsEqual projdir cdir
+       if not eq
+          then throw $ GMEWrongWorkingDirectory projdir cdir
+          else a
 
-   gbracket_ ma mb mc = gbracket ma mb (const mc)
+   pathsEqual a b = do
+     ca <- canonicalizePath a
+     cb <- canonicalizePath b
+     return $ ca == cb
+
+runGmOutT :: IOish m => Options -> GmOutT m a -> m a
+runGmOutT opts ma = do
+    gmo@GhcModOut{..} <- GhcModOut (optOutput opts) <$> liftIO newChan
+    let action = runGmOutT' gmo ma
+    case ooptLinePrefix $ optOutput opts of
+      Nothing -> action
+      Just pfxs ->
+        gbracket_ (liftIO $ forkIO $ stdoutGateway pfxs gmoChan)
+                  (const $ liftIO $ flushStdoutGateway gmoChan)
+                  action
+
+runGmOutT' :: IOish m => GhcModOut -> GmOutT m a -> m a
+runGmOutT' gmo ma = flip runReaderT gmo $ unGmOutT ma
 
 -- | Run a @GhcModT m@ computation.
-runGhcModT :: IOish m
+runGhcModT :: (IOish m, GmOut m)
            => Options
            -> GhcModT m a
            -> m (Either GhcModError a, GhcModLog)
-runGhcModT opt action = do
-    dir <- liftIO getCurrentDirectory
-    runGhcModT' dir opt action
-
-runGhcModT' :: IOish m
-            => FilePath
-            -> Options
-            -> GhcModT m a
-            -> m (Either GhcModError a, GhcModLog)
-runGhcModT' dir opt action = liftIO (canonicalizePath dir) >>= \dir' ->
-    withGhcModEnv dir' opt $ \env ->
-      first (fst <$>) <$> runGhcModT'' env defaultGhcModState
-        (gmSetLogLevel (logLevel opt) >> action)
+runGhcModT opt action = liftIO (getCurrentDirectory >>= canonicalizePath) >>= \dir' -> do
+    runGmOutT opt $
+      withGhcModEnv dir' opt $ \env ->
+        first (fst <$>) <$> runGhcModT' env defaultGhcModState
+          (gmSetLogLevel (ooptLogLevel $ optOutput opt) >> action)
 
 -- | @hoistGhcModT result@. Embed a GhcModT computation's result into a GhcModT
 -- computation. Note that if the computation that returned @result@ modified the
@@ -107,15 +112,19 @@ hoistGhcModT (r,l) = do
     Left e -> throwError e
     Right a -> return a
 
+
 -- | Run a computation inside @GhcModT@ providing the RWST environment and
 -- initial state. This is a low level function, use it only if you know what to
 -- do with 'GhcModEnv' and 'GhcModState'.
 --
 -- You should probably look at 'runGhcModT' instead.
-runGhcModT'' :: IOish m
+runGhcModT' :: IOish m
              => GhcModEnv
              -> GhcModState
              -> GhcModT m a
-             -> m (Either GhcModError (a, GhcModState), GhcModLog)
-runGhcModT'' r s a = do
-  flip runReaderT r $ runJournalT $ runErrorT $ runStateT (unGhcModT a) s
+             -> GmOutT m (Either GhcModError (a, GhcModState), GhcModLog)
+runGhcModT' r s a = do
+  flip runReaderT r $ runJournalT $ runErrorT $ runStateT (unGmT a) s
+
+gbracket_ :: ExceptionMonad m => m a -> (a -> m b) -> m c -> m c
+gbracket_ ma mb mc = gbracket ma mb (const mc)

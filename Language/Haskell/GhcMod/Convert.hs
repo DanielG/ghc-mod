@@ -25,99 +25,99 @@ inter _ [] = id
 inter c bs = foldr1 (\x y -> x . (c:) . y) bs
 
 convert' :: (ToString a, IOish m, GmEnv m) => a -> m String
-convert' x = flip convert x <$> options
+convert' x = flip convert x . optOutput <$> options
 
-convert :: ToString a => Options -> a -> String
-convert opt@Options { outputStyle = LispStyle  } x = toLisp opt x "\n"
-convert opt@Options { outputStyle = PlainStyle } x
+convert :: ToString a => OutputOpts -> a -> String
+convert opt@OutputOpts { ooptStyle = LispStyle  } x = toLisp opt x "\n"
+convert opt@OutputOpts { ooptStyle = PlainStyle } x
   | str == "\n" = ""
   | otherwise   = str
   where
     str = toPlain opt x "\n"
 
 class ToString a where
-  toLisp  :: Options -> a -> Builder
-  toPlain :: Options -> a -> Builder
+  toLisp  :: OutputOpts -> a -> Builder
+  toPlain :: OutputOpts -> a -> Builder
 
-lineSep :: Options -> String
-lineSep opt = interpret lsep
+lineSep :: OutputOpts -> String
+lineSep oopts = interpret lsep
   where
     interpret s = read $ "\"" ++ s ++ "\""
-    LineSeparator lsep = lineSeparator opt
+    LineSeparator lsep = ooptLineSeparator oopts
 
 -- |
 --
--- >>> toLisp defaultOptions "fo\"o" ""
+-- >>> toLisp (optOutput defaultOptions) "fo\"o" ""
 -- "\"fo\\\"o\""
--- >>> toPlain defaultOptions "foo" ""
+-- >>> toPlain (optOutput defaultOptions) "foo" ""
 -- "foo"
 instance ToString String where
-  toLisp  opt = quote opt
-  toPlain opt = replace '\n' (lineSep opt)
+  toLisp  oopts = quote oopts
+  toPlain oopts = replace '\n' (lineSep oopts)
 
 -- |
 --
--- >>> toLisp defaultOptions ["foo", "bar", "ba\"z"] ""
+-- >>> toLisp (optOutput defaultOptions) ["foo", "bar", "ba\"z"] ""
 -- "(\"foo\" \"bar\" \"ba\\\"z\")"
--- >>> toPlain defaultOptions ["foo", "bar", "baz"] ""
+-- >>> toPlain (optOutput defaultOptions) ["foo", "bar", "baz"] ""
 -- "foo\nbar\nbaz"
 instance ToString [String] where
-  toLisp  opt = toSexp1 opt
-  toPlain opt = inter '\n' . map (toPlain opt)
+  toLisp  oopts = toSexp1 oopts
+  toPlain oopts = inter '\n' . map (toPlain oopts)
 
 instance ToString [ModuleString] where
-  toLisp  opt = toLisp opt . map getModuleString
-  toPlain opt = toPlain opt . map getModuleString
+  toLisp  oopts = toLisp oopts . map getModuleString
+  toPlain oopts = toPlain oopts . map getModuleString
 
 -- |
 --
 -- >>> let inp = [((1,2,3,4),"foo"),((5,6,7,8),"bar")] :: [((Int,Int,Int,Int),String)]
--- >>> toLisp defaultOptions inp ""
+-- >>> toLisp (optOutput defaultOptions) inp ""
 -- "((1 2 3 4 \"foo\") (5 6 7 8 \"bar\"))"
--- >>> toPlain defaultOptions inp ""
+-- >>> toPlain (optOutput defaultOptions) inp ""
 -- "1 2 3 4 \"foo\"\n5 6 7 8 \"bar\""
 instance ToString [((Int,Int,Int,Int),String)] where
-  toLisp  opt = toSexp2 . map toS
+  toLisp  oopts = toSexp2 . map toS
     where
-      toS x = ('(' :) . tupToString opt x . (')' :)
-  toPlain opt = inter '\n' . map (tupToString opt)
+      toS x = ('(' :) . tupToString oopts x . (')' :)
+  toPlain oopts = inter '\n' . map (tupToString oopts)
 
 instance ToString ((Int,Int,Int,Int),String) where
-  toLisp  opt x = ('(' :) . tupToString opt x . (')' :)
-  toPlain opt x = tupToString opt x
+  toLisp  oopts x = ('(' :) . tupToString oopts x . (')' :)
+  toPlain oopts x = tupToString oopts x
 
 instance ToString ((Int,Int,Int,Int),[String]) where
-  toLisp  opt (x,s) = ('(' :) . fourIntsToString opt x .
-                      (' ' :) . toLisp opt s . (')' :)
-  toPlain opt (x,s) = fourIntsToString opt x . ('\n' :) . toPlain opt s
+  toLisp  oopts (x,s) = ('(' :) .  fourIntsToString x .
+                        (' ' :) . toLisp oopts s . (')' :)
+  toPlain oopts (x,s) = fourIntsToString x . ('\n' :) . toPlain oopts s
 
 instance ToString (String, (Int,Int,Int,Int),[String]) where
-  toLisp  opt (s,x,y) = toSexp2 [toLisp opt s, ('(' :) . fourIntsToString opt x . (')' :), toLisp opt y]
-  toPlain opt (s,x,y) = inter '\n' [toPlain opt s, fourIntsToString opt x, toPlain opt y]
+  toLisp  oopts (s,x,y) = toSexp2 [toLisp oopts s, ('(' :) . fourIntsToString x . (')' :), toLisp oopts y]
+  toPlain oopts (s,x,y) = inter '\n' [toPlain oopts s, fourIntsToString x, toPlain oopts y]
 
-toSexp1 :: Options -> [String] -> Builder
-toSexp1 opt ss = ('(' :) . inter ' ' (map (quote opt) ss) . (')' :)
+toSexp1 :: OutputOpts -> [String] -> Builder
+toSexp1 oopts ss = ('(' :) . inter ' ' (map (quote oopts) ss) . (')' :)
 
 toSexp2 :: [Builder] -> Builder
 toSexp2 ss = ('(' :) . inter ' ' ss . (')' :)
 
-fourIntsToString :: Options -> (Int,Int,Int,Int) -> Builder
-fourIntsToString _ (a,b,c,d) = (show a ++) . (' ' :)
-                             . (show b ++) . (' ' :)
-                             . (show c ++) . (' ' :)
-                             . (show d ++)
+fourIntsToString :: (Int,Int,Int,Int) -> Builder
+fourIntsToString (a,b,c,d) = (show a ++) . (' ' :)
+                           . (show b ++) . (' ' :)
+                           . (show c ++) . (' ' :)
+                           . (show d ++)
 
-tupToString :: Options -> ((Int,Int,Int,Int),String) -> Builder
-tupToString opt ((a,b,c,d),s) = (show a ++) . (' ' :)
-                              . (show b ++) . (' ' :)
-                              . (show c ++) . (' ' :)
-                              . (show d ++) . (' ' :)
-                              . quote opt s -- fixme: quote is not necessary
+tupToString :: OutputOpts -> ((Int,Int,Int,Int),String) -> Builder
+tupToString oopts ((a,b,c,d),s) = (show a ++) . (' ' :)
+                                . (show b ++) . (' ' :)
+                                . (show c ++) . (' ' :)
+                                . (show d ++) . (' ' :)
+                                . quote oopts s -- fixme: quote is not necessary
 
-quote :: Options -> String -> Builder
-quote opt str = ("\"" ++) .  (quote' str ++) . ("\"" ++)
+quote :: OutputOpts -> String -> Builder
+quote oopts str = ("\"" ++) .  (quote' str ++) . ("\"" ++)
   where
-    lsep = lineSep opt
+    lsep = lineSep oopts
     quote' [] = []
     quote' (x:xs)
       | x == '\n' = lsep   ++ quote' xs
@@ -128,13 +128,13 @@ quote opt str = ("\"" ++) .  (quote' str ++) . ("\"" ++)
 ----------------------------------------------------------------
 
 -- Empty result to be returned when no info can be gathered
-emptyResult :: Monad m => Options -> m String
-emptyResult opt = return $ convert opt ([] :: [String])
+emptyResult :: Monad m => OutputOpts -> m String
+emptyResult oopts = return $ convert oopts ([] :: [String])
 
 -- Return an emptyResult when Nothing
-whenFound :: (Monad m, ToString b) => Options -> m (Maybe a) -> (a -> b) -> m String
-whenFound opt from f = maybe (emptyResult opt) (return . convert opt . f) =<< from
+whenFound :: (Monad m, ToString b) => OutputOpts -> m (Maybe a) -> (a -> b) -> m String
+whenFound oopts from f = maybe (emptyResult oopts) (return . convert oopts . f) =<< from
 
 -- Return an emptyResult when Nothing, inside a monad
-whenFound' :: (Monad m, ToString b) => Options -> m (Maybe a) -> (a -> m b) -> m String
-whenFound' opt from f = maybe (emptyResult opt) (\x -> do y <- f x ; return (convert opt y)) =<< from
+whenFound' :: (Monad m, ToString b) => OutputOpts -> m (Maybe a) -> (a -> m b) -> m String
+whenFound' oopts from f = maybe (emptyResult oopts) (\x -> do y <- f x ; return (convert oopts y)) =<< from

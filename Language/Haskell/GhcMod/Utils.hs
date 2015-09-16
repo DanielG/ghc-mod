@@ -25,14 +25,17 @@ module Language.Haskell.GhcMod.Utils (
 
 import Control.Applicative
 import Data.Char
+import qualified Data.Map as M
+import Data.Maybe (fromMaybe)
+import Data.Either (rights)
+import Data.List (inits)
 import Exception
 import Language.Haskell.GhcMod.Error
+import Language.Haskell.GhcMod.Types
 import Language.Haskell.GhcMod.Monad.Types
-import System.Directory (getCurrentDirectory, setCurrentDirectory, doesFileExist,
-                         getTemporaryDirectory, canonicalizePath)
+import System.Directory
 import System.Environment
-import System.FilePath (splitDrive, takeDirectory, takeFileName, pathSeparators,
-                        (</>))
+import System.FilePath
 import System.IO.Temp (createTempDirectory)
 import System.Process (readProcess)
 import Text.Printf
@@ -157,3 +160,61 @@ canonFilePath f = do
   e <- doesFileExist p
   when (not e) $ error $ "canonFilePath: not a file: " ++ p
   return p
+
+withMappedFile :: (IOish m, GmState m, GmEnv m) =>
+                  forall a. FilePath -> (FilePath -> m a) -> m a
+withMappedFile file action = getCanonicalFileNameSafe file >>= lookupMMappedFile >>= runWithFile
+  where
+    runWithFile (Just to) = action $ fmPath to
+    runWithFile _ = action file
+
+getCanonicalFileNameSafe :: (IOish m, GmEnv m) => FilePath -> m FilePath
+getCanonicalFileNameSafe fn = do
+  let fn' = normalise fn
+  pl <- liftIO $ rights <$> (mapM ((try :: IO FilePath -> IO (Either SomeException FilePath)) . canonicalizePath . joinPath) $ reverse $ inits $ splitPath' fn')
+  return $
+    if (length pl > 0)
+    then joinPath $ (head pl):(drop (length pl - 1) (splitPath fn'))
+    else error "Current dir doesn't seem to exist?"
+  where
+#if __GLASGOW_HASKELL__ < 710
+    splitPath' = (".":) . splitPath
+#else
+    splitPath' = splitPath
+#endif
+
+mkRevRedirMapFunc :: (Functor m, GmState m, GmEnv m) => m (FilePath -> FilePath)
+mkRevRedirMapFunc = do
+  rm <- M.fromList <$> map (uncurry mf) <$> M.toList <$> getMMappedFiles
+  crdl <- cradle
+  return $ \key ->
+    fromMaybe key
+    $ makeRelative (cradleRootDir crdl)
+    <$> M.lookup key rm
+  where
+    mf :: FilePath -> FileMapping -> (FilePath, FilePath)
+    mf from to = (fmPath to, from)
+
+findFilesWith' :: (FilePath -> IO Bool) -> [FilePath] -> String -> IO [FilePath]
+findFilesWith' _ [] _ = return []
+findFilesWith' f (d:ds) fileName = do
+    let file = d </> fileName
+    exist <- doesFileExist file
+    b <- if exist then f file else return False
+    if b then do
+               files <- findFilesWith' f ds fileName
+               return $ file : files
+        else findFilesWith' f ds fileName
+
+
+-- Copyright   :  (c) The University of Glasgow 2001
+-- | Make a path absolute by prepending the current directory (if it isn't
+-- already absolute) and applying 'normalise' to the result.
+--
+-- If the path is already absolute, the operation never fails.  Otherwise, the
+-- operation may fail with the same exceptions as 'getCurrentDirectory'.
+makeAbsolute' :: FilePath -> IO FilePath
+makeAbsolute' = (normalise <$>) . absolutize
+  where absolutize path -- avoid the call to `getCurrentDirectory` if we can
+          | isRelative path = (</> path) <$> getCurrentDirectory
+          | otherwise       = return path

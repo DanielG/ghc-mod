@@ -3,12 +3,13 @@
 module Language.Haskell.GhcMod (
   -- * Cradle
     Cradle(..)
-  , ProjectType(..)
+  , Project(..)
   , findCradle
   -- * Options
   , Options(..)
   , LineSeparator(..)
   , OutputStyle(..)
+  , FileMapping(..)
   , defaultOptions
   -- * Logging
   , GmLogLevel
@@ -61,8 +62,10 @@ module Language.Haskell.GhcMod (
   , gmErrStr
   , gmPutStrLn
   , gmErrStrLn
-  , gmUnsafePutStrLn
-  , gmUnsafeErrStrLn
+  -- * FileMapping
+  , loadMappedFile
+  , loadMappedFileSource
+  , unloadMappedFile
   ) where
 
 import Language.Haskell.GhcMod.Boot
@@ -84,3 +87,4 @@ import Language.Haskell.GhcMod.PkgDoc
 import Language.Haskell.GhcMod.Types
 import Language.Haskell.GhcMod.Target
 import Language.Haskell.GhcMod.Output
+import Language.Haskell.GhcMod.FileMapping

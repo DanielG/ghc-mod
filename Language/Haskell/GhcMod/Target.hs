@@ -20,14 +20,10 @@ module Language.Haskell.GhcMod.Target where
 import Control.Arrow
 import Control.Applicative
 import Control.Category ((.))
-import Control.Monad.Reader (runReaderT)
 import GHC
 import GHC.Paths (libdir)
-import StaticFlags
 import SysTools
 import DynFlags
-import HscMain
-import HscTypes
 
 import Language.Haskell.GhcMod.DynFlags
 import Language.Haskell.GhcMod.Monad.Types
@@ -39,7 +35,10 @@ import Language.Haskell.GhcMod.Error
 import Language.Haskell.GhcMod.Logging
 import Language.Haskell.GhcMod.Types
 import Language.Haskell.GhcMod.Utils as U
-
+import Language.Haskell.GhcMod.FileMapping
+import Language.Haskell.GhcMod.LightGhc
+import Language.Haskell.GhcMod.CustomPackageDb
+import Language.Haskell.GhcMod.Output
 
 import Data.Maybe
 import Data.Monoid as Monoid
@@ -53,41 +52,14 @@ import Data.Map (Map)
 import qualified Data.Map  as Map
 import Data.Set (Set)
 import qualified Data.Set as Set
+import Data.Function (on)
 import Distribution.Helper
 import Prelude hiding ((.))
 
 import System.Directory
 import System.FilePath
 
-withLightHscEnv :: forall m a. IOish m
-    => [GHCOption] -> (HscEnv -> m a) -> m a
-withLightHscEnv opts action = gbracket initEnv teardownEnv action
- where
-   teardownEnv :: HscEnv -> m ()
-   teardownEnv env = liftIO $ do
-       let dflags = hsc_dflags env
-       cleanTempFiles dflags
-       cleanTempDirs dflags
-
-   initEnv :: m HscEnv
-   initEnv = liftIO $ do
-     initStaticOpts
-     settings <- initSysTools (Just libdir)
-     dflags  <- initDynFlags (defaultDynFlags settings)
-     env <- newHscEnv dflags
-     dflags' <- runLightGhc env $ do
-         -- HomeModuleGraph and probably all other clients get into all sorts of
-         -- trouble if the package state isn't initialized here
-         _ <- setSessionDynFlags =<< addCmdOpts opts =<< getSessionDynFlags
-         getSessionDynFlags
-     newHscEnv dflags'
-
-runLightGhc :: HscEnv -> LightGhc a -> IO a
-runLightGhc env action = do
-  renv <- newIORef env
-  flip runReaderT renv $ unLightGhc action
-
-runGmPkgGhc :: (IOish m, GmEnv m, GmState m, GmLog m) => LightGhc a -> m a
+runGmPkgGhc :: (IOish m, Gm m) => LightGhc a -> m a
 runGmPkgGhc action = do
     pkgOpts <- packageGhcOptions
     withLightHscEnv pkgOpts $ \env -> liftIO $ runLightGhc env action
@@ -97,8 +69,13 @@ initSession :: IOish m
 initSession opts mdf = do
    s <- gmsGet
    case gmGhcSession s of
-     Just GmGhcSession {..} -> when (gmgsOptions /= opts) $ putNewSession s
-     Nothing -> putNewSession s
+     Just GmGhcSession {..} | gmgsOptions /= opts-> do
+         gmLog GmDebug "initSession" $ text "Flags changed, creating new session"
+         putNewSession s
+     Just _ -> return ()
+     Nothing -> do
+         gmLog GmDebug "initSession" $ text "Session not initialized, creating new one"
+         putNewSession s
 
  where
    putNewSession s = do
@@ -146,27 +123,33 @@ runGmlTWith :: IOish m
                  -> GhcModT m b
 runGmlTWith efnmns' mdf wrapper action = do
     crdl <- cradle
-    Options { ghcUserOptions } <- options
+    Options { optGhcUserOptions } <- options
 
     let (fns, mns) = partitionEithers efnmns'
         ccfns = map (cradleCurrentDir crdl </>) fns
-    cfns <- liftIO $ mapM canonicalizePath ccfns
+    cfns <- mapM getCanonicalFileNameSafe ccfns
     let serfnmn = Set.fromList $ map Right mns ++ map Left cfns
     opts <- targetGhcOptions crdl serfnmn
-    let opts' = opts ++ ["-O0"] ++ ghcUserOptions
+    let opts' = opts ++ ["-O0"] ++ optGhcUserOptions
 
     gmVomit
       "session-ghc-options"
       (text "Initializing GHC session with following options")
       (intercalate " " $ map (("\""++) . (++"\"")) opts')
 
-    initSession opts' $
-        setModeSimple >>> setEmptyLogger >>> mdf
+    GhcModLog { gmLogLevel = Just level } <- gmlHistory
+    putErr <- gmErrStrIO
+    let setLogger | level >= GmDebug = setDebugLogger putErr
+                  | otherwise = setEmptyLogger
 
-    let rfns = map (makeRelative $ cradleRootDir crdl) cfns
+    initSession opts' $
+        setModeSimple >>> setLogger >>> mdf
+
+    mappedStrs <- getMMappedFilePaths
+    let targetStrs = mappedStrs ++ map moduleNameString mns ++ cfns
 
     unGmlT $ wrapper $ do
-      loadTargets (map moduleNameString mns ++ rfns)
+      loadTargets opts targetStrs
       action
 
 targetGhcOptions :: forall m. IOish m
@@ -176,9 +159,10 @@ targetGhcOptions :: forall m. IOish m
 targetGhcOptions crdl sefnmn = do
     when (Set.null sefnmn) $ error "targetGhcOptions: no targets given"
 
-    case cradleProjectType crdl of
-      CabalProject -> cabalOpts crdl
-      _ -> sandboxOpts crdl
+    case cradleProject crdl of
+      proj
+          | isCabalHelperProject proj -> cabalOpts crdl
+          | otherwise -> sandboxOpts crdl
  where
    zipMap f l = l `zip` (f `map` l)
 
@@ -197,7 +181,7 @@ targetGhcOptions crdl sefnmn = do
             -- First component should be ChLibName, if no lib will take lexically first exe.
             let cns = filter (/= ChSetupHsName) $ Map.keys mcs
 
-            gmLog GmWarning "" $ strDoc $ "Could not find a component assignment, falling back to picking library component in cabal file."
+            gmLog GmDebug "" $ strDoc $ "Could not find a component assignment, falling back to picking library component in cabal file."
             return $ gmcGhcOpts $ fromJust $ Map.lookup (head cns) mcs
           else do
             when noCandidates $
@@ -206,12 +190,13 @@ targetGhcOptions crdl sefnmn = do
             let cn = pickComponent candidates
             return $ gmcGhcOpts $ fromJust $ Map.lookup cn mcs
 
-resolvedComponentsCache :: IOish m => Cached (GhcModT m) GhcModState
+resolvedComponentsCache :: IOish m => FilePath ->
+    Cached (GhcModT m) GhcModState
     [GmComponent 'GMCRaw (Set.Set ModulePath)]
     (Map.Map ChComponentName (GmComponent 'GMCResolved (Set.Set ModulePath)))
-resolvedComponentsCache = Cached {
+resolvedComponentsCache distdir = Cached {
     cacheLens = Just (lGmcResolvedComponents . lGmCaches),
-    cacheFile  = resolvedComponentsCacheFile,
+    cacheFile = resolvedComponentsCacheFile distdir,
     cachedAction = \tcfs comps ma -> do
         Cradle {..} <- cradle
         let iifsM = invalidatingInputFiles tcfs
@@ -222,13 +207,13 @@ resolvedComponentsCache = Cached {
                 Just iifs ->
                   let
                       filterOutSetupCfg =
-                          filter (/= cradleRootDir </> setupConfigPath)
+                          filter (/= cradleRootDir </> setupConfigPath distdir)
                       changedFiles = filterOutSetupCfg iifs
                   in if null changedFiles
                        then Nothing
                        else Just $ map Left changedFiles
             setupChanged = maybe False
-                                 (elem $ cradleRootDir </> setupConfigPath)
+                                 (elem $ cradleRootDir </> setupConfigPath distdir)
                                  iifsM
         case (setupChanged, ma) of
           (False, Just mcs) -> gmsGet >>= \s -> gmsPut s { gmComponents = mcs }
@@ -245,7 +230,7 @@ resolvedComponentsCache = Cached {
               text "files changed" <+>: changedDoc
 
         mcs <- resolveGmComponents mums comps
-        return (setupConfigPath:flatten mcs , mcs)
+        return (setupConfigPath distdir : flatten mcs , mcs)
  }
 
  where
@@ -253,7 +238,8 @@ resolvedComponentsCache = Cached {
            -> [FilePath]
    flatten = Map.elems
       >>> map (gmcHomeModuleGraph >>> gmgGraph
-               >>> Map.elems
+               >>> (Map.keysSet &&& Map.elems)
+               >>> uncurry insert
                >>> map (Set.map mpPath)
                >>> Set.unions
               )
@@ -286,36 +272,37 @@ findCandidates scns = foldl1 Set.intersection scns
 pickComponent :: Set ChComponentName -> ChComponentName
 pickComponent scn = Set.findMin scn
 
-packageGhcOptions :: (Applicative m, IOish m, GmEnv m, GmState m, GmLog m)
+packageGhcOptions :: (Applicative m, IOish m, Gm m)
                   => m [GHCOption]
 packageGhcOptions = do
     crdl <- cradle
-    case cradleProjectType crdl of
-      CabalProject -> getGhcMergedPkgOptions
-      _ -> sandboxOpts crdl
+    case cradleProject crdl of
+      proj
+          | isCabalHelperProject proj -> getGhcMergedPkgOptions
+          | otherwise -> sandboxOpts crdl
 
 -- also works for plain projects!
-sandboxOpts :: MonadIO m => Cradle -> m [String]
+sandboxOpts :: (IOish m, GmEnv m) => Cradle -> m [String]
 sandboxOpts crdl = do
-    pkgDbStack <- liftIO $ getSandboxPackageDbStack $ cradleRootDir crdl
-    let pkgOpts = ghcDbStackOpts pkgDbStack
+    mCusPkgDb <- getCustomPkgDbStack
+    pkgDbStack <- liftIO $ getSandboxPackageDbStack
+    let pkgOpts = ghcDbStackOpts $ fromMaybe pkgDbStack mCusPkgDb
     return $ ["-i" ++ d | d <- [wdir,rdir]] ++ pkgOpts ++ ["-Wall"]
   where
     (wdir, rdir) = (cradleCurrentDir crdl, cradleRootDir crdl)
 
-    getSandboxPackageDbStack :: FilePath
-                      -- ^ Project Directory (where the cabal.sandbox.config
-                      -- file would be if it exists)
-                      -> IO [GhcPkgDb]
-    getSandboxPackageDbStack cdir =
-        ([GlobalDb] ++) . maybe [UserDb] return <$> getSandboxDb cdir
+    getSandboxPackageDbStack :: IO [GhcPkgDb]
+    getSandboxPackageDbStack =
+        ([GlobalDb] ++) . maybe [UserDb] return <$> getSandboxDb crdl
 
-resolveGmComponent :: (IOish m, GmLog m, GmEnv m)
+resolveGmComponent :: (IOish m, Gm m)
     => Maybe [CompilationUnit] -- ^ Updated modules
     -> GmComponent 'GMCRaw (Set ModulePath)
     -> m (GmComponent 'GMCResolved (Set ModulePath))
 resolveGmComponent mums c@GmComponent {..} = do
-  withLightHscEnv ghcOpts $ \env -> do
+  distDir <- cradleDistDir <$> cradle
+  gmLog GmDebug "resolveGmComponent" $ text $ show $ ghcOpts distDir
+  withLightHscEnv (ghcOpts distDir) $ \env -> do
     let srcDirs = if null gmcSourceDirs then [""] else gmcSourceDirs
     let mg = gmcHomeModuleGraph
     let simp = gmcEntrypoints
@@ -329,17 +316,18 @@ resolveGmComponent mums c@GmComponent {..} = do
 
     return $ c { gmcEntrypoints = simp, gmcHomeModuleGraph = mg' }
 
- where ghcOpts = concat [
+ where ghcOpts distDir = concat [
            gmcGhcSrcOpts,
            gmcGhcLangOpts,
-           [ "-optP-include", "-optP" ++ macrosHeaderPath ]
+           [ "-optP-include", "-optP" ++ distDir </> macrosHeaderPath ]
         ]
 
-resolveEntrypoint :: (IOish m, GmEnv m, GmLog m)
+resolveEntrypoint :: (IOish m, Gm m)
     => Cradle
     -> GmComponent 'GMCRaw ChEntrypoint
     -> m (GmComponent 'GMCRaw (Set ModulePath))
 resolveEntrypoint Cradle {..} c@GmComponent {..} = do
+    gmLog GmDebug "resolveEntrypoint" $ text $ show $ gmcGhcSrcOpts
     withLightHscEnv gmcGhcSrcOpts $ \env -> do
       let srcDirs = if null gmcSourceDirs then [""] else gmcSourceDirs
       eps <- liftIO $ resolveChEntrypoints cradleRootDir gmcEntrypoints
@@ -367,7 +355,8 @@ resolveChEntrypoints srcDir ChSetupEntrypoint = do
 chModToMod :: ChModuleName -> ModuleName
 chModToMod (ChModuleName mn) = mkModuleName mn
 
-resolveModule :: (MonadIO m, GmEnv m, GmLog m) =>
+
+resolveModule :: (IOish m, Gm m) =>
   HscEnv -> [FilePath] -> CompilationUnit -> m (Maybe ModulePath)
 resolveModule env _srcDirs (Right mn) =
     liftIO $ traverse canonicalizeModulePath =<< findModulePath env mn
@@ -377,7 +366,7 @@ resolveModule env srcDirs (Left fn') = do
       Nothing -> return Nothing
       Just fn'' -> do
           fn <-  liftIO $ canonicalizePath fn''
-          emn <-  liftIO $ fileModuleName env fn
+          emn <- fileModuleName env fn
           case emn of
               Left errs -> do
                 gmLog GmWarning ("resolveModule " ++ show fn) $
@@ -399,7 +388,7 @@ resolveModule env srcDirs (Left fn') = do
 
 type CompilationUnit = Either FilePath ModuleName
 
-resolveGmComponents :: (IOish m, GmState m, GmLog m, GmEnv m)
+resolveGmComponents :: (IOish m, Gm m)
     => Maybe [CompilationUnit]
         -- ^ Updated modules
     -> [GmComponent 'GMCRaw (Set ModulePath)]
@@ -427,12 +416,19 @@ resolveGmComponents mumns cs = do
    same f a b = (f a) == (f b)
 
 -- | Set the files as targets and load them.
-loadTargets :: IOish m => [String] -> GmlT m ()
-loadTargets filesOrModules = do
-    gmLog GmDebug "loadTargets" $
-          text "Loading" <+>: fsep (map text filesOrModules)
+loadTargets :: IOish m => [GHCOption] -> [FilePath] -> GmlT m ()
+loadTargets opts targetStrs = do
+    targets' <-
+        withLightHscEnv opts $ \env ->
+                liftM (nubBy ((==) `on` targetId))
+                  (mapM ((`guessTarget` Nothing) >=> mapFile env) targetStrs)
+              >>= mapM relativize
 
-    targets <- forM filesOrModules (flip guessTarget Nothing)
+    let targets = map (\t -> t { targetAllowObjCode = False }) targets'
+
+    gmLog GmDebug "loadTargets" $
+          text "Loading" <+>: fsep (map (text . showTargetId) targets)
+
     setTargets targets
 
     mode <- getCompilerMode
@@ -449,7 +445,17 @@ loadTargets filesOrModules = do
             loadTargets' Intelligent
           else
             loadTargets' Simple
+
+    gmLog GmDebug "loadTargets" $ text "Loading done"
+
   where
+    relativize (Target (TargetFile filePath phase) taoc src) = do
+      crdl <- cradle
+      let tid = TargetFile relativeFilePath phase
+          relativeFilePath = makeRelative (cradleRootDir crdl) filePath
+      return $ Target tid taoc src
+    relativize tgt = return tgt
+
     loadTargets' Simple = do
         void $ load LoadAllTargets
         mapM_ (parseModule >=> typecheckModule >=> desugarModule) =<< getModuleGraph
@@ -459,15 +465,18 @@ loadTargets filesOrModules = do
         void $ setSessionDynFlags (setModeIntelligent df)
         void $ load LoadAllTargets
 
-    resetTargets targets = do
+    resetTargets targets' = do
         setTargets []
         void $ load LoadAllTargets
-        setTargets targets
+        setTargets targets'
 
     setIntelligent = do
         newdf <- setModeIntelligent <$> getSessionDynFlags
         void $ setSessionDynFlags newdf
         setCompilerMode Intelligent
+
+    showTargetId (Target (TargetModule s) _ _) = moduleNameString s
+    showTargetId (Target (TargetFile s _) _ _) = s
 
 needsFallback :: ModuleGraph -> Bool
 needsFallback = any $ \ms ->
@@ -483,4 +492,4 @@ cabalResolvedComponents :: (IOish m) =>
 cabalResolvedComponents = do
     crdl@(Cradle{..}) <- cradle
     comps <- mapM (resolveEntrypoint crdl) =<< getComponents
-    cached cradleRootDir resolvedComponentsCache comps
+    cached cradleRootDir (resolvedComponentsCache cradleDistDir) comps

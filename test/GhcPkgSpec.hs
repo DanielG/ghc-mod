@@ -1,20 +1,13 @@
 module GhcPkgSpec where
 
-import Control.Arrow
-import Control.Applicative
-import Distribution.Helper
 import Language.Haskell.GhcMod.GhcPkg
-import Language.Haskell.GhcMod.PathsAndFiles
 import Language.Haskell.GhcMod.CabalHelper
-import Language.Haskell.GhcMod.Error
+import Language.Haskell.GhcMod.CustomPackageDb
 import Test.Hspec
-import System.Directory
-import System.FilePath
-import System.Process (readProcess, system)
+import System.Process (system)
 
 import Dir
 import TestUtils
-import Data.List
 
 spec :: Spec
 spec = do

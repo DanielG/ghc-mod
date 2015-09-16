@@ -17,7 +17,6 @@
 {-# LANGUAGE ExistentialQuantification #-}
 module Language.Haskell.GhcMod.Error (
     GhcModError(..)
-  , GMConfigStateFileError(..)
   , GmError
   , gmeDoc
   , ghcExceptionDoc
@@ -33,7 +32,7 @@ module Language.Haskell.GhcMod.Error (
   , module Control.Exception
   ) where
 
-import Control.Arrow
+import Control.Arrow hiding ((<+>))
 import Control.Exception
 import Control.Monad.Error hiding (MonadIO, liftIO)
 import qualified Data.Set as Set
@@ -53,37 +52,6 @@ import Language.Haskell.GhcMod.Pretty
 
 type GmError m = MonadError GhcModError m
 
-gmCsfeDoc :: GMConfigStateFileError -> Doc
-gmCsfeDoc GMConfigStateFileNoHeader = text $
-        "Saved package config file header is missing. "
-        ++ "Try re-running the 'configure' command."
-
-gmCsfeDoc GMConfigStateFileBadHeader = text $
-        "Saved package config file header is corrupt. "
-        ++ "Try re-running the 'configure' command."
-
-gmCsfeDoc GMConfigStateFileNoParse = text $
-        "Saved package config file body is corrupt. "
-        ++ "Try re-running the 'configure' command."
-
-gmCsfeDoc GMConfigStateFileMissing = text $
-    "Run the 'configure' command first."
-
--- gmCsfeDoc (ConfigStateFileBadVersion oldCabal oldCompiler _) = text $
---         "You need to re-run the 'configure' command. "
---         ++ "The version of Cabal being used has changed (was "
---         ++ display oldCabal ++ ", now "
---         ++ display currentCabalId ++ ")."
---         ++ badCompiler
---       where
---         badCompiler
---           | oldCompiler == currentCompilerId = ""
---           | otherwise =
---               " Additionally the compiler is different (was "
---               ++ display oldCompiler ++ ", now "
---               ++ display currentCompilerId
---               ++ ") which is probably the cause of the problem."
-
 gmeDoc :: GhcModError -> Doc
 gmeDoc e = case e of
     GMENoMsg ->
@@ -91,12 +59,11 @@ gmeDoc e = case e of
     GMEString msg ->
         text msg
     GMECabalConfigure msg ->
-        text "Configuring cabal project failed: " <> gmeDoc msg
-    GMECabalFlags msg ->
-        text "Retrieval of the cabal configuration flags failed: " <> gmeDoc msg
-    GMECabalComponent cn ->
-        text "Cabal component " <> quotes (gmComponentNameDoc cn)
-                                <> text " could not be found."
+        text "Configuring cabal project failed" <+>: gmeDoc msg
+    GMEStackConfigure msg ->
+        text "Configuring stack project failed" <+>: gmeDoc msg
+    GMEStackBootstrap msg ->
+        text "Bootstrapping stack project environment failed" <+>: gmeDoc msg
     GMECabalCompAssignment ctx ->
         text "Could not find a consistent component assignment for modules:" $$
           (nest 4 $ foldr ($+$) empty $ map ctxDoc ctx) $$
@@ -125,21 +92,23 @@ gmeDoc e = case e of
         compsDoc sc | Set.null sc = text "has no known components"
         compsDoc sc = fsep $ punctuate comma $
                         map gmComponentNameDoc $ Set.toList sc
-
-    GMEProcess cmd args emsg -> let c = showCommandForUser cmd args in
+    GMEProcess _fn cmd args emsg -> let c = showCommandForUser cmd args in
         case emsg of
           Right err ->
              text (printf "Launching system command `%s` failed: " c)
                   <> gmeDoc err
-          Left (_out, _err, rv) -> text $
+          Left rv -> text $
              printf "Launching system command `%s` failed (exited with %d)" c rv
     GMENoCabalFile ->
         text "No cabal file found."
     GMETooManyCabalFiles cfs ->
         text $ "Multiple cabal files found. Possible cabal files: \""
                ++ intercalate "\", \"" cfs ++"\"."
-    GMECabalStateFile csfe ->
-        gmCsfeDoc csfe
+    GMEWrongWorkingDirectory projdir cdir ->
+        (text $ "You must run ghc-mod in the project directory as returned by `ghc-mod root`.")
+          <+> text "Currently in:" <+> showDoc cdir
+          <> text "but should be in" <+> showDoc projdir
+          <> text "."
 
 ghcExceptionDoc :: GhcException -> Doc
 ghcExceptionDoc e@(CmdLineError _) =
@@ -161,7 +130,6 @@ ghcExceptionDoc (Panic msg) = vcat $ map text $ lines $ printf "\
 
 ghcExceptionDoc e = text $ showGhcException e ""
 
-
 liftMaybe :: MonadError e m => e -> m (Maybe a) -> m a
 liftMaybe e action = maybe (throwError e) return =<< action
 
@@ -174,7 +142,6 @@ modifyError f action = action `catchError` \e -> throwError $ f e
 infixr 0 `modifyError'`
 modifyError' :: MonadError e m => m a -> (e -> e) -> m a
 modifyError' = flip modifyError
-
 
 modifyGmError :: (MonadIO m, ExceptionMonad m)
               => (GhcModError -> GhcModError) -> m a -> m a

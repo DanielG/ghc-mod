@@ -10,6 +10,17 @@
 (require 'ghc-comp)
 (require 'ghc-info)
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;
+;;; Customize Variables
+;;;
+
+(defcustom ghc-doc-browser-function #'browse-url
+  "Function used to browse documentation."
+  :type '(radio (function-item browse-url)
+                (function-item ghc-browse-url-safari))
+  :group 'ghc-mod)
+
 ;;; Code:
 
 (defun ghc-browse-document (&optional haskell-org)
@@ -30,32 +41,41 @@
 (ghc-defstruct pkg-ver-path pkg ver path)
 
 (defun ghc-resolve-document-path (mod)
-  (with-temp-buffer
-    (ghc-call-process ghc-module-command nil t nil "doc" mod)
-    (goto-char (point-min))
-    (when (looking-at "^\\([^ ]+\\)-\\([0-9]*\\(\\.[0-9]+\\)*\\) \\(.*\\)$")
-      (ghc-make-pkg-ver-path
-       :pkg (match-string-no-properties 1)
-       :ver (match-string-no-properties 2)
-       :path (match-string-no-properties 4)))))
+  (let ((root ghc-process-root))
+    (with-temp-buffer
+      (let ((default-directory root))
+	(ghc-call-process ghc-module-command nil t nil "doc" mod))
+      (goto-char (point-min))
+      (when (looking-at "^\\([^ ]+\\)-\\([0-9]*\\(\\.[0-9]+\\)*\\) \\(.*\\)$")
+	(ghc-make-pkg-ver-path
+	 :pkg (match-string-no-properties 1)
+	 :ver (match-string-no-properties 2)
+	 :path (match-string-no-properties 4))))))
 
 (defconst ghc-doc-local-format "file://%s/%s.html")
 (defconst ghc-doc-hackage-format
   "http://hackage.haskell.org/packages/archive/%s/%s/doc/html/%s.html")
 
+(defun ghc-browse-url-safari (uri &rest _args)
+"Open a URI in Safari using AppleScript. This preserves anchors."
+  (let ((script (format "
+tell application \"Safari\"
+  open location \"%s\"
+  activate
+end tell" uri)))
+    (do-applescript script)))
+
 (defun ghc-display-document (pkg-ver-path mod haskell-org &optional symbol)
-  (let* ((mod- (ghc-replace-character mod ?. ?-))
-	 (pkg  (ghc-pkg-ver-path-get-pkg pkg-ver-path))
+  (let* ((pkg  (ghc-pkg-ver-path-get-pkg pkg-ver-path))
+         (mod- (ghc-replace-character mod ?. ?-))
 	 (ver  (ghc-pkg-ver-path-get-ver pkg-ver-path))
 	 (path (ghc-pkg-ver-path-get-path pkg-ver-path))
-	 (pkg-with-ver (format "%s-%s" pkg ver))
 	 (local (format ghc-doc-local-format path mod-))
 	 (remote (format ghc-doc-hackage-format pkg ver mod-))
 	 (file (format "%s/%s.html" path mod-))
 	 (url0 (if (or haskell-org (not (file-exists-p file))) remote local))
 	 (url (if symbol (ghc-add-anchor url0 symbol) url0)))
-    ;; Mac's "open" removes the anchor from "file://", sigh.
-    (browse-url url)))
+    (funcall ghc-doc-browser-function url)))
 
 (defun ghc-add-anchor (url symbol)
   (let ((case-fold-search nil))

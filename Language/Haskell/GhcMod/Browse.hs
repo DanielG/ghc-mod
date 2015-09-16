@@ -80,7 +80,7 @@ processExports :: (G.GhcMonad m, MonadIO m, ExceptionMonad m)
 processExports opt minfo = do
   let
     removeOps
-      | operators opt = id
+      | optOperators opt = id
       | otherwise = filter (isNotOp . getOccString)
   mapM (showExport opt minfo) $ removeOps $ G.modInfoExports minfo
 
@@ -90,17 +90,17 @@ showExport opt minfo e = do
   mtype' <- mtype
   return $ concat $ catMaybes [mqualified, Just $ formatOp $ getOccString e, mtype']
   where
-    mqualified = (G.moduleNameString (G.moduleName $ G.nameModule e) ++ ".") `justIf` qualified opt
+    mqualified = (G.moduleNameString (G.moduleName $ G.nameModule e) ++ ".") `justIf` optQualified opt
     mtype :: m (Maybe String)
     mtype
-      | detailed opt = do
+      | optDetailed opt = do
         tyInfo <- G.modInfoLookupName minfo e
         -- If nothing found, load dependent module and lookup global
         tyResult <- maybe (inOtherModule e) (return . Just) tyInfo
         dflag <- G.getSessionDynFlags
         return $ do
           typeName <- tyResult >>= showThing dflag
-          (" :: " ++ typeName) `justIf` detailed opt
+          (" :: " ++ typeName) `justIf` optDetailed opt
       | otherwise = return Nothing
     formatOp nm
       | null nm    = error "formatOp"

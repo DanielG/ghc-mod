@@ -2,6 +2,7 @@ dist/
 elisp/*.elc
 *~
 /.cabal-sandbox/
+/.stack-work/
 add-source-timestamps
 package.cache
 cabal.sandbox.config

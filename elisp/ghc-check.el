@@ -66,14 +66,10 @@ nil            do not display errors/warnings.
   (interactive)
   ;; Only check syntax of visible buffers
   (when (and (buffer-file-name)
-	     (file-exists-p (buffer-file-name))
-	     (get-buffer-window (current-buffer) t))
-    (with-timeout
-        (10 (error "ghc process may have hung or exited with an error"))
-      (while ghc-process-running (sleep-for 0.1)))
+	     (file-exists-p (buffer-file-name)))
     (ghc-with-process (ghc-check-send)
-                      'ghc-check-callback
-                      (lambda () (setq mode-line-process " -:-")))))
+		      'ghc-check-callback
+		      (lambda () (setq mode-line-process " -:-")))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -136,7 +132,7 @@ nil            do not display errors/warnings.
 (defun ghc-to-info (errs)
   ;; [^\t] to include \n.
   (let ((regex "^\\([^\n]*\\):\\([0-9]+\\):\\([0-9]+\\): *\\([^\t]+\\)")
-	info infos)
+	infos)
     (dolist (err errs (nreverse infos))
       (when (string-match regex err)
 	(let* ((file (expand-file-name (match-string 1 err) ghc-process-root)) ;; for Windows
@@ -174,7 +170,7 @@ nil            do not display errors/warnings.
 	  ;; If this is a bottleneck for a large code, let's fix.
 	  (goto-char (point-min))
 	  (cond
-	   ((string= (file-truename ofile) (file-truename file))
+	   ((file-equal-p ofile file)
             (if hole
               (progn
                 (forward-line (1- line))
@@ -186,7 +182,8 @@ nil            do not display errors/warnings.
                 (forward-line (1- line))
                 (forward-char (1- coln))
                 (setq beg (point))
-                (skip-chars-forward "^[:space:]" (line-end-position))
+		(forward-sexp)
+                ;; (skip-chars-forward "^[:space:]" (line-end-position))
                 (setq end (point)))))
 	   (t
 	    (setq beg (point))
@@ -294,14 +291,13 @@ nil            do not display errors/warnings.
   (let ((file-msgs (ghc-get-only-holes)))
     (if (null file-msgs)
 	(message "No holes")
-      (let ((file (ghc-file-msgs-get-file file-msgs))
-	    (msgs (ghc-file-msgs-get-msgs file-msgs)))
+      (let ((msgs (ghc-file-msgs-get-msgs file-msgs)))
 	(ghc-display
 	 nil
 	 (lambda ()
            (progn
 	     (mapc (lambda (x) (insert x "\n\n")) msgs)
-             (buttonize-buffer)) ))))))
+             (buttonize-buffer))))))))
 
 (defun ghc-display-holes-to-minibuf ()
   (let ((file-msgs (ghc-get-only-holes)))
@@ -419,6 +415,10 @@ nil            do not display errors/warnings.
 	  (let ((old (match-string 1 data))
 		(new (match-string 2 data)))
 	    (ghc-check-replace old new)))
+	 ((string-match "Found hole .\\(_[_[:alnum:]]*\\). with type: \\([^\t\n]+\\)" data)
+	  (let ((old (match-string 1 data))
+		(new (match-string 2 data)))
+	    (ghc-check-replace old new)))
 	 (t
 	  (setq ret nil)))))))
 
@@ -474,7 +474,7 @@ nil            do not display errors/warnings.
 	(forward-line)
 	(re-search-forward "^$" nil t)
 	(insert fn)
-	(dotimes (i arity)
+	(dotimes (_i arity)
 	  (insert " _"))
 	(insert  " = error \"" fn "\"\n")))))
 

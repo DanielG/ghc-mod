@@ -6,6 +6,7 @@ module Language.Haskell.GhcMod.GhcPkg (
   , ghcDbOpt
   , getPackageDbStack
   , getPackageCachePaths
+  , getGhcPkgProgram
   ) where
 
 import Config (cProjectVersion, cTargetPlatformString, cProjectVersionInt)
@@ -21,6 +22,8 @@ import Language.Haskell.GhcMod.Types
 import Language.Haskell.GhcMod.Monad.Types
 import Language.Haskell.GhcMod.CabalHelper
 import Language.Haskell.GhcMod.PathsAndFiles
+import Language.Haskell.GhcMod.CustomPackageDb
+import Language.Haskell.GhcMod.Stack
 
 ghcVersion :: Int
 ghcVersion = read cProjectVersionInt
@@ -59,18 +62,31 @@ ghcDbOpt (PackageDb pkgDb)
 
 ----------------------------------------------------------------
 
+getGhcPkgProgram :: IOish m => GhcModT m FilePath
+getGhcPkgProgram = do
+  crdl <- cradle
+  progs <- optPrograms <$> options
+  case cradleProject crdl of
+    (StackProject senv) -> do
+        Just ghcPkg <- getStackGhcPkgPath senv
+        return ghcPkg
+    _ ->
+        return $ ghcPkgProgram progs
+
 getPackageDbStack :: IOish m => GhcModT m [GhcPkgDb]
 getPackageDbStack = do
   crdl <- cradle
   mCusPkgStack <- getCustomPkgDbStack
-  stack <- case cradleProjectType crdl of
+  stack <- case cradleProject crdl of
     PlainProject ->
         return [GlobalDb, UserDb]
     SandboxProject -> do
-        Just db <- liftIO $ getSandboxDb $ cradleRootDir crdl
+        Just db <- liftIO $ getSandboxDb crdl
         return $ [GlobalDb, db]
     CabalProject ->
         getCabalPackageDbStack
+    (StackProject StackEnv {..}) ->
+        return $ map PackageDb [seSnapshotPkgDb, seLocalPkgDb]
   return $ fromMaybe stack mCusPkgStack
 
 getPackageCachePaths :: IOish m => FilePath -> GhcModT m [FilePath]

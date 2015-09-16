@@ -67,3 +67,12 @@ spec = do
                 _ <- system "cabal build"
                 res <- runD $ checkSyntax ["Main.hs"]
                 res `shouldBe` "Preprocessed.hsc:3:1:Warning: Top-level binding with no type signature: warning :: ()\n"
+
+        it "Uses the right qualification style" $ do
+            withDirectory_ "test/data/nice-qualification" $ do
+                res <- runD $ checkSyntax ["NiceQualification.hs"]
+#if __GLASGOW_HASKELL__ >= 708
+                res `shouldBe` "NiceQualification.hs:4:8:Couldn't match expected type \8216IO ()\8217 with actual type \8216[Char]\8217\NULIn the expression: \"wrong type\"\NULIn an equation for \8216main\8217: main = \"wrong type\"\n"
+#else
+                res `shouldBe` "NiceQualification.hs:4:8:Couldn't match expected type `IO ()' with actual type `[Char]'\NULIn the expression: \"wrong type\"\NULIn an equation for `main': main = \"wrong type\"\n"
+#endif

@@ -2,6 +2,7 @@
 module TargetSpec where
 
 import Language.Haskell.GhcMod.Target
+import Language.Haskell.GhcMod.LightGhc
 import Language.Haskell.GhcMod.Gap
 import Test.Hspec
 

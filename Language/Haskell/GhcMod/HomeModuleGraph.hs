@@ -54,12 +54,14 @@ import Data.Set (Set)
 import qualified Data.Set as Set
 import System.FilePath
 import System.Directory
+import System.IO
 import Prelude
 
 import Language.Haskell.GhcMod.Logging
 import Language.Haskell.GhcMod.Logger
 import Language.Haskell.GhcMod.Monad.Types
 import Language.Haskell.GhcMod.Types
+import Language.Haskell.GhcMod.Utils (withMappedFile)
 import Language.Haskell.GhcMod.Gap (parseModuleHeader)
 
 -- | Turn module graph into a graphviz dot file
@@ -124,7 +126,7 @@ pruneUnreachable smp0 gmg@GmModuleGraph {..} = let
 collapseMaybeSet :: Maybe (Set a) -> Set a
 collapseMaybeSet = maybe Set.empty id
 
-homeModuleGraph :: (IOish m, GmLog m, GmEnv m)
+homeModuleGraph :: (IOish m, Gm m)
     => HscEnv -> Set ModulePath -> m GmModuleGraph
 homeModuleGraph env smp = updateHomeModuleGraph env mempty smp smp
 
@@ -159,7 +161,7 @@ canonicalizeModuleGraph GmModuleGraph {..} = liftIO $ do
    fmg (mp, smp) = liftM2 (,) (canonicalizeModulePath mp) (Set.fromList <$> mapM canonicalizeModulePath (Set.toList smp))
 
 
-updateHomeModuleGraph :: (IOish m, GmLog m, GmEnv m)
+updateHomeModuleGraph :: (IOish m, Gm m)
                       => HscEnv
                       -> GmModuleGraph
                       -> Set ModulePath -- ^ Initial set of modules
@@ -185,7 +187,7 @@ mkModuleMap :: Set ModulePath -> Map ModuleName ModulePath
 mkModuleMap smp = Map.fromList $ map (mpModule &&& id) $ Set.toList smp
 
 updateHomeModuleGraph'
-    :: forall m. (MonadState S m, IOish m, GmLog m, GmEnv m)
+    :: forall m. (MonadState S m, IOish m, Gm m)
     => HscEnv
     -> Set ModulePath     -- ^ Initial set of modules
     -> m ()
@@ -224,6 +226,7 @@ updateHomeModuleGraph' env smp0 = do
             gmLog GmWarning ("preprocess " ++ show fn) $ Monoid.mempty $+$ (vcat $ map text errs)
             return Nothing
 
+
    imports :: ModulePath -> String -> DynFlags -> MaybeT m (Set ModulePath)
    imports mp@ModulePath {..} src dflags =
        case parseModuleHeader src dflags mpPath of
@@ -239,25 +242,28 @@ updateHomeModuleGraph' env smp0 = do
                    $ map unLoc hsmodImports
            liftIO $ Set.fromList . catMaybes <$> mapM (findModulePath env) mns
 
-preprocessFile :: MonadIO m =>
+preprocessFile :: (IOish m, GmEnv m, GmState m) =>
   HscEnv -> FilePath -> m (Either [String] ([String], (DynFlags, FilePath)))
 preprocessFile env file =
-  liftIO $ withLogger' env $ \setDf -> do
-    let env' = env { hsc_dflags = setDf (hsc_dflags env) }
-    preprocess env' (file, Nothing)
+  withLogger' env $ \setDf -> do
+    withMappedFile file $ \fn -> do
+      let env' = env { hsc_dflags = setDf (hsc_dflags env) }
+      liftIO $ preprocess env' (fn, Nothing)
 
-fileModuleName ::
-  HscEnv -> FilePath -> IO (Either [String] (Maybe ModuleName))
-fileModuleName env fn = handle (\(_ :: SomeException) -> return $ Right Nothing) $ do
+fileModuleName :: (IOish m, GmEnv m, GmState m) =>
+  HscEnv -> FilePath -> m (Either [String] (Maybe ModuleName))
+fileModuleName env fn = do
+    let handler = liftIO . handle (\(_ :: SomeException) -> return $ Right Nothing)
     ep <- preprocessFile env fn
     case ep of
       Left errs -> do
         return $ Left errs
-      Right (_warns, (dflags, procdFile)) -> do
+      Right (_warns, (dflags, procdFile)) -> leftM (errBagToStrList env) =<< handler (do
         src <- readFile procdFile
         case parseModuleHeader src dflags procdFile of
-          Left errs -> do
-            return $ Left $ errBagToStrList env errs
+          Left errs -> return $ Left errs
           Right (_, lmdl) -> do
             let HsModule {..} = unLoc lmdl
-            return $ Right $ unLoc <$> hsmodName
+            return $ Right $ unLoc <$> hsmodName)
+  where
+    leftM f = either (return . Left <=< f) (return . Right)

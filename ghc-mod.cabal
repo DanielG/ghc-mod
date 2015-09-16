@@ -1,5 +1,5 @@
 Name:                   ghc-mod
-Version:                5.3.0.0
+Version:                5.4.0.0
 Author:                 Kazu Yamamoto <kazu@iij.ad.jp>,
                         Daniel Gröber <dxld@darkboxed.org>,
                         Alejandro Serrano <trupill@gmail.com>
@@ -32,6 +32,7 @@ Data-Files:             LICENSE COPYING.BSD3 COPYING.AGPL3
 Extra-Source-Files:     ChangeLog
                         SetupCompat.hs
                         NotCPP/*.hs
+                        NotCPP/COPYING
                         test/data/annotations/*.hs
                         test/data/broken-cabal/*.cabal
                         test/data/broken-cabal/cabal.sandbox.config.in
@@ -81,17 +82,25 @@ Extra-Source-Files:     ChangeLog
                         test/data/cabal-preprocessors/*.cabal
                         test/data/cabal-preprocessors/*.hs
                         test/data/cabal-preprocessors/*.hsc
+                        test/data/file-mapping/*.hs
+                        test/data/file-mapping/preprocessor/*.hs
+                        test/data/file-mapping/lhs/*.lhs
+                        test/data/nice-qualification/*.hs
+                        test/data/stack-project/stack.yaml
+                        test/data/stack-project/new-template.cabal
+                        test/data/stack-project/*.hs
+                        test/data/stack-project/app/*.hs
+                        test/data/stack-project/src/*.hs
+                        test/data/stack-project/test/*.hs
 
 Library
   Default-Language:     Haskell2010
   GHC-Options:          -Wall -fno-warn-deprecations
   Default-Extensions:   ScopedTypeVariables, RecordWildCards, NamedFieldPuns,
                         ConstraintKinds, FlexibleContexts,
-                        DataKinds, KindSignatures, TypeOperators
+                        DataKinds, KindSignatures, TypeOperators, ViewPatterns
   Exposed-Modules:      Language.Haskell.GhcMod
                         Language.Haskell.GhcMod.Internal
-  Other-Modules:        Paths_ghc_mod
-                        Utils
                         Language.Haskell.GhcMod.Boot
                         Language.Haskell.GhcMod.Browse
                         Language.Haskell.GhcMod.CabalHelper
@@ -101,10 +110,13 @@ Library
                         Language.Haskell.GhcMod.Check
                         Language.Haskell.GhcMod.Convert
                         Language.Haskell.GhcMod.Cradle
+                        Language.Haskell.GhcMod.CustomPackageDb
                         Language.Haskell.GhcMod.Debug
+                        Language.Haskell.GhcMod.DebugLogger
                         Language.Haskell.GhcMod.Doc
                         Language.Haskell.GhcMod.DynFlags
                         Language.Haskell.GhcMod.Error
+                        Language.Haskell.GhcMod.FileMapping
                         Language.Haskell.GhcMod.FillSig
                         Language.Haskell.GhcMod.Find
                         Language.Haskell.GhcMod.Flag
@@ -114,6 +126,7 @@ Library
                         Language.Haskell.GhcMod.Info
                         Language.Haskell.GhcMod.Lang
                         Language.Haskell.GhcMod.Lint
+                        Language.Haskell.GhcMod.LightGhc
                         Language.Haskell.GhcMod.Logger
                         Language.Haskell.GhcMod.Logging
                         Language.Haskell.GhcMod.Modules
@@ -125,15 +138,18 @@ Library
                         Language.Haskell.GhcMod.Pretty
                         Language.Haskell.GhcMod.Read
                         Language.Haskell.GhcMod.SrcUtils
+                        Language.Haskell.GhcMod.Stack
                         Language.Haskell.GhcMod.Target
                         Language.Haskell.GhcMod.Types
                         Language.Haskell.GhcMod.Utils
                         Language.Haskell.GhcMod.World
+  Other-Modules:        Paths_ghc_mod
+                        Utils
   Build-Depends:        base >= 4.0 && < 5
                       , bytestring
                       , cereal >= 0.4
                       , containers
-                      , cabal-helper == 0.5.* && >= 0.5.1.0
+                      , cabal-helper == 0.6.* && >= 0.6.0.0
                       , deepseq
                       , directory
                       , filepath
@@ -156,7 +172,9 @@ Library
                       , haskell-src-exts
                       , text
                       , djinn-ghc >= 0.0.2.2
-                      , fclabels
+                      , fclabels == 2.0.*
+                      , extra == 1.4.*
+                      , pipes == 4.1.*
   if impl(ghc < 7.8)
     Build-Depends:      convertible
   if impl(ghc < 7.5)
@@ -168,7 +186,7 @@ Executable ghc-mod
   Default-Language:     Haskell2010
   Main-Is:              GHCMod.hs
   Other-Modules:        Paths_ghc_mod
-  GHC-Options:          -Wall -fno-warn-deprecations
+  GHC-Options:          -Wall -fno-warn-deprecations -threaded
   Default-Extensions:   ConstraintKinds, FlexibleContexts
   HS-Source-Dirs:       src
   Build-Depends:        base >= 4.0 && < 5
@@ -181,6 +199,7 @@ Executable ghc-mod
                       , mtl >= 2.0
                       , ghc
                       , ghc-mod
+                      , fclabels == 2.0.*
 
 Executable ghc-modi
   Default-Language:     Haskell2010
@@ -216,7 +235,7 @@ Test-Suite spec
   Default-Language:     Haskell2010
   Default-Extensions:   ScopedTypeVariables, RecordWildCards, NamedFieldPuns,
                         ConstraintKinds, FlexibleContexts,
-                        DataKinds, KindSignatures, TypeOperators
+                        DataKinds, KindSignatures, TypeOperators, ViewPatterns
   Main-Is:              Main.hs
   Hs-Source-Dirs:       test, .
   Ghc-Options:          -Wall -fno-warn-deprecations
@@ -227,6 +246,7 @@ Test-Suite spec
                         Spec
                         TestUtils
                         BrowseSpec
+                        CustomPackageDbSpec
                         CheckSpec
                         FlagSpec
                         InfoSpec
@@ -236,6 +256,7 @@ Test-Suite spec
                         MonadSpec
                         PathsAndFilesSpec
                         HomeModuleGraphSpec
+                        FileMappingSpec
 
   Build-Depends:        hspec >= 2.0.0
   if impl(ghc == 7.4.*)
@@ -246,4 +267,4 @@ Test-Suite spec
 
 Source-Repository head
   Type:                 git
-  Location:             git://github.com/kazu-yamamoto/ghc-mod.git
+  Location:             https://github.com/kazu-yamamoto/ghc-mod.git

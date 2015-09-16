@@ -9,7 +9,8 @@ import Language.Haskell.GhcMod.Error
 import Test.Hspec
 import System.Directory
 import System.FilePath
-import System.Process (readProcess, system)
+import System.Process
+import Prelude
 
 import Dir
 import TestUtils
@@ -56,6 +57,12 @@ spec = do
               then forM_ opts (\o -> o `shouldContain` ["-no-user-package-conf","-package-conf", cwd </> "test/data/cabal-project/.cabal-sandbox/"++ghcSandboxPkgDbDir bp])
               else forM_ opts (\o -> o `shouldContain` ["-no-user-package-db","-package-db",cwd </> "test/data/cabal-project/.cabal-sandbox/"++ghcSandboxPkgDbDir bp])
 
+        it "handles stack project" $ do
+            let tdir = "test/data/stack-project"
+            [ghcOpts] <- map gmcGhcOpts . filter ((==ChExeName "new-template-exe") . gmcName) <$> runD' tdir getComponents
+            let pkgs = pkgOptions ghcOpts
+            sort pkgs `shouldBe` ["base", "bytestring"]
+
         it "extracts build dependencies" $ do
             let tdir = "test/data/cabal-project"
             opts <- map gmcGhcOpts <$> runD' tdir getComponents
@@ -72,25 +79,3 @@ spec = do
             let ghcOpts = head opts
                 pkgs = pkgOptions ghcOpts
             pkgs `shouldBe` ["Cabal","base"]
-
-    describe "getCustomPkgDbStack" $ do
-        it "works" $ do
-            let tdir = "test/data/custom-cradle"
-            Just stack <- runD' tdir $ getCustomPkgDbStack
-            stack `shouldBe` [ GlobalDb
-                             , UserDb
-                             , PackageDb "package-db-a"
-                             , PackageDb "package-db-b"
-                             , PackageDb "package-db-c"
-                             ]
-
-    describe "getPackageDbStack'" $ do
-        it "fixes out of sync custom pkg-db stack" $ do
-            withDirectory_ "test/data/custom-cradle" $ do
-                _ <- system "cabal configure"
-                (s, s') <- runD $ do
-                    Just stack <- getCustomPkgDbStack
-                    withCabal $ do
-                        stack' <- getCabalPackageDbStack
-                        return (stack, stack')
-                s' `shouldBe` s

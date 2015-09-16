@@ -20,7 +20,9 @@ module Language.Haskell.GhcMod.PathsAndFiles (
   ) where
 
 import Config (cProjectVersion)
+import Control.Arrow (second)
 import Control.Applicative
+import Control.Exception as E
 import Control.Monad
 import Data.List
 import Data.Char
@@ -32,7 +34,6 @@ import System.FilePath
 import System.Process
 
 import Language.Haskell.GhcMod.Types
-import Language.Haskell.GhcMod.Error
 import Language.Haskell.GhcMod.Caching
 import qualified Language.Haskell.GhcMod.Utils as U
 import Utils (mightExist)
@@ -71,13 +72,18 @@ findCabalFile dir = do
    appendDir :: DirPath -> [FileName] -> [FilePath]
    appendDir d fs = (d </>) `map` fs
 
+findStackConfigFile :: FilePath -> IO (Maybe FilePath)
+findStackConfigFile dir = do
+    fs <- map (second listToMaybe) <$> findFileInParentsP  (=="stack.yaml") dir
+    case find (isJust . snd) fs of
+      Nothing           -> return Nothing
+      Just (d, Just a)  -> return $ Just $ d </> a
+      Just (_, Nothing) -> error "findStackConfigFile"
+
 -- | Get path to sandbox config file
-getSandboxDb :: FilePath
-             -- ^ Path to the cabal package root directory (containing the
-             -- @cabal.sandbox.config@ file)
-             -> IO (Maybe GhcPkgDb)
-getSandboxDb d = do
-  mConf <- traverse readFile =<< mightExist (d </> "cabal.sandbox.config")
+getSandboxDb :: Cradle -> IO (Maybe GhcPkgDb)
+getSandboxDb crdl = do
+  mConf <-traverse readFile =<< mightExist (sandboxConfigFile crdl)
   bp <- buildPlatform readProcess
   return $ PackageDb . fixPkgDbVer bp <$> (extractSandboxDbDir =<< mConf)
 
@@ -127,7 +133,7 @@ takeExtension' p =
 -- it's parent directories.
 findFileInParentsP :: (FilePath -> Bool) -> FilePath
                    -> IO [(DirPath, [FileName])]
-findFileInParentsP p dir =
+findFileInParentsP p dir' = U.makeAbsolute' dir' >>= \dir ->
     getFilesP p `zipMapM` parents dir
 
 -- | @getFilesP p dir@. Find all __files__ satisfying @p@ in @.cabal@ in @dir@.
@@ -145,7 +151,7 @@ findCabalSandboxDir dir = do
              _ -> Nothing
 
  where
-   isSandboxConfig = (==sandboxConfigFile)
+   isSandboxConfig = (==sandboxConfigFileName)
 
 zipMapM :: Monad m => (a -> m c) -> [a] -> m [(a,c)]
 zipMapM f as = mapM (\a -> liftM ((,) a) $ f a) as
@@ -179,17 +185,22 @@ parents dir' =
 ----------------------------------------------------------------
 
 setupConfigFile :: Cradle -> FilePath
-setupConfigFile crdl = cradleRootDir crdl </> setupConfigPath
+setupConfigFile crdl =
+    cradleRootDir crdl </> setupConfigPath (cradleDistDir crdl)
 
-sandboxConfigFile :: FilePath
-sandboxConfigFile = "cabal.sandbox.config"
+sandboxConfigFile :: Cradle -> FilePath
+sandboxConfigFile crdl = cradleRootDir crdl </> sandboxConfigFileName
+
+sandboxConfigFileName :: String
+sandboxConfigFileName = "cabal.sandbox.config"
 
 -- | Path to 'LocalBuildInfo' file, usually @dist/setup-config@
-setupConfigPath :: FilePath
-setupConfigPath = "dist/setup-config" -- localBuildInfoFile defaultDistPref
+setupConfigPath :: FilePath -> FilePath
+setupConfigPath dist = dist </> "setup-config"
+ -- localBuildInfoFile defaultDistPref
 
 macrosHeaderPath :: FilePath
-macrosHeaderPath = "dist/build/autogen/cabal_macros.h"
+macrosHeaderPath = "build/autogen/cabal_macros.h"
 
 ghcSandboxPkgDbDir :: String -> String
 ghcSandboxPkgDbDir buildPlatf = do
@@ -205,20 +216,25 @@ symbolCache crdl = cradleTempDir crdl </> symbolCacheFile
 symbolCacheFile :: String
 symbolCacheFile = "ghc-mod.symbol-cache"
 
-resolvedComponentsCacheFile :: String
-resolvedComponentsCacheFile = setupConfigPath <.> "ghc-mod.resolved-components"
+resolvedComponentsCacheFile :: FilePath -> FilePath
+resolvedComponentsCacheFile dist =
+    setupConfigPath dist <.> "ghc-mod.resolved-components"
 
-cabalHelperCacheFile :: String
-cabalHelperCacheFile = setupConfigPath <.> "ghc-mod.cabal-components"
+cabalHelperCacheFile :: FilePath -> FilePath
+cabalHelperCacheFile dist =
+    setupConfigPath dist <.> "ghc-mod.cabal-components"
 
-mergedPkgOptsCacheFile :: String
-mergedPkgOptsCacheFile = setupConfigPath <.> "ghc-mod.package-options"
+mergedPkgOptsCacheFile :: FilePath -> FilePath
+mergedPkgOptsCacheFile dist =
+    setupConfigPath dist <.> "ghc-mod.package-options"
 
-pkgDbStackCacheFile :: String
-pkgDbStackCacheFile = setupConfigPath <.> "ghc-mod.package-db-stack"
+pkgDbStackCacheFile :: FilePath -> FilePath
+pkgDbStackCacheFile dist =
+    setupConfigPath dist <.> "ghc-mod.package-db-stack"
 
--- | @findCustomPackageDbFile dir@. Searches for a @.ghc-mod.cradle@ file in @dir@.
--- If it exists in the given directory it is returned otherwise @findCradleFile@ returns @Nothing@
+-- | @findCustomPackageDbFile dir@. Searches for a @ghc-mod.package-db-stack@ file in @dir@.
+-- If it exists in the given directory it is returned otherwise @findCradleFile@
+-- returns @Nothing@
 findCustomPackageDbFile :: FilePath -> IO (Maybe FilePath)
 findCustomPackageDbFile directory = do
     let path = directory </> "ghc-mod.package-db-stack"

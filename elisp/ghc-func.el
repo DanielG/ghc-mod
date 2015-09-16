@@ -18,9 +18,10 @@
 (defun ghc-replace-character (string from to)
   "Replace characters equal to FROM to TO in STRING."
   (let ((ret (copy-sequence string)))
-    (dotimes (cnt (length ret) ret)
+    (dotimes (cnt (length ret))
       (if (char-equal (aref ret cnt) from)
-	  (aset ret cnt to)))))
+	  (aset ret cnt to)))
+    ret))
 
 (defun ghc-replace-character-buffer (from-c to-c)
   (let ((from (char-to-string from-c))
@@ -66,7 +67,7 @@
     (dolist (lst lol)
       (dolist (key lst)
 	(puthash key key hash)))
-    (maphash (lambda (key val) (ghc-add ret key)) hash)
+    (maphash (lambda (key _val) (ghc-add ret key)) hash)
     ret))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -90,8 +91,9 @@
     (condition-case nil
 	(let ((m (set-marker (make-marker) 1 (current-buffer)))
 	      ret)
-	  (dotimes (i n (nreverse ret))
-	    (ghc-add ret (read m))))
+	  (dotimes (_i n)
+	    (ghc-add ret (read m)))
+	  (nreverse ret))
       (error ()))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -108,10 +110,11 @@
 
 (defun ghc-keyword-number-pair (spec)
   (let ((len (length spec)) key ret)
-    (dotimes (i len (nreverse ret))
+    (dotimes (i len)
       (setq key (intern (concat ":" (symbol-name (car spec)))))
       (setq ret (cons (cons key i) ret))
-      (setq spec (cdr spec)))))
+      (setq spec (cdr spec)))
+    (nreverse ret)))
 
 (defmacro ghc-defstruct (type &rest spec)
   `(progn
@@ -204,12 +207,13 @@
 (defun ghc-run-ghc-mod (cmds &optional prog)
   (let ((target (or prog ghc-module-command)))
     (ghc-executable-find target
-      (let ((cdir default-directory))
+      (let ((cdir (or ghc-process-root  ;; ghc-mod version/debug
+		      default-directory))) ;; ghc-mod root
 	(with-temp-buffer
-	  (cd cdir)
-	  (apply 'ghc-call-process target nil t nil
-		 (append (ghc-make-ghc-options) cmds))
-	  (buffer-substring (point-min) (1- (point-max))))))))
+	  (let ((default-directory cdir))
+	    (apply 'ghc-call-process target nil t nil
+		   (append (ghc-make-ghc-options) cmds))
+	    (buffer-substring (point-min) (1- (point-max)))))))))
 
 (defmacro ghc-executable-find (cmd &rest body)
   ;; (declare (indent 1))

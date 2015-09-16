@@ -4,16 +4,18 @@ module Language.Haskell.GhcMod.Gap (
     Language.Haskell.GhcMod.Gap.ClsInst
   , mkTarget
   , withStyle
+  , GmLogAction
   , setLogAction
   , getSrcSpan
   , getSrcFile
-  , withContext
+  , withInteractiveContext
   , fOptions
   , toStringBuffer
   , showSeverityCaption
   , setCabalPkg
   , setHideAllPackages
   , setDeferTypeErrors
+  , setDeferTypedHoles
   , setWarnTypedHoles
   , setDumpSplices
   , isDumpSplices
@@ -41,6 +43,7 @@ module Language.Haskell.GhcMod.Gap (
   , lookupModulePackageInAllPackages
   , Language.Haskell.GhcMod.Gap.isSynTyCon
   , parseModuleHeader
+  , mkErrStyle'
   ) where
 
 import Control.Applicative hiding (empty)
@@ -67,6 +70,7 @@ import TcType
 import Var (varType)
 import System.Directory
 
+import qualified Name
 import qualified InstEnv
 import qualified Pretty
 import qualified StringBuffer as SB
@@ -132,9 +136,13 @@ withStyle = withPprStyleDoc
 withStyle _ = withPprStyleDoc
 #endif
 
-setLogAction :: DynFlags
-             -> (DynFlags -> Severity -> SrcSpan -> PprStyle -> SDoc -> IO ())
-             -> DynFlags
+#if __GLASGOW_HASKELL__ >= 706
+type GmLogAction = LogAction
+#else
+type GmLogAction = DynFlags -> LogAction
+#endif
+
+setLogAction :: DynFlags -> GmLogAction -> DynFlags
 setLogAction df f =
 #if __GLASGOW_HASKELL__ >= 706
     df { log_action = f }
@@ -211,8 +219,8 @@ fileModSummary file' = do
         (Just file==) <$> canonicalizePath `traverse` ml_hs_file (ms_location m)
     return ms
 
-withContext :: GhcMonad m => m a -> m a
-withContext action = gbracket setup teardown body
+withInteractiveContext :: GhcMonad m => m a -> m a
+withInteractiveContext action = gbracket setup teardown body
   where
     setup = getContext
     teardown = setCtx
@@ -220,31 +228,23 @@ withContext action = gbracket setup teardown body
         topImports >>= setCtx
         action
     topImports = do
-        mss <- getModuleGraph
-        mns <- map modName <$> filterM isTop mss
-        let ii = map IIModule mns
+        ms <- filterM moduleIsInterpreted =<< map ms_mod <$> getModuleGraph
+        let iis = map (IIModule . modName) ms
 #if __GLASGOW_HASKELL__ >= 704
-        return ii
+        return iis
 #else
-        return (ii,[])
+        return (iis,[])
 #endif
-    isTop mos = lookupMod mos ||> returnFalse
-    lookupMod mos = lookupModule (ms_mod_name mos) Nothing >> return True
-    returnFalse = return False
 #if __GLASGOW_HASKELL__ >= 706
-    modName = moduleName . ms_mod
+    modName = moduleName
     setCtx = setContext
 #elif __GLASGOW_HASKELL__ >= 704
-    modName = ms_mod
+    modName = id
     setCtx = setContext
 #else
     modName = ms_mod
     setCtx = uncurry setContext
 #endif
-
--- | Try the left action, if an IOException occurs try the right action.
-(||>) :: ExceptionMonad m => m a -> m a -> m a
-x ||> y = x `gcatch` (\(_ :: IOException) -> y)
 
 showSeverityCaption :: Severity -> String
 #if __GLASGOW_HASKELL__ >= 706
@@ -293,6 +293,13 @@ setDeferTypeErrors dflag = dopt_set dflag Opt_DeferTypeErrors
 setDeferTypeErrors = id
 #endif
 
+setDeferTypedHoles :: DynFlags -> DynFlags
+#if __GLASGOW_HASKELL__ >= 710
+setDeferTypedHoles dflag = gopt_set dflag Opt_DeferTypedHoles
+#else
+setDeferTypedHoles = id
+#endif
+
 setWarnTypedHoles :: DynFlags -> DynFlags
 #if __GLASGOW_HASKELL__ >= 708
 setWarnTypedHoles dflag = wopt_set dflag Opt_WarnTypedHoles
@@ -328,8 +335,8 @@ filterOutChildren get_thing xs
   where
     implicits = mkNameSet [getName t | x <- xs, t <- implicitTyThings (get_thing x)]
 
-infoThing :: GhcMonad m => Expression -> m SDoc
-infoThing (Expression str) = do
+infoThing :: GhcMonad m => (FilePath -> FilePath) -> Expression -> m SDoc
+infoThing m (Expression str) = do
     names <- parseName str
 #if __GLASGOW_HASKELL__ >= 708
     mb_stuffs <- mapM (getInfo False) names
@@ -338,30 +345,45 @@ infoThing (Expression str) = do
     mb_stuffs <- mapM getInfo names
     let filtered = filterOutChildren (\(t,_f,_i) -> t) (catMaybes mb_stuffs)
 #endif
-    return $ vcat (intersperse (text "") $ map (pprInfo False) filtered)
+    return $ vcat (intersperse (text "") $ map (pprInfo m False) filtered)
 
 #if __GLASGOW_HASKELL__ >= 708
-pprInfo :: Bool -> (TyThing, GHC.Fixity, [ClsInst], [FamInst]) -> SDoc
-pprInfo _ (thing, fixity, insts, famInsts)
-    = pprTyThingInContextLoc thing
+pprInfo :: (FilePath -> FilePath) -> Bool -> (TyThing, GHC.Fixity, [ClsInst], [FamInst]) -> SDoc
+pprInfo m _ (thing, fixity, insts, famInsts)
+    = pprTyThingInContextLoc' thing
    $$ show_fixity fixity
    $$ InstEnv.pprInstances insts
    $$ pprFamInsts famInsts
-  where
-    show_fixity fx
-      | fx == defaultFixity = Outputable.empty
-      | otherwise           = ppr fx <+> ppr (getName thing)
 #else
-pprInfo :: PrintExplicitForalls -> (TyThing, GHC.Fixity, [ClsInst]) -> SDoc
-pprInfo pefas (thing, fixity, insts)
-    = pprTyThingInContextLoc pefas thing
+pprInfo :: (FilePath -> FilePath) -> PrintExplicitForalls -> (TyThing, GHC.Fixity, [ClsInst]) -> SDoc
+pprInfo m pefas (thing, fixity, insts)
+    = pprTyThingInContextLoc' pefas thing
    $$ show_fixity fixity
    $$ vcat (map pprInstance insts)
+#endif
   where
     show_fixity fx
       | fx == defaultFixity = Outputable.empty
       | otherwise           = ppr fx <+> ppr (getName thing)
+#if __GLASGOW_HASKELL__ >= 708
+    pprTyThingInContextLoc' thing' = hang (pprTyThingInContext thing') 2
+                                        (char '\t' <> ptext (sLit "--") <+> loc)
+                         where loc = ptext (sLit "Defined") <+> pprNameDefnLoc' (getName thing')
+#else
+    pprTyThingInContextLoc' pefas thing' = hang (pprTyThingInContext pefas thing') 2
+                                    (char '\t' <> ptext (sLit "--") <+> loc)
+                               where loc = ptext (sLit "Defined") <+> pprNameDefnLoc' (getName thing')
 #endif
+    pprNameDefnLoc' name
+      = case Name.nameSrcLoc name of
+           RealSrcLoc s -> ptext (sLit "at") <+> ppr (subst s)
+           UnhelpfulLoc s
+             | Name.isInternalName name || Name.isSystemName name
+             -> ptext (sLit "at") <+> ftext s
+             | otherwise
+             -> ptext (sLit "in") <+> quotes (ppr (nameModule name))
+      where subst s = mkRealSrcLoc (realFP s) (srcLocLine s) (srcLocCol s)
+            realFP = mkFastString . m . unpackFS . srcLocFile
 
 ----------------------------------------------------------------
 ----------------------------------------------------------------
@@ -535,3 +557,10 @@ parseModuleHeader str dflags filename =
      POk pst rdr_module ->
          let (warns,_) = getMessages pst in
          Right (warns, rdr_module)
+
+mkErrStyle' :: DynFlags -> PrintUnqualified -> PprStyle
+#if __GLASGOW_HASKELL__ >= 706
+mkErrStyle' = Outputable.mkErrStyle
+#else
+mkErrStyle' _ = Outputable.mkErrStyle
+#endif

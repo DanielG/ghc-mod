@@ -18,6 +18,7 @@ data World = World {
     worldPackageCaches :: [TimedFile]
   , worldCabalFile     :: Maybe TimedFile
   , worldCabalConfig   :: Maybe TimedFile
+  , worldCabalSandboxConfig :: Maybe TimedFile
   , worldSymbolCache   :: Maybe TimedFile
   } deriving (Eq, Show)
 
@@ -33,12 +34,14 @@ getCurrentWorld = do
     pkgCaches    <- timedPackageCaches
     mCabalFile   <- liftIO $ timeFile `traverse` cradleCabalFile crdl
     mCabalConfig <- liftIO $ timeMaybe (setupConfigFile crdl)
+    mCabalSandboxConfig <- liftIO $ timeMaybe (sandboxConfigFile crdl)
     mSymbolCache <- liftIO $ timeMaybe (symbolCache crdl)
 
     return World {
         worldPackageCaches = pkgCaches
       , worldCabalFile     = mCabalFile
       , worldCabalConfig   = mCabalConfig
+      , worldCabalSandboxConfig = mCabalSandboxConfig
       , worldSymbolCache   = mSymbolCache
       }
 

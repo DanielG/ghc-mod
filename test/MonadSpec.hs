@@ -9,7 +9,7 @@ spec = do
     describe "When using GhcModT in a do block" $
         it "a pattern match failure causes a call to `fail` on ErrorT in the monad stack" $ do
              (a, _h)
-                 <- runGhcModT defaultOptions $
+                 <- runGmOutDef $ runGhcModT defaultOptions $
                        do
                          Just _ <- return Nothing
                          return "hello"

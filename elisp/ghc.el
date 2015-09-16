@@ -28,7 +28,9 @@
 	       (< emacs-minor-version minor)))
       (error "ghc-mod requires at least Emacs %d.%d" major minor)))
 
-(defconst ghc-version "5.3.0.0")
+(defconst ghc-version "5.4.0.0")
+
+(defgroup ghc-mod '() "ghc-mod customization")
 
 ;; (eval-when-compile
 ;;  (require 'haskell-mode))
@@ -115,11 +117,9 @@
     (define-key haskell-mode-map ghc-next-hole-key   'ghc-goto-next-hole)
     (ghc-comp-init)
     (setq ghc-initialized t)
+    (add-hook 'kill-buffer-hook 'ghc-kill-process)
     (defadvice save-buffer (after ghc-check-syntax-on-save activate)
       "Check syntax with GHC when a haskell-mode buffer is saved."
-      (when (eq 'haskell-mode major-mode) (ghc-check-syntax)))
-    (defadvice switch-to-buffer (after ghc-check-syntax-on-switch-to-buffer activate)
-      "Check syntax with GHC when switching to a haskell-mode buffer."
       (when (eq 'haskell-mode major-mode) (ghc-check-syntax))))
   (ghc-import-module)
   (ghc-check-syntax))
@@ -136,7 +136,8 @@
 	(el-ver ghc-version)
 	(ghc-ver (ghc-run-ghc-mod '("--version") "ghc"))
 	(ghc-mod-ver (ghc-run-ghc-mod '("version")))
-	(path (getenv "PATH")))
+	(path (getenv "PATH"))
+	(debug (ghc-run-ghc-mod '("debug")))) ;; before switching buffers.
     (switch-to-buffer (get-buffer-create "**GHC Debug**"))
     (erase-buffer)
     (insert "Path: check if you are using intended programs.\n")
@@ -148,7 +149,10 @@
     (insert (format "\t %s\n" ghc-mod-ver))
     (insert (format "\t%s\n" ghc-ver))
     (insert "\nEnvironment variables:\n")
-    (insert (format "\tPATH=%s\n" path))))
+    (insert (format "\tPATH=%s\n" path))
+    (insert "\nThe result of \"ghc-mod debug\":\n")
+    (insert debug)
+    (goto-char (point-min))))
 
 (defun ghc-insert-template-or-signature (&optional flag)
   (interactive "P")

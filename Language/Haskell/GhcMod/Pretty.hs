@@ -55,10 +55,15 @@ fnDoc :: FilePath -> Doc
 fnDoc = doubleQuotes . text
 
 showDoc :: Show a => a -> Doc
-showDoc = text . show
+showDoc = strLnDoc . show
 
 warnDoc :: Doc -> Doc
 warnDoc d = text "Warning" <+>: d
+
+strLnDoc :: String -> Doc
+strLnDoc str = doc (dropWhileEnd isSpace str)
+ where
+   doc = lines >>> map text >>> foldr ($+$) empty
 
 strDoc :: String -> Doc
 strDoc str = doc (dropWhileEnd isSpace str)
