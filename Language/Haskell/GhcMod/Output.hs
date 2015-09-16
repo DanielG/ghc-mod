@@ -152,7 +152,7 @@ stdoutGateway (outPf, errPf) chan = do
    sGetLine :: (Maybe String) -> StateT String IO [Line]
    sGetLine mstr' = do
      buf <- get
-     let mstr = (buf++) <$> mstr'
+     let mstr = (buf++) `liftM` mstr'
      case mstr of
        Nothing -> put "" >> return [buf]
        Just "" -> return []
