@@ -186,6 +186,7 @@ Executable ghc-mod
   Default-Language:     Haskell2010
   Main-Is:              GHCMod.hs
   Other-Modules:        Paths_ghc_mod
+                      , CLI
   GHC-Options:          -Wall -fno-warn-deprecations -threaded
   Default-Extensions:   ConstraintKinds, FlexibleContexts
   HS-Source-Dirs:       src
@@ -196,10 +197,12 @@ Executable ghc-mod
                       , pretty
                       , process
                       , split
+                      , text
                       , mtl >= 2.0
                       , ghc
                       , ghc-mod
                       , fclabels == 2.0.*
+                      , optparse-applicative
 
 Executable ghc-modi
   Default-Language:     Haskell2010
