@@ -24,10 +24,7 @@ import Control.Arrow (second)
 import Control.Applicative
 import Control.Exception as E
 import Control.Monad
-import Control.Monad.Trans.Maybe
-import Control.Monad.Trans.Class
 import Data.List
-import Data.List.Split
 import Data.Char
 import Data.Maybe
 import Data.Traversable hiding (mapM)
@@ -35,12 +32,9 @@ import Distribution.Helper (buildPlatform)
 import System.Directory
 import System.FilePath
 import System.Process
-import System.Info.Extra
 
 import Language.Haskell.GhcMod.Types
-import Language.Haskell.GhcMod.Monad.Types
 import Language.Haskell.GhcMod.Caching
-import Language.Haskell.GhcMod.Output
 import qualified Language.Haskell.GhcMod.Utils as U
 import Utils (mightExist)
 import Prelude
