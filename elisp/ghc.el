@@ -30,7 +30,9 @@
 
 (defconst ghc-version "5.4.0.0")
 
-(defgroup ghc-mod '() "ghc-mod customization")
+(defgroup ghc-mod '()
+  "ghc-mod customization"
+  :group 'haskell)
 
 ;; (eval-when-compile
 ;;  (require 'haskell-mode))
