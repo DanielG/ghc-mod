@@ -1,15 +1,8 @@
 {-# LANGUAGE CPP #-}
 module InfoSpec where
 
-import Control.Applicative
 import Data.List (isPrefixOf)
 import Language.Haskell.GhcMod
-#if __GLASGOW_HASKELL__ < 706
-import System.Environment.Executable (getExecutablePath)
-#else
-import System.Environment (getExecutablePath)
-#endif
-import System.FilePath
 import Test.Hspec
 import TestUtils
 import Prelude
@@ -62,5 +55,3 @@ spec = do
             res <- runD' tdir $ info "ImportsTH.hs" $ Expression "bar"
             res `shouldSatisfy` ("bar :: [Char]" `isPrefixOf`)
 
-getDistDir :: IO FilePath
-getDistDir = takeDirectory . takeDirectory . takeDirectory <$> getExecutablePath
