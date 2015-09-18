@@ -39,6 +39,10 @@ spec = do
             res <- runD' tdir $ types False "ImportsTH.hs" 3 8
             res `shouldBe` unlines ["3 8 3 16 \"String -> IO ()\"", "3 8 3 20 \"IO ()\"", "3 1 3 20 \"IO ()\""]
 
+        it "works with a module in Explicit project type" $ bracketTagged $ do
+            res <- runD $ types True "src/Main.hs" 9 10
+            res `shouldBe` unlines ["9 8 9 14 \"() -> IO ()\"\n9 8 9 17 \"IO ()\"\n9 1 9 17 \"IO ()\""]
+
     describe "info" $ do
         it "works for non exported functions" $ do
             let tdir = "test/data/non-exported"
@@ -55,3 +59,6 @@ spec = do
             res <- runD' tdir $ info "ImportsTH.hs" $ Expression "bar"
             res `shouldSatisfy` ("bar :: [Char]" `isPrefixOf`)
 
+        it "works with a module in Explicit project type" $ bracketTagged $ do
+            res <- runD $ info "src/Main.hs" $ Expression "foo"
+            res `shouldSatisfy` ("foo :: Int" `isPrefixOf`)

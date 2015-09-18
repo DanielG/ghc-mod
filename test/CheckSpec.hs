@@ -78,3 +78,15 @@ spec = do
 #else
                 res `shouldBe` "NiceQualification.hs:4:8:Couldn't match expected type `IO ()' with actual type `[Char]'\NULIn the expression: \"wrong type\"\NULIn an equation for `main': main = \"wrong type\"\n"
 #endif
+
+        it "works with explicit options" $ bracketTagged $ do
+            res <- runD $ checkSyntax ["src/Main.hs"]
+            res `shouldBe` ""
+
+        it "emits error with explicit options" $ bracketTagged $ do
+            res <- runD $ checkSyntax ["src/Main2.hs"]
+#if __GLASGOW_HASKELL__ >= 708
+            res `shouldBe` "src/Main2.hs:10:11:Couldn't match expected type \8216Int\8217 with actual type \8216a0 -> a0\8217\NULProbable cause: \8216id\8217 is applied to too few arguments\NULIn the second argument of \8216(+)\8217, namely \8216id\8217\NULIn the expression: 0 + id\n"
+#else
+            res `shouldBe` "src/Main2.hs:10:11:Couldn't match expected type `Int' with actual type `a0 -> a0'\NULIn the second argument of `(+)', namely `id'\NULIn the expression: 0 + id\NULIn an equation for `foo': foo = 0 + id\n"
+#endif

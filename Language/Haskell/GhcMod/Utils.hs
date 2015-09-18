@@ -38,9 +38,7 @@ import System.Environment
 import System.FilePath
 import System.IO.Temp (createTempDirectory)
 import System.Process (readProcess)
-import Text.Printf
 
-import Paths_ghc_mod (getLibexecDir)
 import Utils
 import Prelude
 

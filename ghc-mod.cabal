@@ -94,8 +94,12 @@ Extra-Source-Files:     ChangeLog
                         test/data/stack-project/app/*.hs
                         test/data/stack-project/src/*.hs
                         test/data/stack-project/test/*.hs
-                        bench/data/simple-cabal/simple-cabal.cabal
-                        bench/data/simple-cabal/*.hs
+                        test/data/options-cradle/ghc-mod.options
+                        test/data/options-cradle/ghc-mod.package-db-stack
+                        test/data/options-cradle/package-db-a/package.cache
+                        test/data/options-cradle/package-db-b/package.cache
+                        test/data/options-cradle/package-db-c/package.cache
+                        test/data/options-cradle/src/*.hs
 
 Custom-Setup
   Setup-Depends:         base

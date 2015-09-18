@@ -17,7 +17,6 @@ spec = do
             let tdir = "test/data/custom-cradle"
             Just stack <- runD' tdir $ getCustomPkgDbStack
             stack `shouldBe` [ GlobalDb
-                             , UserDb
                              , PackageDb "package-db-a"
                              , PackageDb "package-db-b"
                              , PackageDb "package-db-c"

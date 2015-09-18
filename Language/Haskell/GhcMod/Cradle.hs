@@ -58,6 +58,7 @@ findSpecCradle Programs { stackProgram, cabalProgram } dir = do
     let cfs = [ stackCradleSpec stackProgram
               , cabalCradle cabalProgram
               , sandboxCradle
+              , explicitCradle
               ]
     cs <- catMaybes <$> mapM (runMaybeT . ($ dir)) cfs
     gcs <- filterM isNotGmCradle cs

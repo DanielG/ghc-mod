@@ -24,7 +24,6 @@ import GHC
 #if __GLASGOW_HASKELL__ >= 800
 import GHC.LanguageExtensions
 #endif
-import GHC.Paths (libdir)
 import SysTools
 import DynFlags
 import HscTypes
@@ -106,7 +105,7 @@ initSession opts mdf = do
    putNewSession s = do
      crdl <- cradle
      nhsc_env_ref <- liftIO . newIORef =<< newLightEnv (initDF crdl)
-     runLightGhc' nhsc_env_ref $ setSessionDynFlags =<< getSessionDynFlags
+     void $ runLightGhc' nhsc_env_ref $ setSessionDynFlags =<< getSessionDynFlags
      gmsPut s { gmGhcSession = Just $ GmGhcSession nhsc_env_ref }
 
 
