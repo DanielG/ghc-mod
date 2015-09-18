@@ -45,7 +45,7 @@ findCradle' dir = run $
 
 findSpecCradle :: (IOish m, GmOut m) => FilePath -> m Cradle
 findSpecCradle dir = do
-    let cfs = [stackCradleSpec, cabalCradle, sandboxCradle]
+    let cfs = [stackCradleSpec, cabalCradle, sandboxCradle, explicitCradle]
     cs <- catMaybes <$> mapM (runMaybeT . ($ dir)) cfs
     gcs <- filterM isNotGmCradle cs
     fillTempDir =<< case gcs of
