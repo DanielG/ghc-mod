@@ -37,7 +37,9 @@ loadMappedFile' :: IOish m => FilePath -> FilePath -> Bool -> GhcModT m ()
 loadMappedFile' from to isTemp = do
   cfn <- getCanonicalFileNameSafe from
   unloadMappedFile' cfn
-  addMMappedFile cfn (FileMapping to isTemp)
+  crdl <- cradle
+  let to' = makeRelative (cradleRootDir crdl) to
+  addMMappedFile cfn (FileMapping to' isTemp)
 
 mapFile :: (IOish m, GmState m, GhcMonad m, GmEnv m) =>
             HscEnv -> Target -> m Target
