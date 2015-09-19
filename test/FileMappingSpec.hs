@@ -163,6 +163,14 @@ spec = do
               mapM_ (uncurry loadMappedFile) fm
               checkSyntax ["File.hs"]
             res `shouldBe` "File.hs:3:1:Warning: Top-level binding with no type signature: main :: IO ()\n"
+        it "works with full path as well" $ do
+          withDirectory_ "test/data/file-mapping/preprocessor" $ do
+            cwd <- getCurrentDirectory
+            let fm = [("File.hs", cwd </> "File_Redir.hs")]
+            res <- run defaultOptions $ do
+              mapM_ (uncurry loadMappedFile) fm
+              checkSyntax ["File.hs"]
+            res `shouldBe` "File.hs:3:1:Warning: Top-level binding with no type signature: main :: IO ()\n"
         it "checks in-memory file" $ do
           withDirectory_ "test/data/file-mapping/preprocessor" $ do
             src <- readFile "File_Redir.hs"
