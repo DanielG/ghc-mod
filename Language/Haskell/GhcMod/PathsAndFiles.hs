@@ -200,7 +200,16 @@ setupConfigPath dist = dist </> "setup-config"
  -- localBuildInfoFile defaultDistPref
 
 macrosHeaderPath :: FilePath
-macrosHeaderPath = "build/autogen/cabal_macros.h"
+macrosHeaderPath = autogenModulesDir </> "cabal_macros.h"
+
+autogenModulePath :: String -> String
+autogenModulePath pkg_name =
+    autogenModulesDir </> ("Paths_" ++ map fixchar pkg_name) <.> ".hs"
+  where fixchar '-' = '_'
+        fixchar c   = c
+
+autogenModulesDir :: FilePath
+autogenModulesDir = "build" </> "autogen"
 
 ghcSandboxPkgDbDir :: String -> String
 ghcSandboxPkgDbDir buildPlatf = do

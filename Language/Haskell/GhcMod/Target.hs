@@ -489,7 +489,7 @@ needsFallback = any $ \ms ->
 
 cabalResolvedComponents :: (IOish m) =>
    GhcModT m (Map ChComponentName (GmComponent 'GMCResolved (Set ModulePath)))
-cabalResolvedComponents = do
+cabalResolvedComponents = withAutogen $ do
     crdl@(Cradle{..}) <- cradle
     comps <- mapM (resolveEntrypoint crdl) =<< getComponents
     cached cradleRootDir (resolvedComponentsCache cradleDistDir) comps
