@@ -172,13 +172,16 @@ withCabal action = do
     mCabalConfig        <- liftIO $ timeMaybe (setupConfigFile crdl)
     mCabalSandboxConfig <- liftIO $ timeMaybe (sandboxConfigFile crdl)
 
+    let haveSetupConfig = isJust mCabalConfig
+
     cusPkgDb <- getCustomPkgDbStack
-    pkgDbStackOutOfSync <- do
-      if isJust mCabalConfig
+    (flgs, pkgDbStackOutOfSync) <- do
+      if haveSetupConfig
         then runCHQuery $ do
+          flgs <- nonDefaultConfigFlags
           pkgDb <- map chPkgToGhcPkg <$> packageDbStack
-          return $ fromMaybe False $ (pkgDb /=) <$> cusPkgDb
-        else return False
+          return (flgs, fromMaybe False $ (pkgDb /=) <$> cusPkgDb)
+        else return ([], False)
 
     when (isSetupConfigOutOfDate mCabalFile mCabalConfig) $
       gmLog GmDebug "" $ strDoc $ "setup configuration is out of date"
@@ -197,9 +200,16 @@ withCabal action = do
           case proj of
             CabalProject -> do
                 gmLog GmDebug "" $ strDoc "reconfiguring Cabal project"
-                cabalReconfigure (optPrograms opts) crdl
+                cabalReconfigure (optPrograms opts) crdl flgs
             StackProject {} -> do
                 gmLog GmDebug "" $ strDoc "reconfiguring Stack project"
+                -- TODO: we could support flags for stack too, but it seems
+                -- you're supposed to put those in stack.yaml so detecting which
+                -- flags to pass down would be more difficult
+
+                -- "--flag PACKAGE:[-]FLAG Override flags set in stack.yaml
+                -- (applies to local packages and extra-deps)"
+
                 stackReconfigure crdl (optPrograms opts)
             _ ->
                 error $ "withCabal: unsupported project type: " ++ show proj
@@ -207,7 +217,7 @@ withCabal action = do
     action
 
  where
-   cabalReconfigure progs crdl = do
+   cabalReconfigure progs crdl flgs = do
      readProc <- gmReadProcess
      withDirectory_ (cradleRootDir crdl) $ do
         cusPkgStack <- maybe [] ((PackageDb "clear"):) <$> getCustomPkgDbStack
@@ -219,8 +229,13 @@ withCabal action = do
                      then [ "--with-ghc-pkg=" ++ T.ghcPkgProgram progs ]
                      else []
                 ++ map pkgDbArg cusPkgStack
-        liftIO $ void $ readProc (T.cabalProgram progs) ("configure":progOpts) ""
+                ++ flagOpt
 
+            toFlag (f, True) = f
+            toFlag (f, False) = '-':f
+            flagOpt = ["--flags", unwords $ map toFlag flgs]
+
+        liftIO $ void $ readProc (T.cabalProgram progs) ("configure":progOpts) ""
    stackReconfigure crdl progs = do
      withDirectory_ (cradleRootDir crdl) $ do
        supported <- haveStackSupport

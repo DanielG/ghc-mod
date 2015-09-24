@@ -70,12 +70,25 @@ spec = do
                 pkgs = pkgOptions ghcOpts
             pkgs `shouldBe` ["Cabal","base","template-haskell"]
 
-        it "uses non default flags" $ do
+        it "uses non default flags and preserves them across reconfigures" $ do
             let tdir = "test/data/cabal-flags"
             _ <- withDirectory_ tdir $
                 readProcess "cabal" ["configure", "-ftest-flag"] ""
 
-            opts <- map gmcGhcOpts <$> runD' tdir getComponents
-            let ghcOpts = head opts
-                pkgs = pkgOptions ghcOpts
-            pkgs `shouldBe` ["Cabal","base"]
+            let test = do
+                  opts <- map gmcGhcOpts <$> runD' tdir getComponents
+                  let ghcOpts = head opts
+                      pkgs = pkgOptions ghcOpts
+                  pkgs `shouldBe` ["Cabal","base"]
+
+            test
+
+            touch $ tdir </> "cabal-flags.cabal"
+
+            test
+
+touch :: FilePath -> IO ()
+touch fn = do
+  f <- readFile fn
+  writeFile (fn <.> "tmp") f
+  renameFile (fn <.> "tmp") fn
