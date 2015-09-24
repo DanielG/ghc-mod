@@ -19,7 +19,7 @@ parseCustomPackageDb src = map parsePkgDb $ filter (not . null) $ lines src
    parsePkgDb "user" = UserDb
    parsePkgDb s = PackageDb s
 
-getCustomPkgDbStack :: (IOish m, GmEnv m) => m (Maybe [GhcPkgDb])
+getCustomPkgDbStack :: (MonadIO m, GmEnv m) => m (Maybe [GhcPkgDb])
 getCustomPkgDbStack = do
     mCusPkgDbFile <- liftIO . (traverse readFile <=< findCustomPackageDbFile) . cradleRootDir =<< cradle
     return $ parseCustomPackageDb <$> mCusPkgDbFile

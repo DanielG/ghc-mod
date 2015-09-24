@@ -143,16 +143,10 @@ withAutogen :: (IOish m, GmEnv m, GmOut m, GmLog m) => m a -> m a
 withAutogen action = do
     gmLog GmDebug "" $ strDoc $ "making sure autogen files exist"
     crdl <- cradle
-    opts <- options
-    readProc <- gmReadProcess
     let projdir = cradleRootDir crdl
         distdir = projdir </> cradleDistDir crdl
 
-    let qe = (defaultQueryEnv projdir distdir) {
-                 qeReadProcess = readProc
-               , qePrograms = helperProgs $ optPrograms opts
-               }
-    (pkgName', _) <- runQuery qe packageId
+    (pkgName', _) <- runCHQuery packageId
 
     mCabalFile          <- liftIO $ timeFile `traverse` cradleCabalFile crdl
     mCabalMacroHeader   <- liftIO $ timeMaybe (distdir </> macrosHeaderPath)
@@ -174,24 +168,17 @@ withAutogen action = do
 withCabal :: (IOish m, GmEnv m, GmOut m, GmLog m) => m a -> m a
 withCabal action = do
     crdl <- cradle
-    opts <- options
-    readProc <- gmReadProcess
-
-    proj <- cradleProject <$> cradle
-    let projdir = cradleRootDir crdl
-        distdir = projdir </> cradleDistDir crdl
-
-    let qe = (defaultQueryEnv projdir distdir) {
-                 qeReadProcess = readProc
-               , qePrograms = helperProgs $ optPrograms opts
-               }
-    pkgDb <- runQuery qe $ map chPkgToGhcPkg <$> packageDbStack
-
     mCabalFile          <- liftIO $ timeFile `traverse` cradleCabalFile crdl
     mCabalConfig        <- liftIO $ timeMaybe (setupConfigFile crdl)
     mCabalSandboxConfig <- liftIO $ timeMaybe (sandboxConfigFile crdl)
 
-    pkgDbStackOutOfSync <- fromMaybe False . (fmap (pkgDb /=)) <$> getCustomPkgDbStack
+    cusPkgDb <- getCustomPkgDbStack
+    pkgDbStackOutOfSync <- do
+      if isJust mCabalConfig
+        then runCHQuery $ do
+          pkgDb <- map chPkgToGhcPkg <$> packageDbStack
+          return $ fromMaybe False $ (pkgDb /=) <$> cusPkgDb
+        else return False
 
     when (isSetupConfigOutOfDate mCabalFile mCabalConfig) $
       gmLog GmDebug "" $ strDoc $ "setup configuration is out of date"
@@ -204,11 +191,13 @@ withCabal action = do
 
     when ( isSetupConfigOutOfDate mCabalFile mCabalConfig
         || pkgDbStackOutOfSync
-        || isSetupConfigOutOfDate mCabalSandboxConfig mCabalConfig) $
+        || isSetupConfigOutOfDate mCabalSandboxConfig mCabalConfig) $ do
+          proj <- cradleProject <$> cradle
+          opts <- options
           case proj of
             CabalProject -> do
                 gmLog GmDebug "" $ strDoc "reconfiguring Cabal project"
-                cabalReconfigure readProc (optPrograms opts) crdl
+                cabalReconfigure (optPrograms opts) crdl
             StackProject {} -> do
                 gmLog GmDebug "" $ strDoc "reconfiguring Stack project"
                 stackReconfigure crdl (optPrograms opts)
@@ -218,7 +207,8 @@ withCabal action = do
     action
 
  where
-   cabalReconfigure readProc progs crdl = do
+   cabalReconfigure progs crdl = do
+     readProc <- gmReadProcess
      withDirectory_ (cradleRootDir crdl) $ do
         cusPkgStack <- maybe [] ((PackageDb "clear"):) <$> getCustomPkgDbStack
         let progOpts =
