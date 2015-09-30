@@ -17,7 +17,6 @@ import Control.Concurrent
 import Control.Monad
 import Data.Serialize
 import Data.Version
-import Data.List (intercalate)
 import Data.Map (Map)
 import qualified Data.Map as Map
 import Data.Set (Set)
@@ -35,7 +34,6 @@ import qualified MonadUtils as GHC (MonadIO(..))
 #endif
 import GHC (ModuleName, moduleNameString, mkModuleName)
 import HscTypes (HscEnv)
-import PackageConfig (PackageConfig)
 import GHC.Generics
 import Text.PrettyPrint (Doc)
 import Prelude
@@ -241,33 +239,6 @@ type GHCOption = String
 -- | An include directory for modules.
 type IncludeDir = FilePath
 
--- | A package name.
-type PackageBaseName = String
-
--- | A package version.
-type PackageVersion = String
-
--- | A package id.
-type PackageId = String
-
--- | A package's name, verson and id.
-type Package = (PackageBaseName, PackageVersion, PackageId)
-
-pkgName :: Package -> PackageBaseName
-pkgName (n, _, _) = n
-
-pkgVer :: Package -> PackageVersion
-pkgVer (_, v, _) = v
-
-pkgId :: Package -> PackageId
-pkgId (_, _, i) = i
-
-showPkg :: Package -> String
-showPkg (n, v, _) = intercalate "-" [n, v]
-
-showPkgId :: Package -> String
-showPkgId (n, v, i) = intercalate "-" [n, v, i]
-
 -- | Haskell expression.
 newtype Expression = Expression { getExpression :: String }
   deriving (Show, Eq, Ord)
@@ -286,9 +257,6 @@ data GmLogLevel =
   | GmDebug
   | GmVomit
     deriving (Eq, Ord, Enum, Bounded, Show, Read)
-
--- | Collection of packages
-type PkgDb = (Map Package PackageConfig)
 
 data GmModuleGraph = GmModuleGraph {
     gmgGraph :: Map ModulePath (Set ModulePath)

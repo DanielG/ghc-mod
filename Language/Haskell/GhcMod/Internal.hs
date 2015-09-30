@@ -3,10 +3,6 @@
 module Language.Haskell.GhcMod.Internal (
   -- * Types
     GHCOption
-  , Package
-  , PackageBaseName
-  , PackageVersion
-  , PackageId
   , IncludeDir
   , GmlT(..)
   , MonadIO(..)
