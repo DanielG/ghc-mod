@@ -506,10 +506,11 @@ getFileSourceFromStdin :: IO String
 getFileSourceFromStdin = do
   let loop' acc = do
         line <- getLine
-        if not (null line) && last line == '\EOT'
-        then return $ acc ++ init line
-        else loop' (acc++line++"\n")
-  loop' ""
+        if line == "\EOT"
+        then return $ intercalate "\n" $ reverse $ ((init line):acc)
+        else loop' (line:acc)
+  loop' []
+
 
 -- Someone please already rewrite the cmdline parsing code *weep* :'(
 wrapGhcCommands :: (IOish m, GmOut m) => Options -> [String] -> m ()

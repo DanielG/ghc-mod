@@ -69,7 +69,7 @@
 	      (save-restriction
 		(widen)
 		(process-send-region pro (point-min) (point-max))))
-	    (process-send-string pro "\004\n")
+	    (process-send-string pro "\n\004\n")
 	    (condition-case nil
 		(let ((inhibit-quit nil))
 		  (while ghc-process-file-mapping
