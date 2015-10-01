@@ -502,15 +502,15 @@ legacyInteractiveLoop symdbreq world = do
           , GHandler $ \(SomeException e) -> gmErrStrLn (show e) >> return ""
           ]
 
-getFileSourceFromStdin :: IO String
 getFileSourceFromStdin = do
-  let loop' acc = do
-        line <- getLine
-        if line == "\EOT"
-        then return $ intercalate "\n" $ reverse $ ((init line):acc)
-        else loop' (line:acc)
-  loop' []
-
+  linesIn <- readStdin'
+  return (intercalate "\n" linesIn)
+  where
+    readStdin' = do
+      x <- getLine
+      if x/="\EOT"
+        then fmap (x:) readStdin'
+        else return []
 
 -- Someone please already rewrite the cmdline parsing code *weep* :'(
 wrapGhcCommands :: (IOish m, GmOut m) => Options -> [String] -> m ()
