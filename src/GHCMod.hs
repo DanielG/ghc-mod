@@ -502,6 +502,7 @@ legacyInteractiveLoop symdbreq world = do
           , GHandler $ \(SomeException e) -> gmErrStrLn (show e) >> return ""
           ]
 
+getFileSourceFromStdin :: IO String
 getFileSourceFromStdin = do
   linesIn <- readStdin'
   return (intercalate "\n" linesIn)
