@@ -25,13 +25,14 @@ import qualified System.Console.GetOpt as O
 import System.FilePath ((</>))
 import System.Directory (setCurrentDirectory, getAppUserDataDirectory,
                         removeDirectoryRecursive)
-import System.Environment (getArgs)
+
 import System.IO
 import System.Exit
 import Text.PrettyPrint
 import Prelude hiding ((.))
 
 import Misc
+import qualified CLI as C
 
 progVersion :: String -> String
 progVersion pf =
@@ -45,11 +46,11 @@ ghcModiVersion :: String
 ghcModiVersion = progVersion "i"
 
 optionUsage :: (String -> String) -> [OptDescr a] -> [String]
-optionUsage indent opts = concatMap optUsage opts
+optionUsage indent = concatMap optUsage
  where
    optUsage (Option so lo dsc udsc) =
-       [ concat $ intersperse ", " $ addLabel `map` allFlags
-       , indent $ udsc
+       [ intercalate ", " $ addLabel `map` allFlags
+       , indent udsc
        , ""
        ]
     where
@@ -75,7 +76,7 @@ usage =
  \    Global options can be specified before and after the command and\n\
  \    interspersed with command specific options\n\
  \\n"
-   ++ (unlines $ indent <$> optionUsage indent globalArgSpec) ++
+   ++ unlines (indent <$> optionUsage indent globalArgSpec) ++
  "*Commands*\n\
  \    - version\n\
  \        Print the version of the program.\n\
@@ -218,7 +219,7 @@ cmdUsage cmd realUsage =
       isIndented    = ("    " `isPrefixOf`)
       isNotCmdHead  = ( not .  ("    - " `isPrefixOf`))
 
-      containsAnyCmdHead s = (("    - ") `isInfixOf` s)
+      containsAnyCmdHead s = ("    - " `isInfixOf` s)
       containsCurrCmdHead s = (("    - " ++ cmd) `isInfixOf` s)
       isCmdHead s =
           containsAnyCmdHead s &&
@@ -235,7 +236,7 @@ ghcModStyle = style { lineLength = 80, ribbonsPerLine = 1.2 }
 
 ----------------------------------------------------------------
 
-option :: [Char] -> [String] -> String -> ArgDescr a -> OptDescr a
+option :: String -> [String] -> String -> ArgDescr a -> OptDescr a
 option s l udsc dsc = Option s l dsc udsc
 
 reqArg :: String -> (String -> a) -> ArgDescr a
@@ -377,15 +378,15 @@ data InteractiveOptions = InteractiveOptions {
     }
 
 handler :: IOish m => GhcModT m a -> GhcModT m a
-handler = flip gcatches $
+handler = flip gcatches
           [ GHandler $ \(FatalError msg) -> exitError msg
-          , GHandler $ \e@(ExitSuccess) -> throw e
+          , GHandler $ \e@ExitSuccess -> throw e
           , GHandler $ \e@(ExitFailure _) -> throw e
-          , GHandler $ \(InvalidCommandLine e) -> do
+          , GHandler $ \(InvalidCommandLine e) ->
                 case e of
                   Left cmd ->
                       exitError $ "Usage for `"++cmd++"' command:\n\n"
-                                  ++ (cmdUsage cmd usage) ++ "\n"
+                                  ++ cmdUsage cmd usage ++ "\n"
                                   ++ "ghc-mod: Invalid command line form."
                   Right msg -> exitError $ "ghc-mod: " ++ msg
           , GHandler $ \(SomeException e) -> exitError $ "ghc-mod: " ++ show e
@@ -394,6 +395,8 @@ handler = flip gcatches $
 main :: IO ()
 main = do
     hSetEncoding stdout utf8
+    C.run >>= print
+    {-
     args <- getArgs
     case parseGlobalArgs args of
       Left e -> throw e
@@ -401,6 +404,7 @@ main = do
             Handler $ \(e :: GhcModError) ->
               runGmOutT globalOptions $ exitError $ renderStyle ghcModStyle (gmeDoc e)
           ]
+     -}
 
 progMain :: (Options,[String]) -> IO ()
 progMain (globalOptions,cmdArgs) = runGmOutT globalOptions $
@@ -445,7 +449,7 @@ legacyInteractiveLoop symdbreq world = do
     liftIO . setCurrentDirectory =<< cradleRootDir <$> cradle
 
     -- blocking
-    cmdArg <- liftIO $ getLine
+    cmdArg <- liftIO getLine
 
     -- after blocking, we need to see if the world has changed.
 
@@ -455,8 +459,7 @@ legacyInteractiveLoop symdbreq world = do
                 then getCurrentWorld -- TODO: gah, we're hitting the fs twice
                 else return world
 
-    when changed $ do
-        dropSession
+    when changed dropSession
 
     let (cmd':args') = split (keepDelimsR $ condense $ whenElt isSpace) cmdArg
         arg = concat args'
@@ -488,8 +491,8 @@ legacyInteractiveLoop symdbreq world = do
         "unmap-file" ->  unloadMappedFile arg
                      >>  return ""
 
-        "quit"   -> liftIO $ exitSuccess
-        ""       -> liftIO $ exitSuccess
+        "quit"   -> liftIO exitSuccess
+        ""       -> liftIO exitSuccess
         _        -> fatalError $ "unknown command: `" ++ cmd ++ "'"
 
     gmPutStr res >> gmPutStrLn "OK" >> liftIO (hFlush stdout)
@@ -497,7 +500,7 @@ legacyInteractiveLoop symdbreq world = do
  where
    interactiveHandlers =
           [ GHandler $ \e@(FatalError _) -> throw e
-          , GHandler $ \e@(ExitSuccess) -> throw e
+          , GHandler $ \e@ExitSuccess -> throw e
           , GHandler $ \e@(ExitFailure _) -> throw e
           , GHandler $ \(SomeException e) -> gmErrStrLn (show e) >> return ""
           ]
@@ -515,7 +518,7 @@ getFileSourceFromStdin = do
 wrapGhcCommands :: (IOish m, GmOut m) => Options -> [String] -> m ()
 wrapGhcCommands _opts []            = fatalError "No command given (try --help)"
 wrapGhcCommands _opts ("root":_) = gmPutStr =<< rootInfo
-wrapGhcCommands opts args = do
+wrapGhcCommands opts args =
     handleGmError $ runGhcModT opts $ handler $ do
       forM_ (reverse $ optFileMappings opts) $
         uncurry loadMMappedFiles
@@ -633,7 +636,7 @@ sigCmd        = withParseCmd [] $ locAction  "sig"    sig
 autoCmd       = withParseCmd [] $ locAction  "auto"   auto
 refineCmd     = withParseCmd [] $ locAction' "refine" refine
 
-infoCmd       = withParseCmd [] $ action
+infoCmd       = withParseCmd [] action
   where action [file,_,expr] = info file $ Expression expr
         action [file,expr]   = info file $ Expression expr
         action _ = throw $ InvalidCommandLine (Left "info")
@@ -642,9 +645,9 @@ legacyInteractiveCmd = withParseCmd [] go
  where
    go [] =
        legacyInteractive >> return ""
-   go ("help":[]) =
+   go ["help"] =
        return usage
-   go ("version":[]) =
+   go ["version"] =
        return ghcModiVersion
    go _ = throw $ InvalidCommandLine (Left "legacy-interactive")
 

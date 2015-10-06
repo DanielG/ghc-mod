@@ -3,4 +3,4 @@ packages:
 - '.'
 extra-deps:
 - cabal-helper-0.6.0.0
-resolver: lts-3.1
+resolver: lts-3.5
