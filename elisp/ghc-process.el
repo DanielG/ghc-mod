@@ -27,6 +27,7 @@
 
 (defvar ghc-command "ghc-mod")
 
+(defvar ghc-report-errors t "Report GHC errors to *GHC Error* buffer")
 (defvar ghc-error-buffer "*GHC Error*")
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -144,7 +145,8 @@
 		    (with-current-buffer pbuf
 		      (goto-char (point-max))
 		      (insert-buffer-substring tbuf 1 end))
-		  (with-current-buffer (get-buffer-create ghc-error-buffer)
+		  (when ghc-report-errors
+                    (with-current-buffer (get-buffer-create ghc-error-buffer)
 		    (setq buffer-read-only t)
 		    (let* ((buffer-read-only nil)
 			   (inhibit-read-only t)
@@ -156,7 +158,7 @@
 			(goto-char (point-max))
 			(insert-buffer-substring tbuf 1 end)
 			(set-buffer-modified-p nil))
-		      (redisplay))))
+		      (redisplay)))))
 		(delete-region 1 end)))))
 	(goto-char (point-max))
 	(forward-line -1)
