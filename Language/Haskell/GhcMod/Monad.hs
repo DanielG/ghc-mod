@@ -91,7 +91,7 @@ runGmOutT' :: IOish m => GhcModOut -> GmOutT m a -> m a
 runGmOutT' gmo ma = flip runReaderT gmo $ unGmOutT ma
 
 -- | Run a @GhcModT m@ computation.
-runGhcModT :: (IOish m, GmOut m)
+runGhcModT :: IOish m
            => Options
            -> GhcModT m a
            -> m (Either GhcModError a, GhcModLog)
