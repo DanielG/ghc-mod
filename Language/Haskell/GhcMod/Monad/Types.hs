@@ -322,6 +322,11 @@ instance (Monad m, GmLog m) => GmLog (StateT s m) where
     gmlHistory = lift gmlHistory
     gmlClear = lift gmlClear
 
+instance (Monad m, GmLog m) => GmLog (MaybeT  m) where
+    gmlJournal = lift . gmlJournal
+    gmlHistory = lift gmlHistory
+    gmlClear = lift gmlClear
+
 -- GmOut -----------------------------------------
 class Monad m => GmOut m where
     gmoAsk :: m GhcModOut
@@ -336,6 +341,12 @@ instance GmOut m => GmOut (GmT m) where
     gmoAsk = lift gmoAsk
 
 instance GmOut m => GmOut (StateT s m) where
+    gmoAsk = lift gmoAsk
+
+instance GmOut m => GmOut (JournalT w m) where
+    gmoAsk = lift gmoAsk
+
+instance GmOut m => GmOut (MaybeT m) where
     gmoAsk = lift gmoAsk
 
 instance Monad m => MonadJournal GhcModLog (GmT m) where
@@ -518,6 +529,14 @@ instance (MonadIO m, MonadBaseControl IO m) => ExceptionMonad (ReaderT s m) wher
 
     gmask = liftBaseOp gmask . liftRestore
      where liftRestore f r = f $ liftBaseOp_ r
+
+instance (Monoid w, MonadIO m, MonadBaseControl IO m) => ExceptionMonad (JournalT w m) where
+    gcatch act handler = control $ \run ->
+        run act `gcatch` (run . handler)
+
+    gmask = liftBaseOp gmask . liftRestore
+     where liftRestore f r = f $ liftBaseOp_ r
+
 
 ----------------------------------------------------------------
 

@@ -15,6 +15,8 @@ import Language.Haskell.GhcMod.Monad.Types
 import Language.Haskell.GhcMod.Types
 import Language.Haskell.GhcMod.Utils
 import Language.Haskell.GhcMod.Stack
+import Language.Haskell.GhcMod.Logging
+
 
 import Control.Applicative
 import Control.Monad
@@ -30,10 +32,10 @@ import Prelude
 --   Find a cabal file by tracing ancestor directories.
 --   Find a sandbox according to a cabal sandbox config
 --   in a cabal directory.
-findCradle :: (IOish m, GmOut m) => m Cradle
+findCradle :: (GmLog m, IOish m, GmOut m) => m Cradle
 findCradle = findCradle' =<< liftIO getCurrentDirectory
 
-findCradle' :: (IOish m, GmOut m) => FilePath -> m Cradle
+findCradle' :: (GmLog m, IOish m, GmOut m) => FilePath -> m Cradle
 findCradle' dir = run $
     msum [ stackCradle dir
          , cabalCradle dir
@@ -42,7 +44,7 @@ findCradle' dir = run $
          ]
  where run a = fillTempDir =<< (fromJust <$> runMaybeT a)
 
-findSpecCradle :: (IOish m, GmOut m) => FilePath -> m Cradle
+findSpecCradle :: (GmLog m, IOish m, GmOut m) => FilePath -> m Cradle
 findSpecCradle dir = do
     let cfs = [stackCradleSpec, cabalCradle, sandboxCradle]
     cs <- catMaybes <$> mapM (runMaybeT . ($ dir)) cfs
@@ -77,7 +79,7 @@ cabalCradle wdir = do
       , cradleDistDir    = "dist"
       }
 
-stackCradle :: (IOish m, GmOut m) => FilePath -> MaybeT m Cradle
+stackCradle :: (GmLog m, IOish m, GmOut m) => FilePath -> MaybeT m Cradle
 stackCradle wdir = do
 #if !MIN_VERSION_ghc(7,8,0)
     -- GHC < 7.8 is not supported by stack
@@ -91,7 +93,10 @@ stackCradle wdir = do
 
     -- If dist/setup-config already exists the user probably wants to use cabal
     -- rather than stack, or maybe that's just me ;)
-    whenM (liftIO $ doesFileExist $ setupConfigPath "dist") $ mzero
+    whenM (liftIO $ doesFileExist $ setupConfigPath "dist") $ do
+                      gmLog GmDebug "" $ (text
+                            "'dist/setup-config' exists, ignoring Stack and using cabal-install instead.") 
+                      mzero
 
     senv <- MaybeT $ getStackEnv cabalDir
 
@@ -104,7 +109,7 @@ stackCradle wdir = do
       , cradleDistDir    = seDistDir senv
       }
 
-stackCradleSpec :: (IOish m, GmOut m) => FilePath -> MaybeT m Cradle
+stackCradleSpec :: (GmLog m, IOish m, GmOut m) => FilePath -> MaybeT m Cradle
 stackCradleSpec wdir = do
   crdl <- stackCradle wdir
   case crdl of
