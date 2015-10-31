@@ -45,6 +45,11 @@ gmSetLogLevel :: GmLog m => GmLogLevel -> m ()
 gmSetLogLevel level =
     gmlJournal $ GhcModLog (Just level) (Last Nothing) []
 
+gmGetLogLevel :: forall m. GmLog m => m GmLogLevel 
+gmGetLogLevel = do
+  GhcModLog { gmLogLevel = Just level } <-  gmlHistory
+  return level
+               
 gmSetDumpLevel :: GmLog m => Bool -> m ()
 gmSetDumpLevel level =
     gmlJournal $ GhcModLog Nothing (Last (Just level)) []
