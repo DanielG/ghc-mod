@@ -6,7 +6,7 @@ Please read: [http://www.mew.org/~kazu/proj/ghc-mod/](http://www.mew.org/~kazu/p
 ## Using the stable version
 
 The Emacs front-end is available from
-[*stable* MELPA](http://melpa-stable.milkbox.net/). This package should
+[*stable* MELPA](https://stable.melpa.org/). This package should
 always be compatible with the latest version of ghc-mod from hackage.
 
 To use stable *stable* MELPA add this to your `.emacs`:
@@ -14,7 +14,7 @@ To use stable *stable* MELPA add this to your `.emacs`:
 ```elisp
 (require 'package)
 (add-to-list 'package-archives
-	     '("melpa" . "http://melpa-stable.milkbox.net/packages/"))
+	     '("melpa" . "https://stable.melpa.org/packages/"))
 (package-initialize)
 ```
 
