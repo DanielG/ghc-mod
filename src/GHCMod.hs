@@ -48,7 +48,7 @@ optionUsage :: (String -> String) -> [OptDescr a] -> [String]
 optionUsage indent opts = concatMap optUsage opts
  where
    optUsage (Option so lo dsc udsc) =
-       [ concat $ intersperse ", " $ addLabel `map` allFlags
+       [ intercalate ", " $ addLabel `map` allFlags
        , indent $ udsc
        , ""
        ]

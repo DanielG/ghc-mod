@@ -1,4 +1,4 @@
-{-# LANGUAGE DeriveDataTypeable, CPP #-}
+{-# LANGUAGE CPP #-}
 
 module Misc (
     SymDbReq

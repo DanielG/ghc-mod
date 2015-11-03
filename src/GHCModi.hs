@@ -1,4 +1,4 @@
-{-# LANGUAGE ScopedTypeVariables, DeriveDataTypeable #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 
 -- | WARNING
 -- This program is deprecated, use `ghc-mod legacy-interactive` instead.
