@@ -1,0 +1,270 @@
+Name:                   ghc-mod
+Version:                5.4.0.0
+Author:                 Kazu Yamamoto <kazu@iij.ad.jp>,
+                        Daniel Gröber <dxld@darkboxed.org>,
+                        Alejandro Serrano <trupill@gmail.com>
+Maintainer:             Daniel Gröber <dxld@darkboxed.org>
+License:                AGPL-3
+License-File:           LICENSE
+License-Files:          COPYING.BSD3 COPYING.AGPL3
+Homepage:               http://www.mew.org/~kazu/proj/ghc-mod/
+Synopsis:               Happy Haskell Programming
+Description:
+  ghc-mod is a backend program to enrich Haskell programming in editors. It
+  strives to offer most of the features one has come to expect from modern IDEs
+  in any editor.
+
+  ghc-mod provides a library for other haskell programs to use as well as a
+  standalone program for easy editor integration. All of the fundamental
+  functionality of the frontend program can be accessed through the library
+  however many implementation details are hidden and if you want to
+  significantly extend ghc-mod you should submit these changes upstream instead
+  of implementing them on top of the library.
+
+  For more information, please see its home page.
+
+Category:               GHC, Development
+Cabal-Version:          >= 1.14
+Build-Type:             Custom
+Data-Files:             elisp/Makefile
+                        elisp/*.el
+Data-Files:             LICENSE COPYING.BSD3 COPYING.AGPL3
+Extra-Source-Files:     ChangeLog
+                        SetupCompat.hs
+                        NotCPP/*.hs
+                        NotCPP/COPYING
+                        test/data/annotations/*.hs
+                        test/data/broken-cabal/*.cabal
+                        test/data/broken-cabal/cabal.sandbox.config.in
+                        test/data/broken-sandbox/cabal.sandbox.config
+                        test/data/broken-sandbox/dummy.cabal
+                        test/data/cabal-flags/cabal-flags.cabal
+                        test/data/cabal-project/*.cabal
+                        test/data/cabal-project/*.hs
+                        test/data/cabal-project/.cabal-sandbox/i386-osx-ghc-7.6.3-packages.conf.d/Cabal-1.18.1.3-2b161c6bf77657aa17e1681d83cb051b.conf
+                        test/data/cabal-project/cabal.sandbox.config.in
+                        test/data/cabal-project/subdir1/subdir2/dummy
+                        test/data/case-split/*.hs
+                        test/data/check-packageid/cabal.sandbox.config.in
+                        test/data/check-packageid/.cabal-sandbox/i386-osx-ghc-7.6.3-packages.conf.d/template-haskell-2.8.0.0-32d4f24abdbb6bf41272b183b2e23e9c.conf
+                        test/data/check-test-subdir/*.cabal
+                        test/data/check-test-subdir/src/Check/Test/*.hs
+                        test/data/check-test-subdir/test/*.hs
+                        test/data/check-test-subdir/test/Bar/*.hs
+                        test/data/duplicate-pkgver/cabal.sandbox.config.in
+                        test/data/duplicate-pkgver/duplicate-pkgver.cabal
+                        test/data/duplicate-pkgver/.cabal-sandbox/i386-osx-ghc-7.6.3-packages.conf.d/template-haskell-1.0-7c59d13f32294d1ef6dc6233c24df961.conf
+                        test/data/duplicate-pkgver/.cabal-sandbox/i386-osx-ghc-7.6.3-packages.conf.d/template-haskell-2.8.0.0-14e543bdae2da4d2aeff5386892c9112.conf
+                        test/data/duplicate-pkgver/.cabal-sandbox/i386-osx-ghc-7.6.3-packages.conf.d/template-haskell-2.8.0.0-32d4f24abdbb6bf41272b183b2e23e9c.conf
+                        test/data/foreign-export/*.hs
+                        test/data/ghc-mod-check/*.cabal
+                        test/data/ghc-mod-check/*.hs
+                        test/data/ghc-mod-check/lib/Data/*.hs
+                        test/data/hlint/*.hs
+                        test/data/home-module-graph/cpp/*.hs
+                        test/data/home-module-graph/cycle/*.hs
+                        test/data/home-module-graph/errors/*.hs
+                        test/data/home-module-graph/indirect/*.hs
+                        test/data/home-module-graph/indirect-update/*.hs
+                        test/data/import-cycle/*.hs
+                        test/data/non-exported/*.hs
+                        test/data/pattern-synonyms/*.cabal
+                        test/data/pattern-synonyms/*.hs
+                        test/data/quasi-quotes/*.hs
+                        test/data/template-haskell/*.hs
+                        test/data/target/*.hs
+                        test/data/check-missing-warnings/*.hs
+                        test/data/custom-cradle/custom-cradle.cabal
+                        test/data/custom-cradle/ghc-mod.package-db-stack
+                        test/data/custom-cradle/package-db-a/.gitkeep
+                        test/data/custom-cradle/package-db-b/.gitkeep
+                        test/data/custom-cradle/package-db-c/.gitkeep
+                        test/data/cabal-preprocessors/*.cabal
+                        test/data/cabal-preprocessors/*.hs
+                        test/data/cabal-preprocessors/*.hsc
+                        test/data/file-mapping/*.hs
+                        test/data/file-mapping/preprocessor/*.hs
+                        test/data/file-mapping/lhs/*.lhs
+                        test/data/nice-qualification/*.hs
+                        test/data/stack-project/stack.yaml
+                        test/data/stack-project/new-template.cabal
+                        test/data/stack-project/*.hs
+                        test/data/stack-project/app/*.hs
+                        test/data/stack-project/src/*.hs
+                        test/data/stack-project/test/*.hs
+
+Library
+  Default-Language:     Haskell2010
+  GHC-Options:          -Wall -fno-warn-deprecations
+  Default-Extensions:   ScopedTypeVariables, RecordWildCards, NamedFieldPuns,
+                        ConstraintKinds, FlexibleContexts,
+                        DataKinds, KindSignatures, TypeOperators, ViewPatterns
+  Exposed-Modules:      Language.Haskell.GhcMod
+                        Language.Haskell.GhcMod.Internal
+                        Language.Haskell.GhcMod.Boot
+                        Language.Haskell.GhcMod.Browse
+                        Language.Haskell.GhcMod.CabalHelper
+                        Language.Haskell.GhcMod.Caching
+                        Language.Haskell.GhcMod.Caching.Types
+                        Language.Haskell.GhcMod.CaseSplit
+                        Language.Haskell.GhcMod.Check
+                        Language.Haskell.GhcMod.Convert
+                        Language.Haskell.GhcMod.Cradle
+                        Language.Haskell.GhcMod.CustomPackageDb
+                        Language.Haskell.GhcMod.Debug
+                        Language.Haskell.GhcMod.DebugLogger
+                        Language.Haskell.GhcMod.Doc
+                        Language.Haskell.GhcMod.DynFlags
+                        Language.Haskell.GhcMod.Error
+                        Language.Haskell.GhcMod.FileMapping
+                        Language.Haskell.GhcMod.FillSig
+                        Language.Haskell.GhcMod.Find
+                        Language.Haskell.GhcMod.Flag
+                        Language.Haskell.GhcMod.Gap
+                        Language.Haskell.GhcMod.GhcPkg
+                        Language.Haskell.GhcMod.HomeModuleGraph
+                        Language.Haskell.GhcMod.Info
+                        Language.Haskell.GhcMod.Lang
+                        Language.Haskell.GhcMod.Lint
+                        Language.Haskell.GhcMod.LightGhc
+                        Language.Haskell.GhcMod.Logger
+                        Language.Haskell.GhcMod.Logging
+                        Language.Haskell.GhcMod.Modules
+                        Language.Haskell.GhcMod.Monad
+                        Language.Haskell.GhcMod.Monad.Types
+                        Language.Haskell.GhcMod.Output
+                        Language.Haskell.GhcMod.PathsAndFiles
+                        Language.Haskell.GhcMod.PkgDoc
+                        Language.Haskell.GhcMod.Pretty
+                        Language.Haskell.GhcMod.Read
+                        Language.Haskell.GhcMod.SrcUtils
+                        Language.Haskell.GhcMod.Stack
+                        Language.Haskell.GhcMod.Target
+                        Language.Haskell.GhcMod.Types
+                        Language.Haskell.GhcMod.Utils
+                        Language.Haskell.GhcMod.World
+  Other-Modules:        Paths_ghc_mod
+                        Utils
+  Build-Depends:        base >= 4.0 && < 5
+                      , bytestring
+                      , cereal >= 0.4
+                      , containers
+                      , cabal-helper == 0.6.* && >= 0.6.0.0
+                      , deepseq
+                      , directory
+                      , filepath
+                      , ghc
+                      , ghc-paths
+                      , ghc-syb-utils
+                      , hlint >= 1.8.61
+                      , monad-journal >= 0.4
+                      , old-time
+                      , pretty
+                      , process
+                      , syb
+                      , temporary
+                      , time
+                      , transformers
+                      , transformers-base
+                      , mtl >= 2.0
+                      , monad-control >= 1
+                      , split
+                      , haskell-src-exts
+                      , text
+                      , djinn-ghc >= 0.0.2.2
+                      , fclabels == 2.0.*
+                      , extra == 1.4.*
+                      , pipes == 4.1.*
+  if impl(ghc < 7.8)
+    Build-Depends:      convertible
+  if impl(ghc < 7.5)
+    -- Only used to constrain random to a version that still works with GHC 7.4
+    Build-Depends:      random <= 1.0.1.1,
+                        ghc-prim
+
+Executable ghc-mod
+  Default-Language:     Haskell2010
+  Main-Is:              GHCMod.hs
+  Other-Modules:        Paths_ghc_mod
+  GHC-Options:          -Wall -fno-warn-deprecations -threaded
+  Default-Extensions:   ConstraintKinds, FlexibleContexts
+  HS-Source-Dirs:       src
+  Build-Depends:        base >= 4.0 && < 5
+                      , async
+                      , directory
+                      , filepath
+                      , pretty
+                      , process
+                      , split
+                      , mtl >= 2.0
+                      , ghc
+                      , ghc-mod
+                      , fclabels == 2.0.*
+
+Executable ghc-modi
+  Default-Language:     Haskell2010
+  Main-Is:              GHCModi.hs
+  Other-Modules:        Paths_ghc_mod
+                        Misc
+                        Utils
+  GHC-Options:          -Wall -threaded -fno-warn-deprecations
+  if os(windows)
+      Cpp-Options:      -DWINDOWS
+  Default-Extensions:   ConstraintKinds, FlexibleContexts
+  HS-Source-Dirs:       src, .
+  Build-Depends:        base >= 4.0 && < 5
+                      , directory
+                      , filepath
+                      , process
+                      , time
+                      , old-time
+
+Test-Suite doctest
+  Type:                 exitcode-stdio-1.0
+  Default-Language:     Haskell2010
+  HS-Source-Dirs:       test
+  Ghc-Options:          -Wall
+  Default-Extensions:   ConstraintKinds, FlexibleContexts
+  Main-Is:              doctests.hs
+  if impl(ghc == 7.4.*)
+    Buildable:          False
+  Build-Depends:        base
+                      , doctest >= 0.9.3
+
+Test-Suite spec
+  Default-Language:     Haskell2010
+  Default-Extensions:   ScopedTypeVariables, RecordWildCards, NamedFieldPuns,
+                        ConstraintKinds, FlexibleContexts,
+                        DataKinds, KindSignatures, TypeOperators, ViewPatterns
+  Main-Is:              Main.hs
+  Hs-Source-Dirs:       test, .
+  Ghc-Options:          -Wall -fno-warn-deprecations
+  CPP-Options:          -DSPEC=1
+  Type:                 exitcode-stdio-1.0
+  Other-Modules:        Paths_ghc_mod
+                        Dir
+                        Spec
+                        TestUtils
+                        BrowseSpec
+                        CustomPackageDbSpec
+                        CheckSpec
+                        FlagSpec
+                        InfoSpec
+                        LangSpec
+                        LintSpec
+                        ListSpec
+                        MonadSpec
+                        PathsAndFilesSpec
+                        HomeModuleGraphSpec
+                        FileMappingSpec
+
+  Build-Depends:        hspec >= 2.0.0
+  if impl(ghc == 7.4.*)
+    Build-Depends:     executable-path
+  X-Build-Depends-Like: CLibName
+
+
+
+Source-Repository head
+  Type:                 git
+  Location:             https://github.com/kazu-yamamoto/ghc-mod.git
