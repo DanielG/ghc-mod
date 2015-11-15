@@ -1,4 +1,4 @@
-X-Revision: 2
+X-Revision: 3
 Name:                   ghc-mod
 Version:                5.4.0.0
 Author:                 Kazu Yamamoto <kazu@iij.ad.jp>,
@@ -230,7 +230,7 @@ Test-Suite doctest
   if impl(ghc == 7.4.*)
     Buildable:          False
   Build-Depends:        base
-                      , doctest < 0.10.1 && >= 0.9.3
+                      , doctest < 0.11 && >= 0.9.3
 
 Test-Suite spec
   Default-Language:     Haskell2010
