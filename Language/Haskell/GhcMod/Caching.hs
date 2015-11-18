@@ -13,6 +13,7 @@ import Data.Version
 import Data.Label
 import qualified Data.ByteString.Lazy as BS
 import qualified Data.ByteString.Lazy.Char8 as BS8
+import Data.Time (UTCTime, getCurrentTime)
 import System.FilePath
 import Utils (TimedFile(..), timeMaybe, mightExist)
 import Paths_ghc_mod (version)
@@ -33,10 +34,10 @@ cached dir cd d = do
     case mcc of
       Nothing ->
           writeCache (TimedCacheFiles tcfile []) Nothing "cache missing or unreadable"
-      Just (ifs, d', a) | d /= d' -> do
+      Just (_t, ifs, d', a) | d /= d' -> do
           tcf <- timeCacheInput dir (cacheFile cd) ifs
           writeCache tcf (Just a) $ "input data changed" -- ++ "   was: " ++ show d ++ "  is: " ++ show d'
-      Just (ifs, _, a) -> do
+      Just (_t, ifs, _, a) -> do
           tcf <- timeCacheInput dir (cacheFile cd) ifs
           case invalidatingInputFiles tcf of
             Just [] -> return a
@@ -48,23 +49,24 @@ cached dir cd d = do
 
    writeCache tcf ma cause = do
      (ifs', a) <- (cachedAction cd) tcf d ma
+     t <- liftIO $ getCurrentTime
      gmLog GmDebug "" $ (text "regenerating cache") <+>: text (cacheFile cd)
                                                     <+> parens (text cause)
      case cacheLens cd of
        Nothing -> return ()
        Just label -> do
          gmLog GmDebug "" $ (text "writing memory cache") <+>: text (cacheFile cd)
-         setLabel label $ Just (ifs', d, a)
+         setLabel label $ Just (t, ifs', d, a)
 
      liftIO $ BS.writeFile (dir </> cacheFile cd) $
-         BS.append cacheHeader $ encode (ifs', d, a)
+         BS.append cacheHeader $ encode (t, ifs', d, a)
      return a
 
    setLabel l x = do
      s <- gmsGet
      gmsPut $ set l x s
 
-   readCache :: m (Maybe ([FilePath], d, a))
+   readCache :: m (Maybe (UTCTime, [FilePath], d, a))
    readCache = runMaybeT $ do
        case cacheLens cd of
          Just label -> do
@@ -74,10 +76,12 @@ cached dir cd d = do
          Nothing ->
              readCacheFromFile
 
+   readCacheFromFile :: MaybeT m (UTCTime, [FilePath], d, a)
    readCacheFromFile = do
          f <- MaybeT $ liftIO $ mightExist $ cacheFile cd
          readCacheFromFile' f
 
+   readCacheFromFile' :: FilePath -> MaybeT m (UTCTime, [FilePath], d, a)
    readCacheFromFile' f = MaybeT $ do
      gmLog GmDebug "" $ (text "reading cache") <+>: text (cacheFile cd)
      cc <- liftIO $ BS.readFile f
@@ -91,6 +95,7 @@ cached dir cd d = do
      case decodeOrFail b of
        Left (_rest, _offset, errmsg) -> Left errmsg
        Right (_reset, _offset, a) -> Right a
+
 timeCacheInput :: MonadIO m => FilePath -> FilePath -> [FilePath] -> m TimedCacheFiles
 timeCacheInput dir cfile ifs = liftIO $ do
     -- TODO: is checking the times this way around race free?

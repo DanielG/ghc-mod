@@ -2,9 +2,10 @@ module Language.Haskell.GhcMod.Caching.Types where
 
 import Utils
 import Data.Label
+import Data.Time (UTCTime)
 import Distribution.Helper
 
-type CacheContents d a = Maybe ([FilePath], d, a)
+type CacheContents d a = Maybe (UTCTime, [FilePath], d, a)
 type CacheLens s d a = s :-> CacheContents d a
 
 data Cached m s d a = Cached {
