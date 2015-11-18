@@ -8,11 +8,11 @@ import Control.Arrow (first)
 import Control.Monad
 import Control.Monad.Trans.Maybe
 import Data.Maybe
-import Data.Serialize (Serialize, encode, decode)
+import Data.Binary (Binary, encode, decodeOrFail)
 import Data.Version
 import Data.Label
-import qualified Data.ByteString as BS
-import qualified Data.ByteString.Char8 as BS8
+import qualified Data.ByteString.Lazy as BS
+import qualified Data.ByteString.Lazy.Char8 as BS8
 import System.FilePath
 import Utils (TimedFile(..), timeMaybe, mightExist)
 import Paths_ghc_mod (version)
@@ -22,7 +22,7 @@ import Language.Haskell.GhcMod.Caching.Types
 import Language.Haskell.GhcMod.Logging
 
 -- | Cache a MonadIO action with proper invalidation.
-cached :: forall m a d. (Gm m, MonadIO m, Serialize a, Eq d, Serialize d, Show d)
+cached :: forall m a d. (Gm m, MonadIO m, Binary a, Eq d, Binary d, Show d)
        => FilePath -- ^ Directory to prepend to 'cacheFile'
        -> Cached m GhcModState d a -- ^ Cache descriptor
        -> d
@@ -84,9 +84,13 @@ cached dir cd d = do
      case first BS8.words $ BS8.span (/='\n') cc of
        (["Written", "by", "ghc-mod", ver], rest)
            | BS8.unpack ver == showVersion version ->
-            return $ either (const Nothing) Just $ decode $ BS.drop 1 rest
+            return $ either (const Nothing) Just $ decodeE $ BS.drop 1 rest
        _ -> return Nothing
 
+   decodeE b = do
+     case decodeOrFail b of
+       Left (_rest, _offset, errmsg) -> Left errmsg
+       Right (_reset, _offset, a) -> Right a
 timeCacheInput :: MonadIO m => FilePath -> FilePath -> [FilePath] -> m TimedCacheFiles
 timeCacheInput dir cfile ifs = liftIO $ do
     -- TODO: is checking the times this way around race free?

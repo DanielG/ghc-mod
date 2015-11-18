@@ -31,7 +31,8 @@ import Control.Monad
 import Control.Category ((.))
 import Data.Maybe
 import Data.Monoid
-import Data.Serialize (Serialize)
+import Data.Version
+import Data.Binary (Binary)
 import Data.Traversable
 import Distribution.Helper hiding (Programs(..))
 import qualified Distribution.Helper as CH
@@ -289,7 +290,7 @@ helperProgs progs = CH.Programs {
     ghcPkgProgram = T.ghcPkgProgram progs
   }
 
-chCached :: (Applicative m, IOish m, Gm m, Serialize a)
+chCached :: (Applicative m, IOish m, Gm m, Binary a)
   => (FilePath -> Cached m GhcModState ChCacheData a) -> m a
 chCached c = do
   projdir <- cradleRootDir <$> cradle
@@ -305,7 +306,7 @@ chCached c = do
                progs' <- patchStackPrograms crdl (optPrograms opts)
                return $ ( helperProgs progs'
                         , projdir
-                        , (gmVer, chVer)
+                        , (showVersion gmVer, chVer)
                         )
 
    gmVer = GhcMod.version

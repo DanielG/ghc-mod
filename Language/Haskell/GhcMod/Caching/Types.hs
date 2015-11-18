@@ -2,7 +2,6 @@ module Language.Haskell.GhcMod.Caching.Types where
 
 import Utils
 import Data.Label
-import Data.Version
 import Distribution.Helper
 
 type CacheContents d a = Maybe ([FilePath], d, a)
@@ -49,4 +48,4 @@ data TimedCacheFiles = TimedCacheFiles {
   -- ^ Timestamped files returned by the cached action
  } deriving (Eq, Ord, Show)
 
-type ChCacheData = (Programs, FilePath, (Version, [Char]))
+type ChCacheData = (Programs, FilePath, (String, String))

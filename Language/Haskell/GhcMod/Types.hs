@@ -15,8 +15,7 @@ import Control.Exception (Exception)
 import Control.Applicative
 import Control.Concurrent
 import Control.Monad
-import Data.Serialize
-import Data.Version
+import Data.Binary
 import Data.Map (Map)
 import qualified Data.Map as Map
 import Data.Set (Set)
@@ -25,6 +24,8 @@ import Data.Monoid
 import Data.Maybe
 import Data.Typeable (Typeable)
 import Data.IORef
+import Data.Time (UTCTime(..))
+import Data.Time.Calendar (Day(..))
 import Data.Label.Derive
 import Distribution.Helper hiding (Programs(..))
 import qualified Distribution.Helper as CabalHelper
@@ -231,7 +232,7 @@ data GhcPkgDb = GlobalDb
               | PackageDb String
                 deriving (Eq, Show, Generic)
 
-instance Serialize GhcPkgDb
+instance Binary GhcPkgDb
 
 -- | A single GHC command line option.
 type GHCOption = String
@@ -262,7 +263,7 @@ data GmModuleGraph = GmModuleGraph {
     gmgGraph :: Map ModulePath (Set ModulePath)
   } deriving (Eq, Ord, Show, Read, Generic, Typeable)
 
-instance Serialize GmModuleGraph where
+instance Binary GmModuleGraph where
   put GmModuleGraph {..} = put (mpim, graph)
     where
       mpim :: Map ModulePath Integer
@@ -302,13 +303,13 @@ data GmComponent (t :: GmComponentType) eps = GmComponent {
   , gmcSourceDirs      :: [FilePath]
   } deriving (Eq, Ord, Show, Read, Generic, Functor)
 
-instance Serialize eps => Serialize (GmComponent t eps)
+instance Binary eps => Binary (GmComponent t eps)
 
 data ModulePath = ModulePath { mpModule :: ModuleName, mpPath :: FilePath }
   deriving (Eq, Ord, Show, Read, Generic, Typeable)
-instance Serialize ModulePath
+instance Binary ModulePath
 
-instance Serialize ModuleName where
+instance Binary ModuleName where
   get = mkModuleName <$> get
   put mn = put (moduleNameString mn)
 
@@ -366,13 +367,16 @@ instance Error GhcModError where
 
 instance Exception GhcModError
 
-deriving instance Generic Version
-instance Serialize Version
+instance Binary CabalHelper.Programs
+instance Binary ChModuleName
+instance Binary ChComponentName
+instance Binary ChEntrypoint
 
-instance Serialize CabalHelper.Programs
-instance Serialize ChModuleName
-instance Serialize ChComponentName
-instance Serialize ChEntrypoint
+instance Binary UTCTime where
+    put (UTCTime (ModifiedJulianDay day) difftime) =
+        put day >> put (toRational difftime)
+    get = do
+        UTCTime <$> (ModifiedJulianDay <$> get) <*> (fromRational <$> get)
 
 mkLabel ''GhcModCaches
 mkLabel ''GhcModState
