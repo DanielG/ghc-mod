@@ -43,7 +43,7 @@ data Cached m s d a = Cached {
  }
 
 data TimedCacheFiles = TimedCacheFiles {
-  tcCacheFile :: Maybe TimedFile,
+  tcCreated :: ModTime,
   -- ^ 'cacheFile' timestamp
   tcFiles     :: [TimedFile]
   -- ^ Timestamped files returned by the cached action

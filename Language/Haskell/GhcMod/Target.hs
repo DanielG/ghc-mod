@@ -199,22 +199,21 @@ resolvedComponentsCache distdir = Cached {
     cacheFile = resolvedComponentsCacheFile distdir,
     cachedAction = \tcfs comps ma -> do
         Cradle {..} <- cradle
-        let iifsM = invalidatingInputFiles tcfs
+        let iifs = invalidatingInputFiles tcfs
+
+            setupChanged =
+                (cradleRootDir </> setupConfigPath distdir) `elem` iifs
+
             mums :: Maybe [Either FilePath ModuleName]
             mums =
-              case iifsM of
-                Nothing -> Nothing
-                Just iifs ->
-                  let
-                      filterOutSetupCfg =
-                          filter (/= cradleRootDir </> setupConfigPath distdir)
-                      changedFiles = filterOutSetupCfg iifs
-                  in if null changedFiles
-                       then Nothing
-                       else Just $ map Left changedFiles
-            setupChanged = maybe False
-                                 (elem $ cradleRootDir </> setupConfigPath distdir)
-                                 iifsM
+              let
+                  filterOutSetupCfg =
+                      filter (/= cradleRootDir </> setupConfigPath distdir)
+                  changedFiles = filterOutSetupCfg iifs
+              in if null changedFiles
+                   then Nothing
+                   else Just $ map Left changedFiles
+
         case (setupChanged, ma) of
           (False, Just mcs) -> gmsGet >>= \s -> gmsPut s { gmComponents = mcs }
           _ -> return ()
