@@ -298,7 +298,7 @@ chCached c = do
   d <- cacheInputData projdir
   withCabal $ cached projdir (c distdir) d
  where
-   -- we don't need to include the disdir in the cache input because when it
+   -- we don't need to include the distdir in the cache input because when it
    -- changes the cache files will be gone anyways ;)
    cacheInputData projdir = do
                opts <- options
