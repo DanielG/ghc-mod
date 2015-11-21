@@ -210,7 +210,7 @@ resolvedComponentsCache distdir = Cached {
                   filterOutSetupCfg =
                       filter (/= cradleRootDir </> setupConfigPath distdir)
                   changedFiles = filterOutSetupCfg iifs
-              in if null changedFiles
+              in if null changedFiles || setupChanged
                    then Nothing
                    else Just $ map Left changedFiles
 
