@@ -210,7 +210,6 @@ data GhcModCaches = GhcModCaches {
 
 data GhcModState = GhcModState {
       gmGhcSession   :: !(Maybe GmGhcSession)
-    , gmComponents   :: !(Map ChComponentName (GmComponent 'GMCResolved (Set ModulePath)))
     , gmCompilerMode :: !CompilerMode
     , gmCaches       :: !GhcModCaches
     , gmMMappedFiles :: !FileMappingMap
@@ -220,7 +219,7 @@ data CompilerMode = Simple | Intelligent deriving (Eq,Show,Read)
 
 defaultGhcModState :: GhcModState
 defaultGhcModState =
-    GhcModState n Map.empty Simple (GhcModCaches n n n n) Map.empty
+    GhcModState n Simple (GhcModCaches n n n n) Map.empty
  where n = Nothing
 
 ----------------------------------------------------------------

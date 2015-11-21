@@ -214,10 +214,6 @@ resolvedComponentsCache distdir = Cached {
                    then Nothing
                    else Just $ map Left changedFiles
 
-        case (setupChanged, ma) of
-          (False, Just mcs) -> gmsGet >>= \s -> gmsPut s { gmComponents = mcs }
-          _ -> return ()
-
         let mdesc (Left f) = "file:" ++ f
             mdesc (Right mn) = "module:" ++ moduleNameString mn
 
@@ -228,7 +224,8 @@ resolvedComponentsCache distdir = Cached {
         gmLog GmDebug "resolvedComponentsCache" $
               text "files changed" <+>: changedDoc
 
-        mcs <- resolveGmComponents mums comps
+        mcs <- resolveGmComponents ((,) <$> mums <*> ma) comps
+
         return (setupConfigPath distdir : flatten mcs , mcs)
  }
 
@@ -386,27 +383,30 @@ resolveModule env srcDirs (Left fn') = do
    --     | makeRelative dir fn /= fn
 
 type CompilationUnit = Either FilePath ModuleName
+type Components =
+    [GmComponent 'GMCRaw (Set ModulePath)]
+type ResolvedComponentsMap =
+    Map ChComponentName (GmComponent 'GMCResolved (Set ModulePath))
 
 resolveGmComponents :: (IOish m, Gm m)
-    => Maybe [CompilationUnit]
+    => Maybe ([CompilationUnit], ResolvedComponentsMap)
         -- ^ Updated modules
-    -> [GmComponent 'GMCRaw (Set ModulePath)]
-    -> m (Map ChComponentName (GmComponent 'GMCResolved (Set ModulePath)))
-resolveGmComponents mumns cs = do
-    s <- gmsGet
-    m' <- foldrM' (gmComponents s) cs $ \c m -> do
+    -> Components -> m ResolvedComponentsMap
+resolveGmComponents mcache cs = do
+    let rcm = fromMaybe Map.empty $ snd <$> mcache
+
+    m' <- foldrM' rcm cs $ \c m -> do
         case Map.lookup (gmcName c) m of
           Nothing -> insertUpdated m c
           Just c' -> if same gmcRawEntrypoints c c' && same gmcGhcSrcOpts c c'
                        then return m
                        else insertUpdated m c
-    gmsPut s { gmComponents = m' }
     return m'
 
  where
    foldrM' b fa f = foldrM f b fa
    insertUpdated m c = do
-     rc <- resolveGmComponent mumns c
+     rc <- resolveGmComponent (fst <$> mcache) c
      return $ Map.insert (gmcName rc) rc m
 
    same :: Eq b
