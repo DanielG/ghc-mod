@@ -4,6 +4,7 @@ module Language.Haskell.GhcMod.Cradle
   (
     findCradle
   , findCradle'
+  , findCradleNoLog
   , findSpecCradle
   , cleanupCradle
   )
@@ -25,6 +26,8 @@ import Data.Maybe
 import System.Directory
 import System.FilePath
 import Prelude
+import Control.Monad.Trans.Journal (runJournalT)
+
 
 ----------------------------------------------------------------
 
@@ -35,6 +38,9 @@ import Prelude
 findCradle :: (GmLog m, IOish m, GmOut m) => m Cradle
 findCradle = findCradle' =<< liftIO getCurrentDirectory
 
+findCradleNoLog  :: forall m. (IOish m, GmOut m) => m Cradle
+findCradleNoLog = fst <$> (runJournalT findCradle :: m (Cradle, GhcModLog))
+    
 findCradle' :: (GmLog m, IOish m, GmOut m) => FilePath -> m Cradle
 findCradle' dir = run $
     msum [ stackCradle dir
