@@ -15,6 +15,7 @@ import Language.Haskell.GhcMod.Doc (showPage, styleUnqualified)
 import Language.Haskell.GhcMod.Gap as Gap
 import Language.Haskell.GhcMod.Monad
 import Language.Haskell.GhcMod.Types
+import Language.Haskell.GhcMod.Logging
 import Name (getOccString)
 import Outputable
 import TyCon (isAlgTyCon)
@@ -35,8 +36,11 @@ browse pkgmdl = do
   where
     -- TODO: Add API to Gm.Target to check if module is home module without
     -- bringing up a GHC session as well then this can be made a lot cleaner
-    go = ghandle (\(SomeException _) -> return []) $ do
+    go = ghandle (\ex@(SomeException _) -> logException ex >> return []) $ do
       goPkgModule `G.gcatch` (\(SomeException _) -> goHomeModule)
+
+    logException ex =
+        gmLog GmException "browse" $ showDoc ex
 
     goPkgModule = do
       opt <- options
