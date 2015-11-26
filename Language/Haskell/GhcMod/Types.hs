@@ -15,7 +15,7 @@ import Control.Exception (Exception)
 import Control.Applicative
 import Control.Concurrent
 import Control.Monad
-import Data.Binary hiding (gput, gget)
+import Data.Binary
 import Data.Binary.Generic
 import Data.Map (Map)
 import qualified Data.Map as Map
@@ -231,8 +231,8 @@ data GhcPkgDb = GlobalDb
                 deriving (Eq, Show, Generic)
 
 instance Binary GhcPkgDb where
-    put = gput . from
-    get = to `fmap` gget
+    put = ggput . from
+    get = to `fmap` ggget
 
 -- | A single GHC command line option.
 type GHCOption = String
@@ -304,14 +304,14 @@ data GmComponent (t :: GmComponentType) eps = GmComponent {
   } deriving (Eq, Ord, Show, Read, Generic, Functor)
 
 instance Binary eps => Binary (GmComponent t eps) where
-    put = gput . from
-    get = to `fmap` gget
+    put = ggput . from
+    get = to `fmap` ggget
 
 data ModulePath = ModulePath { mpModule :: ModuleName, mpPath :: FilePath }
   deriving (Eq, Ord, Show, Read, Generic, Typeable)
 instance Binary ModulePath where
-    put = gput . from
-    get = to `fmap` gget
+    put = ggput . from
+    get = to `fmap` ggget
 
 instance Binary ModuleName where
   get = mkModuleName <$> get
@@ -372,17 +372,17 @@ instance Error GhcModError where
 instance Exception GhcModError
 
 instance Binary CabalHelper.Programs where
-    put = gput . from
-    get = to `fmap` gget
+    put = ggput . from
+    get = to `fmap` ggget
 instance Binary ChModuleName where
-    put = gput . from
-    get = to `fmap` gget
+    put = ggput . from
+    get = to `fmap` ggget
 instance Binary ChComponentName where
-    put = gput . from
-    get = to `fmap` gget
+    put = ggput . from
+    get = to `fmap` ggget
 instance Binary ChEntrypoint where
-    put = gput . from
-    get = to `fmap` gget
+    put = ggput . from
+    get = to `fmap` ggget
 
 mkLabel ''GhcModCaches
 mkLabel ''GhcModState

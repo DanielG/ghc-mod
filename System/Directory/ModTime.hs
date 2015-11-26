@@ -48,7 +48,7 @@ instance Binary ModTime where
     put (ModTime (TOD s ps)) =
         put s >> put ps
     get =
-        ModTime . TOD <$> get <*> get
+        ModTime <$> (TOD <$> get <*> get)
 
 #endif
 

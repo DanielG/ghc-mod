@@ -18,43 +18,43 @@
 module Data.Binary.Generic where
 
 import Control.Applicative
-import Data.Binary hiding (GBinary(..))
+import Data.Binary
 import Data.Bits
 import GHC.Generics
 import Prelude
 
-class GBinary f where
-    gput :: f t -> Put
-    gget :: Get (f t)
+class GGBinary f where
+    ggput :: f t -> Put
+    ggget :: Get (f t)
 
 -- Type without constructors
-instance GBinary V1 where
-    gput _ = return ()
-    gget   = return undefined
+instance GGBinary V1 where
+    ggput _ = return ()
+    ggget   = return undefined
 
 -- Constructor without arguments
-instance GBinary U1 where
-    gput U1 = return ()
-    gget    = return U1
+instance GGBinary U1 where
+    ggput U1 = return ()
+    ggget    = return U1
 
 -- Product: constructor with parameters
-instance (GBinary a, GBinary b) => GBinary (a :*: b) where
-    gput (x :*: y) = gput x >> gput y
-    gget = (:*:) <$> gget <*> gget
+instance (GGBinary a, GGBinary b) => GGBinary (a :*: b) where
+    ggput (x :*: y) = ggput x >> ggput y
+    ggget = (:*:) <$> ggget <*> ggget
 
 -- Metadata (constructor name, etc)
-instance GBinary a => GBinary (M1 i c a) where
-    gput = gput . unM1
-    gget = M1 <$> gget
+instance GGBinary a => GGBinary (M1 i c a) where
+    ggput = ggput . unM1
+    ggget = M1 <$> ggget
 
 -- Constants, additional parameters, and rank-1 recursion
-instance Binary a => GBinary (K1 i a) where
-    gput = put . unK1
-    gget = K1 <$> get
+instance Binary a => GGBinary (K1 i a) where
+    ggput = put . unK1
+    ggget = K1 <$> get
 
 -- Borrowed from the cereal package.
 
--- The following GBinary instance for sums has support for serializing
+-- The following GGBinary instance for sums has support for serializing
 -- types with up to 2^64-1 constructors. It will use the minimal
 -- number of bytes needed to encode the constructor. For example when
 -- a type has 2^8 constructors or less it will use a single byte to
@@ -66,19 +66,19 @@ instance Binary a => GBinary (K1 i a) where
 #define GETSUM(WORD) GUARD(WORD) = (get :: Get WORD) >>= checkGetSum (fromIntegral size)
 
 instance ( GSum     a, GSum     b
-         , GBinary a, GBinary b
-         , SumSize    a, SumSize    b) => GBinary (a :+: b) where
-    gput | PUTSUM(Word8) | PUTSUM(Word16) | PUTSUM(Word32) | PUTSUM(Word64)
+         , GGBinary a, GGBinary b
+         , SumSize    a, SumSize    b) => GGBinary (a :+: b) where
+    ggput | PUTSUM(Word8) | PUTSUM(Word16) | PUTSUM(Word32) | PUTSUM(Word64)
          | otherwise = sizeError "encode" size
       where
         size = unTagged (sumSize :: Tagged (a :+: b) Word64)
-    {-# INLINE gput #-}
+    {-# INLINE ggput #-}
 
-    gget | GETSUM(Word8) | GETSUM(Word16) | GETSUM(Word32) | GETSUM(Word64)
+    ggget | GETSUM(Word8) | GETSUM(Word16) | GETSUM(Word32) | GETSUM(Word64)
          | otherwise = sizeError "decode" size
       where
         size = unTagged (sumSize :: Tagged (a :+: b) Word64)
-    {-# INLINE gget #-}
+    {-# INLINE ggget #-}
 
 sizeError :: Show size => String -> size -> error
 sizeError s size =
@@ -96,7 +96,7 @@ class GSum f where
     getSum :: (Ord word, Num word, Bits word) => word -> word -> Get (f a)
     putSum :: (Num w, Bits w, Binary w) => w -> w -> f a -> Put
 
-instance (GSum a, GSum b, GBinary a, GBinary b) => GSum (a :+: b) where
+instance (GSum a, GSum b, GGBinary a, GGBinary b) => GSum (a :+: b) where
     getSum !code !size | code < sizeL = L1 <$> getSum code           sizeL
                        | otherwise    = R1 <$> getSum (code - sizeL) sizeR
         where
@@ -112,11 +112,11 @@ instance (GSum a, GSum b, GBinary a, GBinary b) => GSum (a :+: b) where
           sizeR = size - sizeL
     {-# INLINE putSum #-}
 
-instance GBinary a => GSum (C1 c a) where
-    getSum _ _ = gget
+instance GGBinary a => GSum (C1 c a) where
+    getSum _ _ = ggget
     {-# INLINE getSum #-}
 
-    putSum !code _ x = put code *> gput x
+    putSum !code _ x = put code *> ggput x
     {-# INLINE putSum #-}
 
 ------------------------------------------------------------------------
