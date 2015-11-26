@@ -60,7 +60,7 @@ getGhcMergedPkgOptions = chCached $ \distdir -> Cached {
   cacheLens = Just (lGmcMergedPkgOptions . lGmCaches),
   cacheFile = mergedPkgOptsCacheFile distdir,
   cachedAction = \_tcf (_progs, _projdir, _ver) _ma -> do
-    opts <- withCabal $ runCHQuery ghcMergedPkgOptions
+    opts <- runCHQuery ghcMergedPkgOptions
     return ([setupConfigPath distdir], opts)
  }
 
@@ -70,7 +70,7 @@ getCabalPackageDbStack = chCached $ \distdir -> Cached {
   cacheFile = pkgDbStackCacheFile distdir,
   cachedAction = \_tcf (_progs, _projdir, _ver) _ma -> do
     crdl <- cradle
-    dbs <- withCabal $ map chPkgToGhcPkg <$>
+    dbs <- map chPkgToGhcPkg <$>
              runCHQuery packageDbStack
     return ([setupConfigFile crdl, sandboxConfigFile crdl], dbs)
  }
