@@ -30,7 +30,7 @@ read -p "Username: " user
 hidden_prompt "Password" pw
 
 
-versions="$(curl http://hackage.haskell.org/package/"$PACKAGE"/preferred.json | jq '."normal-version"[]' -r)"
+versions="$(curl https://hackage.haskell.org/package/"$PACKAGE"/preferred.json | jq '."normal-version"[]' -r)"
 
 for v in $versions; do
     rev=$(cat $OUTDIR/$PACKAGE-$v.cabal | grep -i "^x-revision:" | tr -s '[:blank:]*' '\t' | cut -f 2)
@@ -41,7 +41,7 @@ for v in $versions; do
 
     content=$( ( echo "X-Revision: $((rev + 1))"; cat $OUTDIR/$PACKAGE-$v.cabal | sed '/^X-Revision:/Id' ) )
 
-    resp=$(curl --form-string "cabalfile=$content" -F "publish=Publish new revision" http://hackage.haskell.org/package/"${PACKAGE}-${v}"/"${PACKAGE}.cabal"/edit -u "$user:$pw")
+    resp=$(curl --form-string "cabalfile=$content" -F "publish=Publish new revision" https://hackage.haskell.org/package/"${PACKAGE}-${v}"/"${PACKAGE}.cabal"/edit -u "$user:$pw")
 
     changes=$(printf '%s\n' "$resp" | sed -n '/Changes in this revision/,/<\/ul>/p' | w3m -dump -T text/html)
 

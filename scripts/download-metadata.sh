@@ -17,7 +17,7 @@
 PACKAGE=$1
 OUTDIR=$2
 
-versions="$(wget -O - http://hackage.haskell.org/package/"$PACKAGE"/preferred.json | jq '."normal-version"[]' -r)"
+versions="$(wget -O - https://hackage.haskell.org/package/"$PACKAGE"/preferred.json | jq '."normal-version"[]' -r)"
 
 mkdir -p "$OUTDIR"
 
