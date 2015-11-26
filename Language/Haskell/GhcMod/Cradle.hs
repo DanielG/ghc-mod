@@ -79,6 +79,10 @@ cabalCradle wdir = do
 
 stackCradle :: (IOish m, GmOut m) => FilePath -> MaybeT m Cradle
 stackCradle wdir = do
+#if !MIN_VERSION_ghc(7,8,0)
+    -- GHC < 7.8 is not supported by stack
+    mzero
+#endif
     cabalFile <- MaybeT $ liftIO $ findCabalFile wdir
 
     let cabalDir = takeDirectory cabalFile
