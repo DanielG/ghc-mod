@@ -15,7 +15,8 @@ import Control.Exception (Exception)
 import Control.Applicative
 import Control.Concurrent
 import Control.Monad
-import Data.Binary
+import Data.Binary hiding (gput, gget)
+import Data.Binary.Generic
 import Data.Map (Map)
 import qualified Data.Map as Map
 import Data.Set (Set)
@@ -24,8 +25,6 @@ import Data.Monoid
 import Data.Maybe
 import Data.Typeable (Typeable)
 import Data.IORef
-import Data.Time (UTCTime(..))
-import Data.Time.Calendar (Day(..))
 import Data.Label.Derive
 import Distribution.Helper hiding (Programs(..))
 import qualified Distribution.Helper as CabalHelper
@@ -232,7 +231,9 @@ data GhcPkgDb = GlobalDb
               | PackageDb String
                 deriving (Eq, Show, Generic)
 
-instance Binary GhcPkgDb
+instance Binary GhcPkgDb where
+    put = gput . from
+    get = to `fmap` gget
 
 -- | A single GHC command line option.
 type GHCOption = String
@@ -303,11 +304,15 @@ data GmComponent (t :: GmComponentType) eps = GmComponent {
   , gmcSourceDirs      :: [FilePath]
   } deriving (Eq, Ord, Show, Read, Generic, Functor)
 
-instance Binary eps => Binary (GmComponent t eps)
+instance Binary eps => Binary (GmComponent t eps) where
+    put = gput . from
+    get = to `fmap` gget
 
 data ModulePath = ModulePath { mpModule :: ModuleName, mpPath :: FilePath }
   deriving (Eq, Ord, Show, Read, Generic, Typeable)
-instance Binary ModulePath
+instance Binary ModulePath where
+    put = gput . from
+    get = to `fmap` gget
 
 instance Binary ModuleName where
   get = mkModuleName <$> get
@@ -367,16 +372,18 @@ instance Error GhcModError where
 
 instance Exception GhcModError
 
-instance Binary CabalHelper.Programs
-instance Binary ChModuleName
-instance Binary ChComponentName
-instance Binary ChEntrypoint
-
-instance Binary UTCTime where
-    put (UTCTime (ModifiedJulianDay day) difftime) =
-        put day >> put (toRational difftime)
-    get = do
-        UTCTime <$> (ModifiedJulianDay <$> get) <*> (fromRational <$> get)
+instance Binary CabalHelper.Programs where
+    put = gput . from
+    get = to `fmap` gget
+instance Binary ChModuleName where
+    put = gput . from
+    get = to `fmap` gget
+instance Binary ChComponentName where
+    put = gput . from
+    get = to `fmap` gget
+instance Binary ChEntrypoint where
+    put = gput . from
+    get = to `fmap` gget
 
 mkLabel ''GhcModCaches
 mkLabel ''GhcModState

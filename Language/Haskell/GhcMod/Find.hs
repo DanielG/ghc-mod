@@ -29,7 +29,8 @@ import Language.Haskell.GhcMod.World (timedPackageCaches)
 import Language.Haskell.GhcMod.Output
 import Name (getOccString)
 import Module (moduleName)
-import System.Directory (doesFileExist, getModificationTime)
+import System.Directory (doesFileExist)
+import System.Directory.ModTime
 import System.FilePath ((</>))
 import System.IO
 import Prelude
@@ -120,7 +121,7 @@ isOlderThan cache files = do
   if not exist
   then return True
   else do
-    tCache <- getModificationTime cache
+    tCache <- getModTime cache
     return $ any (tCache <=) $ map tfTime files -- including equal just in case
 
 -- | Browsing all functions in all system modules.
