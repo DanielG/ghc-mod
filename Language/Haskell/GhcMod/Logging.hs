@@ -85,14 +85,9 @@ gmLog level loc' doc = do
 
 -- | Appends a collection of logs to the logging environment, with effects
 -- | if their log level specifies it should
-gmLog' :: (MonadIO m, GmLog m, GmOut m) => GhcModLog -> m ()
-gmLog' GhcModLog { gmLogMessages } = do
-  GhcModLog { gmLogLevel = Just level' } <- gmlHistory
-  mapM_ (\(level, _, msgDoc) ->  when (level <= level') $ gmErrStrLn (docToString msgDoc)) gmLogMessages
-  -- instance Monoid GhcModLog takes the second debug level for some reason, so we need to force this to nothing
-  gmlJournal (GhcModLog Nothing (Last Nothing)  gmLogMessages)
-  where
-    docToString msgDoc = dropWhileEnd isSpace $ gmRenderDoc msgDoc
+gmAppendLog ::  (MonadIO m, GmLog m, GmOut m) => GhcModLog -> m ()
+gmAppendLog  GhcModLog { gmLogMessages } = (\(level, loc, msgDoc) -> gmLog level loc msgDoc) `mapM_` gmLogMessages
+    
 
 gmVomit :: (MonadIO m, GmLog m, GmOut m, GmEnv m) => String -> Doc -> String -> m ()
 gmVomit filename doc content = do
