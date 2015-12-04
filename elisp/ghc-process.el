@@ -196,7 +196,7 @@
     (setq ghc-process-rendezvous nil)
     (setq ghc-process-results nil)
     (setq ghc-process-num-of-results (or n 1))
-    (let* ((pro (ghc-with-process cmd 'ghc-sync-process-callback nil)))
+    (let ((pro (ghc-with-process cmd 'ghc-sync-process-callback nil)))
       ;; ghc-process-running is now t.
       ;; But if the process exits abnormally, it is set to nil.
       (condition-case nil
