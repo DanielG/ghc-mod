@@ -92,7 +92,7 @@
 	  ;;	  (insert (format "%% %s" unmap-cmd))))
 	  ;;   (process-send-string pro unmap-cmd))
 
-	  pro)))))
+	  pro))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
