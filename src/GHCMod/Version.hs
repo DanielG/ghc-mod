@@ -7,7 +7,7 @@ import Config (cProjectVersion)
 progVersion :: String -> String
 progVersion pf =
     "ghc-mod"++pf++" version " ++ showVersion version ++ " compiled by GHC "
-                               ++ cProjectVersion ++ "\n"
+                               ++ cProjectVersion
 
 ghcModVersion :: String
 ghcModVersion = progVersion ""
