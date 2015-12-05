@@ -5,22 +5,23 @@ import Control.Exception (SomeException(..))
 import Language.Haskell.GhcMod.Logger (checkErrorPrefix)
 import Language.Haskell.GhcMod.Convert
 import Language.Haskell.GhcMod.Monad
-import Language.Haskell.GhcMod.Types
 import Language.Haskell.HLint (hlint)
 
 import Language.Haskell.GhcMod.Utils (withMappedFile)
 
 import Data.List (stripPrefix)
 
+data LintOpts = LintOpts { optLintHlintOpts :: [String] }
+
 -- | Checking syntax of a target file using hlint.
 --   Warnings and errors are returned.
 lint :: IOish m
-     => FilePath  -- ^ A target file.
+     => LintOpts
+     -> FilePath  -- ^ A target file.
      -> GhcModT m String
-lint file = do
-  opt <- options
+lint opt file =
   withMappedFile file $ \tempfile ->
-        liftIO (hlint $ tempfile : "--quiet" : optHlintOpts opt)
+        liftIO (hlint $ tempfile : "--quiet" : optLintHlintOpts opt)
     >>= mapM (replaceFileName tempfile)
     >>= ghandle handler . pack
  where

@@ -102,13 +102,6 @@ data Options = Options {
   , optPrograms       :: Programs
     -- | GHC command line options set on the @ghc-mod@ command line
   , optGhcUserOptions :: [GHCOption]
-  -- | If 'True', 'browse' also returns operators.
-  , optOperators      :: Bool
-  -- | If 'True', 'browse' also returns types.
-  , optDetailed       :: Bool
-  -- | If 'True', 'browse' will return fully qualified name
-  , optQualified      :: Bool
-  , optHlintOpts      :: [String]
   , optFileMappings   :: [(FilePath, Maybe FilePath)]
   } deriving (Show)
 
@@ -128,10 +121,6 @@ defaultOptions = Options {
     , stackProgram   = "stack"
     }
   , optGhcUserOptions = []
-  , optOperators      = False
-  , optDetailed       = False
-  , optQualified      = False
-  , optHlintOpts      = []
   , optFileMappings   = []
   }
 

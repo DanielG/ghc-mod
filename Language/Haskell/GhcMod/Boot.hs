@@ -12,7 +12,7 @@ import Language.Haskell.GhcMod.Modules
 boot :: IOish m => GhcModT m String
 boot = concat <$> sequence ms
   where
-    ms = [modules, languages, flags, concat <$> mapM browse preBrowsedModules]
+    ms = [modules False, languages, flags, concat <$> mapM (browse (BrowseOpts False False False)) preBrowsedModules]
 
 preBrowsedModules :: [String]
 preBrowsedModules = [
