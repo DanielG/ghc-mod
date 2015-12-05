@@ -4,7 +4,7 @@ import Options.Applicative
 import Options.Applicative.Types
 import Language.Haskell.GhcMod.Types
 import GHCMod.Options.DocUtils
-import GHCMod.Options.GapUtils
+import Language.Haskell.GhcMod.Read
 
 type Symbol = String
 type Expr = String
