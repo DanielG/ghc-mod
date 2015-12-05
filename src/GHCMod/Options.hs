@@ -60,7 +60,6 @@ logLevelParser =
     logLevelOption =
       option int (
         long "verbose" <>
-        short 'v' <>
         metavar "LEVEL" <>
         value 4 <>
         showDefault <>
@@ -68,12 +67,10 @@ logLevelParser =
       )
     logLevelSwitch =
       (4+) . length <$> many (flag' () (
-        long "verbose" <>
         short 'v' <>
         help "Increase log level"
       ))
-    silentSwitch = (\v -> if v then 0 else 4) <$>
-      switch (
+    silentSwitch = flag' 0 (
         long "silent" <>
         short 's' <>
         help "Be silent, set log level to 0"
