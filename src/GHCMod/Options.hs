@@ -141,8 +141,8 @@ globalArgSpec = Options <$>
         `file2.hs` has to be either relative to project root,
         or full path (preferred).
     * `--map-file "file.hs"` can be used to tell ghc-mod that it should take
-        source code for `file.hs` from stdin. File end marker is `\EOT\n`,
-        i.e. `\x04\x0A`. `file.hs` may or may not exist, and should be
+        source code for `file.hs` from stdin. File end marker is `\n\EOT\n`,
+        i.e. `\x0A\x04\x0A`. `file.hs` may or may not exist, and should be
         either full path, or relative to project root.
 
     Interactive commands:
