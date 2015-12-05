@@ -1,6 +1,5 @@
 module GHCMod.Options (
   parseArgs,
-  parseCommandsFromList,
   GhcModCommands(..)
 ) where
 
@@ -18,13 +17,6 @@ parseArgs =
     opts = info (argAndCmdSpec <**> helpVersion)
       ( fullDesc
      <> header "ghc-mod: Happy Haskell Programming" )
-
-parseCommandsFromList :: [String] -> Either String GhcModCommands
-parseCommandsFromList args =
-  case execParserPure (prefs idm) (info commandsSpec idm) args of
-    Success a -> Right a
-    Failure h -> Left $ show h
-    CompletionInvoked _ -> error "WTF"
 
 helpVersion :: Parser (a -> a)
 helpVersion =
