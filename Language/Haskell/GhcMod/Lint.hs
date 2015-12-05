@@ -4,14 +4,13 @@ import Exception (ghandle)
 import Control.Exception (SomeException(..))
 import Language.Haskell.GhcMod.Logger (checkErrorPrefix)
 import Language.Haskell.GhcMod.Convert
+import Language.Haskell.GhcMod.Types
 import Language.Haskell.GhcMod.Monad
 import Language.Haskell.HLint (hlint)
 
 import Language.Haskell.GhcMod.Utils (withMappedFile)
 
 import Data.List (stripPrefix)
-
-data LintOpts = LintOpts { optLintHlintOpts :: [String] }
 
 -- | Checking syntax of a target file using hlint.
 --   Warnings and errors are returned.

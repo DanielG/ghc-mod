@@ -373,6 +373,20 @@ instance Binary ChEntrypoint where
     put = ggput . from
     get = to `fmap` ggget
 
+data LintOpts = LintOpts { optLintHlintOpts :: [String] }
+
+defaultLintOpts :: LintOpts
+defaultLintOpts = LintOpts []
+
+data BrowseOpts = BrowseOpts {
+        optBrowseOperators      :: Bool
+      , optBrowseDetailed       :: Bool
+      , optBrowseQualified      :: Bool
+    }
+
+defaultBrowseOpts :: BrowseOpts
+defaultBrowseOpts = BrowseOpts False False False
+
 mkLabel ''GhcModCaches
 mkLabel ''GhcModState
 mkLabel ''Options

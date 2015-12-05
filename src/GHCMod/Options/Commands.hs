@@ -2,8 +2,7 @@ module GHCMod.Options.Commands where
 
 import Options.Applicative
 import Options.Applicative.Types
-import Language.Haskell.GhcMod.Lint (LintOpts(..))
-import Language.Haskell.GhcMod.Browse (BrowseOpts(..))
+import Language.Haskell.GhcMod.Types
 import Text.Read (readMaybe)
 import GHCMod.Options.DocUtils
 

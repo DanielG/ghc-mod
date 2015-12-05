@@ -14,6 +14,7 @@ import qualified GHC as G
 import Language.Haskell.GhcMod.Convert
 import Language.Haskell.GhcMod.Doc (showPage, styleUnqualified)
 import Language.Haskell.GhcMod.Gap as Gap
+import Language.Haskell.GhcMod.Types
 import Language.Haskell.GhcMod.Monad
 import Language.Haskell.GhcMod.Logging
 import Name (getOccString)
@@ -24,12 +25,6 @@ import Exception (ExceptionMonad, ghandle)
 import Prelude
 
 ----------------------------------------------------------------
-
-data BrowseOpts = BrowseOpts {
-        optBrowseOperators      :: Bool
-      , optBrowseDetailed       :: Bool
-      , optBrowseQualified      :: Bool
-    }
 
 -- | Getting functions, classes, etc from a module.
 --   If 'detailed' is 'True', their types are also obtained.
