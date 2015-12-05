@@ -3,8 +3,8 @@ module GHCMod.Options.Commands where
 import Options.Applicative
 import Options.Applicative.Types
 import Language.Haskell.GhcMod.Types
-import Text.Read (readMaybe)
 import GHCMod.Options.DocUtils
+import GHCMod.Options.GapUtils
 
 type Symbol = String
 type Expr = String
@@ -36,11 +36,6 @@ data GhcModCommands =
   | CmdSig FilePath Point
   | CmdAuto FilePath Point
   | CmdRefine FilePath Point Expr
-
-int :: ReadM Int
-int = do
-  v <- readerAsk
-  maybe (readerError $ "Not a number \"" ++ v ++ "\"") return $ readMaybe v
 
 commandsSpec :: Parser GhcModCommands
 commandsSpec =
@@ -228,3 +223,8 @@ autoArgSpec = locArgSpec CmdAuto
 splitArgSpec = locArgSpec CmdSplit
 sigArgSpec = locArgSpec CmdSig
 refineArgSpec = locArgSpec CmdRefine <*> strArg "SYMBOL"
+
+int :: ReadM Int
+int = do
+  v <- readerAsk
+  maybe (readerError $ "Not a number \"" ++ v ++ "\"") return $ readMaybe v
