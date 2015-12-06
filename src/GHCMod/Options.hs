@@ -9,21 +9,25 @@ import Language.Haskell.GhcMod.Types
 import Control.Arrow
 import GHCMod.Options.Commands
 import GHCMod.Version
+import GHCMod.Options.DocUtils
 
 parseArgs :: IO (Options, GhcModCommands)
 parseArgs =
   execParser opts
   where
     opts = info (argAndCmdSpec <**> helpVersion)
-      ( fullDesc
-     <> header "ghc-mod: Happy Haskell Programming" )
+           $$ fullDesc
+           ## header "ghc-mod: Happy Haskell Programming"
 
 helpVersion :: Parser (a -> a)
 helpVersion =
-  helper <*>
-  abortOption (InfoMsg ghcModVersion)
-    (long "version" <> help "Print the version of the program.") <*>
-  argument r (value id <> metavar "")
+      helper
+  <*> abortOption (InfoMsg ghcModVersion)
+      $$ long "version"
+      ## help "Print the version of the program."
+  <*> argument r
+      $$ value id
+      ## metavar ""
   where
     r :: ReadM (a -> a)
     r = do
@@ -44,92 +48,81 @@ getLogLevel = toEnum . min 7
 
 logLevelParser :: Parser GmLogLevel
 logLevelParser =
-  getLogLevel <$>
-    (
-    silentSwitch <|> logLevelSwitch <|> logLevelOption
-    )
+  getLogLevel
+    <$>  silentSwitch
+    <||> logLevelSwitch
+    <||> logLevelOption
   where
     logLevelOption =
-      option int (
-        long "verbose" <>
-        metavar "LEVEL" <>
-        value 4 <>
-        showDefault <>
-        help "Set log level. (0-7)"
-      )
+      option int
+        $$ long "verbose"
+        ## metavar "LEVEL"
+        ## value 4
+        ## showDefault
+        ## help "Set log level. (0-7)"
     logLevelSwitch =
-      (4+) . length <$> many (flag' () (
-        short 'v' <>
-        help "Increase log level"
-      ))
-    silentSwitch = flag' 0 (
-        long "silent" <>
-        short 's' <>
-        help "Be silent, set log level to 0"
-      )
+      (4+) . length <$> many $$ flag' ()
+        $$ short 'v'
+        ## help "Increase log level"
+    silentSwitch = flag' 0
+        $$ long "silent"
+        ## short 's'
+        ## help "Be silent, set log level to 0"
 
 outputOptsSpec :: Parser OutputOpts
-outputOptsSpec = OutputOpts <$>
-      logLevelParser <*>
-      flag PlainStyle LispStyle (
-        long "tolisp" <>
-        short 'l' <>
-        help "Format output as an S-Expression"
-      ) <*>
-      (LineSeparator <$> strOption (
-        long "boundary" <>
-        long "line-separator" <>
-        short 'b' <>
-        metavar "SEP" <>
-        value "\0" <>
-        showDefault <>
-        help "Output line separator"
-      )) <*>
-      optional (splitOn ',' <$> strOption (
-        long "line-prefix" <>
-        metavar "OUT,ERR" <>
-        help "Output prefixes"
-      ))
+outputOptsSpec = OutputOpts
+      <$> logLevelParser
+      <*> flag PlainStyle LispStyle
+          $$ long "tolisp"
+          ## short 'l'
+          ## help "Format output as an S-Expression"
+      <*> LineSeparator <$$> strOption
+          $$ long "boundary"
+          ## long "line-separator"
+          ## short 'b'
+          ## metavar "SEP"
+          ## value "\0"
+          ## showDefault
+          ## help "Output line separator"
+      <*> optional $$ splitOn ',' <$$> strOption
+          $$ long "line-prefix"
+          ## metavar "OUT,ERR"
+          ## help "Output prefixes"
 
 programsArgSpec :: Parser Programs
-programsArgSpec = Programs <$>
-      strOption (
-        long "with-ghc" <>
-        value "ghc" <>
-        showDefault <>
-        help "GHC executable to use"
-      ) <*>
-      strOption (
-        long "with-ghc-pkg" <>
-        value "ghc-pkg" <>
-        showDefault <>
-        help "ghc-pkg executable to use (only needed when guessing from GHC path fails)"
-      ) <*>
-      strOption (
-        long "with-cabal" <>
-        value "cabal" <>
-        showDefault <>
-        help "cabal-install executable to use"
-      ) <*>
-      strOption (
-        long "with-stack" <>
-        value "stack" <>
-        showDefault <>
-        help "stack executable to use"
-      )
+programsArgSpec = Programs
+      <$> strOption
+          $$ long "with-ghc"
+          ## value "ghc"
+          ## showDefault
+          ## help "GHC executable to use"
+      <*> strOption
+          $$ long "with-ghc-pkg"
+          ## value "ghc-pkg"
+          ## showDefault
+          ## help "ghc-pkg executable to use (only needed when guessing from GHC path fails)"
+      <*> strOption
+          $$ long "with-cabal"
+          ## value "cabal"
+          ## showDefault
+          ## help "cabal-install executable to use"
+      <*> strOption
+          $$ long "with-stack"
+          ## value "stack"
+          ## showDefault
+          ## help "stack executable to use"
 
 globalArgSpec :: Parser Options
-globalArgSpec = Options <$>
-      outputOptsSpec <*> -- optOutput
-      programsArgSpec <*> -- optPrograms
-      many (strOption ( -- optGhcUserOptions
-        long "ghcOpt" <>
-        long "ghc-option" <>
-        short 'g' <>
-        metavar "OPT" <>
-        help "Option to be passed to GHC"
-      )) <*>
-      many fileMappingSpec -- optFileMappings   = []
+globalArgSpec = Options
+      <$> outputOptsSpec
+      <*> programsArgSpec
+      <*> many $$ strOption
+          $$ long "ghcOpt"
+          ## long "ghc-option"
+          ## short 'g'
+          ## metavar "OPT"
+          ## help "Option to be passed to GHC"
+      <*> many fileMappingSpec
   where
     {-
     File map docs:
@@ -166,9 +159,8 @@ globalArgSpec = Options <$>
         mapped. Works exactly the same as `unmap-file` interactive command
     -}
     fileMappingSpec =
-      getFileMapping . splitOn '=' <$> strOption (
-        long "map-file" <>
-        metavar "MAPPING" <>
-        help "Redirect one file to another, --map-file \"file1.hs=file2.hs\""
-      )
+      getFileMapping . splitOn '=' <$> strOption
+        $$ long "map-file"
+        ## metavar "MAPPING"
+        ## help "Redirect one file to another, --map-file \"file1.hs=file2.hs\""
     getFileMapping = second (\i -> if null i then Nothing else Just i)
