@@ -16,18 +16,18 @@ parseArgs =
   execParser opts
   where
     opts = info (argAndCmdSpec <**> helpVersion)
-           $$ fullDesc
-           ## header "ghc-mod: Happy Haskell Programming"
+           $$  fullDesc
+           <=> header "ghc-mod: Happy Haskell Programming"
 
 helpVersion :: Parser (a -> a)
 helpVersion =
       helper
   <*> abortOption (InfoMsg ghcModVersion)
-      $$ long "version"
-      ## help "Print the version of the program."
+      $$  long "version"
+      <=> help "Print the version of the program."
   <*> argument r
-      $$ value id
-      ## metavar ""
+      $$  value id
+      <=> metavar ""
   where
     r :: ReadM (a -> a)
     r = do
@@ -55,73 +55,73 @@ logLevelParser =
   where
     logLevelOption =
       option int
-        $$ long "verbose"
-        ## metavar "LEVEL"
-        ## value 4
-        ## showDefault
-        ## help "Set log level. (0-7)"
+        $$  long "verbose"
+        <=> metavar "LEVEL"
+        <=> value 4
+        <=> showDefault
+        <=> help "Set log level. (0-7)"
     logLevelSwitch =
       (4+) . length <$> many $$ flag' ()
-        $$ short 'v'
-        ## help "Increase log level"
+        $$  short 'v'
+        <=> help "Increase log level"
     silentSwitch = flag' 0
-        $$ long "silent"
-        ## short 's'
-        ## help "Be silent, set log level to 0"
+        $$  long "silent"
+        <=> short 's'
+        <=> help "Be silent, set log level to 0"
 
 outputOptsSpec :: Parser OutputOpts
 outputOptsSpec = OutputOpts
       <$> logLevelParser
       <*> flag PlainStyle LispStyle
-          $$ long "tolisp"
-          ## short 'l'
-          ## help "Format output as an S-Expression"
+          $$  long "tolisp"
+          <=> short 'l'
+          <=> help "Format output as an S-Expression"
       <*> LineSeparator <$$> strOption
-          $$ long "boundary"
-          ## long "line-separator"
-          ## short 'b'
-          ## metavar "SEP"
-          ## value "\0"
-          ## showDefault
-          ## help "Output line separator"
+          $$  long "boundary"
+          <=> long "line-separator"
+          <=> short 'b'
+          <=> metavar "SEP"
+          <=> value "\0"
+          <=> showDefault
+          <=> help "Output line separator"
       <*> optional $$ splitOn ',' <$$> strOption
-          $$ long "line-prefix"
-          ## metavar "OUT,ERR"
-          ## help "Output prefixes"
+          $$  long "line-prefix"
+          <=> metavar "OUT,ERR"
+          <=> help "Output prefixes"
 
 programsArgSpec :: Parser Programs
 programsArgSpec = Programs
       <$> strOption
-          $$ long "with-ghc"
-          ## value "ghc"
-          ## showDefault
-          ## help "GHC executable to use"
+          $$  long "with-ghc"
+          <=> value "ghc"
+          <=> showDefault
+          <=> help "GHC executable to use"
       <*> strOption
-          $$ long "with-ghc-pkg"
-          ## value "ghc-pkg"
-          ## showDefault
-          ## help "ghc-pkg executable to use (only needed when guessing from GHC path fails)"
+          $$  long "with-ghc-pkg"
+          <=> value "ghc-pkg"
+          <=> showDefault
+          <=> help "ghc-pkg executable to use (only needed when guessing from GHC path fails)"
       <*> strOption
-          $$ long "with-cabal"
-          ## value "cabal"
-          ## showDefault
-          ## help "cabal-install executable to use"
+          $$  long "with-cabal"
+          <=> value "cabal"
+          <=> showDefault
+          <=> help "cabal-install executable to use"
       <*> strOption
-          $$ long "with-stack"
-          ## value "stack"
-          ## showDefault
-          ## help "stack executable to use"
+          $$  long "with-stack"
+          <=> value "stack"
+          <=> showDefault
+          <=> help "stack executable to use"
 
 globalArgSpec :: Parser Options
 globalArgSpec = Options
       <$> outputOptsSpec
       <*> programsArgSpec
       <*> many $$ strOption
-          $$ long "ghcOpt"
-          ## long "ghc-option"
-          ## short 'g'
-          ## metavar "OPT"
-          ## help "Option to be passed to GHC"
+          $$  long "ghcOpt"
+          <=> long "ghc-option"
+          <=> short 'g'
+          <=> metavar "OPT"
+          <=> help "Option to be passed to GHC"
       <*> many fileMappingSpec
   where
     {-
@@ -160,7 +160,7 @@ globalArgSpec = Options
     -}
     fileMappingSpec =
       getFileMapping . splitOn '=' <$> strOption
-        $$ long "map-file"
-        ## metavar "MAPPING"
-        ## help "Redirect one file to another, --map-file \"file1.hs=file2.hs\""
+        $$  long "map-file"
+        <=> metavar "MAPPING"
+        <=> help "Redirect one file to another, --map-file \"file1.hs=file2.hs\""
     getFileMapping = second (\i -> if null i then Nothing else Just i)

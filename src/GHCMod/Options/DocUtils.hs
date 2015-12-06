@@ -3,7 +3,7 @@ module GHCMod.Options.DocUtils (
   desc,
   code,
   ($$),
-  (##),
+  (<=>),
   (<$$>),
   (<||>)
 ) where
@@ -21,7 +21,7 @@ code x = vsep [line, indent 4 $ vsep $ map text x, line]
 infixl 7 <||>
 infixr 8 <$$>
 infixr 8 $$
-infixr 9 ##
+infixr 9 <=>
 
 ($$) :: (a -> b) -> a -> b
 ($$) = ($)
@@ -29,8 +29,8 @@ infixr 9 ##
 (<||>) :: Alternative a => a b -> a b -> a b
 (<||>) = (<|>)
 
-(##) :: Monoid m => m -> m -> m
-(##) = (<>)
+(<=>) :: Monoid m => m -> m -> m
+(<=>) = (<>)
 
 (<$$>) :: Functor f => (a -> b) -> f a -> f b
 (<$$>) = (<$>)
