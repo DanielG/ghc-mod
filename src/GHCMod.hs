@@ -187,10 +187,10 @@ legacyInteractiveLoop symdbreq world = do
           , GHandler $ \e@(ExitFailure _) -> throw e
           , GHandler $ \(SomeException e) -> gmErrStrLn (show e) >> return ""
           ]
-    locArgs  a (f:l:c:_) = a f (read l) (read c)
-    locArgs  _ _ = throw $ InvalidCommandLine $ Left "Invalid command line"
-    locArgs' a (f:l:c:xs) = a f (read l) (read c) (Expression $ concat xs)
-    locArgs' _ _ = throw $ InvalidCommandLine $ Left "Invalid command line"
+    locArgs  a [f,l,c] = a f (read l) (read c)
+    locArgs  _ args = throw $ InvalidCommandLine $ Left $ unwords args
+    locArgs' a (f:l:c:xs) = a f (read l) (read c) (Expression $ unwords xs)
+    locArgs' _ args = throw $ InvalidCommandLine $ Left $ unwords args
 
 getFileSourceFromStdin :: IO String
 getFileSourceFromStdin = do
