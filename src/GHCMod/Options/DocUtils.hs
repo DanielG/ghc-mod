@@ -9,6 +9,7 @@ module GHCMod.Options.DocUtils (
 ) where
 
 import Options.Applicative
+import Data.Monoid (Monoid) -- for ghc<7.10
 import Text.PrettyPrint.ANSI.Leijen as PP hiding ((<>), (<$>), (<$$>), int)
 
 desc :: [Doc] -> InfoMod a
