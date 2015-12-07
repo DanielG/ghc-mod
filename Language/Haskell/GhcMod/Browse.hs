@@ -27,12 +27,10 @@ import Prelude
 ----------------------------------------------------------------
 
 -- | Getting functions, classes, etc from a module.
---   If 'detailed' is 'True', their types are also obtained.
---   If 'operators' is 'True', operators are also returned.
 browse :: forall m. IOish m
-       => BrowseOpts
-       -> String -- ^ A module name. (e.g. \"Data.List\", "base:Prelude")
-       -> GhcModT m String
+           => BrowseOpts -- ^ Configuration parameters
+           -> String -- ^ A module name. (e.g. \"Data.List\", "base:Prelude")
+           -> GhcModT m String
 browse opts pkgmdl = do
     convert' . sort =<< go
   where

@@ -373,17 +373,27 @@ instance Binary ChEntrypoint where
     put = ggput . from
     get = to `fmap` ggget
 
-data LintOpts = LintOpts { optLintHlintOpts :: [String] }
+-- | Options for "lintWith" function
+data LintOpts = LintOpts {
+        optLintHlintOpts :: [String]
+        -- ^ options that will be passed to hlint executable
+      }
 
+-- | Default "LintOpts" instance
 defaultLintOpts :: LintOpts
 defaultLintOpts = LintOpts []
 
+-- | Options for "browseWith" function
 data BrowseOpts = BrowseOpts {
         optBrowseOperators      :: Bool
+        -- ^ If 'True', "browseWith" also returns operators.
       , optBrowseDetailed       :: Bool
+        -- ^ If 'True', "browseWith" also returns types.
       , optBrowseQualified      :: Bool
+        -- ^ If 'True', "browseWith" will return fully qualified name
     }
 
+-- | Default "BrowseOpts" instance
 defaultBrowseOpts :: BrowseOpts
 defaultBrowseOpts = BrowseOpts False False False
 

@@ -15,7 +15,7 @@ import Data.List (stripPrefix)
 -- | Checking syntax of a target file using hlint.
 --   Warnings and errors are returned.
 lint :: IOish m
-     => LintOpts
+     => LintOpts  -- ^ Configuration parameters
      -> FilePath  -- ^ A target file.
      -> GhcModT m String
 lint opt file =
