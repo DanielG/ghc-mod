@@ -25,8 +25,9 @@ module GHCMod.Options.DocUtils (
 ) where
 
 import Options.Applicative
-import Data.Monoid (Monoid) -- for ghc<7.10
+import Data.Monoid
 import Text.PrettyPrint.ANSI.Leijen as PP hiding ((<>), (<$>), (<$$>), int)
+import Prelude
 
 desc :: [Doc] -> InfoMod a
 desc = footerDoc . Just . indent 2 . vsep
