@@ -153,7 +153,8 @@ legacyInteractiveLoop symdbreq world = do
 
     res <- flip gcatches interactiveHandlers $ case dropWhileEnd isSpace cmd of
         "check"  -> checkSyntax [arg]
-        "find"    -> do
+        "lint"   -> lint defaultLintOpts arg
+        "find"   -> do
             db <- getDb symdbreq >>= checkDb symdbreq
             lookupSymbol arg db
 
@@ -166,6 +167,7 @@ legacyInteractiveLoop symdbreq world = do
         "refine" -> locArgs' refine args
 
         "boot"   -> boot
+        "browse" -> concat <$> browse defaultBrowseOpts `mapM` args
 
         "map-file"   ->  liftIO getFileSourceFromStdin
                      >>= loadMappedFileSource arg
