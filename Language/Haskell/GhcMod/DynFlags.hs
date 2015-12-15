@@ -25,8 +25,8 @@ setDebugLogger put df = do
 -- * Friendly to foreign export
 -- * Not friendly to -XTemplateHaskell and -XPatternSynonyms
 -- * Uses little memory
-setModeSimple :: DynFlags -> DynFlags
-setModeSimple df = df {
+setHscNothing :: DynFlags -> DynFlags
+setHscNothing df = df {
     ghcMode   = CompManager
   , ghcLink   = NoLink
   , hscTarget = HscNothing
@@ -37,8 +37,8 @@ setModeSimple df = df {
 -- * Not friendly to foreign export
 -- * Friendly to -XTemplateHaskell and -XPatternSynonyms
 -- * Uses lots of memory
-setModeIntelligent :: DynFlags -> DynFlags
-setModeIntelligent df = df {
+setHscInterpreted :: DynFlags -> DynFlags
+setHscInterpreted df = df {
     ghcMode   = CompManager
   , ghcLink   = LinkInMemory
   , hscTarget = HscInterpreted

@@ -36,7 +36,6 @@ module Language.Haskell.GhcMod.Monad.Types (
   , defaultGhcModState
   , GmGhcSession(..)
   , GmComponent(..)
-  , CompilerMode(..)
   -- * Accessing 'GhcModEnv', 'GhcModState' and 'GhcModLog'
   , GmLogLevel(..)
   , GhcModLog(..)
@@ -50,8 +49,6 @@ module Language.Haskell.GhcMod.Monad.Types (
   , options
   , outputOpts
   , withOptions
-  , getCompilerMode
-  , setCompilerMode
   , getMMappedFiles
   , setMMappedFiles
   , addMMappedFile
@@ -548,12 +545,6 @@ outputOpts = gmoOptions `liftM` gmoAsk
 
 cradle :: GmEnv m => m Cradle
 cradle = gmCradle `liftM` gmeAsk
-
-getCompilerMode :: GmState m => m CompilerMode
-getCompilerMode = gmCompilerMode `liftM` gmsGet
-
-setCompilerMode :: GmState m => CompilerMode -> m ()
-setCompilerMode mode = (\s -> gmsPut s { gmCompilerMode = mode } ) =<< gmsGet
 
 getMMappedFiles :: GmState m => m FileMappingMap
 getMMappedFiles = gmMMappedFiles `liftM` gmsGet
