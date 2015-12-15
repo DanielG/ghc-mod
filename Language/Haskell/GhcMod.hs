@@ -44,6 +44,7 @@ module Language.Haskell.GhcMod (
   , pkgDoc
   , rootInfo
   , types
+  , test
   , splits
   , sig
   , refine
@@ -88,3 +89,4 @@ import Language.Haskell.GhcMod.Types
 import Language.Haskell.GhcMod.Target
 import Language.Haskell.GhcMod.Output
 import Language.Haskell.GhcMod.FileMapping
+import Language.Haskell.GhcMod.Test

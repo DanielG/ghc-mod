@@ -60,6 +60,7 @@ data GhcModCommands =
   | CmdMapFile FilePath
   | CmdUnmapFile FilePath
   | CmdQuit
+  | CmdTest FilePath
   deriving (Show)
 
 commandsSpec :: Parser GhcModCommands
@@ -182,6 +183,10 @@ commands =
                 \\ " `[a]', which results in:"
               code "filterNothing xs = filter _body_1 _body_2"
               "(See also: https://github.com/kazu-yamamoto/ghc-mod/issues/311)"
+    <> command "test"
+          $$  info (CmdTest <$> strArg "FILE")
+          $$  progDesc ""
+
 
 interactiveCommandsSpec :: Parser GhcModCommands
 interactiveCommandsSpec =

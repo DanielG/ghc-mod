@@ -140,6 +140,7 @@ Library
                         Language.Haskell.GhcMod.SrcUtils
                         Language.Haskell.GhcMod.Stack
                         Language.Haskell.GhcMod.Target
+                        Language.Haskell.GhcMod.Test
                         Language.Haskell.GhcMod.Types
                         Language.Haskell.GhcMod.Utils
                         Language.Haskell.GhcMod.World

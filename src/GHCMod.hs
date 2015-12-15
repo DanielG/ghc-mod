@@ -161,6 +161,7 @@ ghcCommands (CmdMapFile f) =
   >>  return ""
 ghcCommands (CmdUnmapFile f) = unloadMappedFile f >> return ""
 ghcCommands (CmdQuit) = liftIO exitSuccess
+ghcCommands (CmdTest file) = test file
 ghcCommands cmd = throw $ InvalidCommandLine $ Left $ show cmd
 
 newtype InvalidCommandLine = InvalidCommandLine (Either String String)
