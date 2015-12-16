@@ -1,14 +1,16 @@
 module Language.Haskell.GhcMod.Test where
 
+import Control.Applicative
 import Data.List
 import System.FilePath
 import System.Directory
+import Prelude
 
 import Language.Haskell.GhcMod.Types
 import Language.Haskell.GhcMod.Monad
 import Language.Haskell.GhcMod.DynFlags
 
-import GHC  --(ModSummary(..), ModLocation(..), moduleName, findModule)
+import GHC
 import GHC.Exception
 import OccName
 
