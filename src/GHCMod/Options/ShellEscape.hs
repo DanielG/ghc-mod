@@ -35,7 +35,7 @@ go (esc:c:cl) curarg accargs quote
   | isEscapeChar esc
   = if isEscapable c
     then go cl (c:curarg) accargs quote
-    else go (c:cl) ('\\':curarg) accargs quote
+    else go (c:cl) (esc:curarg) accargs quote
 -- quote character -- opens quotes
 go (c:cl) curarg accargs Nothing
   | isQuote c = go cl curarg accargs (Just c)
