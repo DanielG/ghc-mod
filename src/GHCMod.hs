@@ -79,15 +79,6 @@ legacyInteractiveLoop symdbreq world = do
       case pargs of
         CmdFind symbol ->
             lookupSymbol symbol =<< checkDb symdbreq =<< getDb symdbreq
-
-        CmdMapFile f   ->  liftIO getFileSourceFromStdin
-                       >>= loadMappedFileSource f
-                       >>  return ""
-
-        CmdUnmapFile f -> unloadMappedFile f
-                       >> return ""
-
-        CmdQuit        -> liftIO exitSuccess
         -- other commands are handled here
         x              -> ghcCommands x
 
@@ -161,6 +152,13 @@ ghcCommands (CmdSplit file (line, col)) = splits file line col
 ghcCommands (CmdSig file (line, col)) = sig file line col
 ghcCommands (CmdAuto file (line, col)) = auto file line col
 ghcCommands (CmdRefine file (line, col) expr) = refine file line col $ Expression expr
+-- interactive-only commands
+ghcCommands (CmdMapFile f) =
+      liftIO getFileSourceFromStdin
+  >>= loadMappedFileSource f
+  >>  return ""
+ghcCommands (CmdUnmapFile f) = unloadMappedFile f >> return ""
+ghcCommands (CmdQuit) = liftIO exitSuccess
 ghcCommands cmd = throw $ InvalidCommandLine $ Left $ show cmd
 
 newtype InvalidCommandLine = InvalidCommandLine (Either String String)
