@@ -23,7 +23,8 @@ module GHCMod.Options.DocUtils (
 ) where
 
 import Options.Applicative
-import Data.Monoid (Monoid) -- for ghc<7.10
+import Data.Monoid
+import Prelude
 
 infixl 6 <||>
 infixr 7 <$$>

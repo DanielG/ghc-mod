@@ -1,5 +1,5 @@
 # Happy Haskell Programming
-[![Build Status](https://travis-ci.org/kazu-yamamoto/ghc-mod.png)](https://travis-ci.org/kazu-yamamoto/ghc-mod)
+[![Build Status](https://travis-ci.org/kazu-yamamoto/ghc-mod.svg?branch=master)](https://travis-ci.org/kazu-yamamoto/ghc-mod)
 
 Please read: [http://www.mew.org/~kazu/proj/ghc-mod/](http://www.mew.org/~kazu/proj/ghc-mod/)
 

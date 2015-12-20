@@ -143,7 +143,7 @@ runGmlTWith efnmns' mdf wrapper action = do
                   | otherwise = setEmptyLogger
 
     initSession opts' $
-        setModeSimple >>> setLogger >>> mdf
+        setHscNothing >>> setLogger >>> mdf
 
     mappedStrs <- getMMappedFilePaths
     let targetStrs = mappedStrs ++ map moduleNameString mns ++ cfns
@@ -430,20 +430,24 @@ loadTargets opts targetStrs = do
 
     setTargets targets
 
-    mode <- getCompilerMode
-    if mode == Intelligent
-      then loadTargets' Intelligent
-      else do
-        mdls <- depanal [] False
-        let fallback = needsFallback mdls
-        if fallback then do
-            resetTargets targets
-            setIntelligent
-            gmLog GmInfo "loadTargets" $
-                text "Target needs interpeter, switching to LinkInMemory/HscInterpreted. Perfectly normal if anything is using TemplateHaskell, QuasiQuotes or PatternSynonyms."
-            loadTargets' Intelligent
-          else
-            loadTargets' Simple
+    mg <- depanal [] False
+
+    let interp = needsHscInterpreted mg
+    target <- hscTarget <$> getSessionDynFlags
+    when (interp && target /= HscInterpreted) $ do
+      resetTargets targets
+      _ <- setSessionDynFlags . setHscInterpreted =<< getSessionDynFlags
+      gmLog GmInfo "loadTargets" $ text "Target needs interpeter, switching to LinkInMemory/HscInterpreted. Perfectly normal if anything is using TemplateHaskell, QuasiQuotes or PatternSynonyms."
+
+    target' <- hscTarget <$> getSessionDynFlags
+
+    case target' of
+      HscNothing -> do
+        void $ load LoadAllTargets
+        mapM_ (parseModule >=> typecheckModule >=> desugarModule) mg
+      HscInterpreted -> do
+        void $ load LoadAllTargets
+      _ -> error ("loadTargets: unsupported hscTarget")
 
     gmLog GmDebug "loadTargets" $ text "Loading done"
 
@@ -455,30 +459,16 @@ loadTargets opts targetStrs = do
       return $ Target tid taoc src
     relativize tgt = return tgt
 
-    loadTargets' Simple = do
-        void $ load LoadAllTargets
-        mapM_ (parseModule >=> typecheckModule >=> desugarModule) =<< getModuleGraph
-
-    loadTargets' Intelligent = do
-        df <- getSessionDynFlags
-        void $ setSessionDynFlags (setModeIntelligent df)
-        void $ load LoadAllTargets
-
     resetTargets targets' = do
         setTargets []
         void $ load LoadAllTargets
         setTargets targets'
 
-    setIntelligent = do
-        newdf <- setModeIntelligent <$> getSessionDynFlags
-        void $ setSessionDynFlags newdf
-        setCompilerMode Intelligent
-
     showTargetId (Target (TargetModule s) _ _) = moduleNameString s
     showTargetId (Target (TargetFile s _) _ _) = s
 
-needsFallback :: ModuleGraph -> Bool
-needsFallback = any $ \ms ->
+needsHscInterpreted :: ModuleGraph -> Bool
+needsHscInterpreted = any $ \ms ->
                 let df = ms_hspp_opts ms in
                    Opt_TemplateHaskell `xopt` df
                 || Opt_QuasiQuotes     `xopt` df
