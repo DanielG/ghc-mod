@@ -8,7 +8,6 @@ import Control.Monad
 import Data.Typeable (Typeable)
 import Data.List
 import Data.List.Split
-import Data.Char (isSpace)
 import Data.Maybe
 import Exception
 import Language.Haskell.GhcMod
@@ -29,43 +28,6 @@ import Misc
 
 ghcModStyle :: Style
 ghcModStyle = style { lineLength = 80, ribbonsPerLine = 1.2 }
-
-----------------------------------------------------------------
-
-{-
-File map docs:
-
-CLI options:
-* `--map-file "file1.hs=file2.hs"` can be used to tell
-    ghc-mod that it should take source code for `file1.hs` from `file2.hs`.
-    `file1.hs` can be either full path, or path relative to project root.
-    `file2.hs` has to be either relative to project root,
-    or full path (preferred).
-* `--map-file "file.hs"` can be used to tell ghc-mod that it should take
-    source code for `file.hs` from stdin. File end marker is `\EOT\n`,
-    i.e. `\x04\x0A`. `file.hs` may or may not exist, and should be
-    either full path, or relative to project root.
-
-Interactive commands:
-* `map-file file.hs` -- tells ghc-modi to read `file.hs` source from stdin.
-    Works the same as second form of `--map-file` CLI option.
-* `unmap-file file.hs` -- unloads previously mapped file, so that it's
-    no longer mapped. `file.hs` can be full path or relative to
-    project root, either will work.
-
-Exposed functions:
-* `loadMappedFile :: FilePath -> FilePath -> GhcModT m ()` -- maps `FilePath`,
-    given as first argument to take source from `FilePath` given as second
-    argument. Works exactly the same as first form of `--map-file`
-    CLI option.
-* `loadMappedFileSource :: FilePath -> String -> GhcModT m ()` -- maps
-    `FilePath`, given as first argument to have source as given
-    by second argument. Works exactly the same as second form of `--map-file`
-    CLI option, sans reading from stdin.
-* `unloadMappedFile :: FilePath -> GhcModT m ()` -- unmaps `FilePath`, given as
-    first argument, and removes any temporary files created when file was
-    mapped. Works exactly the same as `unmap-file` interactive command
--}
 
 ----------------------------------------------------------------
 
@@ -145,29 +107,18 @@ legacyInteractiveLoop symdbreq world = do
 
     when changed dropSession
 
-    let (cmd':args') = split (keepDelimsR $ condense $ whenElt isSpace) cmdArg
-        arg = concat args'
-        cmd = dropWhileEnd isSpace cmd'
-        args = dropWhileEnd isSpace `map` args'
-
     res <- flip gcatches interactiveHandlers $ do
-      pargs <- maybe (throw $ InvalidCommandLine $ Left $ concat (cmd':args')) return
-              $ parseArgsInteractive (cmd:args)
+      pargs <- maybe (throw $ InvalidCommandLine $ Left cmdArg) return
+              $ parseArgsInteractive cmdArg
       case fst pargs of
-        CmdCheck{}     -> checkSyntax [arg]
-        CmdLint{}      -> lint defaultLintOpts arg
-        CmdFind{}      ->
-            lookupSymbol arg =<< checkDb symdbreq =<< getDb symdbreq
+        CmdFind symbol ->
+            lookupSymbol symbol =<< checkDb symdbreq =<< getDb symdbreq
 
-        CmdInfo{}      -> info (head args) $ Expression $ concat $ tail args'
-
-        CmdRefine{}    -> locArgs' refine args
-
-        CmdMapFile{}   ->  liftIO getFileSourceFromStdin
-                       >>= loadMappedFileSource arg
+        CmdMapFile f   ->  liftIO getFileSourceFromStdin
+                       >>= loadMappedFileSource f
                        >>  return ""
 
-        CmdUnmapFile{} -> unloadMappedFile arg
+        CmdUnmapFile f -> unloadMappedFile f
                        >> return ""
 
         CmdQuit        -> liftIO exitSuccess
@@ -183,8 +134,6 @@ legacyInteractiveLoop symdbreq world = do
           , GHandler $ \e@(ExitFailure _) -> throw e
           , GHandler $ \(SomeException e) -> gmErrStrLn (show e) >> return ""
           ]
-    locArgs' a (f:l:c:xs) = a f (read l) (read c) (Expression $ unwords xs)
-    locArgs' _ args = throw $ InvalidCommandLine $ Left $ unwords args
 
 getFileSourceFromStdin :: IO String
 getFileSourceFromStdin = do

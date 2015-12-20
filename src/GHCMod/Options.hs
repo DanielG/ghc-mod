@@ -27,6 +27,7 @@ import Control.Arrow
 import GHCMod.Options.Commands
 import GHCMod.Version
 import GHCMod.Options.DocUtils
+import GHCMod.Options.ShellEscape
 
 parseArgs :: IO (Options, GhcModCommands)
 parseArgs =
@@ -36,9 +37,9 @@ parseArgs =
            $$  fullDesc
            <=> header "ghc-mod: Happy Haskell Programming"
 
-parseArgsInteractive :: [String] -> Maybe (GhcModCommands, [String])
+parseArgsInteractive :: String -> Maybe (GhcModCommands, [String])
 parseArgsInteractive args =
-  getParseResult $ execParserPure (prefs idm) opts args
+  getParseResult $ execParserPure (prefs idm) opts $ parseCmdLine args
   where
     opts = info interactiveCommandsSpec $$ fullDesc
 

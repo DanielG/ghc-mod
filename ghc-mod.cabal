@@ -192,6 +192,7 @@ Executable ghc-mod
                       , GHCMod.Options.Commands
                       , GHCMod.Version
                       , GHCMod.Options.DocUtils
+                      , GHCMod.Options.ShellEscape
   GHC-Options:          -Wall -fno-warn-deprecations -threaded
   Default-Extensions:   ConstraintKinds, FlexibleContexts
   HS-Source-Dirs:       src
@@ -247,7 +248,7 @@ Test-Suite spec
                         ConstraintKinds, FlexibleContexts,
                         DataKinds, KindSignatures, TypeOperators, ViewPatterns
   Main-Is:              Main.hs
-  Hs-Source-Dirs:       test, .
+  Hs-Source-Dirs:       test, ., src
   Ghc-Options:          -Wall -fno-warn-deprecations
   CPP-Options:          -DSPEC=1
   Type:                 exitcode-stdio-1.0
@@ -267,6 +268,7 @@ Test-Suite spec
                         PathsAndFilesSpec
                         HomeModuleGraphSpec
                         FileMappingSpec
+                        ShellEscapeSpec
 
   Build-Depends:        hspec >= 2.0.0
   if impl(ghc == 7.4.*)
