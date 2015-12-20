@@ -186,14 +186,19 @@ interactiveCommandsSpec =
       icmds =
            commands
         <> command "map-file"
-              $$ info mapArgSpec
-              $$ progDesc "tells ghc-modi to read `file.hs` source from stdin"
+              $$  info (helper <*> mapArgSpec)
+              $$  progDesc "tells ghc-modi to read `file.hs` source from stdin"
+              <=> footer "File end marker is `\\n\\EOT\\n`,\
+              \ i.e. `\\x0A\\x04\\x0A`. `file.hs` may or may not exist, and should be\
+              \ either full path, or relative to project root."
         <> command "unmap-file"
-              $$ info unmapArgSpec
-              $$ progDesc "unloads previously mapped file, so that it's no longer mapped."
+              $$  info (helper <*> unmapArgSpec)
+              $$  progDesc "unloads previously mapped file, so that it's no longer mapped."
+              <=> footer "`file.hs` can be full path or relative to\
+              \ project root, either will work."
         <> command "quit"
               $$ info (pure CmdQuit)
-              $$ progDesc "Exits interactive mode"
+              $$ progDesc "Exit interactive mode"
         <> command ""
               $$ info (pure CmdQuit) idm
       leftover = many (strArg "")
