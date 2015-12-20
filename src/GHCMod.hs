@@ -110,7 +110,7 @@ legacyInteractiveLoop symdbreq world = do
     res <- flip gcatches interactiveHandlers $ do
       pargs <- maybe (throw $ InvalidCommandLine $ Left cmdArg) return
               $ parseArgsInteractive cmdArg
-      case fst pargs of
+      case pargs of
         CmdFind symbol ->
             lookupSymbol symbol =<< checkDb symdbreq =<< getDb symdbreq
 

@@ -37,7 +37,7 @@ parseArgs =
            $$  fullDesc
            <=> header "ghc-mod: Happy Haskell Programming"
 
-parseArgsInteractive :: String -> Maybe (GhcModCommands, [String])
+parseArgsInteractive :: String -> Maybe GhcModCommands
 parseArgsInteractive args =
   getParseResult $ execParserPure (prefs idm) opts $ parseCmdLine args
   where

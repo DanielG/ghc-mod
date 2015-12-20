@@ -179,12 +179,10 @@ commands =
               , text "(See also: https://github.com/kazu-yamamoto/ghc-mod/issues/311)"
               ]
 
-interactiveCommandsSpec :: Parser (GhcModCommands, [String])
+interactiveCommandsSpec :: Parser GhcModCommands
 interactiveCommandsSpec =
-    (,) <$> subparser' icmds <*> leftover
-    where
-      icmds =
-           commands
+    subparser'
+        $  commands
         <> command "map-file"
               $$  info (helper <*> mapArgSpec)
               $$  progDesc "tells ghc-modi to read `file.hs` source from stdin"
@@ -201,7 +199,6 @@ interactiveCommandsSpec =
               $$ progDesc "Exit interactive mode"
         <> command ""
               $$ info (pure CmdQuit) idm
-      leftover = many (strArg "")
 
 strArg :: String -> Parser String
 strArg = argument str . metavar
