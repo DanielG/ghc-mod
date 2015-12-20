@@ -13,6 +13,7 @@
 --
 -- You should have received a copy of the GNU Affero General Public License
 -- along with this program.  If not, see <http://www.gnu.org/licenses/>.
+{-# LANGUAGE TupleSections #-}
 
 module GHCMod.Options.Commands where
 
@@ -52,11 +53,18 @@ data GhcModCommands =
   | CmdSig FilePath Point
   | CmdAuto FilePath Point
   | CmdRefine FilePath Point Expr
+  -- interactive-only commands
+  | CmdMapFile FilePath
+  | CmdUnmapFile FilePath
+  | CmdQuit
 
 commandsSpec :: Parser GhcModCommands
 commandsSpec =
-  hsubparser
-    $  command "lang"
+  hsubparser commands
+
+commands :: Mod CommandFields GhcModCommands
+commands =
+       command "lang"
           $$  info (pure CmdLang)
           $$  progDesc "List all known GHC language extensions"
     <> command "flag"
@@ -172,6 +180,22 @@ commandsSpec =
               , text "(See also: https://github.com/kazu-yamamoto/ghc-mod/issues/311)"
               ]
 
+interactiveCommandsSpec :: Parser (GhcModCommands, [String])
+interactiveCommandsSpec =
+    (,) <$> subparser icmds <*> leftover
+    where
+      icmds =
+           commands
+        <> command "map-file"
+              $$  info mapArgSpec idm
+        <> command "unmap-file"
+              $$ info unmapArgSpec idm
+        <> command "quit"
+              $$ info (pure CmdQuit) idm
+        <> command ""
+              $$ info (pure CmdQuit) idm
+      leftover = many (strArg "...")
+
 strArg :: String -> Parser String
 strArg = argument str . metavar
 
@@ -189,7 +213,8 @@ locArgSpec x = x
 modulesArgSpec, dumpSymArgSpec, docArgSpec, findArgSpec,
   lintArgSpec, browseArgSpec, checkArgSpec, expandArgSpec,
   infoArgSpec, typeArgSpec, autoArgSpec, splitArgSpec,
-  sigArgSpec, refineArgSpec, debugComponentArgSpec :: Parser GhcModCommands
+  sigArgSpec, refineArgSpec, debugComponentArgSpec,
+  mapArgSpec, unmapArgSpec :: Parser GhcModCommands
 
 modulesArgSpec = CmdModules
   <$> switch
@@ -232,6 +257,8 @@ autoArgSpec = locArgSpec CmdAuto
 splitArgSpec = locArgSpec CmdSplit
 sigArgSpec = locArgSpec CmdSig
 refineArgSpec = locArgSpec CmdRefine <*> strArg "SYMBOL"
+mapArgSpec = filesArgsSpec (CmdMapFile . concat)
+unmapArgSpec = filesArgsSpec (CmdUnmapFile . concat)
 
 int :: ReadM Int
 int = do

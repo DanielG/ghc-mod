@@ -16,6 +16,7 @@
 
 module GHCMod.Options (
   parseArgs,
+  parseArgsInteractive,
   GhcModCommands(..)
 ) where
 
@@ -34,6 +35,12 @@ parseArgs =
     opts = info (argAndCmdSpec <**> helpVersion)
            $$  fullDesc
            <=> header "ghc-mod: Happy Haskell Programming"
+
+parseArgsInteractive :: [String] -> Maybe (GhcModCommands, [String])
+parseArgsInteractive args =
+  getParseResult $ execParserPure (prefs idm) opts args
+  where
+    opts = info interactiveCommandsSpec $$ fullDesc
 
 helpVersion :: Parser (a -> a)
 helpVersion =

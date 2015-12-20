@@ -133,7 +133,7 @@ legacyInteractiveLoop symdbreq world = do
     liftIO . setCurrentDirectory =<< cradleRootDir <$> cradle
 
     -- blocking
-    cmdArg <- liftIO $ getLine
+    cmdArg <- liftIO getLine
 
     -- after blocking, we need to see if the world has changed.
 
@@ -143,42 +143,36 @@ legacyInteractiveLoop symdbreq world = do
                 then getCurrentWorld -- TODO: gah, we're hitting the fs twice
                 else return world
 
-    when changed $ do
-        dropSession
+    when changed dropSession
 
     let (cmd':args') = split (keepDelimsR $ condense $ whenElt isSpace) cmdArg
         arg = concat args'
         cmd = dropWhileEnd isSpace cmd'
         args = dropWhileEnd isSpace `map` args'
 
-    res <- flip gcatches interactiveHandlers $ case dropWhileEnd isSpace cmd of
-        "check"  -> checkSyntax [arg]
-        "lint"   -> lint defaultLintOpts arg
-        "find"   -> do
-            db <- getDb symdbreq >>= checkDb symdbreq
-            lookupSymbol arg db
+    res <- flip gcatches interactiveHandlers $ do
+      pargs <- maybe (throw $ InvalidCommandLine $ Left $ concat (cmd':args')) return
+              $ parseArgsInteractive (cmd:args)
+      case fst pargs of
+        CmdCheck{}     -> checkSyntax [arg]
+        CmdLint{}      -> lint defaultLintOpts arg
+        CmdFind{}      ->
+            lookupSymbol arg =<< checkDb symdbreq =<< getDb symdbreq
 
-        "info"   -> info (head args) $ Expression $ concat $ tail args'
-        "type"   -> locArgs types args
-        "split"  -> locArgs splits args
+        CmdInfo{}      -> info (head args) $ Expression $ concat $ tail args'
 
-        "sig"    -> locArgs sig args
-        "auto"   -> locArgs auto args
-        "refine" -> locArgs' refine args
+        CmdRefine{}    -> locArgs' refine args
 
-        "boot"   -> boot
-        "browse" -> concat <$> browse defaultBrowseOpts `mapM` args
+        CmdMapFile{}   ->  liftIO getFileSourceFromStdin
+                       >>= loadMappedFileSource arg
+                       >>  return ""
 
-        "map-file"   ->  liftIO getFileSourceFromStdin
-                     >>= loadMappedFileSource arg
-                     >>  return ""
+        CmdUnmapFile{} -> unloadMappedFile arg
+                       >> return ""
 
-        "unmap-file" ->  unloadMappedFile arg
-                     >>  return ""
-
-        "quit"   -> liftIO $ exitSuccess
-        ""       -> liftIO $ exitSuccess
-        _        -> fatalError $ "unknown command: `" ++ cmd ++ "'"
+        CmdQuit        -> liftIO exitSuccess
+        -- other commands are handled here
+        x              -> ghcCommands x
 
     gmPutStr res >> gmPutStrLn "OK" >> liftIO (hFlush stdout)
     legacyInteractiveLoop symdbreq world'
@@ -189,8 +183,6 @@ legacyInteractiveLoop symdbreq world = do
           , GHandler $ \e@(ExitFailure _) -> throw e
           , GHandler $ \(SomeException e) -> gmErrStrLn (show e) >> return ""
           ]
-    locArgs  a [f,l,c] = a f (read l) (read c)
-    locArgs  _ args = throw $ InvalidCommandLine $ Left $ unwords args
     locArgs' a (f:l:c:xs) = a f (read l) (read c) (Expression $ unwords xs)
     locArgs' _ args = throw $ InvalidCommandLine $ Left $ unwords args
 
