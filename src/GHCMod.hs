@@ -17,7 +17,6 @@ import Language.Haskell.GhcMod.Monad
 import System.FilePath ((</>))
 import System.Directory (setCurrentDirectory, getAppUserDataDirectory,
                         removeDirectoryRecursive)
--- import System.Environment (getArgs)
 import System.IO
 import System.Exit
 import Text.PrettyPrint hiding ((<>))

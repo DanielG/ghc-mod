@@ -207,7 +207,6 @@ Executable ghc-mod
                       , ghc       < 7.11
                       , fclabels  ==2.0.*
                       , optparse-applicative >=0.11.0 && <0.13.0
-                      , ansi-wl-pprint ==0.6.*
                       , ghc-mod
 
 Executable ghc-modi
