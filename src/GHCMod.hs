@@ -2,6 +2,7 @@
 
 module Main where
 
+import Control.Applicative
 import Control.Monad
 import Data.Typeable (Typeable)
 import Data.List
@@ -17,6 +18,7 @@ import System.IO
 import System.Exit
 import Text.PrettyPrint hiding ((<>))
 import GHCMod.Options
+import Prelude
 
 import Misc
 
