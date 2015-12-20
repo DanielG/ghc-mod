@@ -17,6 +17,7 @@ module GHCMod.Options.Commands where
 
 import Options.Applicative
 import Options.Applicative.Types
+import Options.Applicative.Builder.Internal
 import Language.Haskell.GhcMod.Types
 import GHCMod.Options.DocUtils
 import Language.Haskell.GhcMod.Read
@@ -90,7 +91,7 @@ commands =
               \ cabal.sandbox.config file and otherwise this is the current\
               \ directory"
     <> command "legacy-interactive"
-          $$  info (pure CmdLegacyInteractive)
+          $$  info legacyInteractiveArgSpec
           $$  progDesc "ghc-modi compatibility mode"
     <> command "list"
           $$  info modulesArgSpec
@@ -180,19 +181,22 @@ commands =
 
 interactiveCommandsSpec :: Parser (GhcModCommands, [String])
 interactiveCommandsSpec =
-    (,) <$> subparser icmds <*> leftover
+    (,) <$> subparser' icmds <*> leftover
     where
       icmds =
            commands
         <> command "map-file"
-              $$  info mapArgSpec idm
+              $$ info mapArgSpec
+              $$ progDesc "tells ghc-modi to read `file.hs` source from stdin"
         <> command "unmap-file"
-              $$ info unmapArgSpec idm
+              $$ info unmapArgSpec
+              $$ progDesc "unloads previously mapped file, so that it's no longer mapped."
         <> command "quit"
-              $$ info (pure CmdQuit) idm
+              $$ info (pure CmdQuit)
+              $$ progDesc "Exits interactive mode"
         <> command ""
               $$ info (pure CmdQuit) idm
-      leftover = many (strArg "...")
+      leftover = many (strArg "")
 
 strArg :: String -> Parser String
 strArg = argument str . metavar
@@ -212,7 +216,7 @@ modulesArgSpec, dumpSymArgSpec, docArgSpec, findArgSpec,
   lintArgSpec, browseArgSpec, checkArgSpec, expandArgSpec,
   infoArgSpec, typeArgSpec, autoArgSpec, splitArgSpec,
   sigArgSpec, refineArgSpec, debugComponentArgSpec,
-  mapArgSpec, unmapArgSpec :: Parser GhcModCommands
+  mapArgSpec, unmapArgSpec, legacyInteractiveArgSpec :: Parser GhcModCommands
 
 modulesArgSpec = CmdModules
   <$> switch
@@ -255,8 +259,16 @@ autoArgSpec = locArgSpec CmdAuto
 splitArgSpec = locArgSpec CmdSplit
 sigArgSpec = locArgSpec CmdSig
 refineArgSpec = locArgSpec CmdRefine <*> strArg "SYMBOL"
-mapArgSpec = filesArgsSpec (CmdMapFile . concat)
-unmapArgSpec = filesArgsSpec (CmdUnmapFile . concat)
+mapArgSpec = CmdMapFile <$> strArg "FILE"
+unmapArgSpec = CmdUnmapFile <$> strArg "FILE"
+legacyInteractiveArgSpec = const CmdLegacyInteractive <$>
+  optional interactiveCommandsSpec
+
+subparser' :: Mod CommandFields a -> Parser a
+subparser' m = mkParser d g rdr
+  where
+    Mod _ d g = metavar "" `mappend` m
+    rdr = uncurry CmdReader (mkCommand m)
 
 int :: ReadM Int
 int = do
