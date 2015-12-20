@@ -35,7 +35,7 @@ para :: String -> Doc
 para = PP.fillSep . map PP.text . words
 
 append :: Doc -> MyDocM (Maybe Doc) a
-append s = modify' m >> return undefined
+append s = modify m >> return undefined
   where
     m :: Maybe Doc -> Maybe Doc
     m Nothing = Just s
