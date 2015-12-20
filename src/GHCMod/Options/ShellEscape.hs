@@ -19,7 +19,7 @@ import Data.Char
 import Data.Maybe
 
 isQuote :: Char -> Bool
-isQuote = (`elem` "\"'")
+isQuote = (==) '"'
 
 isEscapeChar :: Char -> Bool
 isEscapeChar = (==) '\\'
