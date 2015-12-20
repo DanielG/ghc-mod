@@ -184,16 +184,16 @@ commands =
 
 interactiveCommandsSpec :: Parser GhcModCommands
 interactiveCommandsSpec =
-    subparser'
+    hsubparser'
         $  commands
         <> command "map-file"
-              $$  info (helper <*> mapArgSpec)
+              $$  info mapArgSpec
               $$  progDesc "tells ghc-modi to read `file.hs` source from stdin"
               <=> desc $$$ do
                 "Works the same as second form of"
                   \\ "`--map-file` CLI option."
         <> command "unmap-file"
-              $$  info (helper <*> unmapArgSpec)
+              $$  info unmapArgSpec
               $$  progDesc' $$$ do
                     "unloads previously mapped file,"
                       \\ "so that it's no longer mapped."
@@ -272,11 +272,14 @@ unmapArgSpec = CmdUnmapFile <$> strArg "FILE"
 legacyInteractiveArgSpec = const CmdLegacyInteractive <$>
   optional interactiveCommandsSpec
 
-subparser' :: Mod CommandFields a -> Parser a
-subparser' m = mkParser d g rdr
+hsubparser' :: Mod CommandFields a -> Parser a
+hsubparser' m = mkParser d g rdr
   where
-    Mod _ d g = metavar "" `mappend` m
-    rdr = uncurry CmdReader (mkCommand m)
+    Mod _ d g = m `mappend` metavar ""
+    (cmds, subs) = mkCommand m
+    rdr = CmdReader cmds (fmap add_helper . subs)
+    add_helper pinfo = pinfo
+      { infoParser = infoParser pinfo <**> helper }
 
 int :: ReadM Int
 int = do

@@ -107,7 +107,7 @@ legacyInteractiveLoop symdbreq world = do
     when changed dropSession
 
     res <- flip gcatches interactiveHandlers $ do
-      pargs <- maybe (throw $ InvalidCommandLine $ Left cmdArg) return
+      pargs <- either (throw . InvalidCommandLine . Right) return
               $ parseArgsInteractive cmdArg
       case pargs of
         CmdFind symbol ->
@@ -131,6 +131,7 @@ legacyInteractiveLoop symdbreq world = do
           [ GHandler $ \e@(FatalError _) -> throw e
           , GHandler $ \e@(ExitSuccess) -> throw e
           , GHandler $ \e@(ExitFailure _) -> throw e
+          , GHandler $ \(InvalidCommandLine (Right e)) -> gmErrStrLn e >> return ""
           , GHandler $ \(SomeException e) -> gmErrStrLn (show e) >> return ""
           ]
 

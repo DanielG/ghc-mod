@@ -40,11 +40,15 @@ parseArgs =
            $$  fullDesc
            <=> header "ghc-mod: Happy Haskell Programming"
 
-parseArgsInteractive :: String -> Maybe GhcModCommands
+parseArgsInteractive :: String -> Either String GhcModCommands
 parseArgsInteractive args =
-  getParseResult $ execParserPure (prefs idm) opts $ parseCmdLine args
+  handle $ execParserPure (prefs idm) opts $ parseCmdLine args
   where
     opts = info interactiveCommandsSpec $$ fullDesc
+    handle (Success a) = Right a
+    handle (Failure failure) =
+          Left $ fst $ renderFailure failure ""
+    handle _ = Left "Completion invoked"
 
 helpVersion :: Parser (a -> a)
 helpVersion =
