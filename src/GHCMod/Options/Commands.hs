@@ -60,6 +60,7 @@ data GhcModCommands =
   | CmdMapFile FilePath
   | CmdUnmapFile FilePath
   | CmdQuit
+  deriving (Show)
 
 commandsSpec :: Parser GhcModCommands
 commandsSpec =

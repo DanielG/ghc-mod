@@ -2,13 +2,9 @@
 
 module Main where
 
-import Control.Category
-import Control.Applicative
 import Control.Monad
 import Data.Typeable (Typeable)
 import Data.List
-import Data.List.Split
-import Data.Maybe
 import Exception
 import Language.Haskell.GhcMod
 import Language.Haskell.GhcMod.Internal hiding (MonadIO,liftIO)
@@ -20,7 +16,6 @@ import System.Directory (setCurrentDirectory, getAppUserDataDirectory,
 import System.IO
 import System.Exit
 import Text.PrettyPrint hiding ((<>))
-import Prelude hiding ((.))
 import GHCMod.Options
 
 import Misc
@@ -30,23 +25,9 @@ ghcModStyle = style { lineLength = 80, ribbonsPerLine = 1.2 }
 
 ----------------------------------------------------------------
 
-data CmdError = UnknownCommand String
-              | NoSuchFileError String
-              | LibraryError GhcModError
-
-                deriving (Show, Typeable)
-
-instance Exception CmdError
-
-data InteractiveOptions = InteractiveOptions {
-      ghcModExtensions :: Bool
-    }
-
 handler :: IOish m => GhcModT m a -> GhcModT m a
-handler = flip gcatches $
-          [ GHandler $ \(FatalError msg) -> exitError msg
-          , GHandler $ \e@(ExitSuccess) -> throw e
-          , GHandler $ \e@(ExitFailure _) -> throw e
+handler = flip gcatches
+          [ GHandler $ \(e :: ExitCode) -> throw e
           , GHandler $ \(SomeException e) -> exitError $ "ghc-mod: " ++ show e
           ]
 
@@ -73,20 +54,6 @@ legacyInteractive = do
     symdbreq <- liftIO $ newSymDbReq opt gmo tmpdir
     world <- getCurrentWorld
     legacyInteractiveLoop symdbreq world
-
-bug :: IOish m => String -> GhcModT m ()
-bug msg = do
-  gmPutStrLn $ notGood $ "BUG: " ++ msg
-  liftIO exitFailure
-
-notGood :: String -> String
-notGood msg = "NG " ++ escapeNewlines msg
-
-escapeNewlines :: String -> String
-escapeNewlines = replace "\n" "\\n" . replace "\\n" "\\\\n"
-
-replace :: String -> String -> String -> String
-replace needle replacement = intercalate replacement . splitOn needle
 
 legacyInteractiveLoop :: IOish m
                       => SymDbReq -> World -> GhcModT m ()
@@ -128,10 +95,10 @@ legacyInteractiveLoop symdbreq world = do
     legacyInteractiveLoop symdbreq world'
  where
     interactiveHandlers =
-          [ GHandler $ \e@(FatalError _) -> throw e
-          , GHandler $ \e@(ExitSuccess) -> throw e
-          , GHandler $ \e@(ExitFailure _) -> throw e
-          , GHandler $ \(InvalidCommandLine (Right e)) -> gmErrStrLn e >> return ""
+          [ GHandler $ \(e :: ExitCode) -> throw e
+          , GHandler $ \(InvalidCommandLine e) -> do
+              gmErrStrLn $ either ("Invalid command line: "++) Prelude.id e
+              return ""
           , GHandler $ \(SomeException e) -> gmErrStrLn (show e) >> return ""
           ]
 
@@ -149,7 +116,7 @@ getFileSourceFromStdin = do
 -- Someone please already rewrite the cmdline parsing code *weep* :'(
 wrapGhcCommands :: (IOish m, GmOut m) => Options -> GhcModCommands -> m ()
 wrapGhcCommands _opts CmdRoot = gmPutStr =<< rootInfo
-wrapGhcCommands opts cmd = do
+wrapGhcCommands opts cmd =
     handleGmError $ runGhcModT opts $ handler $ do
       forM_ (reverse $ optFileMappings opts) $
         uncurry loadMMappedFiles
@@ -194,10 +161,7 @@ ghcCommands (CmdSplit file (line, col)) = splits file line col
 ghcCommands (CmdSig file (line, col)) = sig file line col
 ghcCommands (CmdAuto file (line, col)) = auto file line col
 ghcCommands (CmdRefine file (line, col) expr) = refine file line col $ Expression expr
-ghcCommands _ = fatalError "Unknown command"
-
-newtype FatalError = FatalError String deriving (Show, Typeable)
-instance Exception FatalError
+ghcCommands cmd = throw $ InvalidCommandLine $ Left $ show cmd
 
 newtype InvalidCommandLine = InvalidCommandLine (Either String String)
     deriving (Show, Typeable)
@@ -205,14 +169,6 @@ instance Exception InvalidCommandLine
 
 exitError :: (MonadIO m, GmOut m) => String -> m a
 exitError msg = gmErrStrLn (dropWhileEnd (=='\n') msg) >> liftIO exitFailure
-
-fatalError :: String -> a
-fatalError s = throw $ FatalError $ "ghc-mod: " ++ s
-
-catchArgs :: (Monad m, ExceptionMonad m) => String -> m a -> m a
-catchArgs cmd action =
-    action `gcatch` \(PatternMatchFail _) ->
-        throw $ InvalidCommandLine (Left cmd)
 
 nukeCaches :: IOish m => GhcModT m ()
 nukeCaches = do

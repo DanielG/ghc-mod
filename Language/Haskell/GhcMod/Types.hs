@@ -374,7 +374,7 @@ instance Binary ChEntrypoint where
 data LintOpts = LintOpts {
         optLintHlintOpts :: [String]
         -- ^ options that will be passed to hlint executable
-      }
+      } deriving (Show)
 
 -- | Default "LintOpts" instance
 defaultLintOpts :: LintOpts
@@ -388,7 +388,7 @@ data BrowseOpts = BrowseOpts {
         -- ^ If 'True', "browseWith" also returns types.
       , optBrowseQualified      :: Bool
         -- ^ If 'True', "browseWith" will return fully qualified name
-    }
+    } deriving (Show)
 
 -- | Default "BrowseOpts" instance
 defaultBrowseOpts :: BrowseOpts
