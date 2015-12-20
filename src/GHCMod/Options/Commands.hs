@@ -13,14 +13,18 @@
 --
 -- You should have received a copy of the GNU Affero General Public License
 -- along with this program.  If not, see <http://www.gnu.org/licenses/>.
+{-# LANGUAGE OverloadedStrings #-}
+{-# OPTIONS_GHC -fno-warn-unused-do-bind #-}
+
 module GHCMod.Options.Commands where
 
 import Options.Applicative
 import Options.Applicative.Types
 import Options.Applicative.Builder.Internal
 import Language.Haskell.GhcMod.Types
-import GHCMod.Options.DocUtils
 import Language.Haskell.GhcMod.Read
+import GHCMod.Options.DocUtils
+import GHCMod.Options.Help
 
 type Symbol = String
 type Expr = String
@@ -71,12 +75,14 @@ commands =
           $$  progDesc "List GHC -f<foo> flags"
     <> command "debug"
           $$  info (pure CmdDebug)
-          $$  progDesc
-              "Print debugging information. Please include the output in any bug\
-              \ reports you submit"
+          $$  progDesc' $$$ do
+              "Print debugging information. Please include"
+                \\ "the output in any bug reports you submit"
     <> command "debug-component"
           $$  info debugComponentArgSpec
-          $$  progDesc "Debugging information related to cabal component resolution"
+          $$  progDesc' $$$ do
+              "Debugging information related to cabal component"
+                \\ "resolution"
     <> command "boot"
           $$  info (pure CmdBoot)
           $$  progDesc "Internal command used by the emacs frontend"
@@ -84,12 +90,14 @@ commands =
     --       $$  info (pure CmdNukeCaches) idm
     <> command "root"
           $$  info (pure CmdRoot)
-          $$  progDesc
-              "Try to find the project directory. For Cabal projects this is the\
-              \ directory containing the cabal file, for projects that use a cabal\
-              \ sandbox but have no cabal file this is the directory containing the\
-              \ cabal.sandbox.config file and otherwise this is the current\
-              \ directory"
+          $$  progDesc'
+              "Try to find the project directory."
+          <=> desc $$$ do
+              "For Cabal projects this is the"
+                \\ "directory containing the cabal file, for projects"
+                \\ "that use a cabal sandbox but have no cabal file"
+                \\ "this is the directory containing the cabal.sandbox.config"
+                \\ "file and otherwise this is the current directory"
     <> command "legacy-interactive"
           $$  info legacyInteractiveArgSpec
           $$  progDesc "ghc-modi compatibility mode"
@@ -106,7 +114,9 @@ commands =
           $$  progDesc "List all modules that define SYMBOL"
     <> command "doc"
           $$  info docArgSpec
-          $$  progDesc "Try finding the html documentation directory for the given MODULE"
+          $$  progDesc' $$$ do
+              "Try finding the html documentation directory"
+                \\ "for the given MODULE"
     <> command "lint"
           $$  info lintArgSpec
           $$  progDesc "Check files using `hlint'"
@@ -115,18 +125,17 @@ commands =
           $$  progDesc "List symbols in a module"
     <> command "check"
           $$  info checkArgSpec
-          $$  progDesc
-              "Load the given files using GHC and report errors/warnings,\
-              \ but don't produce output files"
+          $$  progDesc' $$$ do
+              "Load the given files using GHC and report errors/warnings,"
+                \\ "but don't produce output files"
     <> command "expand"
           $$  info expandArgSpec
           $$  progDesc "Like `check' but also pass `-ddump-splices' to GHC"
     <> command "info"
           $$  info infoArgSpec
-          $$  progDesc
-              "Look up an identifier in the context of FILE (like ghci's `:info')\
-              \ MODULE is completely ignored and only allowed for backwards\
-              \ compatibility"
+          $$  progDesc' $$$ do
+              "Look up an identifier in the context"
+                \\ "of FILE (like ghci's `:info')"
     <> command "type"
           $$  info typeArgSpec
           $$  progDesc "Get the type of the expression under (LINE,COL)"
@@ -134,50 +143,44 @@ commands =
           $$  info splitArgSpec
           $$  progDesc
                   "Split a function case by examining a type's constructors"
-          <=> desc [
-                text "For example given the following code snippet:"
-              , code [
-                 "f :: [a] -> a"
-               , "f x = _body"
-               ]
-              , text "would be replaced by:"
-              , code [
-                 "f :: [a] -> a"
-               , "f [] = _body"
-               , "f (x:xs) = _body"
-               ]
-              , text "(See https://github.com/kazu-yamamoto/ghc-mod/pull/274)"
-              ]
+          <=> desc $$$ do
+                "For example given the following code snippet:"
+                code $ do
+                  "f :: [a] -> a"
+                  "f x = _body"
+                "would be replaced by:"
+                code $ do
+                  "f :: [a] -> a"
+                  "f [] = _body"
+                  "f (x:xs) = _body"
+                "(See https://github.com/kazu-yamamoto/ghc-mod/pull/274)"
     <> command "sig"
           $$  info sigArgSpec
           $$  progDesc "Generate initial code given a signature"
-          <=> desc [
-                text "For example when (LINE,COL) is on the signature in the following\
-                \ code snippet:"
-              , code ["func :: [a] -> Maybe b -> (a -> b) -> (a,b)"]
-              , text "ghc-mod would add the following on the next line:"
-              , code ["func x y z f = _func_body"]
-              , text "(See: https://github.com/kazu-yamamoto/ghc-mod/pull/274)"
-              ]
+          <=> desc $$$ do
+              "For example when (LINE,COL) is on the"
+                \\ "signature in the following code snippet:"
+              code "func :: [a] -> Maybe b -> (a -> b) -> (a,b)"
+              "ghc-mod would add the following on the next line:"
+              code "func x y z f = _func_body"
+              "(See: https://github.com/kazu-yamamoto/ghc-mod/pull/274)"
     <> command "auto"
           $$  info autoArgSpec
           $$  progDesc "Try to automatically fill the contents of a hole"
     <> command "refine"
           $$  info refineArgSpec
           $$  progDesc "Refine the typed hole at (LINE,COL) given EXPR"
-          <=> desc [
-                text "For example if EXPR is `filter', which has type `(a -> Bool) -> [a]\
-                \ -> [a]' and (LINE,COL) is on the hole `_body' in the following\
-                \ code snippet:"
-              , code [
-                   "filterNothing :: [Maybe a] -> [a]"
-                 , "filterNothing xs = _body"
-                 ]
-              , text "ghc-mod changes the code to get a value of type `[a]', which\
-                \ results in:"
-              , code [ "filterNothing xs = filter _body_1 _body_2" ]
-              , text "(See also: https://github.com/kazu-yamamoto/ghc-mod/issues/311)"
-              ]
+          <=> desc $$$ do
+              "For example if EXPR is `filter', which has type"
+                \\ "`(a -> Bool) -> [a] -> [a]' and (LINE,COL) is on"
+                \\ " the hole `_body' in the following code snippet:"
+              code $ do
+                "filterNothing :: [Maybe a] -> [a]"
+                "filterNothing xs = _body"
+              "ghc-mod changes the code to get a value of type"
+                \\ " `[a]', which results in:"
+              code "filterNothing xs = filter _body_1 _body_2"
+              "(See also: https://github.com/kazu-yamamoto/ghc-mod/issues/311)"
 
 interactiveCommandsSpec :: Parser GhcModCommands
 interactiveCommandsSpec =
@@ -186,14 +189,17 @@ interactiveCommandsSpec =
         <> command "map-file"
               $$  info (helper <*> mapArgSpec)
               $$  progDesc "tells ghc-modi to read `file.hs` source from stdin"
-              <=> footer "File end marker is `\\n\\EOT\\n`,\
-              \ i.e. `\\x0A\\x04\\x0A`. `file.hs` may or may not exist, and should be\
-              \ either full path, or relative to project root."
+              <=> desc $$$ do
+                "Works the same as second form of"
+                  \\ "`--map-file` CLI option."
         <> command "unmap-file"
               $$  info (helper <*> unmapArgSpec)
-              $$  progDesc "unloads previously mapped file, so that it's no longer mapped."
-              <=> footer "`file.hs` can be full path or relative to\
-              \ project root, either will work."
+              $$  progDesc' $$$ do
+                    "unloads previously mapped file,"
+                      \\ "so that it's no longer mapped."
+              <=> desc $$$ do
+                    "`file.hs` can be full path or relative"
+                      \\ "to project root, either will work."
         <> command "quit"
               $$ info (pure CmdQuit)
               $$ progDesc "Exit interactive mode"

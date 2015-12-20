@@ -193,6 +193,7 @@ Executable ghc-mod
                       , GHCMod.Version
                       , GHCMod.Options.DocUtils
                       , GHCMod.Options.ShellParse
+                      , GHCMod.Options.Help
   GHC-Options:          -Wall -fno-warn-deprecations -threaded
   Default-Extensions:   ConstraintKinds, FlexibleContexts
   HS-Source-Dirs:       src
