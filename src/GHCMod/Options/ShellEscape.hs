@@ -36,15 +36,15 @@ go (esc:c:cl) curarg accargs quote
   = if isEscapable c
     then go cl (c:curarg) accargs quote
     else go (c:cl) (esc:curarg) accargs quote
--- quote character -- opens quotes
-go (c:cl) curarg accargs Nothing
-  | isQuote c = go cl curarg accargs (Just c)
--- close quotes
-go (c:cl) curarg accargs (Just q)
-  | c == q = go cl curarg accargs Nothing
 go (c:cl) curarg accargs quotes
+  -- quote character -- opens quotes
+  | isQuote c, isNothing quotes
+  = go cl curarg accargs (Just c)
+  -- close quotes
+  | quotes == Just c
+  = go cl curarg accargs Nothing
   -- space separates argumetns outside quotes
-  | isSpace c && isNothing quotes
+  | isSpace c, isNothing quotes
   = if null curarg
       then go cl curarg accargs quotes
       else go cl [] (reverse curarg : accargs) quotes
