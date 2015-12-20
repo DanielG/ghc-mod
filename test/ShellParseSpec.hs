@@ -1,7 +1,7 @@
-module ShellEscapeSpec where
+module ShellParseSpec where
 
 
-import GHCMod.Options.ShellEscape
+import GHCMod.Options.ShellParse
 
 import Test.Hspec
 

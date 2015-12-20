@@ -27,7 +27,7 @@ import Control.Arrow
 import GHCMod.Options.Commands
 import GHCMod.Version
 import GHCMod.Options.DocUtils
-import GHCMod.Options.ShellEscape
+import GHCMod.Options.ShellParse
 
 parseArgs :: IO (Options, GhcModCommands)
 parseArgs =
