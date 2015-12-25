@@ -26,6 +26,9 @@ import Options.Applicative
 import Options.Applicative.Types
 import Language.Haskell.GhcMod.Types
 import Control.Arrow
+import Data.Char (toUpper, toLower)
+import Data.List (intercalate)
+import Language.Haskell.GhcMod.Read
 import GHCMod.Options.Commands
 import GHCMod.Version
 import GHCMod.Options.DocUtils
@@ -74,31 +77,48 @@ argAndCmdSpec = (,) <$> globalArgSpec <*> commandsSpec
 splitOn :: Eq a => a -> [a] -> ([a], [a])
 splitOn c = second (drop 1) . break (==c)
 
-getLogLevel :: Int -> GmLogLevel
-getLogLevel = toEnum . min 7
-
 logLevelParser :: Parser GmLogLevel
 logLevelParser =
-  getLogLevel
-    <$>  silentSwitch
-    <||> logLevelSwitch
-    <||> logLevelOption
+    logLevelSwitch <*>
+           logLevelOption
+      <||> silentSwitch
   where
     logLevelOption =
-      option int
+      option parseLL
         $$  long "verbose"
         <=> metavar "LEVEL"
-        <=> value 4
-        <=> showDefault
-        <=> help "Set log level. (0-7)"
+        <=> value GmWarning
+        <=> showDefaultWith showLL
+        <=> help' $$$ do
+          "Set log level ("
+            <> int' (fromEnum (minBound :: GmLogLevel))
+            <> "-"
+            <> int' (fromEnum (maxBound :: GmLogLevel))
+            <> ")"
+          "You can also use strings (case-insensitive):"
+          para'
+            $ intercalate ", "
+            $ map showLL ([minBound..maxBound] :: [GmLogLevel])
     logLevelSwitch =
-      (4+) . length <$> many $$ flag' ()
+      repeatAp succ' . length <$> many $$ flag' ()
         $$  short 'v'
         <=> help "Increase log level"
-    silentSwitch = flag' 0
+    silentSwitch = flag' GmSilent
         $$  long "silent"
         <=> short 's'
-        <=> help "Be silent, set log level to 0"
+        <=> help "Be silent, set log level to 'silent'"
+    showLL = drop 2 . map toLower . show
+    repeatAp f n = foldr (.) id (replicate n f)
+    succ' x | x == maxBound = x
+            | otherwise     = succ x
+    parseLL = do
+      v <- readerAsk
+      let
+        il'= toEnum . min maxBound <$> readMaybe v
+        ll' = readMaybe ("Gm" ++ capFirst v)
+      maybe (readerError $ "Not a log level \"" ++ v ++ "\"") return $ ll' <|> il'
+    capFirst (h:t) = toUpper h : map toLower t
+    capFirst [] = []
 
 outputOptsSpec :: Parser OutputOpts
 outputOptsSpec = OutputOpts

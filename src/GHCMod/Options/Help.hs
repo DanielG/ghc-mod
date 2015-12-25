@@ -23,13 +23,19 @@ import qualified Options.Applicative.Help.Pretty as PP
 import Control.Monad.State
 import GHC.Exts( IsString(..) )
 import Data.Maybe
+import Data.Monoid
+import Prelude
 
 newtype MyDocM s a = MyDoc {unwrapState :: State s a}
   deriving (Monad, Functor, Applicative, MonadState s)
 type MyDoc = MyDocM (Maybe Doc) ()
 
-instance IsString (MyDocM (Maybe Doc) a)  where
+instance IsString (MyDocM (Maybe Doc) a) where
     fromString = append . para
+
+instance Monoid (MyDocM (Maybe Doc) ()) where
+  mappend a b = append $ doc a <> doc b
+  mempty = append PP.empty
 
 para :: String -> Doc
 para = PP.fillSep . map PP.text . words
@@ -65,3 +71,9 @@ progDesc' = progDescDoc . Just . doc
 
 indent :: Int -> MyDoc -> MyDoc
 indent n = append . PP.indent n . doc
+
+int' :: Int -> MyDoc
+int' = append . PP.int
+
+para' :: String -> MyDoc
+para' = append . para
