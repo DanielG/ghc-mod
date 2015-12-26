@@ -56,11 +56,11 @@ data GhcModCommands =
   | CmdSig FilePath Point
   | CmdAuto FilePath Point
   | CmdRefine FilePath Point Expr
+  | CmdTest FilePath
   -- interactive-only commands
   | CmdMapFile FilePath
   | CmdUnmapFile FilePath
   | CmdQuit
-  | CmdTest FilePath
   deriving (Show)
 
 commandsSpec :: Parser GhcModCommands
