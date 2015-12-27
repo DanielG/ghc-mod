@@ -140,4 +140,4 @@ mapDoc kd ad m = vcat $
 
 -- | Obtaining root information.
 rootInfo :: forall m. (IOish m, GmOut m) => m String
-rootInfo = (++"\n") . cradleRootDir <$> fst `liftM` (runJournalT findCradle :: m (Cradle, GhcModLog))
+rootInfo = cradleRootDir <$> fst `liftM` (runJournalT findCradle :: m (Cradle, GhcModLog))

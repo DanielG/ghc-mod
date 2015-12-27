@@ -43,23 +43,26 @@ main = do
             ]
 
 progMain :: (Options, GhcModCommands) -> IO ()
-progMain (globalOptions, commands) = runGmOutT globalOptions $
-  wrapGhcCommands globalOptions commands
+progMain (globalOptions, commands) = do
+  runGmOutT globalOptions $ do
+    rootDir <- rootInfo
+    liftIO $ setCurrentDirectory rootDir
+    wrapGhcCommands globalOptions commands
 
 -- ghc-modi
-legacyInteractive :: IOish m => GhcModT m ()
-legacyInteractive = do
+legacyInteractive :: IOish m => FilePath -> GhcModT m ()
+legacyInteractive cwd = do
     opt <- options
     prepareCabalHelper
     tmpdir <- cradleTempDir <$> cradle
     gmo <- gmoAsk
     symdbreq <- liftIO $ newSymDbReq opt gmo tmpdir
     world <- getCurrentWorld
-    legacyInteractiveLoop symdbreq world
+    legacyInteractiveLoop cwd symdbreq world
 
 legacyInteractiveLoop :: IOish m
-                      => SymDbReq -> World -> GhcModT m ()
-legacyInteractiveLoop symdbreq world = do
+                      => FilePath -> SymDbReq -> World -> GhcModT m ()
+legacyInteractiveLoop cwd symdbreq world = do
     liftIO . setCurrentDirectory =<< cradleRootDir <$> cradle
 
     -- blocking
@@ -77,7 +80,7 @@ legacyInteractiveLoop symdbreq world = do
 
     res <- flip gcatches interactiveHandlers $ do
       pargs <- either (throw . InvalidCommandLine . Right) return
-              $ parseArgsInteractive cmdArg
+              $ parseArgsInteractive cwd cmdArg
       case pargs of
         CmdFind symbol ->
             lookupSymbol symbol =<< checkDb symdbreq =<< getDb symdbreq
@@ -85,7 +88,7 @@ legacyInteractiveLoop symdbreq world = do
         x              -> ghcCommands x
 
     gmPutStr res >> gmPutStrLn "OK" >> liftIO (hFlush stdout)
-    legacyInteractiveLoop symdbreq world'
+    legacyInteractiveLoop cwd symdbreq world'
  where
     interactiveHandlers =
           [ GHandler $ \(e :: ExitCode) -> throw e
@@ -108,7 +111,7 @@ getFileSourceFromStdin = do
 
 -- Someone please already rewrite the cmdline parsing code *weep* :'(
 wrapGhcCommands :: (IOish m, GmOut m) => Options -> GhcModCommands -> m ()
-wrapGhcCommands _opts CmdRoot = gmPutStr =<< rootInfo
+wrapGhcCommands _opts CmdRoot = gmPutStr =<< (++"\n") <$> rootInfo
 wrapGhcCommands opts cmd =
     handleGmError $ runGhcModT opts $ handler $ do
       forM_ (reverse $ optFileMappings opts) $
@@ -139,7 +142,7 @@ ghcCommands (CmdDebugComponent ts) = componentInfo ts
 ghcCommands (CmdBoot) = boot
 -- ghcCommands (CmdNukeCaches) = nukeCaches >> return ""
 -- ghcCommands (CmdRoot) = undefined -- handled in wrapGhcCommands
-ghcCommands (CmdLegacyInteractive) = legacyInteractive >> return ""
+ghcCommands (CmdLegacyInteractive cwd) = legacyInteractive cwd >> return ""
 ghcCommands (CmdModules detail) = modules detail
 ghcCommands (CmdDumpSym tmpdir) = dumpSymbol tmpdir
 ghcCommands (CmdFind symb) = findSymbol symb

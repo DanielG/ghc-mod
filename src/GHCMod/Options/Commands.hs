@@ -13,7 +13,7 @@
 --
 -- You should have received a copy of the GNU Affero General Public License
 -- along with this program.  If not, see <http://www.gnu.org/licenses/>.
-{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE OverloadedStrings, ImplicitParams #-}
 {-# OPTIONS_GHC -fno-warn-unused-do-bind #-}
 
 module GHCMod.Options.Commands where
@@ -25,6 +25,7 @@ import Language.Haskell.GhcMod.Types
 import Language.Haskell.GhcMod.Read
 import GHCMod.Options.DocUtils
 import GHCMod.Options.Help
+import System.FilePath ((</>))
 
 type Symbol = String
 type Expr = String
@@ -40,7 +41,7 @@ data GhcModCommands =
   | CmdBoot
   | CmdNukeCaches
   | CmdRoot
-  | CmdLegacyInteractive
+  | CmdLegacyInteractive FilePath
   | CmdModules Bool
   | CmdDumpSym FilePath
   | CmdFind Symbol
@@ -62,11 +63,11 @@ data GhcModCommands =
   | CmdQuit
   deriving (Show)
 
-commandsSpec :: Parser GhcModCommands
+commandsSpec :: (?cwd :: FilePath) => Parser GhcModCommands
 commandsSpec =
   hsubparser commands
 
-commands :: Mod CommandFields GhcModCommands
+commands :: (?cwd :: FilePath) => Mod CommandFields GhcModCommands
 commands =
        command "lang"
           $$  info (pure CmdLang)
@@ -80,7 +81,7 @@ commands =
               "Print debugging information. Please include"
                 \\ "the output in any bug reports you submit"
     <> command "debug-component"
-          $$  info debugComponentArgSpec
+          $$  info (filesArgsSpec CmdDebugComponent)
           $$  progDesc' $$$ do
               "Debugging information related to cabal component"
                 \\ "resolution"
@@ -100,48 +101,68 @@ commands =
                 \\ "this is the directory containing the cabal.sandbox.config"
                 \\ "file and otherwise this is the current directory"
     <> command "legacy-interactive"
-          $$  info legacyInteractiveArgSpec
+          $$  info (const (CmdLegacyInteractive ?cwd) <$> optional interactiveCommandsSpec)
           $$  progDesc "ghc-modi compatibility mode"
-    <> command "list"
-          $$  info modulesArgSpec
-          $$  progDesc "List all visible modules"
-    <> command "modules"
-          $$  info modulesArgSpec
-          $$  progDesc "List all visible modules"
+    <> command "list" modulesInfo
+    <> command "modules" modulesInfo
     <> command "dumpsym"
-          $$  info dumpSymArgSpec idm
+          $$  info (CmdDumpSym <$> strArg "TMPDIR") idm
     <> command "find"
-          $$  info findArgSpec
+          $$  info (CmdFind <$> strArg "SYMBOL")
           $$  progDesc "List all modules that define SYMBOL"
     <> command "doc"
-          $$  info docArgSpec
+          $$  info (CmdDoc <$> strArg "MODULE")
           $$  progDesc' $$$ do
               "Try finding the html documentation directory"
                 \\ "for the given MODULE"
     <> command "lint"
-          $$  info lintArgSpec
+          $$  info (
+                CmdLint
+                  <$> LintOpts <$$> many $$ strOption
+                      $$  long "hlintOpt"
+                      <=> short 'h'
+                      <=> help "Option to be passed to hlint"
+                  <*> fileArg "FILE"
+                  )
           $$  progDesc "Check files using `hlint'"
     <> command "browse"
-          $$  info browseArgSpec
+          $$  info (
+                CmdBrowse
+                  <$> (BrowseOpts
+                        <$> switch
+                            $$  long "operators"
+                            <=> short 'o'
+                            <=> help "Also print operators"
+                        <*> switch
+                            $$  long "detailed"
+                            <=> short 'd'
+                            <=> help "Print symbols with accompanying signature"
+                        <*> switch
+                            $$  long "qualified"
+                            <=> short 'q'
+                            <=> help "Qualify symbols"
+                      )
+                  <*> some (strArg "MODULE")
+                  )
           $$  progDesc "List symbols in a module"
     <> command "check"
-          $$  info checkArgSpec
+          $$  info (filesArgsSpec CmdCheck)
           $$  progDesc' $$$ do
               "Load the given files using GHC and report errors/warnings,"
                 \\ "but don't produce output files"
     <> command "expand"
-          $$  info expandArgSpec
+          $$  info (filesArgsSpec CmdExpand)
           $$  progDesc "Like `check' but also pass `-ddump-splices' to GHC"
     <> command "info"
-          $$  info infoArgSpec
+          $$  info (CmdInfo <$> fileArg "FILE" <*> strArg "SYMBOL")
           $$  progDesc' $$$ do
               "Look up an identifier in the context"
                 \\ "of FILE (like ghci's `:info')"
     <> command "type"
-          $$  info typeArgSpec
+          $$  info (locArgSpec CmdType)
           $$  progDesc "Get the type of the expression under (LINE,COL)"
     <> command "split"
-          $$  info splitArgSpec
+          $$  info (locArgSpec CmdSplit)
           $$  progDesc
                   "Split a function case by examining a type's constructors"
           <=> desc $$$ do
@@ -156,7 +177,7 @@ commands =
                   "f (x:xs) = _body"
                 "(See https://github.com/kazu-yamamoto/ghc-mod/pull/274)"
     <> command "sig"
-          $$  info sigArgSpec
+          $$  info (locArgSpec CmdSig)
           $$  progDesc "Generate initial code given a signature"
           <=> desc $$$ do
               "For example when (LINE,COL) is on the"
@@ -166,10 +187,10 @@ commands =
               code "func x y z f = _func_body"
               "(See: https://github.com/kazu-yamamoto/ghc-mod/pull/274)"
     <> command "auto"
-          $$  info autoArgSpec
+          $$  info (locArgSpec CmdAuto)
           $$  progDesc "Try to automatically fill the contents of a hole"
     <> command "refine"
-          $$  info refineArgSpec
+          $$  info (locArgSpec CmdRefine <*> strArg "SYMBOL")
           $$  progDesc "Refine the typed hole at (LINE,COL) given EXPR"
           <=> desc $$$ do
               "For example if EXPR is `filter', which has type"
@@ -182,19 +203,28 @@ commands =
                 \\ " `[a]', which results in:"
               code "filterNothing xs = filter _body_1 _body_2"
               "(See also: https://github.com/kazu-yamamoto/ghc-mod/issues/311)"
+  where
+    modulesInfo =
+      info (
+        CmdModules <$> switch
+              $$  long "detailed"
+              <=> short 'd'
+              <=> help "Print package modules belong to"
+        )
+      $ progDesc "List all visible modules"
 
-interactiveCommandsSpec :: Parser GhcModCommands
+interactiveCommandsSpec :: (?cwd :: FilePath) => Parser GhcModCommands
 interactiveCommandsSpec =
     hsubparser'
         $  commands
         <> command "map-file"
-              $$  info mapArgSpec
+              $$  info (CmdMapFile <$> fileArg "FILE")
               $$  progDesc "tells ghc-modi to read `file.hs` source from stdin"
               <=> desc $$$ do
                 "Works the same as second form of"
                   \\ "`--map-file` CLI option."
         <> command "unmap-file"
-              $$  info unmapArgSpec
+              $$  info (CmdUnmapFile <$> fileArg "FILE")
               $$  progDesc' $$$ do
                     "unloads previously mapped file,"
                       \\ "so that it's no longer mapped."
@@ -210,68 +240,19 @@ interactiveCommandsSpec =
 strArg :: String -> Parser String
 strArg = argument str . metavar
 
-filesArgsSpec :: ([String] -> b) -> Parser b
-filesArgsSpec x = x <$> some (strArg "FILES..")
+fileArg :: (?cwd :: FilePath) => String -> Parser FilePath
+fileArg = fmap (?cwd </>) . argument str . metavar
 
-locArgSpec :: (String -> (Int, Int) -> b) -> Parser b
+filesArgsSpec :: (?cwd :: FilePath) => ([String] -> b) -> Parser b
+filesArgsSpec x = x <$> some (fileArg "FILES..")
+
+locArgSpec :: (?cwd :: FilePath) => (FilePath -> (Int, Int) -> b) -> Parser b
 locArgSpec x = x
-  <$> strArg "FILE"
+  <$> fileArg "FILE"
   <*> ( (,)
         <$> argument int (metavar "LINE")
         <*> argument int (metavar "COL")
       )
-
-modulesArgSpec, dumpSymArgSpec, docArgSpec, findArgSpec,
-  lintArgSpec, browseArgSpec, checkArgSpec, expandArgSpec,
-  infoArgSpec, typeArgSpec, autoArgSpec, splitArgSpec,
-  sigArgSpec, refineArgSpec, debugComponentArgSpec,
-  mapArgSpec, unmapArgSpec, legacyInteractiveArgSpec :: Parser GhcModCommands
-
-modulesArgSpec = CmdModules
-  <$> switch
-        $$  long "detailed"
-        <=> short 'd'
-        <=> help "Print package modules belong to"
-dumpSymArgSpec = CmdDumpSym <$> strArg "TMPDIR"
-findArgSpec = CmdFind <$> strArg "SYMBOL"
-docArgSpec = CmdDoc <$> strArg "MODULE"
-lintArgSpec = CmdLint
-  <$> LintOpts <$$> many $$ strOption
-      $$  long "hlintOpt"
-      <=> short 'h'
-      <=> help "Option to be passed to hlint"
-  <*> strArg "FILE"
-browseArgSpec = CmdBrowse
-  <$> (BrowseOpts
-        <$> switch
-            $$  long "operators"
-            <=> short 'o'
-            <=> help "Also print operators"
-        <*> switch
-            $$  long "detailed"
-            <=> short 'd'
-            <=> help "Print symbols with accompanying signature"
-        <*> switch
-            $$  long "qualified"
-            <=> short 'q'
-            <=> help "Qualify symbols"
-      )
-  <*> some (strArg "MODULE")
-debugComponentArgSpec = filesArgsSpec CmdDebugComponent
-checkArgSpec = filesArgsSpec CmdCheck
-expandArgSpec = filesArgsSpec CmdExpand
-infoArgSpec = CmdInfo
-    <$> strArg "FILE"
-    <*> strArg "SYMBOL"
-typeArgSpec = locArgSpec CmdType
-autoArgSpec = locArgSpec CmdAuto
-splitArgSpec = locArgSpec CmdSplit
-sigArgSpec = locArgSpec CmdSig
-refineArgSpec = locArgSpec CmdRefine <*> strArg "SYMBOL"
-mapArgSpec = CmdMapFile <$> strArg "FILE"
-unmapArgSpec = CmdUnmapFile <$> strArg "FILE"
-legacyInteractiveArgSpec = const CmdLegacyInteractive <$>
-  optional interactiveCommandsSpec
 
 hsubparser' :: Mod CommandFields a -> Parser a
 hsubparser' m = mkParser d g rdr

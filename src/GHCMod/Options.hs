@@ -13,7 +13,7 @@
 --
 -- You should have received a copy of the GNU Affero General Public License
 -- along with this program.  If not, see <http://www.gnu.org/licenses/>.
-{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE OverloadedStrings, ImplicitParams #-}
 {-# OPTIONS_GHC -fno-warn-unused-do-bind #-}
 
 module GHCMod.Options (
@@ -35,19 +35,24 @@ import GHCMod.Options.DocUtils
 import GHCMod.Options.Help
 import GHCMod.Options.ShellParse
 
+import System.Directory (getCurrentDirectory)
+
 parseArgs :: IO (Options, GhcModCommands)
-parseArgs =
+parseArgs = do
+  cwd <- getCurrentDirectory
+  let ?cwd = cwd
   execParser opts
   where
+    opts :: (?cwd :: FilePath) => ParserInfo (Options, GhcModCommands)
     opts = info (argAndCmdSpec <**> helpVersion)
            $$  fullDesc
            <=> header "ghc-mod: Happy Haskell Programming"
 
-parseArgsInteractive :: String -> Either String GhcModCommands
-parseArgsInteractive args =
+parseArgsInteractive :: FilePath -> String -> Either String GhcModCommands
+parseArgsInteractive cwd args =
   handle $ execParserPure (prefs idm) opts $ parseCmdLine args
   where
-    opts = info interactiveCommandsSpec $$ fullDesc
+    opts = let ?cwd = cwd in info interactiveCommandsSpec $$ fullDesc
     handle (Success a) = Right a
     handle (Failure failure) =
           Left $ fst $ renderFailure failure ""
@@ -71,7 +76,7 @@ helpVersion =
         "version" -> readerAbort $ InfoMsg ghcModVersion
         _ -> return id
 
-argAndCmdSpec :: Parser (Options, GhcModCommands)
+argAndCmdSpec :: (?cwd :: FilePath) => Parser (Options, GhcModCommands)
 argAndCmdSpec = (,) <$> globalArgSpec <*> commandsSpec
 
 splitOn :: Eq a => a -> [a] -> ([a], [a])
