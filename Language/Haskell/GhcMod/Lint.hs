@@ -12,13 +12,15 @@ import Language.Haskell.GhcMod.Utils (withMappedFile)
 
 import Data.List (stripPrefix)
 
+import System.FilePath (makeRelative)
+
 -- | Checking syntax of a target file using hlint.
 --   Warnings and errors are returned.
 lint :: IOish m
      => LintOpts  -- ^ Configuration parameters
      -> FilePath  -- ^ A target file.
      -> GhcModT m String
-lint opt file =
+lint opt file = do
   withMappedFile file $ \tempfile ->
         liftIO (hlint $ tempfile : "--quiet" : optLintHlintOpts opt)
     >>= mapM (replaceFileName tempfile)
@@ -26,4 +28,6 @@ lint opt file =
  where
     pack = convert' . map init -- init drops the last \n.
     handler (SomeException e) = return $ checkErrorPrefix ++ show e ++ "\n"
-    replaceFileName fp s = return $ maybe (show s) (file++) $ stripPrefix fp (show s)
+    replaceFileName fp s = do
+      rootDir <- cradleRootDir `fmap` cradle
+      return $ maybe (show s) (makeRelative rootDir file++) $ stripPrefix fp (show s)
