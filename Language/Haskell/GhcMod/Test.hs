@@ -16,7 +16,7 @@ import OccName
 
 test :: IOish m
       => FilePath -> GhcModT m String
-test f = runGmlT' [Left f] (return . setHscInterpreted) $ do
+test f = runGmlT' [Left f] (fmap setHscInterpreted . deferErrors) $ do
     mg <- getModuleGraph
     root <- cradleRootDir <$> cradle
     f' <- makeRelative root <$> liftIO (canonicalizePath f)
