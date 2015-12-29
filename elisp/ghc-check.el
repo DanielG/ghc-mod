@@ -60,6 +60,16 @@ nil            do not display errors/warnings.
 'other-buffer  display errors/warnings in the a new buffer"
 )
 
+(defcustom ghc-check-jump-to-message nil
+  "After checking a buffer jump to the first hole/warning/error reported."
+  :type 'boolean
+  )
+
+(defcustom ghc-check-jump-display-message nil
+  "After jumping to a location also display the error message"
+  :type 'boolean
+  )
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defun ghc-check-syntax ()
@@ -198,7 +208,20 @@ nil            do not display errors/warnings.
 	  (let ((fringe (if err ghc-check-error-fringe (if hole ghc-check-hole-fringe ghc-check-warning-fringe)))
 		(face (if err 'ghc-face-error (if hole 'ghc-face-hole 'ghc-face-warn))))
 	    (overlay-put ovl 'before-string fringe)
-	    (overlay-put ovl 'face face)))))))
+	    (overlay-put ovl 'face face)))))
+    (let ((info (first infos)))
+      (when (and info ghc-check-jump-to-message)
+	(let ((file (ghc-hilit-info-get-file info))
+	      (line (ghc-hilit-info-get-line info))
+	      (coln (ghc-hilit-info-get-coln info)))
+	  (when (file-equal-p ofile file)
+	    (push-mark (point))
+	    (goto-char (point-min))
+	    (forward-line (1- line))
+	    (forward-char (1- coln))
+	    (when (ghc-check-jump-display-message)
+	      (ghc-display-errors))
+	    ))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
