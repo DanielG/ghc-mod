@@ -63,12 +63,13 @@ nil            do not display errors/warnings.
 (defcustom ghc-check-jump-to-message nil
   "After checking a buffer jump to the first hole/warning/error reported."
   :type 'boolean
-  )
+  :group 'ghc-mod)
 
 (defcustom ghc-check-jump-display-message nil
-  "After jumping to a location also display the error message"
+  "After jumping to a location also display the error message."
   :type 'boolean
-  )
+  :group 'ghc-mod)
+
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -213,8 +214,9 @@ nil            do not display errors/warnings.
       (when (and info ghc-check-jump-to-message)
 	(let ((file (ghc-hilit-info-get-file info))
 	      (line (ghc-hilit-info-get-line info))
-	      (coln (ghc-hilit-info-get-coln info)))
-	  (when (file-equal-p ofile file)
+	      (coln (ghc-hilit-info-get-coln info))
+	      (hole (ghc-hilit-info-get-hole info)))
+	  (when (and (not hole) (file-equal-p ofile file))
 	    (push-mark (point))
 	    (goto-char (point-min))
 	    (forward-line (1- line))
