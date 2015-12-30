@@ -70,8 +70,8 @@ uniqTempDirName dir =
       | otherwise               = c
 
 newTempDir :: FilePath -> IO FilePath
-newTempDir dir =
-  flip createTempDirectory (uniqTempDirName dir) =<< getTemporaryDirectory
+newTempDir _dir =
+  flip createTempDirectory "ghc-mod" =<< getTemporaryDirectory
 
 whenM :: Monad m => m Bool -> m () -> m ()
 whenM mb ma = mb >>= flip when ma
