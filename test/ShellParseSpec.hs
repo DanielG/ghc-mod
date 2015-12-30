@@ -8,29 +8,27 @@ import Test.Hspec
 spec :: Spec
 spec =
   describe "parseCmdLine" $ do
-    it "splits arguments" $
+    it "splits arguments" $ do
       parseCmdLine "test command line" `shouldBe` ["test", "command", "line"]
-    it "honors double quotes" $
-      parseCmdLine "test command line \"with double quotes\""
-        `shouldBe` ["test", "command", "line", "with double quotes"]
-    it "escapes spaces" $ do
-      parseCmdLine "with\\ spaces"
-        `shouldBe` ["with spaces"]
-      parseCmdLine "\"with\\ spaces\""
-        `shouldBe` ["with spaces"]
-    it "escapes '\\'" $ do
-      parseCmdLine "\\\\"
-        `shouldBe` ["\\"]
-      parseCmdLine "\"\\\\\""
-        `shouldBe` ["\\"]
-    it "escapes double quotes" $ do
-      parseCmdLine "\\\""
-        `shouldBe` ["\""]
-      parseCmdLine "\"\\\"\""
-        `shouldBe` ["\""]
-    it "doesn't escape random characters" $
-      parseCmdLine "\\a\\b\\c"
-        `shouldBe` ["\\a\\b\\c"]
-    it "squashes multiple spaces" $
+      parseCmdLine "ascii-escape test command line" `shouldBe` ["test", "command", "line"]
+    it "honors quoted segments if turned on" $
+      parseCmdLine "ascii-escape test command line \STXwith quoted segment\ETX"
+        `shouldBe` ["test", "command", "line", "with quoted segment"]
+    it "doesn't honor quoted segments if turned off" $
+      parseCmdLine "test command line \STXwith quoted segment\ETX"
+        `shouldBe` words "test command line \STXwith quoted segment\ETX"
+    it "squashes multiple spaces" $ do
       parseCmdLine "test       command"
         `shouldBe` ["test", "command"]
+      parseCmdLine "ascii-escape           test       command"
+        `shouldBe` ["test", "command"]
+    it "ingores leading spaces" $ do
+      parseCmdLine "     test       command"
+        `shouldBe` ["test", "command"]
+      parseCmdLine "   ascii-escape           test       command"
+        `shouldBe` ["test", "command"]
+    it "parses empty string as no argument" $ do
+      parseCmdLine ""
+        `shouldBe` [""]
+      parseCmdLine "ascii-escape "
+        `shouldBe` [""]
