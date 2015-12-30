@@ -174,12 +174,12 @@ open this file and jump to the error inside it."
       (goto-char (point-min))
       (cond
        ((file-equal-p ofile file)
-	(if hole
+	(if (eq type 'hole)
 	    (progn
 	      (forward-line (1- line))
 	      (forward-char (1- coln))
 	      (setq beg (point))
-	      (forward-char (length hole))
+	      (forward-word)
 	      (setq end (point)))
 	  (progn
 	    (forward-line (1- line))
@@ -270,13 +270,13 @@ open this file and jump to the error inside it."
 	    (ghc-add errs msg)))
 	(ghc-make-file-msgs :file file :msgs (nconc errs wrns))))))
 
-(defun ghc-sort-errors-before-warnings (infos)
+(defun ghc-sort-errors-before-warnings (ovls)
   (ghc-sort
-   infos
+   ovls
    (ghc-on
     '<=
-    (lambda (x)
-      (pcase (ghc-msg-info-type x)
+    (lambda (ovl)
+      (pcase (ghc-msg-info-get-type (overlay-get ovl 'ghc-info))
 	(`err  0)
 	(`hole 1)
 	(`warn 2))))))
@@ -394,9 +394,11 @@ open this file and jump to the error inside it."
 (defun ghc-goto-first-error ()
   (interactive)
   (let* ((ovls0 (overlays-in (point-min) (point-max)))
-         (ovls1 (ghc-filter (lambda (ovl) (overlay-get ovl 'ghc-check)) ovls0))
+         (ovls1
+	  (ghc-filter (lambda (ovl) (overlay-get ovl 'ghc-check)) ovls0))
 	 (ovls2 (sort ovls1 (ghc-on '<= (lambda (ovl) (overlay-get ovl 'ghc-index)))))
-         (first_error (first ovls2)))
+	 (ovls3 (ghc-sort-errors-before-warnings ovls2))
+         (first_error (first ovls3)))
     (if first_error (ghc-check-jump-to-info (overlay-get first_error 'ghc-info)))))
 
 (defun ghc-goto-prev-error ()
