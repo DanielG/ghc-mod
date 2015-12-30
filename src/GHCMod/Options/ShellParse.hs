@@ -36,4 +36,6 @@ go (c:cl) curarg accargs quotes
   | otherwise = go cl (c:curarg) accargs quotes
 
 parseCmdLine :: String -> [String]
-parseCmdLine comline = go comline [] [] False
+parseCmdLine ('\\':comline) = go comline [] [] False
+parseCmdLine [] = [""]
+parseCmdLine comline = words comline
