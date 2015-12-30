@@ -16,6 +16,7 @@
 module GHCMod.Options.ShellParse (parseCmdLine) where
 
 import Data.Char
+import Data.List
 
 go :: String -> String -> [String] -> Bool -> [String]
 -- result
@@ -36,6 +37,8 @@ go (c:cl) curarg accargs quotes
   | otherwise = go cl (c:curarg) accargs quotes
 
 parseCmdLine :: String -> [String]
-parseCmdLine ('\\':comline) = go comline [] [] False
+parseCmdLine comline'
+  | Just comline <- stripPrefix "ascii-escape " $ dropWhile isSpace comline'
+  = go (dropWhile isSpace comline) [] [] False
 parseCmdLine [] = [""]
 parseCmdLine comline = words comline
