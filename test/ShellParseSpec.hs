@@ -27,3 +27,8 @@ spec =
         `shouldBe` ["test", "command"]
       parseCmdLine "   ascii-escape           test       command"
         `shouldBe` ["test", "command"]
+    it "parses empty string as no argument" $ do
+      parseCmdLine ""
+        `shouldBe` [""]
+      parseCmdLine "ascii-escape "
+        `shouldBe` [""]
