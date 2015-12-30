@@ -169,17 +169,25 @@
 		(delete-region 1 end)))))
 	(goto-char (point-max))
 	(forward-line -1)
-	(cond
-	 ((looking-at "^OK$")
-	  (delete-region (point) (point-max))
-	  (setq ghc-process-file-mapping nil)
-	  (when ghc-process-async-after-callback
-	    (goto-char (point-min))
-	    (funcall ghc-process-async-after-callback 'ok)
-	    (setq ghc-process-running nil)))
-	 ((looking-at "^NG ")
-	  (funcall ghc-process-async-after-callback 'ng)
-	  (setq ghc-process-running nil)))))))
+
+	(cl-flet ((async-after-callback ()
+	        (condition-case err
+		    (progn
+		      (funcall ghc-process-async-after-callback 'ok)
+		      (setq ghc-process-running nil))
+		  (error
+		   (setq ghc-process-running nil)
+		   (signal (car err) (cdr err))))))
+	  (cond
+	   ((looking-at "^OK$")
+	    (delete-region (point) (point-max))
+	    (setq ghc-process-file-mapping nil)
+	    (when ghc-process-async-after-callback
+	      (goto-char (point-min))
+	      (async-after-callback)
+	      ))
+	   ((looking-at "^NG ")
+	    (async-after-callback))))))))
 
 (defun ghc-process-sentinel (_process _event)
   (setq ghc-process-running nil)
