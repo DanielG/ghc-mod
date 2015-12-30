@@ -1,3 +1,4 @@
+;;; -*- lexical-binding: t -*-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
 ;;; ghc-func.el
@@ -31,8 +32,6 @@
       (while (search-forward from nil t)
 	(replace-match to)))))
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
 (defun ghc-unescape-string (str)
   (with-temp-buffer
     (insert str)
@@ -42,8 +41,6 @@
     (while (search-forward "\\\\" nil t) (replace-match "\\" nil t))
     (buffer-substring-no-properties (point-min) (point-max))))
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
 (defmacro ghc-add (sym val)
   `(setq ,sym (cons ,val ,sym)))
 
@@ -52,12 +49,19 @@
     (if var (set var (car vals))) ;; var can be nil to skip
     (setq vals (cdr vals))))
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
 (defun ghc-filter (pred lst)
   (let (ret)
     (dolist (x lst (reverse ret))
       (if (funcall pred x) (ghc-add ret x)))))
+
+(defun ghc-sort (xs f)
+  (sort (copy-tree xs) f))
+
+;; on :: (b -> b -> c) -> (a -> b) -> a -> a -> c
+;; (.*.) `on` f = \x y -> f x .*. f y
+
+(defun ghc-on (g f)
+  (lambda (x y) (funcall g (funcall f x) (funcall f y))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
