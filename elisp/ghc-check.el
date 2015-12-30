@@ -124,7 +124,7 @@ open this file and jump to the error inside it."
 	(let ((len (length infos)))
 	  (if (= len 0)
 	      (setq mode-line-process "")
-	    (let* ((errs (ghc-filter 'ghc-msg-info-get-err infos))
+	    (let* ((errs (ghc-filter (lambda (info) (eq 'err (ghc-msg-info-get-type info))) infos))
 		   (elen (length errs))
 		   (wlen (- len elen)))
 	      (setq mode-line-process (format " %d:%d" elen wlen)))))
@@ -164,7 +164,7 @@ open this file and jump to the error inside it."
 		      :line line
                       :coln coln
 		      :msg  msg
-		      :type (if warn 'warn (if hole 'hole 'err)))))
+		      :type (if wrn 'warn (if hole 'hole 'err)))))
 	  (unless (member info infos)
 	    (ghc-add infos info)))))))
 
@@ -215,9 +215,9 @@ open this file and jump to the error inside it."
 
       (overlay-put ovl 'face
 		   (pcase type
-		     (`warn ghc-face-warn)
-		     (`hole ghc-face-hole )
-		     (`err  ghc-face-error))))))
+		     (`warn 'ghc-face-warn)
+		     (`hole 'ghc-face-hole )
+		     (`err  'ghc-face-error))))))
 
 (defun ghc-check-highlight-original-buffer (ofile buf infos)
   (ghc-with-current-buffer buf
