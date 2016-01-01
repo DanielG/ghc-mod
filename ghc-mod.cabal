@@ -131,6 +131,12 @@ Library
                         Language.Haskell.GhcMod.Logging
                         Language.Haskell.GhcMod.Modules
                         Language.Haskell.GhcMod.Monad
+                        Language.Haskell.GhcMod.Monad.Env
+                        Language.Haskell.GhcMod.Monad.Log
+                        Language.Haskell.GhcMod.Monad.Newtypes
+                        Language.Haskell.GhcMod.Monad.Orphans
+                        Language.Haskell.GhcMod.Monad.Out
+                        Language.Haskell.GhcMod.Monad.State
                         Language.Haskell.GhcMod.Monad.Types
                         Language.Haskell.GhcMod.Output
                         Language.Haskell.GhcMod.PathsAndFiles
