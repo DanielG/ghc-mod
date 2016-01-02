@@ -33,6 +33,7 @@ Extra-Source-Files:     ChangeLog
                         SetupCompat.hs
                         NotCPP/*.hs
                         NotCPP/COPYING
+                        Language/Haskell/GhcMod/Monad/Compat.hs_h
                         test/data/annotations/*.hs
                         test/data/broken-cabal/*.cabal
                         test/data/broken-cabal/cabal.sandbox.config.in
