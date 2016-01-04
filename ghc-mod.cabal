@@ -2,7 +2,8 @@ Name:                   ghc-mod
 Version:                5.5.0.0
 Author:                 Kazu Yamamoto <kazu@iij.ad.jp>,
                         Daniel Gröber <dxld@darkboxed.org>,
-                        Alejandro Serrano <trupill@gmail.com>
+                        Alejandro Serrano <trupill@gmail.com>,
+                        Nikolay Yakimov <root@livid.pp.ru>
 Maintainer:             Daniel Gröber <dxld@darkboxed.org>
 License:                AGPL-3
 License-File:           LICENSE
