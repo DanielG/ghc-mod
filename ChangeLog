@@ -1,3 +1,20 @@
+2016-01-04 v5.5.0.0
+	* Fix #665, Reinstate internally managed CWD (no more `ghc-mod root`
+	  requirement for frontends)
+	* Merge #707, Support for spaces in file names when using
+	  legacy-interactive
+	* Merge #694, #706, #703, Rewrite command line parser using
+	  optparse-applicative. Thanks @lierdakil!
+	* Merge #693, Fix slowdown and bugs caused by excessive use of
+	  `map-file`
+	* Fix #678, "No instance nor default method for class operation put"
+	* Fix #683, #684, a variety of caching related issues
+	* Fix #666, The issue of the beast >:3
+	* Merge #649, elisp: Add ghc-report-errors to inhibit *GHC Error*
+	  logging
+	* Fix #621, Preserve Cabal flag selection across automatic
+	  reconfiguration
+
 2015-09-16 v5.4.0.0
 	* Add support for the Stack build tool
 	* Fix #554, `module not interpreted` errors when using the `type`
