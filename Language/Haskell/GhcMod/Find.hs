@@ -1,4 +1,4 @@
-{-# LANGUAGE CPP, BangPatterns, DoAndIfThenElse #-}
+{-# LANGUAGE CPP, BangPatterns, DoAndIfThenElse, MultiWayIf #-}
 
 module Language.Haskell.GhcMod.Find
 #ifndef SPEC
@@ -10,33 +10,41 @@ module Language.Haskell.GhcMod.Find
   , findSymbol
   , lookupSym
   , isOutdated
+  -- * Load 'SymbolDb' asynchronously
+  , AsyncSymbolDb
+  , newAsyncSymbolDb
+  , getAsyncSymbolDb
   )
 #endif
   where
 
-import Control.Applicative
-import Control.Monad (when, void)
-import Data.Function (on)
-import Data.List (groupBy, sort)
-import qualified GHC as G
 import Language.Haskell.GhcMod.Convert
-import Language.Haskell.GhcMod.Gap (listVisibleModules)
+import Language.Haskell.GhcMod.Gap
 import Language.Haskell.GhcMod.Monad
+import Language.Haskell.GhcMod.Output
 import Language.Haskell.GhcMod.PathsAndFiles
 import Language.Haskell.GhcMod.Types
 import Language.Haskell.GhcMod.Utils
-import Language.Haskell.GhcMod.World (timedPackageCaches)
-import Language.Haskell.GhcMod.Output
-import Name (getOccString)
-import Module (moduleName)
-import System.Directory (doesFileExist)
+import Language.Haskell.GhcMod.World
+
+import qualified GHC as G
+import Name
+import Module
+import Exception
+
+import Control.Applicative
+import Control.Monad
+import Control.Monad.Trans.Control
+import Control.Concurrent
+import Data.Function
+import Data.List
+import Data.Map (Map)
+import qualified Data.Map as M
+import System.Directory
 import System.Directory.ModTime
 import System.FilePath ((</>))
 import System.IO
 import Prelude
-
-import Data.Map (Map)
-import qualified Data.Map as M
 
 ----------------------------------------------------------------
 
@@ -147,3 +155,38 @@ collectModules :: [(Symbol, ModuleString)]
 collectModules = map tieup . groupBy ((==) `on` fst) . sort
   where
     tieup x = (head (map fst x), map snd x)
+
+----------------------------------------------------------------
+
+data AsyncSymbolDb = AsyncSymbolDb FilePath (MVar (Either SomeException SymbolDb))
+
+asyncLoadSymbolDb :: IOish m
+                  => FilePath
+                  -> MVar (Either SomeException SymbolDb)
+                  -> GhcModT m ()
+asyncLoadSymbolDb tmpdir mv = void $
+    liftBaseWith $ \run -> forkIO $ void $ run $ do
+      edb <- gtry $ loadSymbolDb tmpdir
+      liftIO $ putMVar mv edb
+
+newAsyncSymbolDb :: IOish m => FilePath -> GhcModT m AsyncSymbolDb
+newAsyncSymbolDb tmpdir = do
+    mv <- liftIO newEmptyMVar
+    asyncLoadSymbolDb tmpdir mv
+    return $ AsyncSymbolDb tmpdir mv
+
+getAsyncSymbolDb :: forall m. IOish m => AsyncSymbolDb -> GhcModT m SymbolDb
+getAsyncSymbolDb (AsyncSymbolDb tmpdir mv) = go 0
+ where
+   go :: Integer -> GhcModT m SymbolDb
+   go i = do
+     edb <- liftIO $ takeMVar mv
+     case edb of
+       Left ex -> throw ex
+       Right db -> do
+         outdated <- isOutdated db
+         if | i > 2 -> error "getAsyncSymbolDb: outdated loop"
+            | outdated -> asyncLoadSymbolDb tmpdir mv >> go (i + 1)
+            | otherwise -> do
+                liftIO $ putMVar mv (Right db)
+                return db

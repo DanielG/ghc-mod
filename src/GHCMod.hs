@@ -11,6 +11,7 @@ import Language.Haskell.GhcMod
 import Language.Haskell.GhcMod.Internal hiding (MonadIO,liftIO)
 import Language.Haskell.GhcMod.Types
 import Language.Haskell.GhcMod.Monad
+import Language.Haskell.GhcMod.Find (AsyncSymbolDb, newAsyncSymbolDb, getAsyncSymbolDb)
 import System.FilePath ((</>))
 import System.Directory (setCurrentDirectory, getAppUserDataDirectory,
                         removeDirectoryRecursive)
@@ -19,8 +20,6 @@ import System.Exit
 import Text.PrettyPrint hiding ((<>))
 import GHCMod.Options
 import Prelude
-
-import Misc
 
 ghcModStyle :: Style
 ghcModStyle = style { lineLength = 80, ribbonsPerLine = 1.2 }
@@ -49,17 +48,14 @@ progMain (globalOptions, commands) = runGmOutT globalOptions $
 -- ghc-modi
 legacyInteractive :: IOish m => GhcModT m ()
 legacyInteractive = do
-    opt <- options
     prepareCabalHelper
     tmpdir <- cradleTempDir <$> cradle
-    gmo <- gmoAsk
-    symdbreq <- liftIO $ newSymDbReq opt gmo tmpdir
+    asyncSymbolDb <- newAsyncSymbolDb tmpdir
     world <- getCurrentWorld
-    legacyInteractiveLoop symdbreq world
+    legacyInteractiveLoop asyncSymbolDb world
 
-legacyInteractiveLoop :: IOish m
-                      => SymDbReq -> World -> GhcModT m ()
-legacyInteractiveLoop symdbreq world = do
+legacyInteractiveLoop :: IOish m => AsyncSymbolDb -> World -> GhcModT m ()
+legacyInteractiveLoop asyncSymbolDb world = do
     liftIO . setCurrentDirectory =<< cradleRootDir <$> cradle
 
     -- blocking
@@ -80,12 +76,12 @@ legacyInteractiveLoop symdbreq world = do
               $ parseArgsInteractive cmdArg
       case pargs of
         CmdFind symbol ->
-            lookupSymbol symbol =<< checkDb symdbreq =<< getDb symdbreq
+            lookupSymbol symbol =<< getAsyncSymbolDb asyncSymbolDb
         -- other commands are handled here
         x              -> ghcCommands x
 
     gmPutStr res >> gmPutStrLn "OK" >> liftIO (hFlush stdout)
-    legacyInteractiveLoop symdbreq world'
+    legacyInteractiveLoop asyncSymbolDb world'
  where
     interactiveHandlers =
           [ GHandler $ \(e :: ExitCode) -> throw e
