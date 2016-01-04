@@ -347,8 +347,6 @@ data GhcModError
   | GMETooManyCabalFiles [FilePath]
   -- ^ Too many cabal files found.
 
-  | GMEWrongWorkingDirectory FilePath FilePath
-
     deriving (Eq,Show,Typeable)
 
 instance Error GhcModError where
