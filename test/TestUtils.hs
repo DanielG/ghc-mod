@@ -45,20 +45,7 @@ extract action = do
 
 withSpecCradle :: (IOish m, GmOut m) => FilePath -> ((Cradle, GhcModLog) -> m a) -> m a
 withSpecCradle cradledir f = do
-    gbracket (runJournalT $ findSpecCradle cradledir) (liftIO . cleanupCradle . fst) $ \arg@(crdl,_) ->
-      bracketWorkingDirectory (cradleRootDir crdl) $
-        f arg
-
-bracketWorkingDirectory ::
-    (ExceptionMonad m, MonadIO m) => FilePath -> m c -> m c
-bracketWorkingDirectory dir a =
-    gbracket (swapWorkingDirectory dir) (liftIO . setCurrentDirectory) (const a)
-
-swapWorkingDirectory :: MonadIO m => FilePath -> m FilePath
-swapWorkingDirectory ndir = liftIO $ do
-  odir <- getCurrentDirectory >>= canonicalizePath
-  setCurrentDirectory $ ndir
-  return odir
+    gbracket (runJournalT $ findSpecCradle cradledir) (liftIO . cleanupCradle . fst) f
 
 runGhcModTSpec :: Options -> GhcModT IO a -> IO (Either GhcModError a, GhcModLog)
 runGhcModTSpec opt action = do
