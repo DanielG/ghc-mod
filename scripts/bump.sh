@@ -16,6 +16,8 @@ fi
 
 cd $(dirname $0)/..
 
+git checkout release-$VERSION
+
 sed -i 's/(defconst ghc-version ".*")/(defconst ghc-version "'"$VERSION"'")/' \
     elisp/ghc.el
 
@@ -26,7 +28,7 @@ git commit -m "Bump version to $VERSION"
 
 git checkout release
 #git merge master
-git merge -s recursive -X theirs master
+git merge -s recursive -X theirs release-$VERSION
 
 ( tac ChangeLog; echo "\n$(date '+%Y-%m-%d') v$VERSION" ) | tac \
     > ChangeLog.tmp
@@ -37,6 +39,5 @@ emacs -q -nw ChangeLog
 
 git add ChangeLog
 git commit -m "ChangeLog"
-
 
 git tag "v$VERSION"
