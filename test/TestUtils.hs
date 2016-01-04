@@ -43,22 +43,9 @@ extract action = do
     Right a ->  return a
     Left e -> error $ show e
 
-withSpecCradle :: (IOish m, GmOut m) => FilePath -> (Cradle -> m a) -> m a
+withSpecCradle :: (IOish m, GmOut m) => FilePath -> ((Cradle, GhcModLog) -> m a) -> m a
 withSpecCradle cradledir f = do
-    gbracket (findSpecCradle cradledir) (liftIO . cleanupCradle) $ \crdl ->
-      bracketWorkingDirectory (cradleRootDir crdl) $
-        f crdl
-
-bracketWorkingDirectory ::
-    (ExceptionMonad m, MonadIO m) => FilePath -> m c -> m c
-bracketWorkingDirectory dir a =
-    gbracket (swapWorkingDirectory dir) (liftIO . setCurrentDirectory) (const a)
-
-swapWorkingDirectory :: MonadIO m => FilePath -> m FilePath
-swapWorkingDirectory ndir = liftIO $ do
-  odir <- getCurrentDirectory >>= canonicalizePath
-  setCurrentDirectory $ ndir
-  return odir
+    gbracket (runJournalT $ findSpecCradle cradledir) (liftIO . cleanupCradle . fst) f
 
 runGhcModTSpec :: Options -> GhcModT IO a -> IO (Either GhcModError a, GhcModLog)
 runGhcModTSpec opt action = do
@@ -69,7 +56,7 @@ runGhcModTSpec' :: IOish m
     => FilePath -> Options -> GhcModT m b -> m (Either GhcModError b, GhcModLog)
 runGhcModTSpec' dir opt action = liftIO (canonicalizePath dir) >>= \dir' -> do
   runGmOutT opt $
-    withGhcModEnv' withSpecCradle dir' opt $ \env -> do
+    withGhcModEnv' withSpecCradle dir' opt $ \(env,_) -> do
       first (fst <$>) <$> runGhcModT' env defaultGhcModState
         (gmSetLogLevel (ooptLogLevel $ optOutput opt) >> action)
 

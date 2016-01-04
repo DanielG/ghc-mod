@@ -3,10 +3,6 @@
 module Language.Haskell.GhcMod.Internal (
   -- * Types
     GHCOption
-  , Package
-  , PackageBaseName
-  , PackageVersion
-  , PackageId
   , IncludeDir
   , GmlT(..)
   , MonadIO(..)
@@ -21,7 +17,6 @@ module Language.Haskell.GhcMod.Internal (
   -- * Environment, state and logging
   , GhcModEnv(..)
   , GhcModState
-  , CompilerMode(..)
   , GhcModLog
   , GmLog(..)
   , GmLogLevel(..)
@@ -38,8 +33,6 @@ module Language.Haskell.GhcMod.Internal (
   -- ** Accessing 'GhcModEnv' and 'GhcModState'
   , options
   , cradle
-  , getCompilerMode
-  , setCompilerMode
   , targetGhcOptions
   , withOptions
   -- * 'GhcModError'

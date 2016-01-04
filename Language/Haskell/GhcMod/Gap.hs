@@ -370,7 +370,7 @@ pprInfo m pefas (thing, fixity, insts)
                                         (char '\t' <> ptext (sLit "--") <+> loc)
                          where loc = ptext (sLit "Defined") <+> pprNameDefnLoc' (getName thing')
 #else
-    pprTyThingInContextLoc' pefas thing' = hang (pprTyThingInContext pefas thing') 2
+    pprTyThingInContextLoc' pefas' thing' = hang (pprTyThingInContext pefas' thing') 2
                                     (char '\t' <> ptext (sLit "--") <+> loc)
                                where loc = ptext (sLit "Defined") <+> pprNameDefnLoc' (getName thing')
 #endif

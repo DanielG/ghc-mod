@@ -122,13 +122,13 @@ spec = do
           withDirectory_ "test/data/file-mapping" $ do
             res <- runD $ do
               loadMappedFile "File.hs" "File_Redir_Lint.hs"
-              lint "File.hs"
+              lint defaultLintOpts "File.hs"
             res `shouldBe` "File.hs:4:1: Error: Eta reduce\NULFound:\NUL  func a b = (*) a b\NULWhy not:\NUL  func = (*)\n"
         it "lints in-memory file if one is specified and outputs original filename" $ do
           withDirectory_ "test/data/file-mapping" $ do
             res <- runD $ do
               loadMappedFileSource "File.hs" "func a b = (++) a b\n"
-              lint "File.hs"
+              lint defaultLintOpts "File.hs"
             res `shouldBe` "File.hs:1:1: Error: Eta reduce\NULFound:\NUL  func a b = (++) a b\NULWhy not:\NUL  func = (++)\n"
         it "shows types of the expression for redirected files" $ do
             let tdir = "test/data/file-mapping"
@@ -163,6 +163,14 @@ spec = do
               mapM_ (uncurry loadMappedFile) fm
               checkSyntax ["File.hs"]
             res `shouldBe` "File.hs:3:1:Warning: Top-level binding with no type signature: main :: IO ()\n"
+        it "works with full path as well" $ do
+          withDirectory_ "test/data/file-mapping/preprocessor" $ do
+            cwd <- getCurrentDirectory
+            let fm = [("File.hs", cwd </> "File_Redir.hs")]
+            res <- run defaultOptions $ do
+              mapM_ (uncurry loadMappedFile) fm
+              checkSyntax ["File.hs"]
+            res `shouldBe` "File.hs:3:1:Warning: Top-level binding with no type signature: main :: IO ()\n"
         it "checks in-memory file" $ do
           withDirectory_ "test/data/file-mapping/preprocessor" $ do
             src <- readFile "File_Redir.hs"
@@ -175,14 +183,14 @@ spec = do
           withDirectory_ "test/data/file-mapping/preprocessor" $ do
             res <- runD $ do
               loadMappedFile "File.hs" "File_Redir_Lint.hs"
-              lint "File.hs"
+              lint defaultLintOpts "File.hs"
             res `shouldBe` "File.hs:6:1: Error: Eta reduce\NULFound:\NUL  func a b = (*) a b\NULWhy not:\NUL  func = (*)\n"
         it "lints in-memory file if one is specified and outputs original filename" $ do
           withDirectory_ "test/data/file-mapping/preprocessor" $ do
             src <- readFile "File_Redir_Lint.hs"
             res <- runD $ do
               loadMappedFileSource "File.hs" src
-              lint "File.hs"
+              lint defaultLintOpts "File.hs"
             res `shouldBe` "File.hs:6:1: Error: Eta reduce\NULFound:\NUL  func a b = (*) a b\NULWhy not:\NUL  func = (*)\n"
       describe "literate haskell tests" $ do
         it "checks redirected file if one is specified and outputs original filename" $ do

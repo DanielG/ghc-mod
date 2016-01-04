@@ -15,9 +15,8 @@ import Control.Exception (Exception)
 import Control.Applicative
 import Control.Concurrent
 import Control.Monad
-import Data.Serialize
-import Data.Version
-import Data.List (intercalate)
+import Data.Binary
+import Data.Binary.Generic
 import Data.Map (Map)
 import qualified Data.Map as Map
 import Data.Set (Set)
@@ -35,7 +34,6 @@ import qualified MonadUtils as GHC (MonadIO(..))
 #endif
 import GHC (ModuleName, moduleNameString, mkModuleName)
 import HscTypes (HscEnv)
-import PackageConfig (PackageConfig)
 import GHC.Generics
 import Text.PrettyPrint (Doc)
 import Prelude
@@ -104,13 +102,6 @@ data Options = Options {
   , optPrograms       :: Programs
     -- | GHC command line options set on the @ghc-mod@ command line
   , optGhcUserOptions :: [GHCOption]
-  -- | If 'True', 'browse' also returns operators.
-  , optOperators      :: Bool
-  -- | If 'True', 'browse' also returns types.
-  , optDetailed       :: Bool
-  -- | If 'True', 'browse' will return fully qualified name
-  , optQualified      :: Bool
-  , optHlintOpts      :: [String]
   , optFileMappings   :: [(FilePath, Maybe FilePath)]
   } deriving (Show)
 
@@ -130,10 +121,6 @@ defaultOptions = Options {
     , stackProgram   = "stack"
     }
   , optGhcUserOptions = []
-  , optOperators      = False
-  , optDetailed       = False
-  , optQualified      = False
-  , optHlintOpts      = []
   , optFileMappings   = []
   }
 
@@ -212,17 +199,13 @@ data GhcModCaches = GhcModCaches {
 
 data GhcModState = GhcModState {
       gmGhcSession   :: !(Maybe GmGhcSession)
-    , gmComponents   :: !(Map ChComponentName (GmComponent 'GMCResolved (Set ModulePath)))
-    , gmCompilerMode :: !CompilerMode
     , gmCaches       :: !GhcModCaches
     , gmMMappedFiles :: !FileMappingMap
     }
 
-data CompilerMode = Simple | Intelligent deriving (Eq,Show,Read)
-
 defaultGhcModState :: GhcModState
 defaultGhcModState =
-    GhcModState n Map.empty Simple (GhcModCaches n n n n) Map.empty
+    GhcModState n (GhcModCaches n n n n) Map.empty
  where n = Nothing
 
 ----------------------------------------------------------------
@@ -233,40 +216,15 @@ data GhcPkgDb = GlobalDb
               | PackageDb String
                 deriving (Eq, Show, Generic)
 
-instance Serialize GhcPkgDb
+instance Binary GhcPkgDb where
+    put = ggput . from
+    get = to `fmap` ggget
 
 -- | A single GHC command line option.
 type GHCOption = String
 
 -- | An include directory for modules.
 type IncludeDir = FilePath
-
--- | A package name.
-type PackageBaseName = String
-
--- | A package version.
-type PackageVersion = String
-
--- | A package id.
-type PackageId = String
-
--- | A package's name, verson and id.
-type Package = (PackageBaseName, PackageVersion, PackageId)
-
-pkgName :: Package -> PackageBaseName
-pkgName (n, _, _) = n
-
-pkgVer :: Package -> PackageVersion
-pkgVer (_, v, _) = v
-
-pkgId :: Package -> PackageId
-pkgId (_, _, i) = i
-
-showPkg :: Package -> String
-showPkg (n, v, _) = intercalate "-" [n, v]
-
-showPkgId :: Package -> String
-showPkgId (n, v, i) = intercalate "-" [n, v, i]
 
 -- | Haskell expression.
 newtype Expression = Expression { getExpression :: String }
@@ -287,14 +245,11 @@ data GmLogLevel =
   | GmVomit
     deriving (Eq, Ord, Enum, Bounded, Show, Read)
 
--- | Collection of packages
-type PkgDb = (Map Package PackageConfig)
-
 data GmModuleGraph = GmModuleGraph {
     gmgGraph :: Map ModulePath (Set ModulePath)
   } deriving (Eq, Ord, Show, Read, Generic, Typeable)
 
-instance Serialize GmModuleGraph where
+instance Binary GmModuleGraph where
   put GmModuleGraph {..} = put (mpim, graph)
     where
       mpim :: Map ModulePath Integer
@@ -334,13 +289,17 @@ data GmComponent (t :: GmComponentType) eps = GmComponent {
   , gmcSourceDirs      :: [FilePath]
   } deriving (Eq, Ord, Show, Read, Generic, Functor)
 
-instance Serialize eps => Serialize (GmComponent t eps)
+instance Binary eps => Binary (GmComponent t eps) where
+    put = ggput . from
+    get = to `fmap` ggget
 
 data ModulePath = ModulePath { mpModule :: ModuleName, mpPath :: FilePath }
   deriving (Eq, Ord, Show, Read, Generic, Typeable)
-instance Serialize ModulePath
+instance Binary ModulePath where
+    put = ggput . from
+    get = to `fmap` ggget
 
-instance Serialize ModuleName where
+instance Binary ModuleName where
   get = mkModuleName <$> get
   put mn = put (moduleNameString mn)
 
@@ -398,13 +357,42 @@ instance Error GhcModError where
 
 instance Exception GhcModError
 
-deriving instance Generic Version
-instance Serialize Version
+instance Binary CabalHelper.Programs where
+    put = ggput . from
+    get = to `fmap` ggget
+instance Binary ChModuleName where
+    put = ggput . from
+    get = to `fmap` ggget
+instance Binary ChComponentName where
+    put = ggput . from
+    get = to `fmap` ggget
+instance Binary ChEntrypoint where
+    put = ggput . from
+    get = to `fmap` ggget
 
-instance Serialize CabalHelper.Programs
-instance Serialize ChModuleName
-instance Serialize ChComponentName
-instance Serialize ChEntrypoint
+-- | Options for "lintWith" function
+data LintOpts = LintOpts {
+        optLintHlintOpts :: [String]
+        -- ^ options that will be passed to hlint executable
+      } deriving (Show)
+
+-- | Default "LintOpts" instance
+defaultLintOpts :: LintOpts
+defaultLintOpts = LintOpts []
+
+-- | Options for "browseWith" function
+data BrowseOpts = BrowseOpts {
+        optBrowseOperators      :: Bool
+        -- ^ If 'True', "browseWith" also returns operators.
+      , optBrowseDetailed       :: Bool
+        -- ^ If 'True', "browseWith" also returns types.
+      , optBrowseQualified      :: Bool
+        -- ^ If 'True', "browseWith" will return fully qualified name
+    } deriving (Show)
+
+-- | Default "BrowseOpts" instance
+defaultBrowseOpts :: BrowseOpts
+defaultBrowseOpts = BrowseOpts False False False
 
 mkLabel ''GhcModCaches
 mkLabel ''GhcModState

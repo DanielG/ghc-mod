@@ -20,7 +20,7 @@ data World = World {
   , worldCabalConfig   :: Maybe TimedFile
   , worldCabalSandboxConfig :: Maybe TimedFile
   , worldSymbolCache   :: Maybe TimedFile
-  } deriving (Eq, Show)
+  } deriving (Eq)
 
 timedPackageCaches :: IOish m => GhcModT m [TimedFile]
 timedPackageCaches = do

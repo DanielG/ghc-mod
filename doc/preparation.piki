@@ -2,12 +2,12 @@
 
 **Downloading
 
-Please use *stable* [MELPA http://melpa-stable.milkbox.net/] to download Emacs front-end. So, your "~/.emacs" should be:
+Please use *stable* [MELPA https://stable.melpa.org/] to download Emacs front-end. So, your "~/.emacs" should be:
 
 >|
 (require 'package)
 (add-to-list 'package-archives 
-         '("melpa" . "http://melpa-stable.milkbox.net/packages/"))
+         '("melpa" . "https://stable.melpa.org/packages/"))
 (package-initialize)
 |<
 

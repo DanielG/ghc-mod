@@ -4,29 +4,18 @@ module Utils where
 import Control.Applicative
 import Data.Traversable
 import System.Directory
+import System.Directory.ModTime
 
-#if MIN_VERSION_directory(1,2,0)
-import Data.Time (UTCTime)
-#else
-import System.Time (ClockTime)
-#endif
 import Prelude
 
-
-#if MIN_VERSION_directory(1,2,0)
-type ModTime = UTCTime
-#else
-type ModTime = ClockTime
-#endif
-
 data TimedFile = TimedFile { tfPath :: FilePath, tfTime :: ModTime }
-                 deriving (Eq, Show)
+                 deriving (Eq)
 
 instance Ord TimedFile where
     compare (TimedFile _ a) (TimedFile _ b) = compare a b
 
 timeFile :: FilePath -> IO TimedFile
-timeFile f = TimedFile <$> pure f <*> getModificationTime f
+timeFile f = TimedFile <$> pure f <*> getModTime f
 
 mightExist :: FilePath -> IO (Maybe FilePath)
 mightExist f = do

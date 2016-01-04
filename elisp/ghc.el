@@ -28,7 +28,7 @@
 	       (< emacs-minor-version minor)))
       (error "ghc-mod requires at least Emacs %d.%d" major minor)))
 
-(defconst ghc-version "5.4.0.0")
+(defconst ghc-version "5.5.0.0")
 
 (defgroup ghc-mod '() "ghc-mod customization")
 

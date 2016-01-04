@@ -1,12 +1,12 @@
 # Happy Haskell Programming
-[![Build Status](https://travis-ci.org/kazu-yamamoto/ghc-mod.png)](https://travis-ci.org/kazu-yamamoto/ghc-mod)
+[![Build Status](https://travis-ci.org/kazu-yamamoto/ghc-mod.svg?branch=master)](https://travis-ci.org/kazu-yamamoto/ghc-mod)
 
 Please read: [http://www.mew.org/~kazu/proj/ghc-mod/](http://www.mew.org/~kazu/proj/ghc-mod/)
 
 ## Using the stable version
 
 The Emacs front-end is available from
-[*stable* MELPA](http://melpa-stable.milkbox.net/). This package should
+[*stable* MELPA](https://stable.melpa.org/). This package should
 always be compatible with the latest version of ghc-mod from hackage.
 
 To use stable *stable* MELPA add this to your `.emacs`:
@@ -14,7 +14,7 @@ To use stable *stable* MELPA add this to your `.emacs`:
 ```elisp
 (require 'package)
 (add-to-list 'package-archives
-	     '("melpa" . "http://melpa-stable.milkbox.net/packages/"))
+	     '("melpa" . "https://stable.melpa.org/packages/"))
 (package-initialize)
 ```
 
@@ -33,7 +33,7 @@ package database such as the `nixos-15.09` or `nixos-unstable` channel. Just
 include the package `ghc-mod` into your `ghcWithPackages` environment like any
 other library. The [Nixpkgs Haskell User's
 Guide](http://hydra.nixos.org/job/nixpkgs/trunk/manual/latest/download-by-type/doc/manual#users-guide-to-the-haskell-infrastructure)
-covers this subject in gret detail.
+covers this subject in great detail.
 
 ## Using the development version
 

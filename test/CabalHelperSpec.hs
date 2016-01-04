@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 module CabalHelperSpec where
 
 import Control.Arrow
@@ -57,11 +58,13 @@ spec = do
               then forM_ opts (\o -> o `shouldContain` ["-no-user-package-conf","-package-conf", cwd </> "test/data/cabal-project/.cabal-sandbox/"++ghcSandboxPkgDbDir bp])
               else forM_ opts (\o -> o `shouldContain` ["-no-user-package-db","-package-db",cwd </> "test/data/cabal-project/.cabal-sandbox/"++ghcSandboxPkgDbDir bp])
 
+#if !MIN_VERSION_ghc(7,8,0)
         it "handles stack project" $ do
             let tdir = "test/data/stack-project"
             [ghcOpts] <- map gmcGhcOpts . filter ((==ChExeName "new-template-exe") . gmcName) <$> runD' tdir getComponents
             let pkgs = pkgOptions ghcOpts
             sort pkgs `shouldBe` ["base", "bytestring"]
+#endif
 
         it "extracts build dependencies" $ do
             let tdir = "test/data/cabal-project"
@@ -70,12 +73,25 @@ spec = do
                 pkgs = pkgOptions ghcOpts
             pkgs `shouldBe` ["Cabal","base","template-haskell"]
 
-        it "uses non default flags" $ do
+        it "uses non default flags and preserves them across reconfigures" $ do
             let tdir = "test/data/cabal-flags"
             _ <- withDirectory_ tdir $
                 readProcess "cabal" ["configure", "-ftest-flag"] ""
 
-            opts <- map gmcGhcOpts <$> runD' tdir getComponents
-            let ghcOpts = head opts
-                pkgs = pkgOptions ghcOpts
-            pkgs `shouldBe` ["Cabal","base"]
+            let test = do
+                  opts <- map gmcGhcOpts <$> runD' tdir getComponents
+                  let ghcOpts = head opts
+                      pkgs = pkgOptions ghcOpts
+                  pkgs `shouldBe` ["Cabal","base"]
+
+            test
+
+            touch $ tdir </> "cabal-flags.cabal"
+
+            test
+
+touch :: FilePath -> IO ()
+touch fn = do
+  f <- readFile fn
+  writeFile (fn <.> "tmp") f
+  renameFile (fn <.> "tmp") fn

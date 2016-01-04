@@ -50,31 +50,41 @@ import Control.Monad.Trans.Journal (runJournalT)
 import Exception
 
 import System.Directory
+import System.IO.Unsafe
 import Prelude
 
-withGhcModEnv :: (IOish m, GmOut m) => FilePath -> Options -> (GhcModEnv -> m a) -> m a
+withGhcModEnv :: (IOish m, GmOut m) => FilePath -> Options -> ((GhcModEnv, GhcModLog)  -> m a) -> m a
 withGhcModEnv = withGhcModEnv' withCradle
  where
    withCradle dir =
-       gbracket (findCradle' dir) (liftIO . cleanupCradle)
+       gbracket (runJournalT $ findCradle' dir) (liftIO . cleanupCradle . fst)
 
-withGhcModEnv' :: (IOish m, GmOut m) => (FilePath -> (Cradle -> m a) -> m a) -> FilePath -> Options -> (GhcModEnv -> m a) -> m a
+cwdLock :: MVar ThreadId
+cwdLock = unsafePerformIO $ newEmptyMVar
+{-# NOINLINE cwdLock #-}
+
+withGhcModEnv' :: (IOish m, GmOut m) => (FilePath -> ((Cradle, GhcModLog) -> m a) -> m a) -> FilePath -> Options -> ((GhcModEnv, GhcModLog) -> m a) -> m a
 withGhcModEnv' withCradle dir opts f =
-    withCradle dir $ \crdl ->
+    withCradle dir $ \(crdl,lg) ->
       withCradleRootDir crdl $
-        f $ GhcModEnv opts crdl
+        f (GhcModEnv opts crdl, lg)
  where
-   withCradleRootDir (cradleRootDir -> projdir) a = do
-       cdir <- liftIO $ getCurrentDirectory
-       eq <- liftIO $ pathsEqual projdir cdir
-       if not eq
-          then throw $ GMEWrongWorkingDirectory projdir cdir
-          else a
+   swapCurrentDirectory ndir = do
+     odir <- canonicalizePath =<< getCurrentDirectory
+     setCurrentDirectory ndir
+     return odir
 
-   pathsEqual a b = do
-     ca <- canonicalizePath a
-     cb <- canonicalizePath b
-     return $ ca == cb
+   withCradleRootDir (cradleRootDir -> projdir) a = do
+       success <- liftIO $ tryPutMVar cwdLock =<< myThreadId
+       if not success
+         then error "withGhcModEnv': using ghc-mod from multiple threads is not supported!"
+         else gbracket setup teardown (const a)
+    where
+      setup = liftIO $ swapCurrentDirectory projdir
+
+      teardown odir = liftIO $ do
+        setCurrentDirectory odir
+        void $ takeMVar cwdLock
 
 runGmOutT :: IOish m => Options -> GmOutT m a -> m a
 runGmOutT opts ma = do
@@ -91,15 +101,17 @@ runGmOutT' :: IOish m => GhcModOut -> GmOutT m a -> m a
 runGmOutT' gmo ma = flip runReaderT gmo $ unGmOutT ma
 
 -- | Run a @GhcModT m@ computation.
-runGhcModT :: (IOish m, GmOut m)
+runGhcModT :: IOish m
            => Options
            -> GhcModT m a
            -> m (Either GhcModError a, GhcModLog)
 runGhcModT opt action = liftIO (getCurrentDirectory >>= canonicalizePath) >>= \dir' -> do
     runGmOutT opt $
-      withGhcModEnv dir' opt $ \env ->
+      withGhcModEnv dir' opt $ \(env,lg) ->
         first (fst <$>) <$> runGhcModT' env defaultGhcModState
-          (gmSetLogLevel (ooptLogLevel $ optOutput opt) >> action)
+          (gmSetLogLevel (ooptLogLevel $ optOutput opt) >>
+           gmAppendLog lg >>
+           action)
 
 -- | @hoistGhcModT result@. Embed a GhcModT computation's result into a GhcModT
 -- computation. Note that if the computation that returned @result@ modified the

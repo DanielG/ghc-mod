@@ -3,6 +3,7 @@ module Language.Haskell.GhcMod.Debug (debugInfo, rootInfo, componentInfo) where
 import Control.Arrow (first)
 import Control.Applicative
 import Control.Monad
+import Control.Monad.Trans.Journal
 import qualified Data.Map as Map
 import qualified Data.Set as Set
 import Data.Char
@@ -138,5 +139,5 @@ mapDoc kd ad m = vcat $
 ----------------------------------------------------------------
 
 -- | Obtaining root information.
-rootInfo :: (IOish m, GmOut m) => m String
-rootInfo = (++"\n") . cradleRootDir <$> findCradle
+rootInfo :: forall m. (IOish m, GmOut m) => m String
+rootInfo = (++"\n") . cradleRootDir <$> fst `liftM` (runJournalT findCradle :: m (Cradle, GhcModLog))

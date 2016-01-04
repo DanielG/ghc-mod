@@ -1,5 +1,6 @@
 module Language.Haskell.GhcMod.Browse (
-    browse
+    browse,
+    BrowseOpts(..)
   ) where
 
 import Control.Applicative
@@ -13,8 +14,9 @@ import qualified GHC as G
 import Language.Haskell.GhcMod.Convert
 import Language.Haskell.GhcMod.Doc (showPage, styleUnqualified)
 import Language.Haskell.GhcMod.Gap as Gap
-import Language.Haskell.GhcMod.Monad
 import Language.Haskell.GhcMod.Types
+import Language.Haskell.GhcMod.Monad
+import Language.Haskell.GhcMod.Logging
 import Name (getOccString)
 import Outputable
 import TyCon (isAlgTyCon)
@@ -25,27 +27,27 @@ import Prelude
 ----------------------------------------------------------------
 
 -- | Getting functions, classes, etc from a module.
---   If 'detailed' is 'True', their types are also obtained.
---   If 'operators' is 'True', operators are also returned.
 browse :: forall m. IOish m
-       => String -- ^ A module name. (e.g. \"Data.List\", "base:Prelude")
-       -> GhcModT m String
-browse pkgmdl = do
+           => BrowseOpts -- ^ Configuration parameters
+           -> String -- ^ A module name. (e.g. \"Data.List\", "base:Prelude")
+           -> GhcModT m String
+browse opts pkgmdl = do
     convert' . sort =<< go
   where
     -- TODO: Add API to Gm.Target to check if module is home module without
     -- bringing up a GHC session as well then this can be made a lot cleaner
-    go = ghandle (\(SomeException _) -> return []) $ do
+    go = ghandle (\ex@(SomeException _) -> logException ex >> return []) $ do
       goPkgModule `G.gcatch` (\(SomeException _) -> goHomeModule)
 
+    logException ex =
+        gmLog GmException "browse" $ showDoc ex
+
     goPkgModule = do
-      opt <- options
       runGmPkgGhc $
-        processExports opt =<< tryModuleInfo =<< G.findModule mdlname mpkgid
+        processExports opts =<< tryModuleInfo =<< G.findModule mdlname mpkgid
 
     goHomeModule = runGmlT [Right mdlname] $ do
-      opt <- options
-      processExports opt =<< tryModuleInfo =<< G.findModule mdlname Nothing
+      processExports opts =<< tryModuleInfo =<< G.findModule mdlname Nothing
 
     tryModuleInfo m = fromJust <$> G.getModuleInfo m
 
@@ -76,31 +78,31 @@ isNotOp (h:_) = isAlpha h || (h == '_')
 isNotOp _ = error "isNotOp"
 
 processExports :: (G.GhcMonad m, MonadIO m, ExceptionMonad m)
-               => Options -> ModuleInfo -> m [String]
+               => BrowseOpts -> ModuleInfo -> m [String]
 processExports opt minfo = do
   let
     removeOps
-      | optOperators opt = id
+      | optBrowseOperators opt = id
       | otherwise = filter (isNotOp . getOccString)
   mapM (showExport opt minfo) $ removeOps $ G.modInfoExports minfo
 
 showExport :: forall m. (G.GhcMonad m, MonadIO m, ExceptionMonad m)
-           => Options -> ModuleInfo -> Name -> m String
+           => BrowseOpts -> ModuleInfo -> Name -> m String
 showExport opt minfo e = do
   mtype' <- mtype
   return $ concat $ catMaybes [mqualified, Just $ formatOp $ getOccString e, mtype']
   where
-    mqualified = (G.moduleNameString (G.moduleName $ G.nameModule e) ++ ".") `justIf` optQualified opt
+    mqualified = (G.moduleNameString (G.moduleName $ G.nameModule e) ++ ".") `justIf` optBrowseQualified opt
     mtype :: m (Maybe String)
     mtype
-      | optDetailed opt = do
+      | optBrowseDetailed opt = do
         tyInfo <- G.modInfoLookupName minfo e
         -- If nothing found, load dependent module and lookup global
         tyResult <- maybe (inOtherModule e) (return . Just) tyInfo
         dflag <- G.getSessionDynFlags
         return $ do
           typeName <- tyResult >>= showThing dflag
-          (" :: " ++ typeName) `justIf` optDetailed opt
+          (" :: " ++ typeName) `justIf` optBrowseDetailed opt
       | otherwise = return Nothing
     formatOp nm
       | null nm    = error "formatOp"

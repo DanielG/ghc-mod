@@ -1,0 +1,187 @@
+DEBUG: targetAllowObjCode: [False]
+DEBUG: loadTargets: Loading: pandoc-crossref.hs
+("all_home_mods",["References","Util.Settings","Util.Options","Util.CodeBlockCaptions","Util.ModifyMeta","References.Accessors","References.Blocks","References.List","References.Refs","References.Types","Util.Accessor","Util.Meta","Util.Template","Util.Util","Main"])
+MG:   ModSummary {ms_hs_date = 2015-09-10 02:31:50.423023946 UTC,ms_obj_date = Just 2015-09-10 02:53:29.139879245 UTC,ms_iface_date = Nothingms_location = ModLocation {ml_hs_file = Just "src/References.hs", ml_hi_file = "dist/build/pandoc-crossref/pandoc-crossref-tmp/References.hi", ml_obj_file = "dist/build/pandoc-crossref/pandoc-crossref-tmp/References.o"},}ModSummary {ms_hs_date = 2015-09-10 02:31:50.423023946 UTC,ms_obj_date = Just 2015-09-10 02:53:26.443903725 UTC,ms_iface_date = Nothingms_location = ModLocation {ml_hs_file = Just "src/Util/Settings.hs", ml_hi_file = "dist/build/pandoc-crossref/pandoc-crossref-tmp/Util/Settings.hi", ml_obj_file = "dist/build/pandoc-crossref/pandoc-crossref-tmp/Util/Settings.o"},}ModSummary {ms_hs_date = 2015-09-10 02:31:50.423023946 UTC,ms_obj_date = Just 2015-09-10 02:53:26.639901945 UTC,ms_iface_date = Nothingms_location = ModLocation {ml_hs_file = Just "src/Util/Options.hs", ml_hi_file = "dist/build/pandoc-crossref/pandoc-crossref-tmp/Util/Options.hi", ml_obj_file = "dist/build/pandoc-crossref/pandoc-crossref-tmp/Util/Options.o"},}ModSummary {ms_hs_date = 2015-09-10 02:31:50.423023946 UTC,ms_obj_date = Just 2015-09-10 02:53:26.983898822 UTC,ms_iface_date = Nothingms_location = ModLocation {ml_hs_file = Just "src/Util/CodeBlockCaptions.hs", ml_hi_file = "dist/build/pandoc-crossref/pandoc-crossref-tmp/Util/CodeBlockCaptions.hi", ml_obj_file = "dist/build/pandoc-crossref/pandoc-crossref-tmp/Util/CodeBlockCaptions.o"},}ModSummary {ms_hs_date = 2015-09-10 02:31:50.423023946 UTC,ms_obj_date = Just 2015-09-10 02:53:27.403895008 UTC,ms_iface_date = Nothingms_location = ModLocation {ml_hs_file = Just "src/Util/ModifyMeta.hs", ml_hi_file = "dist/build/pandoc-crossref/pandoc-crossref-tmp/Util/ModifyMeta.hi", ml_obj_file = "dist/build/pandoc-crossref/pandoc-crossref-tmp/Util/ModifyMeta.o"},}ModSummary {ms_hs_date = 2015-09-10 02:31:50.423023946 UTC,ms_obj_date = Just 2015-09-10 02:53:25.879908846 UTC,ms_iface_date = Nothingms_location = ModLocation {ml_hs_file = Just "src/References/Accessors.hs", ml_hi_file = "dist/build/pandoc-crossref/pandoc-crossref-tmp/References/Accessors.hi", ml_obj_file = "dist/build/pandoc-crossref/pandoc-crossref-tmp/References/Accessors.o"},}ModSummary {ms_hs_date = 2015-09-10 02:31:50.423023946 UTC,ms_obj_date = Just 2015-09-10 02:53:28.415885819 UTC,ms_iface_date = Nothingms_location = ModLocation {ml_hs_file = Just "src/References/Blocks.hs", ml_hi_file = "dist/build/pandoc-crossref/pandoc-crossref-tmp/References/Blocks.hi", ml_obj_file = "dist/build/pandoc-crossref/pandoc-crossref-tmp/References/Blocks.o"},}ModSummary {ms_hs_date = 2015-09-10 02:31:50.423023946 UTC,ms_obj_date = Just 2015-09-10 02:53:27.263896279 UTC,ms_iface_date = Nothingms_location = ModLocation {ml_hs_file = Just "src/References/List.hs", ml_hi_file = "dist/build/pandoc-crossref/pandoc-crossref-tmp/References/List.hi", ml_obj_file = "dist/build/pandoc-crossref/pandoc-crossref-tmp/References/List.o"},}ModSummary {ms_hs_date = 2015-09-10 02:31:50.423023946 UTC,ms_obj_date = Just 2015-09-10 02:53:29.103879572 UTC,ms_iface_date = Nothingms_location = ModLocation {ml_hs_file = Just "src/References/Refs.hs", ml_hi_file = "dist/build/pandoc-crossref/pandoc-crossref-tmp/References/Refs.hi", ml_obj_file = "dist/build/pandoc-crossref/pandoc-crossref-tmp/References/Refs.o"},}ModSummary {ms_hs_date = 2015-09-10 02:31:50.423023946 UTC,ms_obj_date = Just 2015-09-10 02:53:25.811909464 UTC,ms_iface_date = Nothingms_location = ModLocation {ml_hs_file = Just "src/References/Types.hs", ml_hi_file = "dist/build/pandoc-crossref/pandoc-crossref-tmp/References/Types.hi", ml_obj_file = "dist/build/pandoc-crossref/pandoc-crossref-tmp/References/Types.o"},}ModSummary {ms_hs_date = 2015-09-10 02:31:50.423023946 UTC,ms_obj_date = Just 2015-09-10 02:53:24.879917927 UTC,ms_iface_date = Nothingms_location = ModLocation {ml_hs_file = Just "src/Util/Accessor.hs", ml_hi_file = "dist/build/pandoc-crossref/pandoc-crossref-tmp/Util/Accessor.hi", ml_obj_file = "dist/build/pandoc-crossref/pandoc-crossref-tmp/Util/Accessor.o"},}ModSummary {ms_hs_date = 2015-09-10 02:31:50.423023946 UTC,ms_obj_date = Just 2015-09-10 02:53:25.659910844 UTC,ms_iface_date = Nothingms_location = ModLocation {ml_hs_file = Just "src/Util/Meta.hs", ml_hi_file = "dist/build/pandoc-crossref/pandoc-crossref-tmp/Util/Meta.hi", ml_obj_file = "dist/build/pandoc-crossref/pandoc-crossref-tmp/Util/Meta.o"},}ModSummary {ms_hs_date = 2015-09-10 02:31:50.423023946 UTC,ms_obj_date = Just 2015-09-10 02:53:25.903908629 UTC,ms_iface_date = Nothingms_location = ModLocation {ml_hs_file = Just "src/Util/Template.hs", ml_hi_file = "dist/build/pandoc-crossref/pandoc-crossref-tmp/Util/Template.hi", ml_obj_file = "dist/build/pandoc-crossref/pandoc-crossref-tmp/Util/Template.o"},}ModSummary {ms_hs_date = 2015-09-10 02:31:50.423023946 UTC,ms_obj_date = Just 2015-09-10 02:53:25.487912406 UTC,ms_iface_date = Nothingms_location = ModLocation {ml_hs_file = Just "src/Util/Util.hs", ml_hi_file = "dist/build/pandoc-crossref/pandoc-crossref-tmp/Util/Util.hi", ml_obj_file = "dist/build/pandoc-crossref/pandoc-crossref-tmp/Util/Util.o"},}ModSummary {ms_hs_date = 2015-09-10 02:31:50.423023946 UTC,ms_obj_date = Nothing,ms_iface_date = Nothingms_location = ModLocation {ml_hs_file = Just "pandoc-crossref.hs", ml_hi_file = "dist/build/pandoc-crossref/pandoc-crossref-tmp/Main.hi", ml_obj_file = "dist/build/pandoc-crossref/pandoc-crossref-tmp/Main.o"},}
+
+SCC:   AcyclicSCC ModSummary {ms_hs_date = 2015-09-10 02:31:50.423023946 UTC,ms_obj_date = Just 2015-09-10 02:53:25.487912406 UTC,ms_iface_date = Nothingms_location = ModLocation {ml_hs_file = Just "src/Util/Util.hs", ml_hi_file = "dist/build/pandoc-crossref/pandoc-crossref-tmp/Util/Util.hi", ml_obj_file = "dist/build/pandoc-crossref/pandoc-crossref-tmp/Util/Util.o"},}
+AcyclicSCC ModSummary {ms_hs_date = 2015-09-10 02:31:50.423023946 UTC,ms_obj_date = Just 2015-09-10 02:53:25.659910844 UTC,ms_iface_date = Nothingms_location = ModLocation {ml_hs_file = Just "src/Util/Meta.hs", ml_hi_file = "dist/build/pandoc-crossref/pandoc-crossref-tmp/Util/Meta.hi", ml_obj_file = "dist/build/pandoc-crossref/pandoc-crossref-tmp/Util/Meta.o"},}
+AcyclicSCC ModSummary {ms_hs_date = 2015-09-10 02:31:50.423023946 UTC,ms_obj_date = Just 2015-09-10 02:53:25.903908629 UTC,ms_iface_date = Nothingms_location = ModLocation {ml_hs_file = Just "src/Util/Template.hs", ml_hi_file = "dist/build/pandoc-crossref/pandoc-crossref-tmp/Util/Template.hi", ml_obj_file = "dist/build/pandoc-crossref/pandoc-crossref-tmp/Util/Template.o"},}
+AcyclicSCC ModSummary {ms_hs_date = 2015-09-10 02:31:50.423023946 UTC,ms_obj_date = Just 2015-09-10 02:53:24.879917927 UTC,ms_iface_date = Nothingms_location = ModLocation {ml_hs_file = Just "src/Util/Accessor.hs", ml_hi_file = "dist/build/pandoc-crossref/pandoc-crossref-tmp/Util/Accessor.hi", ml_obj_file = "dist/build/pandoc-crossref/pandoc-crossref-tmp/Util/Accessor.o"},}
+AcyclicSCC ModSummary {ms_hs_date = 2015-09-10 02:31:50.423023946 UTC,ms_obj_date = Just 2015-09-10 02:53:25.811909464 UTC,ms_iface_date = Nothingms_location = ModLocation {ml_hs_file = Just "src/References/Types.hs", ml_hi_file = "dist/build/pandoc-crossref/pandoc-crossref-tmp/References/Types.hi", ml_obj_file = "dist/build/pandoc-crossref/pandoc-crossref-tmp/References/Types.o"},}
+AcyclicSCC ModSummary {ms_hs_date = 2015-09-10 02:31:50.423023946 UTC,ms_obj_date = Just 2015-09-10 02:53:25.879908846 UTC,ms_iface_date = Nothingms_location = ModLocation {ml_hs_file = Just "src/References/Accessors.hs", ml_hi_file = "dist/build/pandoc-crossref/pandoc-crossref-tmp/References/Accessors.hi", ml_obj_file = "dist/build/pandoc-crossref/pandoc-crossref-tmp/References/Accessors.o"},}
+AcyclicSCC ModSummary {ms_hs_date = 2015-09-10 02:31:50.423023946 UTC,ms_obj_date = Just 2015-09-10 02:53:26.639901945 UTC,ms_iface_date = Nothingms_location = ModLocation {ml_hs_file = Just "src/Util/Options.hs", ml_hi_file = "dist/build/pandoc-crossref/pandoc-crossref-tmp/Util/Options.hi", ml_obj_file = "dist/build/pandoc-crossref/pandoc-crossref-tmp/Util/Options.o"},}
+AcyclicSCC ModSummary {ms_hs_date = 2015-09-10 02:31:50.423023946 UTC,ms_obj_date = Just 2015-09-10 02:53:26.983898822 UTC,ms_iface_date = Nothingms_location = ModLocation {ml_hs_file = Just "src/Util/CodeBlockCaptions.hs", ml_hi_file = "dist/build/pandoc-crossref/pandoc-crossref-tmp/Util/CodeBlockCaptions.hi", ml_obj_file = "dist/build/pandoc-crossref/pandoc-crossref-tmp/Util/CodeBlockCaptions.o"},}
+AcyclicSCC ModSummary {ms_hs_date = 2015-09-10 02:31:50.423023946 UTC,ms_obj_date = Just 2015-09-10 02:53:27.403895008 UTC,ms_iface_date = Nothingms_location = ModLocation {ml_hs_file = Just "src/Util/ModifyMeta.hs", ml_hi_file = "dist/build/pandoc-crossref/pandoc-crossref-tmp/Util/ModifyMeta.hi", ml_obj_file = "dist/build/pandoc-crossref/pandoc-crossref-tmp/Util/ModifyMeta.o"},}
+AcyclicSCC ModSummary {ms_hs_date = 2015-09-10 02:31:50.423023946 UTC,ms_obj_date = Just 2015-09-10 02:53:28.415885819 UTC,ms_iface_date = Nothingms_location = ModLocation {ml_hs_file = Just "src/References/Blocks.hs", ml_hi_file = "dist/build/pandoc-crossref/pandoc-crossref-tmp/References/Blocks.hi", ml_obj_file = "dist/build/pandoc-crossref/pandoc-crossref-tmp/References/Blocks.o"},}
+AcyclicSCC ModSummary {ms_hs_date = 2015-09-10 02:31:50.423023946 UTC,ms_obj_date = Just 2015-09-10 02:53:27.263896279 UTC,ms_iface_date = Nothingms_location = ModLocation {ml_hs_file = Just "src/References/List.hs", ml_hi_file = "dist/build/pandoc-crossref/pandoc-crossref-tmp/References/List.hi", ml_obj_file = "dist/build/pandoc-crossref/pandoc-crossref-tmp/References/List.o"},}
+AcyclicSCC ModSummary {ms_hs_date = 2015-09-10 02:31:50.423023946 UTC,ms_obj_date = Just 2015-09-10 02:53:29.103879572 UTC,ms_iface_date = Nothingms_location = ModLocation {ml_hs_file = Just "src/References/Refs.hs", ml_hi_file = "dist/build/pandoc-crossref/pandoc-crossref-tmp/References/Refs.hi", ml_obj_file = "dist/build/pandoc-crossref/pandoc-crossref-tmp/References/Refs.o"},}
+AcyclicSCC ModSummary {ms_hs_date = 2015-09-10 02:31:50.423023946 UTC,ms_obj_date = Just 2015-09-10 02:53:26.443903725 UTC,ms_iface_date = Nothingms_location = ModLocation {ml_hs_file = Just "src/Util/Settings.hs", ml_hi_file = "dist/build/pandoc-crossref/pandoc-crossref-tmp/Util/Settings.hi", ml_obj_file = "dist/build/pandoc-crossref/pandoc-crossref-tmp/Util/Settings.o"},}
+AcyclicSCC ModSummary {ms_hs_date = 2015-09-10 02:31:50.423023946 UTC,ms_obj_date = Just 2015-09-10 02:53:29.139879245 UTC,ms_iface_date = Nothingms_location = ModLocation {ml_hs_file = Just "src/References.hs", ml_hi_file = "dist/build/pandoc-crossref/pandoc-crossref-tmp/References.hi", ml_obj_file = "dist/build/pandoc-crossref/pandoc-crossref-tmp/References.o"},}
+AcyclicSCC ModSummary {ms_hs_date = 2015-09-10 02:31:50.423023946 UTC,ms_obj_date = Nothing,ms_iface_date = Nothingms_location = ModLocation {ml_hs_file = Just "pandoc-crossref.hs", ml_hi_file = "dist/build/pandoc-crossref/pandoc-crossref-tmp/Main.hi", ml_obj_file = "dist/build/pandoc-crossref/pandoc-crossref-tmp/Main.o"},}
+
+("is_stable_obj",True)
+("is_stable_bco",False)
+("isJust old_hmi",False)
+("not (isObjectTarget target)",True)
+("writeInterfaceOnlyMode dflags",False)
+("src_changed",SourceUnmodifiedAndStable)
+"checkVersions hsc_env mod_summary iface"
+"skip iface"
+("isNothing m_tc_result",True)
+("isNothing mb_old_iface",True)
+("isLeft genericHscCompileGetFrontendResult",True)
+("is_stable_obj",True)
+("is_stable_bco",False)
+("isJust old_hmi",False)
+("not (isObjectTarget target)",True)
+("writeInterfaceOnlyMode dflags",False)
+("src_changed",SourceUnmodifiedAndStable)
+"checkVersions hsc_env mod_summary iface"
+"skip iface"
+("isNothing m_tc_result",True)
+("isNothing mb_old_iface",True)
+("isLeft genericHscCompileGetFrontendResult",True)
+("is_stable_obj",True)
+("is_stable_bco",False)
+("isJust old_hmi",False)
+("not (isObjectTarget target)",True)
+("writeInterfaceOnlyMode dflags",False)
+("src_changed",SourceUnmodifiedAndStable)
+"checkVersions hsc_env mod_summary iface"
+"skip iface"
+("isNothing m_tc_result",True)
+("isNothing mb_old_iface",True)
+("isLeft genericHscCompileGetFrontendResult",True)
+("is_stable_obj",True)
+("is_stable_bco",False)
+("isJust old_hmi",False)
+("not (isObjectTarget target)",True)
+("writeInterfaceOnlyMode dflags",False)
+("src_changed",SourceUnmodifiedAndStable)
+"checkVersions hsc_env mod_summary iface"
+"skip iface"
+("isNothing m_tc_result",True)
+("isNothing mb_old_iface",True)
+("isLeft genericHscCompileGetFrontendResult",True)
+("is_stable_obj",True)
+("is_stable_bco",False)
+("isJust old_hmi",False)
+("not (isObjectTarget target)",True)
+("writeInterfaceOnlyMode dflags",False)
+("src_changed",SourceUnmodifiedAndStable)
+"checkVersions hsc_env mod_summary iface"
+"skip iface"
+("isNothing m_tc_result",True)
+("isNothing mb_old_iface",True)
+("isLeft genericHscCompileGetFrontendResult",True)
+("is_stable_obj",True)
+("is_stable_bco",False)
+("isJust old_hmi",False)
+("not (isObjectTarget target)",True)
+("writeInterfaceOnlyMode dflags",False)
+("src_changed",SourceUnmodifiedAndStable)
+"checkVersions hsc_env mod_summary iface"
+"skip iface"
+("isNothing m_tc_result",True)
+("isNothing mb_old_iface",True)
+("isLeft genericHscCompileGetFrontendResult",True)
+("is_stable_obj",True)
+("is_stable_bco",False)
+("isJust old_hmi",False)
+("not (isObjectTarget target)",True)
+("writeInterfaceOnlyMode dflags",False)
+("src_changed",SourceUnmodifiedAndStable)
+"checkVersions hsc_env mod_summary iface"
+"skip iface"
+("isNothing m_tc_result",True)
+("isNothing mb_old_iface",True)
+("isLeft genericHscCompileGetFrontendResult",True)
+("is_stable_obj",True)
+("is_stable_bco",False)
+("isJust old_hmi",False)
+("not (isObjectTarget target)",True)
+("writeInterfaceOnlyMode dflags",False)
+("src_changed",SourceUnmodifiedAndStable)
+"checkVersions hsc_env mod_summary iface"
+"skip iface"
+("isNothing m_tc_result",True)
+("isNothing mb_old_iface",True)
+("isLeft genericHscCompileGetFrontendResult",True)
+("is_stable_obj",True)
+("is_stable_bco",False)
+("isJust old_hmi",False)
+("not (isObjectTarget target)",True)
+("writeInterfaceOnlyMode dflags",False)
+("src_changed",SourceUnmodifiedAndStable)
+"checkVersions hsc_env mod_summary iface"
+"skip iface"
+("isNothing m_tc_result",True)
+("isNothing mb_old_iface",True)
+("isLeft genericHscCompileGetFrontendResult",True)
+("is_stable_obj",True)
+("is_stable_bco",False)
+("isJust old_hmi",False)
+("not (isObjectTarget target)",True)
+("writeInterfaceOnlyMode dflags",False)
+("src_changed",SourceUnmodifiedAndStable)
+"checkVersions hsc_env mod_summary iface"
+"skip iface"
+("isNothing m_tc_result",True)
+("isNothing mb_old_iface",True)
+("isLeft genericHscCompileGetFrontendResult",True)
+("is_stable_obj",True)
+("is_stable_bco",False)
+("isJust old_hmi",False)
+("not (isObjectTarget target)",True)
+("writeInterfaceOnlyMode dflags",False)
+("src_changed",SourceUnmodifiedAndStable)
+"checkVersions hsc_env mod_summary iface"
+"skip iface"
+("isNothing m_tc_result",True)
+("isNothing mb_old_iface",True)
+("isLeft genericHscCompileGetFrontendResult",True)
+("is_stable_obj",True)
+("is_stable_bco",False)
+("isJust old_hmi",False)
+("not (isObjectTarget target)",True)
+("writeInterfaceOnlyMode dflags",False)
+("src_changed",SourceUnmodifiedAndStable)
+"checkVersions hsc_env mod_summary iface"
+"skip iface"
+("isNothing m_tc_result",True)
+("isNothing mb_old_iface",True)
+("isLeft genericHscCompileGetFrontendResult",True)
+("is_stable_obj",True)
+("is_stable_bco",False)
+("isJust old_hmi",False)
+("not (isObjectTarget target)",True)
+("writeInterfaceOnlyMode dflags",False)
+("src_changed",SourceUnmodifiedAndStable)
+"checkVersions hsc_env mod_summary iface"
+"skip iface"
+("isNothing m_tc_result",True)
+("isNothing mb_old_iface",True)
+("isLeft genericHscCompileGetFrontendResult",True)
+("is_stable_obj",True)
+("is_stable_bco",False)
+("isJust old_hmi",False)
+("not (isObjectTarget target)",True)
+("writeInterfaceOnlyMode dflags",False)
+("src_changed",SourceUnmodifiedAndStable)
+"checkVersions hsc_env mod_summary iface"
+"skip iface"
+("isNothing m_tc_result",True)
+("isNothing mb_old_iface",True)
+("qisLeft genericHscCompileGetFrontendResult",True)
+("is_stable_obj",False)
+("is_stable_bco",False)
+("isJust old_hmi",False)
+("not (isObjectTarget target)",True)
+("writeInterfaceOnlyMode dflags",False)
+("src_changed",SourceModified)
+("not (isObjectTarget $ hscTarget dflags)",True)
+"compile mb_old_hash recomp_reqd"
+("isNothing mb_old_iface",True)
+("isLeft genericHscCompileGetFrontendResult",False)
+("GLOBAL READER ENV isNothing",False)
+EXCEPTION: types: Cannot add module References to context: not interpreted

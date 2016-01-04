@@ -143,7 +143,7 @@ runGmlTWith efnmns' mdf wrapper action = do
                   | otherwise = setEmptyLogger
 
     initSession opts' $
-        setModeSimple >>> setLogger >>> mdf
+        setHscNothing >>> setLogger >>> mdf
 
     mappedStrs <- getMMappedFilePaths
     let targetStrs = mappedStrs ++ map moduleNameString mns ++ cfns
@@ -199,25 +199,20 @@ resolvedComponentsCache distdir = Cached {
     cacheFile = resolvedComponentsCacheFile distdir,
     cachedAction = \tcfs comps ma -> do
         Cradle {..} <- cradle
-        let iifsM = invalidatingInputFiles tcfs
+        let iifs = invalidatingInputFiles tcfs
+
+            setupChanged =
+                (cradleRootDir </> setupConfigPath distdir) `elem` iifs
+
             mums :: Maybe [Either FilePath ModuleName]
             mums =
-              case iifsM of
-                Nothing -> Nothing
-                Just iifs ->
-                  let
-                      filterOutSetupCfg =
-                          filter (/= cradleRootDir </> setupConfigPath distdir)
-                      changedFiles = filterOutSetupCfg iifs
-                  in if null changedFiles
-                       then Nothing
-                       else Just $ map Left changedFiles
-            setupChanged = maybe False
-                                 (elem $ cradleRootDir </> setupConfigPath distdir)
-                                 iifsM
-        case (setupChanged, ma) of
-          (False, Just mcs) -> gmsGet >>= \s -> gmsPut s { gmComponents = mcs }
-          _ -> return ()
+              let
+                  filterOutSetupCfg =
+                      filter (/= cradleRootDir </> setupConfigPath distdir)
+                  changedFiles = filterOutSetupCfg iifs
+              in if null changedFiles || setupChanged
+                   then Nothing
+                   else Just $ map Left changedFiles
 
         let mdesc (Left f) = "file:" ++ f
             mdesc (Right mn) = "module:" ++ moduleNameString mn
@@ -229,7 +224,8 @@ resolvedComponentsCache distdir = Cached {
         gmLog GmDebug "resolvedComponentsCache" $
               text "files changed" <+>: changedDoc
 
-        mcs <- resolveGmComponents mums comps
+        mcs <- resolveGmComponents ((,) <$> mums <*> ma) comps
+
         return (setupConfigPath distdir : flatten mcs , mcs)
  }
 
@@ -334,7 +330,7 @@ resolveEntrypoint Cradle {..} c@GmComponent {..} = do
       rms <- resolveModule env srcDirs `mapM` eps
       return c { gmcEntrypoints = Set.fromList $ catMaybes rms }
 
--- TODO: remember that he file from `main-is:` is always module `Main` and let
+-- TODO: remember that the file from `main-is:` is always module `Main` and let
 -- ghc do the warning about it. Right now we run that module through
 -- resolveModule like any other
 resolveChEntrypoints :: FilePath -> ChEntrypoint -> IO [CompilationUnit]
@@ -387,27 +383,30 @@ resolveModule env srcDirs (Left fn') = do
    --     | makeRelative dir fn /= fn
 
 type CompilationUnit = Either FilePath ModuleName
+type Components =
+    [GmComponent 'GMCRaw (Set ModulePath)]
+type ResolvedComponentsMap =
+    Map ChComponentName (GmComponent 'GMCResolved (Set ModulePath))
 
 resolveGmComponents :: (IOish m, Gm m)
-    => Maybe [CompilationUnit]
+    => Maybe ([CompilationUnit], ResolvedComponentsMap)
         -- ^ Updated modules
-    -> [GmComponent 'GMCRaw (Set ModulePath)]
-    -> m (Map ChComponentName (GmComponent 'GMCResolved (Set ModulePath)))
-resolveGmComponents mumns cs = do
-    s <- gmsGet
-    m' <- foldrM' (gmComponents s) cs $ \c m -> do
+    -> Components -> m ResolvedComponentsMap
+resolveGmComponents mcache cs = do
+    let rcm = fromMaybe Map.empty $ snd <$> mcache
+
+    m' <- foldrM' rcm cs $ \c m -> do
         case Map.lookup (gmcName c) m of
           Nothing -> insertUpdated m c
           Just c' -> if same gmcRawEntrypoints c c' && same gmcGhcSrcOpts c c'
                        then return m
                        else insertUpdated m c
-    gmsPut s { gmComponents = m' }
     return m'
 
  where
    foldrM' b fa f = foldrM f b fa
    insertUpdated m c = do
-     rc <- resolveGmComponent mumns c
+     rc <- resolveGmComponent (fst <$> mcache) c
      return $ Map.insert (gmcName rc) rc m
 
    same :: Eq b
@@ -431,20 +430,24 @@ loadTargets opts targetStrs = do
 
     setTargets targets
 
-    mode <- getCompilerMode
-    if mode == Intelligent
-      then loadTargets' Intelligent
-      else do
-        mdls <- depanal [] False
-        let fallback = needsFallback mdls
-        if fallback then do
-            resetTargets targets
-            setIntelligent
-            gmLog GmInfo "loadTargets" $
-                text "Target needs interpeter, switching to LinkInMemory/HscInterpreted. Perfectly normal if anything is using TemplateHaskell, QuasiQuotes or PatternSynonyms."
-            loadTargets' Intelligent
-          else
-            loadTargets' Simple
+    mg <- depanal [] False
+
+    let interp = needsHscInterpreted mg
+    target <- hscTarget <$> getSessionDynFlags
+    when (interp && target /= HscInterpreted) $ do
+      resetTargets targets
+      _ <- setSessionDynFlags . setHscInterpreted =<< getSessionDynFlags
+      gmLog GmInfo "loadTargets" $ text "Target needs interpeter, switching to LinkInMemory/HscInterpreted. Perfectly normal if anything is using TemplateHaskell, QuasiQuotes or PatternSynonyms."
+
+    target' <- hscTarget <$> getSessionDynFlags
+
+    case target' of
+      HscNothing -> do
+        void $ load LoadAllTargets
+        mapM_ (parseModule >=> typecheckModule >=> desugarModule) mg
+      HscInterpreted -> do
+        void $ load LoadAllTargets
+      _ -> error ("loadTargets: unsupported hscTarget")
 
     gmLog GmDebug "loadTargets" $ text "Loading done"
 
@@ -456,30 +459,16 @@ loadTargets opts targetStrs = do
       return $ Target tid taoc src
     relativize tgt = return tgt
 
-    loadTargets' Simple = do
-        void $ load LoadAllTargets
-        mapM_ (parseModule >=> typecheckModule >=> desugarModule) =<< getModuleGraph
-
-    loadTargets' Intelligent = do
-        df <- getSessionDynFlags
-        void $ setSessionDynFlags (setModeIntelligent df)
-        void $ load LoadAllTargets
-
     resetTargets targets' = do
         setTargets []
         void $ load LoadAllTargets
         setTargets targets'
 
-    setIntelligent = do
-        newdf <- setModeIntelligent <$> getSessionDynFlags
-        void $ setSessionDynFlags newdf
-        setCompilerMode Intelligent
-
     showTargetId (Target (TargetModule s) _ _) = moduleNameString s
     showTargetId (Target (TargetFile s _) _ _) = s
 
-needsFallback :: ModuleGraph -> Bool
-needsFallback = any $ \ms ->
+needsHscInterpreted :: ModuleGraph -> Bool
+needsHscInterpreted = any $ \ms ->
                 let df = ms_hspp_opts ms in
                    Opt_TemplateHaskell `xopt` df
                 || Opt_QuasiQuotes     `xopt` df
@@ -492,4 +481,5 @@ cabalResolvedComponents :: (IOish m) =>
 cabalResolvedComponents = do
     crdl@(Cradle{..}) <- cradle
     comps <- mapM (resolveEntrypoint crdl) =<< getComponents
-    cached cradleRootDir (resolvedComponentsCache cradleDistDir) comps
+    withAutogen $
+      cached cradleRootDir (resolvedComponentsCache cradleDistDir) comps

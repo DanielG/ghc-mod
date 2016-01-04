@@ -1,3 +1,4 @@
+;;; -*- lexical-binding: t -*-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
 ;;; ghc-process.el
@@ -21,12 +22,11 @@
 (defvar-local ghc-process-process-name nil)
 (defvar-local ghc-process-original-buffer nil)
 (defvar-local ghc-process-original-file nil)
-(defvar-local ghc-process-callback nil)
-(defvar-local ghc-process-hook nil)
 (defvar-local ghc-process-root nil)
 
 (defvar ghc-command "ghc-mod")
 
+(defvar ghc-report-errors t "Report GHC errors to *GHC Error* buffer")
 (defvar ghc-error-buffer "*GHC Error*")
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -34,12 +34,12 @@
 (defun ghc-get-project-root ()
   (ghc-run-ghc-mod '("root")))
 
-(defun ghc-with-process (cmd callback &optional hook1 hook2 skip-map-file)
+(defun ghc-with-process (cmd async-after-callback &optional sync-before-hook)
   (unless ghc-process-process-name
     (setq ghc-process-process-name (ghc-get-project-root)))
   (when (and ghc-process-process-name (not ghc-process-running))
     (setq ghc-process-running t)
-    (if hook1 (funcall hook1))
+    (if sync-before-hook (funcall sync-before-hook))
     (let* ((cbuf (current-buffer))
 	   (name ghc-process-process-name)
 	   (root (file-name-as-directory ghc-process-process-name))
@@ -51,14 +51,13 @@
       (ghc-with-current-buffer buf
         (setq ghc-process-original-buffer cbuf)
 	(setq ghc-process-original-file file)
-	(setq ghc-process-hook hook2)
 	(setq ghc-process-root root)
 	(let ((pro (ghc-get-process cpro name buf root))
 	      (map-cmd (format "map-file %s\n" file)))
-	  ;; map-file
-	  (unless skip-map-file
+;	       (unmap-cmd (format "unmap-file %s\n" file)))
+	  (when (buffer-modified-p (current-buffer))
 	    (setq ghc-process-file-mapping t)
-	    (setq ghc-process-callback nil)
+	    (setq ghc-process-async-after-callback nil)
 	    (erase-buffer)
 	    (when ghc-debug
 	      (ghc-with-debug-buffer
@@ -69,7 +68,7 @@
 	      (save-restriction
 		(widen)
 		(process-send-region pro (point-min) (point-max))))
-	    (process-send-string pro "\004\n")
+	    (process-send-string pro "\n\004\n")
 	    (condition-case nil
 		(let ((inhibit-quit nil))
 		  (while ghc-process-file-mapping
@@ -78,12 +77,21 @@
 	       (setq ghc-process-running nil)
 	       (setq ghc-process-file-mapping nil))))
 	  ;; command
-	  (setq ghc-process-callback callback)
+	  (setq ghc-process-async-after-callback async-after-callback)
 	  (erase-buffer)
 	  (when ghc-debug
 	    (ghc-with-debug-buffer
 	     (insert (format "%% %s" cmd))))
 	  (process-send-string pro cmd)
+
+	  ;;; this needs to be done asyncrounously after the command actually
+	  ;;; finished, gah
+	  ;; (when do-map-file
+	  ;;   (when ghc-debug
+	  ;;	 (ghc-with-debug-buffer
+	  ;;	  (insert (format "%% %s" unmap-cmd))))
+	  ;;   (process-send-string pro unmap-cmd))
+
 	  pro)))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -144,7 +152,8 @@
 		    (with-current-buffer pbuf
 		      (goto-char (point-max))
 		      (insert-buffer-substring tbuf 1 end))
-		  (with-current-buffer (get-buffer-create ghc-error-buffer)
+		  (when ghc-report-errors
+                    (with-current-buffer (get-buffer-create ghc-error-buffer)
 		    (setq buffer-read-only t)
 		    (let* ((buffer-read-only nil)
 			   (inhibit-read-only t)
@@ -156,7 +165,7 @@
 			(goto-char (point-max))
 			(insert-buffer-substring tbuf 1 end)
 			(set-buffer-modified-p nil))
-		      (redisplay))))
+		      (redisplay)))))
 		(delete-region 1 end)))))
 	(goto-char (point-max))
 	(forward-line -1)
@@ -164,13 +173,12 @@
 	 ((looking-at "^OK$")
 	  (delete-region (point) (point-max))
 	  (setq ghc-process-file-mapping nil)
-	  (when ghc-process-callback
-	    (if ghc-process-hook (funcall ghc-process-hook))
+	  (when ghc-process-async-after-callback
 	    (goto-char (point-min))
-	    (funcall ghc-process-callback 'ok)
+	    (funcall ghc-process-async-after-callback 'ok)
 	    (setq ghc-process-running nil)))
 	 ((looking-at "^NG ")
-	  (funcall ghc-process-callback 'ng)
+	  (funcall ghc-process-async-after-callback 'ng)
 	  (setq ghc-process-running nil)))))))
 
 (defun ghc-process-sentinel (_process _event)
@@ -183,12 +191,12 @@
 (defvar ghc-process-num-of-results nil)
 (defvar ghc-process-results nil)
 
-(defun ghc-sync-process (cmd &optional n hook skip-map-file)
+(defun ghc-sync-process (cmd &optional n)
   (unless ghc-process-running
     (setq ghc-process-rendezvous nil)
     (setq ghc-process-results nil)
     (setq ghc-process-num-of-results (or n 1))
-    (let ((pro (ghc-with-process cmd 'ghc-process-callback nil hook skip-map-file)))
+    (let ((pro (ghc-with-process cmd 'ghc-sync-process-callback nil)))
       ;; ghc-process-running is now t.
       ;; But if the process exits abnormally, it is set to nil.
       (condition-case nil
@@ -199,7 +207,7 @@
 	 (setq ghc-process-running nil))))
     ghc-process-results))
 
-(defun ghc-process-callback (status)
+(defun ghc-sync-process-callback (status)
   (cond
    ((eq status 'ok)
     (let* ((n ghc-process-num-of-results)
