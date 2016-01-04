@@ -14,7 +14,9 @@
 -- You should have received a copy of the GNU Affero General Public License
 -- along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-{-# LANGUAGE CPP #-}
+{-# LANGUAGE CPP, UndecidableInstances, StandaloneDeriving #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 module Language.Haskell.GhcMod.Monad.Orphans where
 
@@ -23,6 +25,9 @@ module Language.Haskell.GhcMod.Monad.Orphans where
 import Language.Haskell.GhcMod.Types
 import Language.Haskell.GhcMod.Monad.Newtypes
 
+#if DIFFERENT_MONADIO
+import qualified MonadUtils as GHC (MonadIO(..))
+#endif
 import qualified Control.Monad.IO.Class as MTL
 
 import Control.Monad.Reader (ReaderT(..))
@@ -45,7 +50,16 @@ instance MTL.MonadIO m => GHC.MonadIO (JournalT x m) where
     liftIO = MTL.liftIO
 instance MTL.MonadIO m => GHC.MonadIO (MaybeT m) where
     liftIO = MTL.liftIO
+deriving instance MTL.MonadIO m => GHC.MonadIO (GmOutT m)
+deriving instance MTL.MonadIO m => GHC.MonadIO (GmT m)
+deriving instance MTL.MonadIO m => GHC.MonadIO (GmlT m)
+deriving instance GHC.MonadIO LightGhc
 #endif
+
+deriving instance MTL.MonadIO m => MTL.MonadIO (GmOutT m)
+deriving instance MTL.MonadIO m => MTL.MonadIO (GmT m)
+deriving instance MTL.MonadIO m => MTL.MonadIO (GmlT m)
+deriving instance MTL.MonadIO LightGhc
 
 instance MonadIO IO where
     liftIO = id

@@ -40,14 +40,8 @@ import Control.Monad.Trans.Class (MonadTrans(..))
 import Control.Monad.Trans.Control
 import Control.Monad.Base (MonadBase(..), liftBase)
 
-#if DIFFERENT_MONADIO
-import qualified MonadUtils as GHC (MonadIO(..))
-#endif
-import qualified Control.Monad.IO.Class as MTL
-
 import Data.IORef
 import Prelude
-
 
 type GhcModT m = GmT (GmOutT m)
 
@@ -59,10 +53,6 @@ newtype GmOutT m a = GmOutT {
              , Monad
              , MonadPlus
              , MonadTrans
-             , MTL.MonadIO
-#if DIFFERENT_MONADIO
-             , GHC.MonadIO
-#endif
              )
 
 newtype GmT m a = GmT {
@@ -75,10 +65,6 @@ newtype GmT m a = GmT {
                , Alternative
                , Monad
                , MonadPlus
-               , MTL.MonadIO
-#if DIFFERENT_MONADIO
-               , GHC.MonadIO
-#endif
                , MonadError GhcModError
                )
 
@@ -88,10 +74,6 @@ newtype GmlT m a = GmlT { unGmlT :: GhcModT m a }
              , Alternative
              , Monad
              , MonadPlus
-             , MTL.MonadIO
-#if DIFFERENT_MONADIO
-             , GHC.MonadIO
-#endif
              , MonadError GhcModError
              )
 
@@ -99,10 +81,6 @@ newtype LightGhc a = LightGhc { unLightGhc :: ReaderT (IORef HscEnv) IO a }
     deriving ( Functor
              , Applicative
              , Monad
-             , MTL.MonadIO
-#if DIFFERENT_MONADIO
-             , GHC.MonadIO
-#endif
              )
 
 -- GmOutT ----------------------------------------

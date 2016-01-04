@@ -26,7 +26,3 @@
 -- RWST doen't have a MonadIO instance before ghc 7.8
 #define MONADIO_INSTANCES 1
 #endif
-
-#if DIFFERENT_MONADIO
-import Data.Monoid (Monoid)
-#endif
