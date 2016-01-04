@@ -1,4 +1,4 @@
-{-# LANGUAGE CPP, BangPatterns, DoAndIfThenElse, MultiWayIf #-}
+{-# LANGUAGE CPP, BangPatterns, DoAndIfThenElse #-}
 
 module Language.Haskell.GhcMod.Find
 #ifndef SPEC
@@ -176,17 +176,18 @@ newAsyncSymbolDb tmpdir = do
     return $ AsyncSymbolDb tmpdir mv
 
 getAsyncSymbolDb :: forall m. IOish m => AsyncSymbolDb -> GhcModT m SymbolDb
-getAsyncSymbolDb (AsyncSymbolDb tmpdir mv) = go 0
+getAsyncSymbolDb (AsyncSymbolDb tmpdir mv) = do
+  db <- liftIO $ handleEx <$> takeMVar mv
+  outdated <- isOutdated db
+  if outdated
+    then do
+      asyncLoadSymbolDb tmpdir mv
+      liftIO $ handleEx <$> readMVar mv
+    else do
+      liftIO $ putMVar mv $ Right db
+      return db
  where
-   go :: Integer -> GhcModT m SymbolDb
-   go i = do
-     edb <- liftIO $ takeMVar mv
+   handleEx edb =
      case edb of
        Left ex -> throw ex
-       Right db -> do
-         outdated <- isOutdated db
-         if | i > 2 -> error "getAsyncSymbolDb: outdated loop"
-            | outdated -> asyncLoadSymbolDb tmpdir mv >> go (i + 1)
-            | otherwise -> do
-                liftIO $ putMVar mv (Right db)
-                return db
+       Right db -> db
