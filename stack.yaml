@@ -1,6 +1,7 @@
 flags: {}
-packages:
-- '.'
-extra-deps:
-- cabal-helper-0.6.1.0
 resolver: lts-3.1
+extra-deps:
+  - cabal-helper-0.6.1.0
+packages:
+  - '.'
+  - 'gm-common'

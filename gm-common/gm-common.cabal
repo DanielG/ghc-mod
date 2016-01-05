@@ -1,0 +1,71 @@
+Name:                   gm-common
+Version:                5.4.0.0
+Author:                 Daniel Gröber <dxld@darkboxed.org>
+Maintainer:             Daniel Gröber <dxld@darkboxed.org>
+License:                AGPL-3
+License-File:           COPYING.AGPL3
+Homepage:               http://www.mew.org/~kazu/proj/ghc-mod/
+Synopsis:               Common ghc-mod code
+Category:               GHC, Development
+Cabal-Version:          >= 1.14
+Build-Type:             Custom
+Data-Files:             COPYING.AGPL3
+
+Library
+  Default-Language:     Haskell2010
+  GHC-Options:          -Wall -fno-warn-deprecations
+  Default-Extensions:   ConstraintKinds,
+                        DataKinds,
+                        FlexibleContexts,
+                        KindSignatures,
+                        NamedFieldPuns,
+                        RecordWildCards,
+                        ScopedTypeVariables,
+                        TypeOperators,
+                        ViewPatterns
+  Exposed-Modules:      Language.Haskell.GhcMod.CabalHelper
+                        Language.Haskell.GhcMod.Caching
+                        Language.Haskell.GhcMod.Caching.Types
+                        Language.Haskell.GhcMod.Cradle
+                        Language.Haskell.GhcMod.CustomPackageDb
+                        Language.Haskell.GhcMod.Error
+                        Language.Haskell.GhcMod.GhcPkg
+                        Language.Haskell.GhcMod.Logging
+                        Language.Haskell.GhcMod.Output
+                        Language.Haskell.GhcMod.PathsAndFiles
+                        Language.Haskell.GhcMod.Pretty
+                        Language.Haskell.GhcMod.Read
+                        Language.Haskell.GhcMod.Stack
+                        Language.Haskell.GhcMod.Types
+                        Language.Haskell.GhcMod.Utils
+                        Language.Haskell.GhcMod.World
+                        Data.Binary.Generic
+                        System.Directory.ModTime
+  Other-Modules:        Paths_gm_common
+  Build-Depends:        base              < 5 && >= 4.0
+                      , bytestring        < 0.11
+                      , binary            < 0.8 && >= 0.5.1.0
+                      , containers        < 0.6
+                      , cabal-helper      < 0.7 && >= 0.6.2.0
+                      , deepseq           < 1.5
+                      , directory         < 1.3
+                      , filepath          < 1.5
+                      , monad-journal     < 0.8 && >= 0.4
+                      , old-time          < 1.2
+                      , pretty            < 1.2
+                      , process           < 1.3
+                      , syb               < 0.7
+                      , temporary         < 1.3
+                      , time              < 1.6
+                      , transformers      < 0.5
+                      , transformers-base < 0.5
+                      , mtl               < 2.3 && >= 2.0
+                      , split             < 0.3
+                      , text              < 1.3
+                      , fclabels          == 2.0.*
+                      , extra             == 1.4.*
+                      , pipes             == 4.1.*
+
+Source-Repository head
+  Type:                 git
+  Location:             https://github.com/kazu-yamamoto/ghc-mod.git
