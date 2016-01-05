@@ -29,7 +29,7 @@ import Prelude
 #if MIN_VERSION_directory(1,2,0)
 
 newtype ModTime = ModTime UTCTime
-    deriving (Eq, Ord)
+    deriving (Eq, Ord, Show, Read)
 getCurrentModTime = ModTime <$> getCurrentTime
 
 instance Binary ModTime where
@@ -41,7 +41,7 @@ instance Binary ModTime where
 #else
 
 newtype ModTime = ModTime ClockTime
-    deriving (Eq, Ord, Show)
+    deriving (Eq, Ord, Show, Read)
 getCurrentModTime = ModTime <$> getClockTime
 
 instance Binary ModTime where

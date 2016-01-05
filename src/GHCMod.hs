@@ -49,8 +49,7 @@ progMain (globalOptions, commands) = runGmOutT globalOptions $
 legacyInteractive :: IOish m => GhcModT m ()
 legacyInteractive = do
     prepareCabalHelper
-    tmpdir <- cradleTempDir <$> cradle
-    asyncSymbolDb <- newAsyncSymbolDb tmpdir
+    asyncSymbolDb <- newAsyncSymbolDb
     world <- getCurrentWorld
     legacyInteractiveLoop asyncSymbolDb world
 
@@ -137,7 +136,7 @@ ghcCommands (CmdBoot) = boot
 -- ghcCommands (CmdRoot) = undefined -- handled in wrapGhcCommands
 ghcCommands (CmdLegacyInteractive) = legacyInteractive >> return ""
 ghcCommands (CmdModules detail) = modules detail
-ghcCommands (CmdDumpSym tmpdir) = dumpSymbol tmpdir
+ghcCommands (CmdDumpSym) = dumpSymbol
 ghcCommands (CmdFind symb) = findSymbol symb
 ghcCommands (CmdDoc m) = pkgDoc m
 ghcCommands (CmdLint opts file) = lint opts file

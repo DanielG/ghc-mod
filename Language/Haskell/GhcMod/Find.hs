@@ -1,4 +1,4 @@
-{-# LANGUAGE CPP, BangPatterns, DoAndIfThenElse #-}
+{-# LANGUAGE CPP, BangPatterns #-}
 
 module Language.Haskell.GhcMod.Find
 #ifndef SPEC
@@ -22,7 +22,6 @@ import Language.Haskell.GhcMod.Convert
 import Language.Haskell.GhcMod.Gap
 import Language.Haskell.GhcMod.Monad
 import Language.Haskell.GhcMod.Output
-import Language.Haskell.GhcMod.PathsAndFiles
 import Language.Haskell.GhcMod.Types
 import Language.Haskell.GhcMod.Utils
 import Language.Haskell.GhcMod.World
@@ -32,6 +31,7 @@ import Name
 import Module
 import Exception
 
+import Control.Arrow
 import Control.Applicative
 import Control.Monad
 import Control.Monad.Trans.Control
@@ -40,10 +40,7 @@ import Data.Function
 import Data.List
 import Data.Map (Map)
 import qualified Data.Map as M
-import System.Directory
 import System.Directory.ModTime
-import System.FilePath ((</>))
-import System.IO
 import Prelude
 
 ----------------------------------------------------------------
@@ -53,21 +50,19 @@ type Symbol = String
 -- | Database from 'Symbol' to \['ModuleString'\].
 data SymbolDb = SymbolDb
   { table             :: Map Symbol [ModuleString]
-  , symbolDbCachePath :: FilePath
-  } deriving (Show)
+  , timestamp         :: ModTime
+  } deriving (Show, Read)
 
 isOutdated :: IOish m => SymbolDb -> GhcModT m Bool
 isOutdated db =
-  (liftIO . isOlderThan (symbolDbCachePath db)) =<< timedPackageCaches
+  isOlderThan (timestamp db) <$> timedPackageCaches
 
 ----------------------------------------------------------------
 
 -- | Looking up 'SymbolDb' with 'Symbol' to \['ModuleString'\]
 --   which will be concatenated. 'loadSymbolDb' is called internally.
 findSymbol :: IOish m => Symbol -> GhcModT m String
-findSymbol sym = do
-  tmpdir <- cradleTempDir <$> cradle
-  loadSymbolDb tmpdir >>= lookupSymbol sym
+findSymbol sym = loadSymbolDb >>= lookupSymbol sym
 
 -- | Looking up 'SymbolDb' with 'Symbol' to \['ModuleString'\]
 --   which will be concatenated.
@@ -80,57 +75,33 @@ lookupSym sym db = M.findWithDefault [] sym $ table db
 ---------------------------------------------------------------
 
 -- | Loading a file and creates 'SymbolDb'.
-loadSymbolDb :: IOish m => FilePath -> GhcModT m SymbolDb
-loadSymbolDb dir = do
+loadSymbolDb :: IOish m => GhcModT m SymbolDb
+loadSymbolDb = do
   ghcMod <- liftIO ghcModExecutable
   readProc <- gmReadProcess
-  file   <- liftIO $ chop <$> readProc ghcMod ["dumpsym", dir] ""
-  !db    <- M.fromAscList . map conv . lines <$> liftIO (readFile file)
-  return $ SymbolDb
-    { table             = db
-    , symbolDbCachePath = file
+  (!db, !ts) <- first M.fromAscList . read <$> liftIO
+          (readProc ghcMod ["--verbose", "error", "dumpsym"] "")
+  return SymbolDb {
+      table = db
+    , timestamp = ts
     }
-  where
-    conv :: String -> (Symbol, [ModuleString])
-    conv = read
-    chop :: String -> String
-    chop "" = ""
-    chop xs = init xs
 
 ----------------------------------------------------------------
 -- used 'ghc-mod dumpsym'
 
--- | Dumping a set of ('Symbol',\['ModuleString'\]) to a file
---   if the file does not exist or is invalid.
---   The file name is printed.
-
-dumpSymbol :: IOish m => FilePath -> GhcModT m String
-dumpSymbol dir = do
-  create <- (liftIO . isOlderThan cache) =<< timedPackageCaches
-  runGmPkgGhc $ do
-    when create $
-      liftIO . writeSymbolCache cache =<< getGlobalSymbolTable
-    return $ unlines [cache]
-  where
-    cache = dir </> symbolCacheFile
-
-writeSymbolCache :: FilePath
-                 -> [(Symbol, [ModuleString])]
-                 -> IO ()
-writeSymbolCache cache sm =
-  void . withFile cache WriteMode $ \hdl ->
-    mapM (hPrint hdl) sm
+-- | Dumps a tuple of
+-- (\[('Symbol',\['ModuleString'\])\], 'ModTime') to stdout
+dumpSymbol :: IOish m => GhcModT m String
+dumpSymbol = do
+  timestamp <- liftIO getCurrentModTime
+  st <- runGmPkgGhc getGlobalSymbolTable
+  return . show $ (st, timestamp)
 
 -- | Check whether given file is older than any file from the given set.
 -- Returns True if given file does not exist.
-isOlderThan :: FilePath -> [TimedFile] -> IO Bool
-isOlderThan cache files = do
-  exist <- doesFileExist cache
-  if not exist
-  then return True
-  else do
-    tCache <- getModTime cache
-    return $ any (tCache <=) $ map tfTime files -- including equal just in case
+isOlderThan :: ModTime -> [TimedFile] -> Bool
+isOlderThan tCache files =
+  any (tCache <=) $ map tfTime files -- including equal just in case
 
 -- | Browsing all functions in all system modules.
 getGlobalSymbolTable :: LightGhc [(Symbol, [ModuleString])]
@@ -158,30 +129,29 @@ collectModules = map tieup . groupBy ((==) `on` fst) . sort
 
 ----------------------------------------------------------------
 
-data AsyncSymbolDb = AsyncSymbolDb FilePath (MVar (Either SomeException SymbolDb))
+data AsyncSymbolDb = AsyncSymbolDb (MVar (Either SomeException SymbolDb))
 
 asyncLoadSymbolDb :: IOish m
-                  => FilePath
-                  -> MVar (Either SomeException SymbolDb)
+                  => MVar (Either SomeException SymbolDb)
                   -> GhcModT m ()
-asyncLoadSymbolDb tmpdir mv = void $
+asyncLoadSymbolDb mv = void $
     liftBaseWith $ \run -> forkIO $ void $ run $ do
-      edb <- gtry $ loadSymbolDb tmpdir
+      edb <- gtry loadSymbolDb
       liftIO $ putMVar mv edb
 
-newAsyncSymbolDb :: IOish m => FilePath -> GhcModT m AsyncSymbolDb
-newAsyncSymbolDb tmpdir = do
+newAsyncSymbolDb :: IOish m => GhcModT m AsyncSymbolDb
+newAsyncSymbolDb = do
     mv <- liftIO newEmptyMVar
-    asyncLoadSymbolDb tmpdir mv
-    return $ AsyncSymbolDb tmpdir mv
+    asyncLoadSymbolDb mv
+    return $ AsyncSymbolDb mv
 
 getAsyncSymbolDb :: forall m. IOish m => AsyncSymbolDb -> GhcModT m SymbolDb
-getAsyncSymbolDb (AsyncSymbolDb tmpdir mv) = do
+getAsyncSymbolDb (AsyncSymbolDb mv) = do
   db <- liftIO $ handleEx <$> takeMVar mv
   outdated <- isOutdated db
   if outdated
     then do
-      asyncLoadSymbolDb tmpdir mv
+      asyncLoadSymbolDb mv
       liftIO $ handleEx <$> readMVar mv
     else do
       liftIO $ putMVar mv $ Right db
