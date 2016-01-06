@@ -13,7 +13,7 @@
 --
 -- You should have received a copy of the GNU Affero General Public License
 -- along with this program.  If not, see <http://www.gnu.org/licenses/>.
-{-# LANGUAGE CPP #-}
+{-# LANGUAGE CPP, StandaloneDeriving #-}
 module System.Directory.ModTime where
 
 import Control.Applicative
@@ -40,6 +40,7 @@ instance Binary ModTime where
 
 #else
 
+deriving instance Read ClockTime
 newtype ModTime = ModTime ClockTime
     deriving (Eq, Ord, Show, Read)
 getCurrentModTime = ModTime <$> getClockTime
