@@ -167,7 +167,7 @@ Library
                       , ghc               < 7.11
                       , ghc-paths         < 0.2
                       , ghc-syb-utils     < 0.3
-                      , hlint             < 1.10 && >= 1.8.61
+                      , hlint             < 1.10 && >= 1.9.26
                       , monad-journal     < 0.8 && >= 0.4
                       , old-time          < 1.2
                       , pretty            < 1.2
