@@ -104,11 +104,6 @@ gmeDoc e = case e of
     GMETooManyCabalFiles cfs ->
         text $ "Multiple cabal files found. Possible cabal files: \""
                ++ intercalate "\", \"" cfs ++"\"."
-    GMEWrongWorkingDirectory projdir cdir ->
-        (text $ "You must run ghc-mod in the project directory as returned by `ghc-mod root`.")
-          <+> text "Currently in:" <+> showDoc cdir
-          <> text "but should be in" <+> showDoc projdir
-          <> text "."
 
 ghcExceptionDoc :: GhcException -> Doc
 ghcExceptionDoc e@(CmdLineError _) =

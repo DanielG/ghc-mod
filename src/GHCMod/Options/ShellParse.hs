@@ -16,35 +16,20 @@
 module GHCMod.Options.ShellParse (parseCmdLine) where
 
 import Data.Char
-import Data.Maybe
+import Data.List
 
-isQuote :: Char -> Bool
-isQuote = (==) '"'
-
-isEscapeChar :: Char -> Bool
-isEscapeChar = (==) '\\'
-
-isEscapable :: Char -> Bool
-isEscapable c = any ($ c) [isSpace, isQuote, isEscapeChar]
-
-go :: String -> String -> [String] -> Maybe Char -> [String]
+go :: String -> String -> [String] -> Bool -> [String]
 -- result
 go [] curarg accargs _ = reverse $ reverse curarg : accargs
--- escaped character
-go (esc:c:cl) curarg accargs quote
-  | isEscapeChar esc
-  = if isEscapable c
-    then go cl (c:curarg) accargs quote
-    else go (c:cl) (esc:curarg) accargs quote
 go (c:cl) curarg accargs quotes
-  -- quote character -- opens quotes
-  | isQuote c, isNothing quotes
-  = go cl curarg accargs (Just c)
+  -- open quotes
+  | c == '\STX', not quotes
+  = go cl curarg accargs True
   -- close quotes
-  | quotes == Just c
-  = go cl curarg accargs Nothing
-  -- space separates argumetns outside quotes
-  | isSpace c, isNothing quotes
+  | c == '\ETX', quotes
+  = go cl curarg accargs False
+  -- space separates arguments outside quotes
+  | isSpace c, not quotes
   = if null curarg
       then go cl curarg accargs quotes
       else go cl [] (reverse curarg : accargs) quotes
@@ -52,4 +37,8 @@ go (c:cl) curarg accargs quotes
   | otherwise = go cl (c:curarg) accargs quotes
 
 parseCmdLine :: String -> [String]
-parseCmdLine comline = go comline [] [] Nothing
+parseCmdLine comline'
+  | Just comline <- stripPrefix "ascii-escape " $ dropWhile isSpace comline'
+  = go (dropWhile isSpace comline) [] [] False
+parseCmdLine [] = [""]
+parseCmdLine comline = words comline

@@ -50,6 +50,7 @@ import Control.Monad.Trans.Journal (runJournalT)
 import Exception
 
 import System.Directory
+import System.IO.Unsafe
 import Prelude
 
 withGhcModEnv :: (IOish m, GmOut m) => FilePath -> Options -> ((GhcModEnv, GhcModLog)  -> m a) -> m a
@@ -57,24 +58,33 @@ withGhcModEnv = withGhcModEnv' withCradle
  where
    withCradle dir =
        gbracket (runJournalT $ findCradle' dir) (liftIO . cleanupCradle . fst)
-                
+
+cwdLock :: MVar ThreadId
+cwdLock = unsafePerformIO $ newEmptyMVar
+{-# NOINLINE cwdLock #-}
+
 withGhcModEnv' :: (IOish m, GmOut m) => (FilePath -> ((Cradle, GhcModLog) -> m a) -> m a) -> FilePath -> Options -> ((GhcModEnv, GhcModLog) -> m a) -> m a
 withGhcModEnv' withCradle dir opts f =
     withCradle dir $ \(crdl,lg) ->
       withCradleRootDir crdl $
         f (GhcModEnv opts crdl, lg)
  where
-   withCradleRootDir (cradleRootDir -> projdir) a = do
-       cdir <- liftIO $ getCurrentDirectory
-       eq <- liftIO $ pathsEqual projdir cdir
-       if not eq
-          then throw $ GMEWrongWorkingDirectory projdir cdir
-          else a
+   swapCurrentDirectory ndir = do
+     odir <- canonicalizePath =<< getCurrentDirectory
+     setCurrentDirectory ndir
+     return odir
 
-   pathsEqual a b = do
-     ca <- canonicalizePath a
-     cb <- canonicalizePath b
-     return $ ca == cb
+   withCradleRootDir (cradleRootDir -> projdir) a = do
+       success <- liftIO $ tryPutMVar cwdLock =<< myThreadId
+       if not success
+         then error "withGhcModEnv': using ghc-mod from multiple threads is not supported!"
+         else gbracket setup teardown (const a)
+    where
+      setup = liftIO $ swapCurrentDirectory projdir
+
+      teardown odir = liftIO $ do
+        setCurrentDirectory odir
+        void $ takeMVar cwdLock
 
 runGmOutT :: IOish m => Options -> GmOutT m a -> m a
 runGmOutT opts ma = do
