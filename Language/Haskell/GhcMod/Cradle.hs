@@ -40,7 +40,7 @@ findCradle = findCradle' =<< liftIO getCurrentDirectory
 
 findCradleNoLog  :: forall m. (IOish m, GmOut m) => m Cradle
 findCradleNoLog = fst <$> (runJournalT findCradle :: m (Cradle, GhcModLog))
-    
+
 findCradle' :: (GmLog m, IOish m, GmOut m) => FilePath -> m Cradle
 findCradle' dir = run $
     msum [ stackCradle dir
@@ -99,7 +99,7 @@ stackCradle wdir = do
 
     -- If dist/setup-config already exists the user probably wants to use cabal
     -- rather than stack, or maybe that's just me ;)
-    whenM (liftIO $ doesFileExist $ setupConfigPath "dist") $ do
+    whenM (liftIO $ doesFileExist $ cabalDir </> setupConfigPath "dist") $ do
                       gmLog GmWarning "" $ text "'dist/setup-config' exists, ignoring Stack and using cabal-install instead."
                       mzero
 
