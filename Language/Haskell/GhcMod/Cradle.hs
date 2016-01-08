@@ -17,16 +17,17 @@ import Language.Haskell.GhcMod.Types
 import Language.Haskell.GhcMod.Utils
 import Language.Haskell.GhcMod.Stack
 import Language.Haskell.GhcMod.Logging
+import Language.Haskell.GhcMod.Error
 
 
 import Control.Applicative
-import Control.Monad
 import Control.Monad.Trans.Maybe
 import Data.Maybe
 import System.Directory
 import System.FilePath
 import Prelude
 import Control.Monad.Trans.Journal (runJournalT)
+import Exception
 
 
 ----------------------------------------------------------------
@@ -103,7 +104,12 @@ stackCradle wdir = do
                       gmLog GmWarning "" $ text "'dist/setup-config' exists, ignoring Stack and using cabal-install instead."
                       mzero
 
-    senv <- MaybeT $ getStackEnv cabalDir
+    senv <- MaybeT $
+      let handler err@(GMEStackBootstrap _) = do
+            gmLog GmWarning "" $ gmeDoc err
+            return Nothing
+          handler err = throw err
+      in gcatch (getStackEnv cabalDir) handler
 
     return Cradle {
         cradleProject    = StackProject senv
