@@ -6,6 +6,7 @@ import Control.Applicative
 import Control.Monad
 import Data.Typeable (Typeable)
 import Data.List
+import Data.List.Split
 import Exception
 import Language.Haskell.GhcMod
 import Language.Haskell.GhcMod.Internal hiding (MonadIO,liftIO)
@@ -85,10 +86,15 @@ legacyInteractiveLoop asyncSymbolDb world = do
     interactiveHandlers =
           [ GHandler $ \(e :: ExitCode) -> throw e
           , GHandler $ \(InvalidCommandLine e) -> do
-              gmErrStrLn $ either ("Invalid command line: "++) Prelude.id e
-              return ""
+              let err = notGood $ either ("Invalid command line: "++) Prelude.id e
+              liftIO $ do
+                putStr err
+                exitFailure
           , GHandler $ \(SomeException e) -> gmErrStrLn (show e) >> return ""
           ]
+    notGood msg = "NG " ++ escapeNewlines msg
+    escapeNewlines = replace "\n" "\\n" . replace "\\n" "\\\\n"
+    replace needle replacement = intercalate replacement . splitOn needle
 
 getFileSourceFromStdin :: IO String
 getFileSourceFromStdin = do
