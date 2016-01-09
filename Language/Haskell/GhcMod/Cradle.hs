@@ -19,7 +19,6 @@ import Language.Haskell.GhcMod.Stack
 import Language.Haskell.GhcMod.Logging
 import Language.Haskell.GhcMod.Error
 
-
 import Control.Applicative
 import Control.Monad.Trans.Maybe
 import Data.Maybe
@@ -27,8 +26,6 @@ import System.Directory
 import System.FilePath
 import Prelude
 import Control.Monad.Trans.Journal (runJournalT)
-import Exception
-
 
 ----------------------------------------------------------------
 
