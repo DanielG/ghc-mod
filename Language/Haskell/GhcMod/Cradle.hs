@@ -101,15 +101,10 @@ stackCradle wdir = do
     -- If dist/setup-config already exists the user probably wants to use cabal
     -- rather than stack, or maybe that's just me ;)
     whenM (liftIO $ doesFileExist $ cabalDir </> setupConfigPath "dist") $ do
-                      gmLog GmWarning "" $ text "'dist/setup-config' exists, ignoring Stack and using cabal-install instead."
-                      mzero
+      gmLog GmWarning "" $ text "'dist/setup-config' exists, ignoring Stack and using cabal-install instead."
+      mzero
 
-    senv <- MaybeT $
-      let handler err@(GMEStackBootstrap _) = do
-            gmLog GmWarning "" $ gmeDoc err
-            return Nothing
-          handler err = throw err
-      in gcatch (getStackEnv cabalDir) handler
+    senv <- MaybeT $ getStackEnv cabalDir
 
     return Cradle {
         cradleProject    = StackProject senv

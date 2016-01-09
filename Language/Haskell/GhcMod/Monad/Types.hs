@@ -84,6 +84,7 @@ import Control.Monad
 import Control.Monad.Reader (ReaderT(..))
 import Control.Monad.State.Strict (StateT(..))
 import Control.Monad.Trans.Journal (JournalT)
+import Control.Monad.Trans.Maybe (MaybeT)
 
 import Control.Monad.Trans.Control
 
@@ -180,6 +181,13 @@ instance (MonadIO m, MonadBaseControl IO m) => ExceptionMonad (ReaderT s m) wher
      where liftRestore f r = f $ liftBaseOp_ r
 
 instance (Monoid w, MonadIO m, MonadBaseControl IO m) => ExceptionMonad (JournalT w m) where
+    gcatch act handler = control $ \run ->
+        run act `gcatch` (run . handler)
+
+    gmask = liftBaseOp gmask . liftRestore
+     where liftRestore f r = f $ liftBaseOp_ r
+
+instance (MonadIO m, MonadBaseControl IO m) => ExceptionMonad (MaybeT m) where
     gcatch act handler = control $ \run ->
         run act `gcatch` (run . handler)
 
