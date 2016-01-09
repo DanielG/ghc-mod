@@ -24,8 +24,8 @@ import Control.Exception
 import Control.Concurrent
 import Data.List
 import Data.Binary
-import Data.ByteString (ByteString)
 import Data.IORef
+import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy as LBS
 import qualified GHC as G
 import FastString
@@ -51,19 +51,19 @@ import System.Directory
 import System.Directory.ModTime
 import System.FilePath ((</>))
 import System.IO
-import System.IO.Unsafe (unsafeInterleaveIO)
+import System.IO.Unsafe (unsafeInterleaveIO, unsafePerformIO)
 import Prelude
 
-import Data.Map.Strict (Map)
-import qualified Data.Map.Strict as M
+import Data.Map (Map)
+import qualified Data.Map as M
 import Data.Set (Set)
 import qualified Data.Set as S
 
 ----------------------------------------------------------------
 
 -- | Type of function and operation names.
-type Symbol = ByteString
-type ModuleNameBS = ByteString
+type Symbol = BS.ByteString
+type ModuleNameBS = BS.ByteString
 
 -- | Database from 'Symbol' to \['ModuleString'\].
 data SymbolDb = SymbolDb
@@ -90,7 +90,7 @@ lookupSymbol :: IOish m => String -> SymbolDb -> GhcModT m String
 lookupSymbol sym db = convert' $ lookupSym (fastStringToByteString $ mkFastString sym) db
 
 lookupSym :: Symbol -> SymbolDb -> [ModuleString]
-lookupSym sym db = map (ModuleString . unpackFS . mkFastStringByteString) $ M.findWithDefault [] sym $ table db
+lookupSym sym db = map (ModuleString . unpackFS . mkFastStringByteString') $ M.findWithDefault [] sym $ table db
 
 ---------------------------------------------------------------
 
@@ -172,6 +172,18 @@ extractBindings (Just inf) mdl = M.fromList $ do
   let sym = fastStringToByteString $ occNameFS $ G.getOccName name
       mdls = S.singleton $ fastStringToByteString $ moduleNameFS $ moduleName mdl
   return (sym, mdls)
+
+mkFastStringByteString' :: BS.ByteString -> FastString
+#if !MIN_VERSION_ghc(7,8,0)
+fastStringToByteString :: FastString -> BS.ByteString
+fastStringToByteString = BS.pack . bytesFS
+
+mkFastStringByteString' = mkFastStringByteList . BS.unpack
+#elif __GLASGOW_HASKELL__ == 708
+mkFastStringByteString' = unsafePerformIO . mkFastStringByteString
+#else
+mkFastStringByteString' = mkFastStringByteString
+#endif
 
 ----------------------------------------------------------------
 

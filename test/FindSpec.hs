@@ -1,3 +1,4 @@
+{-# LANGUAGE OverloadedStrings #-}
 module FindSpec where
 
 import Language.Haskell.GhcMod.Find
