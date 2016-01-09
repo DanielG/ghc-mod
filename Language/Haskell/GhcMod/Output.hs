@@ -55,6 +55,7 @@ import Prelude
 
 import Language.Haskell.GhcMod.Types hiding (LineSeparator, MonadIO(..))
 import Language.Haskell.GhcMod.Monad.Types hiding (MonadIO(..))
+import Language.Haskell.GhcMod.Gap ()
 
 class ProcessOutput a where
   hGetContents' :: Handle -> IO a
