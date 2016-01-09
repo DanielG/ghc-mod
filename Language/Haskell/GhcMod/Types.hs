@@ -1,5 +1,6 @@
 {-# LANGUAGE CPP, DeriveDataTypeable, DeriveFunctor, DeriveGeneric, RankNTypes,
-  StandaloneDeriving, DefaultSignatures, FlexibleInstances, TemplateHaskell #-}
+  StandaloneDeriving, DefaultSignatures, FlexibleInstances, TemplateHaskell,
+  GeneralizedNewtypeDeriving #-}
 {-# OPTIONS_GHC -fno-warn-orphans -fno-warn-deprecations #-}
 module Language.Haskell.GhcMod.Types (
     module Language.Haskell.GhcMod.Types
@@ -15,6 +16,7 @@ import Control.Exception (Exception)
 import Control.Applicative
 import Control.Concurrent
 import Control.Monad
+import Control.DeepSeq
 import Data.Binary
 import Data.Binary.Generic
 import Data.Map (Map)
@@ -232,7 +234,7 @@ newtype Expression = Expression { getExpression :: String }
 
 -- | Module name.
 newtype ModuleString = ModuleString { getModuleString :: String }
-  deriving (Show, Read, Eq, Ord)
+  deriving (Show, Eq, Ord, Binary, NFData)
 
 data GmLogLevel =
     GmSilent

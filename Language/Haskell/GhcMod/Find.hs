@@ -1,4 +1,4 @@
-{-# LANGUAGE CPP, BangPatterns #-}
+{-# LANGUAGE CPP, DeriveGeneric #-}
 
 module Language.Haskell.GhcMod.Find
 #ifndef SPEC
@@ -31,13 +31,16 @@ import Name
 import Module
 import Exception
 
-import Control.Arrow
 import Control.Applicative
 import Control.Monad
 import Control.Monad.Trans.Control
 import Control.Concurrent
+import Control.DeepSeq
 import Data.Function
 import Data.List
+import qualified Data.ByteString.Lazy as BS
+import Data.Binary
+import GHC.Generics (Generic)
 import Data.Map (Map)
 import qualified Data.Map as M
 import System.Directory.ModTime
@@ -51,7 +54,10 @@ type Symbol = String
 data SymbolDb = SymbolDb
   { table             :: Map Symbol [ModuleString]
   , timestamp         :: ModTime
-  } deriving (Show, Read)
+  } deriving (Generic)
+
+instance Binary SymbolDb
+instance NFData SymbolDb
 
 isOutdated :: IOish m => SymbolDb -> GhcModT m Bool
 isOutdated db =
@@ -78,24 +84,22 @@ lookupSym sym db = M.findWithDefault [] sym $ table db
 loadSymbolDb :: IOish m => GhcModT m SymbolDb
 loadSymbolDb = do
   ghcMod <- liftIO ghcModExecutable
-  readProc <- gmReadProcess
-  (!db, !ts) <- first M.fromAscList . read <$> liftIO
-          (readProc ghcMod ["--verbose", "error", "dumpsym"] "")
-  return SymbolDb {
-      table = db
-    , timestamp = ts
-    }
+  readProc <- gmReadProcess'
+  out <- liftIO $ readProc ghcMod ["--verbose", "error", "dumpsym"] ""
+  return $!! decode out
 
 ----------------------------------------------------------------
 -- used 'ghc-mod dumpsym'
 
--- | Dumps a tuple of
--- (\[('Symbol',\['ModuleString'\])\], 'ModTime') to stdout
-dumpSymbol :: IOish m => GhcModT m String
+-- | Dumps a 'Binary' representation of 'SymbolDb' to stdout
+dumpSymbol :: IOish m => GhcModT m ()
 dumpSymbol = do
-  timestamp <- liftIO getCurrentModTime
+  ts <- liftIO getCurrentModTime
   st <- runGmPkgGhc getGlobalSymbolTable
-  return . show $ (st, timestamp)
+  liftIO . BS.putStr $ encode SymbolDb {
+      table = M.fromAscList st
+    , timestamp = ts
+    }
 
 -- | Check whether given file is older than any file from the given set.
 -- Returns True if given file does not exist.
