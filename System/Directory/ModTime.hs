@@ -42,7 +42,7 @@ instance Binary ModTime where
 #else
 
 newtype ModTime = ModTime ClockTime
-    deriving (Eq, Ord, NFData)
+    deriving (Eq, Ord)
 getCurrentModTime = ModTime <$> getClockTime
 
 instance Binary ModTime where
@@ -50,6 +50,10 @@ instance Binary ModTime where
         put s >> put ps
     get =
         ModTime <$> (TOD <$> get <*> get)
+
+instance NFData ModTime where
+    rnf (ModTime (TOD s ps)) =
+        s `seq` ps `seq` (ModTime $! TOD s ps) `seq` ()
 
 #endif
 
