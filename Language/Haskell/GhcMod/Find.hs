@@ -52,8 +52,8 @@ import Prelude
 type Symbol = String
 -- | Database from 'Symbol' to \['ModuleString'\].
 data SymbolDb = SymbolDb
-  { table             :: Map Symbol [ModuleString]
-  , timestamp         :: ModTime
+  { sdTable             :: Map Symbol [ModuleString]
+  , sdTimestamp         :: ModTime
   } deriving (Generic)
 
 instance Binary SymbolDb
@@ -61,7 +61,7 @@ instance NFData SymbolDb
 
 isOutdated :: IOish m => SymbolDb -> GhcModT m Bool
 isOutdated db =
-  isOlderThan (timestamp db) <$> timedPackageCaches
+  isOlderThan (sdTimestamp db) <$> timedPackageCaches
 
 ----------------------------------------------------------------
 
@@ -76,7 +76,7 @@ lookupSymbol :: IOish m => Symbol -> SymbolDb -> GhcModT m String
 lookupSymbol sym db = convert' $ lookupSym sym db
 
 lookupSym :: Symbol -> SymbolDb -> [ModuleString]
-lookupSym sym db = M.findWithDefault [] sym $ table db
+lookupSym sym db = M.findWithDefault [] sym $ sdTable db
 
 ---------------------------------------------------------------
 
@@ -97,8 +97,8 @@ dumpSymbol = do
   ts <- liftIO getCurrentModTime
   st <- runGmPkgGhc getGlobalSymbolTable
   liftIO . BS.putStr $ encode SymbolDb {
-      table = M.fromAscList st
-    , timestamp = ts
+      sdTable = M.fromAscList st
+    , sdTimestamp = ts
     }
 
 -- | Check whether given file is older than any file from the given set.
