@@ -44,6 +44,8 @@ import GHC.Generics (Generic)
 import Data.Map (Map)
 import qualified Data.Map as M
 import System.Directory.ModTime
+import Language.Haskell.GhcMod.PathsAndFiles
+import System.Directory
 import Prelude
 
 ----------------------------------------------------------------
@@ -68,7 +70,7 @@ isOutdated db =
 -- | Looking up 'SymbolDb' with 'Symbol' to \['ModuleString'\]
 --   which will be concatenated. 'loadSymbolDb' is called internally.
 findSymbol :: IOish m => Symbol -> GhcModT m String
-findSymbol sym = loadSymbolDb >>= lookupSymbol sym
+findSymbol sym = loadSymbolDb' >>= lookupSymbol sym
 
 -- | Looking up 'SymbolDb' with 'Symbol' to \['ModuleString'\]
 --   which will be concatenated.
@@ -79,6 +81,21 @@ lookupSym :: Symbol -> SymbolDb -> [ModuleString]
 lookupSym sym db = M.findWithDefault [] sym $ sdTable db
 
 ---------------------------------------------------------------
+
+loadSymbolDb' :: IOish m => GhcModT m SymbolDb
+loadSymbolDb' = do
+  cache <- symbolCache <$> cradle
+  let doLoad True = do
+        db <- decode <$> liftIO (BS.readFile cache)
+        outdated <- isOutdated db
+        if outdated
+        then doLoad False
+        else return db
+      doLoad False = do
+        db <- loadSymbolDb
+        liftIO $ BS.writeFile cache $ encode db
+        return db
+  doLoad =<< liftIO (doesFileExist cache)
 
 -- | Loading a file and creates 'SymbolDb'.
 loadSymbolDb :: IOish m => GhcModT m SymbolDb
