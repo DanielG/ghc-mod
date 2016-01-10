@@ -51,7 +51,7 @@ import System.Directory
 import System.Directory.ModTime
 import System.FilePath ((</>))
 import System.IO
-import System.IO.Unsafe (unsafeInterleaveIO, unsafePerformIO)
+import System.IO.Unsafe
 import Prelude
 
 import Data.Map (Map)
