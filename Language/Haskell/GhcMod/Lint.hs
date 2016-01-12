@@ -10,6 +10,7 @@ import Language.Haskell.HLint3
 
 import Language.Haskell.GhcMod.Utils (withMappedFile)
 import Language.Haskell.Exts.Pretty (prettyPrint)
+import System.IO
 
 -- | Checking syntax of a target file using hlint.
 --   Warnings and errors are returned.
@@ -20,7 +21,9 @@ lint :: IOish m
 lint opt file = ghandle handler $
   withMappedFile file $ \tempfile -> do
     (flags, classify, hint) <- liftIO $ argsSettings $ optLintHlintOpts opt
-    res <- liftIO $ parseModuleEx flags file =<< Just `fmap` readFile tempfile
+    hSrc <- liftIO $ openFile tempfile ReadMode
+    liftIO $ hSetEncoding hSrc utf8
+    res <- liftIO $ parseModuleEx flags file =<< Just `fmap` hGetContents hSrc
     case res of
       Right m -> pack . map show $ applyHints classify hint [m]
       Left ParseError{parseErrorLocation=loc, parseErrorMessage=err} ->
