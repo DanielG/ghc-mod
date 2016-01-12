@@ -104,10 +104,13 @@ dropSession = do
 
     Nothing -> return ()
 
-
+-- | Run a GmlT action (i.e. a function in the GhcMonad) in the context
+-- of certain files or modules
 runGmlT :: IOish m => [Either FilePath ModuleName] -> GmlT m a -> GhcModT m a
 runGmlT fns action = runGmlT' fns return action
 
+-- | Run a GmlT action (i.e. a function in the GhcMonad) in the context
+-- of certain files or modules, with updated GHC flags
 runGmlT' :: IOish m
               => [Either FilePath ModuleName]
               -> (DynFlags -> Ghc DynFlags)
@@ -115,6 +118,9 @@ runGmlT' :: IOish m
               -> GhcModT m a
 runGmlT' fns mdf action = runGmlTWith fns mdf id action
 
+-- | Run a GmlT action (i.e. a function in the GhcMonad) in the context
+-- of certain files or modules, with updated GHC flags and a final
+-- transformation
 runGmlTWith :: IOish m
                  => [Either FilePath ModuleName]
                  -> (DynFlags -> Ghc DynFlags)
