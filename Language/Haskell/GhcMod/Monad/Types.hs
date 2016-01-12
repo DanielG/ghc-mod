@@ -113,11 +113,13 @@ instance (MonadIO m, MonadBaseControl IO m) => GhcMonad (GmlT m) where
     getSession = gmlGetSession
     setSession = gmlSetSession
 
+-- | Get the underlying GHC session
 gmlGetSession :: (MonadIO m, MonadBaseControl IO m) => GmlT m HscEnv
 gmlGetSession = do
         ref <- gmgsSession . fromJust . gmGhcSession <$> gmsGet
         liftIO $ readIORef ref
 
+-- | Set the underlying GHC session
 gmlSetSession :: (MonadIO m, MonadBaseControl IO m) => HscEnv -> GmlT m ()
 gmlSetSession a = do
         ref <- gmgsSession . fromJust . gmGhcSession <$> gmsGet
