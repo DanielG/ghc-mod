@@ -19,6 +19,7 @@ import Language.Haskell.GhcMod.Stack
 import Language.Haskell.GhcMod.Logging
 import Language.Haskell.GhcMod.Error
 
+import Safe
 import Control.Applicative
 import Control.Monad.Trans.Maybe
 import Data.Maybe
@@ -46,7 +47,7 @@ findCradle' dir = run $
          , sandboxCradle dir
          , plainCradle dir
          ]
- where run a = fillTempDir =<< (fromJust <$> runMaybeT a)
+ where run a = fillTempDir =<< (fromJustNote "findCradle'" <$> runMaybeT a)
 
 findSpecCradle :: (GmLog m, IOish m, GmOut m) => FilePath -> m Cradle
 findSpecCradle dir = do

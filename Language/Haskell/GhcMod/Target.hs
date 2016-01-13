@@ -40,6 +40,7 @@ import Language.Haskell.GhcMod.LightGhc
 import Language.Haskell.GhcMod.CustomPackageDb
 import Language.Haskell.GhcMod.Output
 
+import Safe
 import Data.Maybe
 import Data.Monoid as Monoid
 import Data.Either
@@ -188,13 +189,13 @@ targetGhcOptions crdl sefnmn = do
             let cns = filter (/= ChSetupHsName) $ Map.keys mcs
 
             gmLog GmDebug "" $ strDoc $ "Could not find a component assignment, falling back to picking library component in cabal file."
-            return $ gmcGhcOpts $ fromJust $ Map.lookup (head cns) mcs
+            return $ gmcGhcOpts $ fromJustNote "targetGhcOptions, no-assignment" $ Map.lookup (head cns) mcs
           else do
             when noCandidates $
               throwError $ GMECabalCompAssignment mdlcs
 
             let cn = pickComponent candidates
-            return $ gmcGhcOpts $ fromJust $ Map.lookup cn mcs
+            return $ gmcGhcOpts $ fromJustNote "targetGhcOptions" $ Map.lookup cn mcs
 
 resolvedComponentsCache :: IOish m => FilePath ->
     Cached (GhcModT m) GhcModState

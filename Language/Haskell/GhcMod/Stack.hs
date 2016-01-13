@@ -16,7 +16,7 @@
 
 module Language.Haskell.GhcMod.Stack where
 
-
+import Safe
 import Control.Applicative
 import Control.Exception as E
 import Control.Monad
@@ -51,7 +51,7 @@ patchStackPrograms _crdl progs = return progs
 getStackEnv :: (IOish m, GmOut m, GmLog m) => FilePath -> m (Maybe StackEnv)
 getStackEnv projdir = U.withDirectory_ projdir $ runMaybeT $ do
     env <- map (liToTup . splitOn ": ") . lines <$> readStack ["path"]
-    let look k = fromJust $ lookup k env
+    let look k = fromJustNote "getStackEnv" $ lookup k env
     return StackEnv {
         seDistDir       = look "dist-dir"
       , seBinPath       = splitSearchPath $ look "bin-path"

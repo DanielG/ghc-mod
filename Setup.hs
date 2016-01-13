@@ -8,6 +8,7 @@ import Distribution.Simple.InstallDirs as ID
 import Distribution.Simple.LocalBuildInfo
 import Distribution.PackageDescription
 
+import Safe
 import Control.Arrow
 import Control.Applicative
 import Control.Monad
@@ -99,7 +100,7 @@ xInstallTarget pd lbi fn = do
         libexecdir'      = fromPathTemplate (libexecdir idirtpl)
 
         pd_extended      = onlyExePackageDesc [exe] pd
-        install_target   = fromJust $ installTarget exe
+        install_target   = fromJustNote "xInstallTarget" $ installTarget exe
         install_target'  = ID.substPathTemplate env install_target
         -- $libexec isn't a real thing :/ so we have to simulate it
         install_target'' = substLibExec' libexecdir' install_target'
