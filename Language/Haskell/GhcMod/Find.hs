@@ -8,6 +8,7 @@ module Language.Haskell.GhcMod.Find
   , lookupSymbol
   , dumpSymbol
   , findSymbol
+  , findSymbol'
   , lookupSym
   , isOutdated
   -- * Load 'SymbolDb' asynchronously
@@ -69,6 +70,11 @@ isOutdated db =
 --   which will be concatenated. 'loadSymbolDb' is called internally.
 findSymbol :: IOish m => Symbol -> GhcModT m String
 findSymbol sym = loadSymbolDb >>= lookupSymbol sym
+
+-- | Lookup `Symbol` in `SymbolDb`. Like `findSymbol` but doesn’t
+-- serialize the result.
+findSymbol' :: IOish m => Symbol -> GhcModT m [ModuleString]
+findSymbol' sym = lookupSym sym <$> loadSymbolDb
 
 -- | Looking up 'SymbolDb' with 'Symbol' to \['ModuleString'\]
 --   which will be concatenated.
