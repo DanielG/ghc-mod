@@ -1,4 +1,5 @@
-2016-01-04 v5.5.0.0
+2016-01-17 v5.5.0.0
+	* Fix #660, cabal-helper errors when no global GHC is installed (Stack)
 	* Fix #665, Reinstate internally managed CWD (no more `ghc-mod root`
 	  requirement for frontends)
 	* Merge #707, Support for spaces in file names when using
