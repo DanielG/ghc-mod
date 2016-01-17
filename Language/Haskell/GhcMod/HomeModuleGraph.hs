@@ -240,6 +240,7 @@ updateHomeModuleGraph' env smp0 = do
                mns = map (unLoc . ideclName)
                    $ filter (isNothing . ideclPkgQual)
                    $ map unLoc hsmodImports
+           -- TODO: handle package qualifier "this"
            liftIO $ Set.fromList . catMaybes <$> mapM (findModulePath env) mns
 
 preprocessFile :: (IOish m, GmEnv m, GmState m) =>
