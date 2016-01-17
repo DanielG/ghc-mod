@@ -17,6 +17,7 @@
 -- Derived from process:System.Process
 -- Copyright (c) The University of Glasgow 2004-2008
 
+{-# LANGUAGE FlexibleInstances #-}
 module Language.Haskell.GhcMod.Output (
     gmPutStr
   , gmErrStr
@@ -27,12 +28,15 @@ module Language.Haskell.GhcMod.Output (
   , gmErrStrIO
 
   , gmReadProcess
+  , gmReadProcess'
 
   , stdoutGateway
   , flushStdoutGateway
   ) where
 
 import Data.List
+import Data.ByteString.Lazy (ByteString)
+import qualified Data.ByteString.Lazy as BS
 import qualified Data.Label as L
 import qualified Data.Label.Base as LB
 import System.IO
@@ -51,6 +55,16 @@ import Prelude
 
 import Language.Haskell.GhcMod.Types hiding (LineSeparator, MonadIO(..))
 import Language.Haskell.GhcMod.Monad.Types hiding (MonadIO(..))
+import Language.Haskell.GhcMod.Gap ()
+
+class ProcessOutput a where
+  hGetContents' :: Handle -> IO a
+
+instance ProcessOutput String where
+  hGetContents' = hGetContents
+
+instance ProcessOutput ByteString where
+  hGetContents' = BS.hGetContents
 
 outputFns :: (GmOut m, MonadIO m')
           => m (String -> m' (), String -> m' ())
@@ -107,6 +121,9 @@ gmReadProcess = do
         readProcessStderrChan
     Nothing ->
         return $ readProcess
+
+gmReadProcess' :: GmOut m => m (FilePath -> [String] -> String -> IO ByteString)
+gmReadProcess' = readProcessStderrChan
 
 flushStdoutGateway :: Chan (Either (MVar ()) (GmStream, String)) -> IO ()
 flushStdoutGateway c = do
@@ -175,17 +192,14 @@ zoom l (StateT a) =
       return (a', L.set l s' f)
 
 readProcessStderrChan ::
-    GmOut m => m (FilePath -> [String] -> String -> IO String)
+    (GmOut m, ProcessOutput a, NFData a) => m (FilePath -> [String] -> String -> IO a)
 readProcessStderrChan = do
   (_, e :: String -> IO ()) <- outputFns
   return $ readProcessStderrChan' e
 
-readProcessStderrChan' ::
-    (String -> IO ()) -> FilePath -> [String] -> String -> IO String
-readProcessStderrChan' pute = go pute
- where
-   go :: (String -> IO ()) -> FilePath -> [String] -> String -> IO String
-   go putErr exe args input = do
+readProcessStderrChan' :: (ProcessOutput a, NFData a) =>
+    (String -> IO ()) -> FilePath -> [String] -> String -> IO a
+readProcessStderrChan' putErr exe args input = do
      let cp = (proc exe args) {
                 std_out = CreatePipe
               , std_err = CreatePipe
@@ -195,7 +209,7 @@ readProcessStderrChan' pute = go pute
 
      _ <- forkIO $ reader e
 
-     output  <- hGetContents o
+     output  <- hGetContents' o
      withForkWait (evaluate $ rnf output) $ \waitOut -> do
 
        -- now write any input

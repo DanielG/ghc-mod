@@ -73,6 +73,8 @@ import Language.Haskell.GhcMod.Monad.Out
 import Language.Haskell.GhcMod.Monad.Newtypes
 import Language.Haskell.GhcMod.Monad.Orphans ()
 
+import Safe
+
 import GHC
 import DynFlags
 import Exception
@@ -84,6 +86,7 @@ import Control.Monad
 import Control.Monad.Reader (ReaderT(..))
 import Control.Monad.State.Strict (StateT(..))
 import Control.Monad.Trans.Journal (JournalT)
+import Control.Monad.Trans.Maybe (MaybeT)
 
 import Control.Monad.Trans.Control
 
@@ -112,14 +115,16 @@ instance (MonadIO m, MonadBaseControl IO m) => GhcMonad (GmlT m) where
     getSession = gmlGetSession
     setSession = gmlSetSession
 
+-- | Get the underlying GHC session
 gmlGetSession :: (MonadIO m, MonadBaseControl IO m) => GmlT m HscEnv
 gmlGetSession = do
-        ref <- gmgsSession . fromJust . gmGhcSession <$> gmsGet
+        ref <- gmgsSession . fromJustNote "gmlGetSession" . gmGhcSession <$> gmsGet
         liftIO $ readIORef ref
 
+-- | Set the underlying GHC session
 gmlSetSession :: (MonadIO m, MonadBaseControl IO m) => HscEnv -> GmlT m ()
 gmlSetSession a = do
-        ref <- gmgsSession . fromJust . gmGhcSession <$> gmsGet
+        ref <- gmgsSession . fromJustNote "gmlSetSession" . gmGhcSession <$> gmsGet
         liftIO $ flip writeIORef a ref
 
 instance GhcMonad LightGhc where
@@ -180,6 +185,13 @@ instance (MonadIO m, MonadBaseControl IO m) => ExceptionMonad (ReaderT s m) wher
      where liftRestore f r = f $ liftBaseOp_ r
 
 instance (Monoid w, MonadIO m, MonadBaseControl IO m) => ExceptionMonad (JournalT w m) where
+    gcatch act handler = control $ \run ->
+        run act `gcatch` (run . handler)
+
+    gmask = liftBaseOp gmask . liftRestore
+     where liftRestore f r = f $ liftBaseOp_ r
+
+instance (MonadIO m, MonadBaseControl IO m) => ExceptionMonad (MaybeT m) where
     gcatch act handler = control $ \run ->
         run act `gcatch` (run . handler)
 

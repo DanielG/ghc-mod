@@ -62,7 +62,7 @@ instance (Monad m, GmLog m, Error e) => GmLog (ErrorT e m) where
     gmlHistory = lift gmlHistory
     gmlClear = lift gmlClear
 
-instance (Monad m, GmLog m) => GmLog (MaybeT  m) where
+instance (Monad m, GmLog m) => GmLog (MaybeT m) where
     gmlJournal = lift . gmlJournal
     gmlHistory = lift gmlHistory
     gmlClear = lift gmlClear

@@ -42,7 +42,7 @@ data GhcModCommands =
   | CmdRoot
   | CmdLegacyInteractive
   | CmdModules Bool
-  | CmdDumpSym FilePath
+  | CmdDumpSym
   | CmdFind Symbol
   | CmdDoc Module
   | CmdLint LintOpts FilePath
@@ -110,7 +110,7 @@ commands =
           $$  info modulesArgSpec
           $$  progDesc "List all visible modules"
     <> command "dumpsym"
-          $$  info dumpSymArgSpec idm
+          $$  info (pure CmdDumpSym) idm
     <> command "find"
           $$  info findArgSpec
           $$  progDesc "List all modules that define SYMBOL"
@@ -226,7 +226,7 @@ locArgSpec x = x
         <*> argument int (metavar "COL")
       )
 
-modulesArgSpec, dumpSymArgSpec, docArgSpec, findArgSpec,
+modulesArgSpec, docArgSpec, findArgSpec,
   lintArgSpec, browseArgSpec, checkArgSpec, expandArgSpec,
   infoArgSpec, typeArgSpec, autoArgSpec, splitArgSpec,
   sigArgSpec, refineArgSpec, debugComponentArgSpec,
@@ -237,7 +237,6 @@ modulesArgSpec = CmdModules
         $$  long "detailed"
         <=> short 'd'
         <=> help "Print package modules belong to"
-dumpSymArgSpec = CmdDumpSym <$> strArg "TMPDIR"
 findArgSpec = CmdFind <$> strArg "SYMBOL"
 docArgSpec = CmdDoc <$> strArg "MODULE"
 lintArgSpec = CmdLint

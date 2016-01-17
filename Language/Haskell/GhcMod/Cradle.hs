@@ -17,17 +17,16 @@ import Language.Haskell.GhcMod.Types
 import Language.Haskell.GhcMod.Utils
 import Language.Haskell.GhcMod.Stack
 import Language.Haskell.GhcMod.Logging
+import Language.Haskell.GhcMod.Error
 
-
+import Safe
 import Control.Applicative
-import Control.Monad
 import Control.Monad.Trans.Maybe
 import Data.Maybe
 import System.Directory
 import System.FilePath
 import Prelude
 import Control.Monad.Trans.Journal (runJournalT)
-
 
 ----------------------------------------------------------------
 
@@ -40,7 +39,7 @@ findCradle = findCradle' =<< liftIO getCurrentDirectory
 
 findCradleNoLog  :: forall m. (IOish m, GmOut m) => m Cradle
 findCradleNoLog = fst <$> (runJournalT findCradle :: m (Cradle, GhcModLog))
-    
+
 findCradle' :: (GmLog m, IOish m, GmOut m) => FilePath -> m Cradle
 findCradle' dir = run $
     msum [ stackCradle dir
@@ -48,7 +47,7 @@ findCradle' dir = run $
          , sandboxCradle dir
          , plainCradle dir
          ]
- where run a = fillTempDir =<< (fromJust <$> runMaybeT a)
+ where run a = fillTempDir =<< (fromJustNote "findCradle'" <$> runMaybeT a)
 
 findSpecCradle :: (GmLog m, IOish m, GmOut m) => FilePath -> m Cradle
 findSpecCradle dir = do
@@ -99,9 +98,9 @@ stackCradle wdir = do
 
     -- If dist/setup-config already exists the user probably wants to use cabal
     -- rather than stack, or maybe that's just me ;)
-    whenM (liftIO $ doesFileExist $ setupConfigPath "dist") $ do
-                      gmLog GmWarning "" $ text "'dist/setup-config' exists, ignoring Stack and using cabal-install instead."
-                      mzero
+    whenM (liftIO $ doesFileExist $ cabalDir </> setupConfigPath "dist") $ do
+      gmLog GmWarning "" $ text "'dist/setup-config' exists, ignoring Stack and using cabal-install instead."
+      mzero
 
     senv <- MaybeT $ getStackEnv cabalDir
 

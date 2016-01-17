@@ -3,6 +3,7 @@ module Language.Haskell.GhcMod.Browse (
     BrowseOpts(..)
   ) where
 
+import Safe
 import Control.Applicative
 import Control.Exception (SomeException(..))
 import Data.Char
@@ -49,7 +50,7 @@ browse opts pkgmdl = do
     goHomeModule = runGmlT [Right mdlname] $ do
       processExports opts =<< tryModuleInfo =<< G.findModule mdlname Nothing
 
-    tryModuleInfo m = fromJust <$> G.getModuleInfo m
+    tryModuleInfo m = fromJustNote "browse, tryModuleInfo" <$> G.getModuleInfo m
 
     (mpkg, mdl) = splitPkgMdl pkgmdl
     mdlname = G.mkModuleName mdl

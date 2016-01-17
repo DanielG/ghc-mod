@@ -13,10 +13,11 @@
 --
 -- You should have received a copy of the GNU Affero General Public License
 -- along with this program.  If not, see <http://www.gnu.org/licenses/>.
-{-# LANGUAGE CPP #-}
+{-# LANGUAGE CPP, GeneralizedNewtypeDeriving #-}
 module System.Directory.ModTime where
 
 import Control.Applicative
+import Control.DeepSeq
 import Data.Binary
 #if MIN_VERSION_directory(1,2,0)
 import Data.Time (UTCTime(..), Day(..), getCurrentTime)
@@ -29,7 +30,7 @@ import Prelude
 #if MIN_VERSION_directory(1,2,0)
 
 newtype ModTime = ModTime UTCTime
-    deriving (Eq, Ord)
+    deriving (Eq, Ord, NFData)
 getCurrentModTime = ModTime <$> getCurrentTime
 
 instance Binary ModTime where
@@ -41,7 +42,7 @@ instance Binary ModTime where
 #else
 
 newtype ModTime = ModTime ClockTime
-    deriving (Eq, Ord, Show)
+    deriving (Eq, Ord)
 getCurrentModTime = ModTime <$> getClockTime
 
 instance Binary ModTime where
@@ -49,6 +50,10 @@ instance Binary ModTime where
         put s >> put ps
     get =
         ModTime <$> (TOD <$> get <*> get)
+
+instance NFData ModTime where
+    rnf (ModTime (TOD s ps)) =
+        s `seq` ps `seq` (ModTime $! TOD s ps) `seq` ()
 
 #endif
 

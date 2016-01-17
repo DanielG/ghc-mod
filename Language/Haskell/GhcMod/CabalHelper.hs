@@ -113,32 +113,30 @@ getComponents = chCached $ \distdir -> Cached {
                  , (a', c) <- lc
                  , a == a'
                  ]
-runCHQuery :: (IOish m, GmOut m, GmEnv m) => Query m b -> m b
-runCHQuery a = do
+
+getQueryEnv :: (IOish m, GmOut m, GmEnv m) => m QueryEnv
+getQueryEnv = do
   crdl <- cradle
+  progs <- patchStackPrograms crdl =<< (optPrograms <$> options)
+  readProc <- gmReadProcess
   let projdir = cradleRootDir crdl
       distdir = projdir </> cradleDistDir crdl
+  return (defaultQueryEnv projdir distdir) {
+                  qeReadProcess = readProc
+                , qePrograms = helperProgs progs
+                }
 
-  opts <- options
-  progs <- patchStackPrograms crdl (optPrograms opts)
-
-  readProc <- gmReadProcess
-
-  let qe = (defaultQueryEnv projdir distdir) {
-               qeReadProcess = readProc
-             , qePrograms = helperProgs progs
-             }
+runCHQuery :: (IOish m, GmOut m, GmEnv m) => Query m b -> m b
+runCHQuery a = do
+  qe <- getQueryEnv
   runQuery qe a
 
 
 prepareCabalHelper :: (IOish m, GmEnv m, GmOut m, GmLog m) => m ()
 prepareCabalHelper = do
   crdl <- cradle
-  let projdir = cradleRootDir crdl
-      distdir = projdir </> cradleDistDir crdl
-  readProc <- gmReadProcess
   when (isCabalHelperProject $ cradleProject crdl) $
-       withCabal $ liftIO $ prepare readProc projdir distdir
+       withCabal $ prepare' =<< getQueryEnv
 
 withAutogen :: (IOish m, GmEnv m, GmOut m, GmLog m) => m a -> m a
 withAutogen action = do
@@ -155,15 +153,14 @@ withAutogen action = do
 
     when (mCabalMacroHeader < mCabalFile || mCabalPathsModule < mCabalFile) $ do
       gmLog GmDebug "" $ strDoc $ "autogen files out of sync"
-      writeAutogen projdir distdir
+      writeAutogen
 
     action
 
  where
-   writeAutogen projdir distdir = do
-     readProc <- gmReadProcess
+   writeAutogen = do
      gmLog GmDebug "" $ strDoc $ "writing Cabal autogen files"
-     liftIO $ writeAutogenFiles readProc projdir distdir
+     writeAutogenFiles' =<< getQueryEnv
 
 
 withCabal :: (IOish m, GmEnv m, GmOut m, GmLog m) => m a -> m a
