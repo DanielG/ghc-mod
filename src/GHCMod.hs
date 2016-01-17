@@ -6,6 +6,7 @@ import Control.Applicative
 import Control.Monad
 import Data.Typeable (Typeable)
 import Data.List
+import Data.List.Split
 import Exception
 import Language.Haskell.GhcMod
 import Language.Haskell.GhcMod.Internal hiding (MonadIO,liftIO)
@@ -49,8 +50,7 @@ progMain (globalOptions, commands) = runGmOutT globalOptions $
 legacyInteractive :: IOish m => GhcModT m ()
 legacyInteractive = do
     prepareCabalHelper
-    tmpdir <- cradleTempDir <$> cradle
-    asyncSymbolDb <- newAsyncSymbolDb tmpdir
+    asyncSymbolDb <- newAsyncSymbolDb
     world <- getCurrentWorld
     legacyInteractiveLoop asyncSymbolDb world
 
@@ -86,10 +86,15 @@ legacyInteractiveLoop asyncSymbolDb world = do
     interactiveHandlers =
           [ GHandler $ \(e :: ExitCode) -> throw e
           , GHandler $ \(InvalidCommandLine e) -> do
-              gmErrStrLn $ either ("Invalid command line: "++) Prelude.id e
-              return ""
+              let err = notGood $ either ("Invalid command line: "++) Prelude.id e
+              liftIO $ do
+                putStr err
+                exitFailure
           , GHandler $ \(SomeException e) -> gmErrStrLn (show e) >> return ""
           ]
+    notGood msg = "NG " ++ escapeNewlines msg
+    escapeNewlines = replace "\n" "\\n" . replace "\\n" "\\\\n"
+    replace needle replacement = intercalate replacement . splitOn needle
 
 getFileSourceFromStdin :: IO String
 getFileSourceFromStdin = do
@@ -137,7 +142,7 @@ ghcCommands (CmdBoot) = boot
 -- ghcCommands (CmdRoot) = undefined -- handled in wrapGhcCommands
 ghcCommands (CmdLegacyInteractive) = legacyInteractive >> return ""
 ghcCommands (CmdModules detail) = modules detail
-ghcCommands (CmdDumpSym tmpdir) = dumpSymbol tmpdir
+ghcCommands (CmdDumpSym) = dumpSymbol >> return ""
 ghcCommands (CmdFind symb) = findSymbol symb
 ghcCommands (CmdDoc m) = pkgDoc m
 ghcCommands (CmdLint opts file) = lint opts file

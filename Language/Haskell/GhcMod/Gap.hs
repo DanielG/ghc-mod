@@ -101,6 +101,11 @@ import Module
 import qualified Data.IntSet as I (IntSet, empty)
 #endif
 
+#if __GLASGOW_HASKELL__ < 706
+import Control.DeepSeq (NFData(rnf))
+import Data.ByteString.Lazy.Internal (ByteString(..))
+#endif
+
 import Bag
 import Lexer as L
 import Parser
@@ -563,4 +568,10 @@ mkErrStyle' :: DynFlags -> PrintUnqualified -> PprStyle
 mkErrStyle' = Outputable.mkErrStyle
 #else
 mkErrStyle' _ = Outputable.mkErrStyle
+#endif
+
+#if __GLASGOW_HASKELL__ < 706
+instance NFData ByteString where
+  rnf Empty       = ()
+  rnf (Chunk _ b) = rnf b
 #endif

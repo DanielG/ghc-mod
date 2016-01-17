@@ -16,7 +16,7 @@
 
 module Language.Haskell.GhcMod.Stack where
 
-
+import Safe
 import Control.Applicative
 import Control.Exception as E
 import Control.Monad
@@ -33,6 +33,8 @@ import Exception
 import Language.Haskell.GhcMod.Types
 import Language.Haskell.GhcMod.Monad.Types
 import Language.Haskell.GhcMod.Output
+import Language.Haskell.GhcMod.Logging
+import Language.Haskell.GhcMod.Error
 import qualified Language.Haskell.GhcMod.Utils as U
 import Prelude
 
@@ -46,10 +48,10 @@ patchStackPrograms Cradle { cradleProject = (StackProject senv) } progs = do
     }
 patchStackPrograms _crdl progs = return progs
 
-getStackEnv :: (IOish m, GmOut m) => FilePath -> m (Maybe StackEnv)
+getStackEnv :: (IOish m, GmOut m, GmLog m) => FilePath -> m (Maybe StackEnv)
 getStackEnv projdir = U.withDirectory_ projdir $ runMaybeT $ do
     env <- map (liToTup . splitOn ": ") . lines <$> readStack ["path"]
-    let look k = fromJust $ lookup k env
+    let look k = fromJustNote "getStackEnv" $ lookup k env
     return StackEnv {
         seDistDir       = look "dist-dir"
       , seBinPath       = splitSearchPath $ look "bin-path"
@@ -80,11 +82,14 @@ findExecutablesInDirectories' path binary =
 
          exeExtension = if isWindows then "exe" else ""
 
-readStack :: (IOish m, GmOut m) => [String] -> MaybeT m String
+readStack :: (IOish m, GmOut m, GmLog m) => [String] -> MaybeT m String
 readStack args = do
   stack <- MaybeT $ liftIO $ findExecutable "stack"
   readProc <- lift gmReadProcess
-  lift $ flip gcatch (\(e :: IOError) -> exToErr e) $ do
+  flip gcatch handler $ do
     liftIO $ evaluate =<< readProc stack args ""
  where
-   exToErr = throw . GMEStackBootstrap . GMEString . show
+   handler (e :: IOError) = do
+     gmLog GmWarning "readStack" $ gmeDoc $ exToErr e
+     mzero
+   exToErr = GMEStackBootstrap . GMEString . show

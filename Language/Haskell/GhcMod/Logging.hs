@@ -45,11 +45,11 @@ gmSetLogLevel :: GmLog m => GmLogLevel -> m ()
 gmSetLogLevel level =
     gmlJournal $ GhcModLog (Just level) (Last Nothing) []
 
-gmGetLogLevel :: forall m. GmLog m => m GmLogLevel 
+gmGetLogLevel :: forall m. GmLog m => m GmLogLevel
 gmGetLogLevel = do
   GhcModLog { gmLogLevel = Just level } <-  gmlHistory
   return level
-               
+
 gmSetDumpLevel :: GmLog m => Bool -> m ()
 gmSetDumpLevel level =
     gmlJournal $ GhcModLog Nothing (Last (Just level)) []
@@ -76,18 +76,19 @@ gmLog level loc' doc = do
 
   let loc | loc' == "" = empty
           | otherwise = text loc' <+>: empty
-      msgDoc = gmLogLevelDoc level <+>: sep [loc, doc]
-      msg = dropWhileEnd isSpace $ gmRenderDoc msgDoc
+      msgDoc = sep [loc, doc]
+      msg = dropWhileEnd isSpace $ gmRenderDoc $ gmLogLevelDoc level <+>: msgDoc
 
   when (level <= level') $ gmErrStrLn msg
+  gmLogQuiet level loc' doc
 
-  gmlJournal (GhcModLog Nothing (Last Nothing) [(level, loc', msgDoc)])
+gmLogQuiet :: GmLog m => GmLogLevel -> String -> Doc -> m ()
+gmLogQuiet level loc doc =
+  gmlJournal (GhcModLog Nothing (Last Nothing) [(level, loc, doc)])
 
--- | Appends a collection of logs to the logging environment, with effects
--- | if their log level specifies it should
-gmAppendLog ::  (MonadIO m, GmLog m, GmOut m) => GhcModLog -> m ()
-gmAppendLog  GhcModLog { gmLogMessages } = (\(level, loc, msgDoc) -> gmLog level loc msgDoc) `mapM_` gmLogMessages
-    
+gmAppendLogQuiet :: GmLog m => GhcModLog -> m ()
+gmAppendLogQuiet GhcModLog { gmLogMessages } =
+    forM_ gmLogMessages $ \(level, loc, doc) -> gmLogQuiet level loc doc
 
 gmVomit :: (MonadIO m, GmLog m, GmOut m, GmEnv m) => String -> Doc -> String -> m ()
 gmVomit filename doc content = do

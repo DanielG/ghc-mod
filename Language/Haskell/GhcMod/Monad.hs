@@ -108,10 +108,10 @@ runGhcModT :: IOish m
 runGhcModT opt action = liftIO (getCurrentDirectory >>= canonicalizePath) >>= \dir' -> do
     runGmOutT opt $
       withGhcModEnv dir' opt $ \(env,lg) ->
-        first (fst <$>) <$> runGhcModT' env defaultGhcModState
-          (gmSetLogLevel (ooptLogLevel $ optOutput opt) >>
-           gmAppendLog lg >>
-           action)
+        first (fst <$>) <$> runGhcModT' env defaultGhcModState (do
+          gmSetLogLevel (ooptLogLevel $ optOutput opt)
+          gmAppendLogQuiet lg
+          action)
 
 -- | @hoistGhcModT result@. Embed a GhcModT computation's result into a GhcModT
 -- computation. Note that if the computation that returned @result@ modified the

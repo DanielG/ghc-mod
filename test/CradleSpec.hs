@@ -8,6 +8,7 @@ import System.Directory (canonicalizePath)
 import System.FilePath (pathSeparator)
 import Test.Hspec
 import TestUtils
+import Prelude
 
 import Dir
 
