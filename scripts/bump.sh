@@ -9,7 +9,7 @@ fi
 
 VERSION=$1
 
-if ! echo $VERSION | grep -q "^[0-9.]-?.*?$"; then
+if ! echo $VERSION | grep -Eq "^[0-9.]*(-.+)?$"; then
     echo "invalid version";
     exit 1
 fi
@@ -24,7 +24,13 @@ sed -i 's/(defconst ghc-version ".*")/(defconst ghc-version "'"$VERSION"'")/' \
 sed -r -i 's/^(Version:[[:space:]]*)[0-9.]+/\1'"$VERSION"'/' ghc-mod.cabal
 
 git add elisp/ghc.el ghc-mod.cabal
-git commit -m "Bump version to $VERSION"
+
+git update-index -q --ignore-submodules --refresh
+# If there are uncommitted changes do the bump commit
+if ! git diff-index --cached --quiet HEAD --ignore-submodules --
+then
+    git commit -m "Bump version to $VERSION" --allow-empty
+fi
 
 git checkout release
 #git merge master
