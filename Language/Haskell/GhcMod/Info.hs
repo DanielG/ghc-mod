@@ -11,6 +11,7 @@ import Exception (ghandle, SomeException(..))
 import GHC (GhcMonad, LHsBind, LHsExpr, LPat, Id, TypecheckedModule(..), SrcSpan, Type)
 import Prelude
 import qualified GHC as G
+import qualified Var as G (varType)
 import qualified Language.Haskell.GhcMod.Gap as Gap
 
 import Language.Haskell.GhcMod.Convert
@@ -23,6 +24,7 @@ import Language.Haskell.GhcMod.SrcUtils
 import Language.Haskell.GhcMod.Types
 import Language.Haskell.GhcMod.Utils (mkRevRedirMapFunc)
 import Language.Haskell.GhcMod.FileMapping (fileModSummaryWithMapping)
+import Control.Applicative
 
 ----------------------------------------------------------------
 
@@ -79,7 +81,25 @@ getSrcSpanType modSum lineNo colNo = do
   let bs = listifySpans tcs (lineNo, colNo) :: [LHsBind Id]
       es = listifySpans tcs (lineNo, colNo) :: [LHsExpr Id]
       ps = listifySpans tcs (lineNo, colNo) :: [LPat Id]
-  bts <- mapM (getType tcm) bs
-  ets <- mapM (getType tcm) es
-  pts <- mapM (getType tcm) ps
+      as = concatMap abtoex $ listifyAbsBinds tcs
+      abtoex (G.L _spn G.AbsBinds{abs_exports = es'})
+        = liftA2 (,) G.abe_mono (G.varType . G.abe_poly) `map` es'
+      abtoex _ = []
+      getType' b = getType tcm b >>= tryGetConstrainedType b
+      tryGetConstrainedType _ Nothing = return Nothing
+      tryGetConstrainedType b (Just gt) =
+        do
+          ids <- getId tcm b
+          return $ ct ids <|> Just gt
+        where
+          ct [pid] = (,) (fst gt) <$> lookup pid as
+          -- TODO: A case of multiple ids should probably
+          -- collect all constraints and then apply
+          -- them to calculated type. No idea how
+          -- to do that at the moment.
+          ct _     = Nothing
+
+  ets <- mapM getType' es
+  bts <- mapM getType' bs
+  pts <- mapM getType' ps
   return $ catMaybes $ concat [ets, bts, pts]

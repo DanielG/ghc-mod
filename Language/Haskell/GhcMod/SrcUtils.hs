@@ -24,12 +24,14 @@ import Prelude
 ----------------------------------------------------------------
 
 instance HasType (LHsExpr Id) where
+    getId _ _e = return []
     getType tcm e = do
         hs_env <- G.getSession
         mbe <- liftIO $ Gap.deSugar tcm e hs_env
         return $ (G.getLoc e, ) <$> CoreUtils.exprType <$> mbe
 
 instance HasType (LPat Id) where
+    getId _ = return . G.collectPatBinders
     getType _ (G.L spn pat) = return $ Just (spn, hsPatType pat)
 
 ----------------------------------------------------------------
@@ -38,6 +40,12 @@ listifySpans :: Typeable a => TypecheckedSource -> (Int, Int) -> [Located a]
 listifySpans tcs lc = listifyStaged TypeChecker p tcs
   where
     p (L spn _) = G.isGoodSrcSpan spn && spn `G.spans` lc
+
+listifyAbsBinds :: TypecheckedSource -> [Located (G.HsBind Id)]
+listifyAbsBinds = listifyStaged TypeChecker p
+  where
+    p (L _ G.AbsBinds{}) = True
+    p _                  = False
 
 listifyParsedSpans :: Typeable a => ParsedSource -> (Int, Int) -> [Located a]
 listifyParsedSpans pcs lc = listifyStaged Parser p pcs

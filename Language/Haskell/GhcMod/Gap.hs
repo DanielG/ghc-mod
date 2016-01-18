@@ -316,11 +316,13 @@ setWarnTypedHoles = id
 ----------------------------------------------------------------
 
 class HasType a where
+    getId   :: GhcMonad m => TypecheckedModule -> a -> m ([Id])
     getType :: GhcMonad m => TypecheckedModule -> a -> m (Maybe (SrcSpan, Type))
 
 
 instance HasType (LHsBind Id) where
 #if __GLASGOW_HASKELL__ >= 708
+    getId _ b = return $ collectHsBindBinders (unLoc b)
     getType _ (L spn FunBind{fun_matches = m}) = return $ Just (spn, typ)
       where in_tys = mg_arg_tys m
             out_typ = mg_res_ty m
