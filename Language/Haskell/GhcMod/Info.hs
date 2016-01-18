@@ -96,21 +96,20 @@ getSrcSpanType modSum lineNo colNo = do
         where
           ct [pid] = (,) (fst gt) <$> lookup pid as
           ct []    = Nothing
-          -- TODO: A case of multiple ids should probably
-          -- collect all constraints and then apply
-          -- them to calculated type. No idea how
-          -- to do that at the moment.
-          -- NB: The following does not work, since
-          -- "inner" types have different IDs from
-          -- exported types. So we need some sort of
-          -- type substitution.
           ct pids  =
             let
-              ctys  = mapMaybe (`lookup` as) pids
-              preds = concatMap (fst . getPreds) ctys
-              --typs  = map (snd . getPreds) ctys
-              ty    = mkFunTys preds $ snd gt
-            in Just (fst gt, ty)
+              ctys  = mapMaybe build pids
+              build x | Just cti <- x `lookup` as
+                      = let
+                          (preds', ctt) = getPreds cti
+                          vt = G.varType x
+                        in Just (preds', flip (,) vt <$> getTyVar_maybe ctt)
+                      | otherwise = Nothing
+              sty   = snd gt
+              preds = concatMap fst ctys
+              subs  = mkTopTvSubst $ mapMaybe snd ctys
+              ty    = substTy subs $ mkFunTys preds sty
+            in Just (fst gt, tidyTopType ty)
           getPreds x | isForAllTy x = getPreds $ dropForAlls x
                      | Just (c, t) <- splitFunTy_maybe x
                      , isPredTy c = first (c:) $ getPreds t
