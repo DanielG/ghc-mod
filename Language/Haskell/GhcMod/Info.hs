@@ -5,10 +5,10 @@ module Language.Haskell.GhcMod.Info (
 
 import Data.Function (on)
 import Data.List (sortBy)
-import Data.Maybe (catMaybes)
+import Data.Maybe (catMaybes, mapMaybe)
 import System.FilePath
 import Exception (ghandle, SomeException(..))
-import GHC (GhcMonad, LHsBind, LHsExpr, LPat, Id, TypecheckedModule(..), SrcSpan, Type)
+import GHC (GhcMonad, LHsBind, LHsExpr, LPat, Id, TypecheckedModule(..), SrcSpan)
 import Prelude
 import qualified GHC as G
 import qualified Var as G (varType)
@@ -25,6 +25,8 @@ import Language.Haskell.GhcMod.Types
 import Language.Haskell.GhcMod.Utils (mkRevRedirMapFunc)
 import Language.Haskell.GhcMod.FileMapping (fileModSummaryWithMapping)
 import Control.Applicative
+import Type
+import Control.Arrow
 
 ----------------------------------------------------------------
 
@@ -93,11 +95,26 @@ getSrcSpanType modSum lineNo colNo = do
           return $ ct ids <|> Just gt
         where
           ct [pid] = (,) (fst gt) <$> lookup pid as
+          ct []    = Nothing
           -- TODO: A case of multiple ids should probably
           -- collect all constraints and then apply
           -- them to calculated type. No idea how
           -- to do that at the moment.
-          ct _     = Nothing
+          -- NB: The following does not work, since
+          -- "inner" types have different IDs from
+          -- exported types. So we need some sort of
+          -- type substitution.
+          ct pids  =
+            let
+              ctys  = mapMaybe (`lookup` as) pids
+              preds = concatMap (fst . getPreds) ctys
+              --typs  = map (snd . getPreds) ctys
+              ty    = mkFunTys preds $ snd gt
+            in Just (fst gt, ty)
+          getPreds x | isForAllTy x = getPreds $ dropForAlls x
+                     | Just (c, t) <- splitFunTy_maybe x
+                     , isPredTy c = first (c:) $ getPreds t
+                     | otherwise = ([], x)
 
   ets <- mapM getType' es
   bts <- mapM getType' bs
