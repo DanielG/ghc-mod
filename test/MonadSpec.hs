@@ -20,17 +20,26 @@ spec = do
 
     describe "runGhcModT" $
         it "throws an exception when run in multiple threads" $ do
-          mv1 :: MVar (Either SomeException ())
-              <- newEmptyMVar
-          mv2 :: MVar (Either SomeException ())
-              <- newEmptyMVar
 
-          _ <- forkOS $ putMVar mv1 =<< (try $ evaluate =<< (runD $ liftIO $ readMVar mv2 >> return ()))
-          _ <- forkOS $ putMVar mv2 =<< (try $ evaluate =<< (runD $ return ()))
-          e1 <- takeMVar mv1
-          e2 <- takeMVar mv2
+          mv_ex :: MVar (Either SomeException ())
+              <- newEmptyMVar
+          mv_startup_barrier :: MVar () <- newEmptyMVar
 
-          (isLeft e1 || isLeft e2) `shouldBe` True
+          _t1 <- forkOS $ do
+                 putMVar mv_startup_barrier ()
+                 -- wait (inside GhcModT) for t2 to receive the exception
+                 _ <- runD $ liftIO $ readMVar mv_ex
+                 return ()
+
+          _t2 <- forkOS $ do
+                 readMVar mv_startup_barrier -- wait for t1 to start up
+                 res <- try $ runD $ return ()
+                 res' <- evaluate res
+                 putMVar mv_ex res'
+
+          ex <- takeMVar mv_ex
+
+          isLeft ex `shouldBe` True
 
 isLeft :: Either a b -> Bool
 isLeft (Right _) = False
