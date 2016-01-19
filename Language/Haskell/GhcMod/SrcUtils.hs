@@ -41,25 +41,27 @@ instance HasType (LPat Id) where
 ----------------------------------------------------------------
 
 type CstGenQS = M.Map Var Type
-type CstGenQT = forall m. GhcMonad m => CstGenQS -> (m [(SrcSpan, Type)], CstGenQS)
+type CstGenQT a = forall m. GhcMonad m => a Id -> CstGenQS -> (m [(SrcSpan, Type)], CstGenQS)
 
 collectSpansTypes :: (GhcMonad m) => Bool -> G.TypecheckedModule -> (Int, Int) -> m [(SrcSpan, Type)]
 collectSpansTypes withConstraints tcs lc =
   everythingStagedWithContext TypeChecker M.empty (liftM2 (++))
     (return [])
-    ((return [],) `mkQ` hsBind `extQ` hsExpr `extQ` hsPat)
+    ((return [],)
+      `mkQ`  (hsBind    :: CstGenQT G.LHsBind)
+      `extQ` (genericCT :: CstGenQT G.LHsExpr)
+      `extQ` (genericCT :: CstGenQT G.LPat)
+      )
     (G.tm_typechecked_source tcs)
   where
     insExp x = M.insert (G.abe_mono x) (G.varType $ G.abe_poly x)
-    hsBind :: G.LHsBind Id -> CstGenQT
     hsBind (L _ G.AbsBinds{abs_exports = es'}) s
       | withConstraints = (return [], foldr insExp s es')
       | otherwise       = (return [], s)
-    hsBind x@(L _ b) s = constrainedType' (G.collectHsBindBinders b) s x
-    hsExpr :: G.LHsExpr Id -> CstGenQT
-    hsExpr x s = (maybeToList <$> getType' x, s)
-    hsPat :: G.LPat Id -> CstGenQT
-    hsPat x@(L _ _) s = constrainedType' (G.collectPatBinders x) s x
+    hsBind x s = genericCT x s
+    genericCT x s = constrainedType' (collectBinders x) s x
+    collectBinders :: Data a => a -> [Id]
+    collectBinders = listifyStaged TypeChecker (const True)
     getType' x@(L spn _)
       | G.isGoodSrcSpan spn && spn `G.spans` lc
       = getType tcs x
