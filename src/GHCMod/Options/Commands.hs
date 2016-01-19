@@ -51,7 +51,7 @@ data GhcModCommands =
   | CmdCheck [FilePath]
   | CmdExpand [FilePath]
   | CmdInfo FilePath Symbol
-  | CmdType FilePath Point
+  | CmdType Bool FilePath Point
   | CmdSplit FilePath Point
   | CmdSig FilePath Point
   | CmdAuto FilePath Point
@@ -215,12 +215,12 @@ interactiveCommandsSpec =
 strArg :: String -> Parser String
 strArg = argument str . metavar
 
-filesArgsSpec :: ([String] -> b) -> Parser b
-filesArgsSpec x = x <$> some (strArg "FILES..")
+filesArgsSpec :: Parser ([String] -> b) -> Parser b
+filesArgsSpec x = x <*> some (strArg "FILES..")
 
-locArgSpec :: (String -> (Int, Int) -> b) -> Parser b
+locArgSpec :: Parser (String -> (Int, Int) -> b) -> Parser b
 locArgSpec x = x
-  <$> strArg "FILE"
+  <*> strArg "FILE"
   <*> ( (,)
         <$> argument int (metavar "LINE")
         <*> argument int (metavar "COL")
@@ -261,17 +261,21 @@ browseArgSpec = CmdBrowse
             <=> help "Qualify symbols"
       )
   <*> some (strArg "MODULE")
-debugComponentArgSpec = filesArgsSpec CmdDebugComponent
-checkArgSpec = filesArgsSpec CmdCheck
-expandArgSpec = filesArgsSpec CmdExpand
+debugComponentArgSpec = filesArgsSpec (pure CmdDebugComponent)
+checkArgSpec = filesArgsSpec (pure CmdCheck)
+expandArgSpec = filesArgsSpec (pure CmdExpand)
 infoArgSpec = CmdInfo
     <$> strArg "FILE"
     <*> strArg "SYMBOL"
-typeArgSpec = locArgSpec CmdType
-autoArgSpec = locArgSpec CmdAuto
-splitArgSpec = locArgSpec CmdSplit
-sigArgSpec = locArgSpec CmdSig
-refineArgSpec = locArgSpec CmdRefine <*> strArg "SYMBOL"
+typeArgSpec = locArgSpec $ CmdType <$>
+        switch
+          $$  long "constraints"
+          <=> short 'c'
+          <=> help "Include constraints into type signature"
+autoArgSpec = locArgSpec (pure CmdAuto)
+splitArgSpec = locArgSpec (pure CmdSplit)
+sigArgSpec = locArgSpec (pure CmdSig)
+refineArgSpec = locArgSpec (pure CmdRefine) <*> strArg "SYMBOL"
 mapArgSpec = CmdMapFile <$> strArg "FILE"
 unmapArgSpec = CmdUnmapFile <$> strArg "FILE"
 legacyInteractiveArgSpec = const CmdLegacyInteractive <$>

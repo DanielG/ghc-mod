@@ -52,17 +52,18 @@ info file expr =
 
 -- | Obtaining type of a target expression. (GHCi's type:)
 types :: IOish m
-      => FilePath     -- ^ A target file.
+      => Bool         -- ^ Include constraints into type signature
+      -> FilePath     -- ^ A target file.
       -> Int          -- ^ Line number.
       -> Int          -- ^ Column number.
       -> GhcModT m String
-types file lineNo colNo =
+types withConstraints file lineNo colNo =
   ghandle handler $
     runGmlT' [Left file] deferErrors $
       withInteractiveContext $ do
         crdl         <- cradle
         modSum       <- fileModSummaryWithMapping (cradleCurrentDir crdl </> file)
-        srcSpanTypes <- getSrcSpanType modSum lineNo colNo
+        srcSpanTypes <- getSrcSpanType withConstraints modSum lineNo colNo
         dflag        <- G.getSessionDynFlags
         st           <- getStyle
         convert' $ map (toTup dflag st) $ sortBy (cmp `on` fst) srcSpanTypes
@@ -71,8 +72,8 @@ types file lineNo colNo =
      gmLog GmException "types" $ showDoc ex
      return []
 
-getSrcSpanType :: (GhcMonad m) => G.ModSummary -> Int -> Int -> m [(SrcSpan, G.Type)]
-getSrcSpanType modSum lineNo colNo =
+getSrcSpanType :: (GhcMonad m) => Bool -> G.ModSummary -> Int -> Int -> m [(SrcSpan, G.Type)]
+getSrcSpanType withConstraints modSum lineNo colNo =
   G.parseModule modSum
   >>= G.typecheckModule
-  >>= flip collectSpansTypes (lineNo, colNo)
+  >>= flip (collectSpansTypes withConstraints) (lineNo, colNo)
