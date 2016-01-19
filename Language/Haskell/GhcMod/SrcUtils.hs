@@ -70,11 +70,12 @@ collectSpansTypes tcs lc =
         build x | Just cti <- x `M.lookup` s
                 = let
                     (preds', ctt) = getPreds cti
-                    vt = G.varType x
-                  in (preds',) . (, vt) <$> G.getTyVar_maybe ctt
+                    vts = listifyStaged TypeChecker G.isTyVar $ G.varType x
+                    tvm = listifyStaged TypeChecker G.isTyVarTy ctt
+                  in Just (preds', zip vts tvm)
                 | otherwise = Nothing
         preds = concatMap fst ctys
-        subs  = G.mkTopTvSubst $ map snd ctys
+        subs  = G.mkTopTvSubst $ concatMap snd ctys
         ty    = G.substTy subs $ G.mkFunTys preds genTyp
       in [(spn, G.tidyTopType ty)]
     getPreds x | G.isForAllTy x = getPreds $ G.dropForAlls x
