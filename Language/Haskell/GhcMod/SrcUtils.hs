@@ -77,7 +77,7 @@ collectSpansTypes tcs lc =
         preds = concatMap fst ctys
         subs  = G.mkTopTvSubst $ concatMap snd ctys
         ty    = G.substTy subs $ G.mkFunTys preds genTyp
-      in [(spn, G.tidyTopType ty)]
+      in [(spn, ty)]
     getPreds x | G.isForAllTy x = getPreds $ G.dropForAlls x
                | Just (c, t) <- G.splitFunTy_maybe x
                , G.isPredTy c = first (c:) $ getPreds t
