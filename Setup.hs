@@ -8,7 +8,6 @@ import Distribution.Simple.InstallDirs as ID
 import Distribution.Simple.LocalBuildInfo
 import Distribution.PackageDescription
 
-import Safe
 import Control.Arrow
 import Control.Applicative
 import Control.Monad
@@ -141,6 +140,10 @@ parseVer str =
     case filter ((=="") . snd) $ readP_to_S parseVersion str of
       [(ver, _)] -> ver
       _ -> error $ "No parse (Ver) :(\n" ++ str ++ "\n"
+
+fromJustNote :: String -> Maybe a -> a
+fromJustNote _ (Just x) = x
+fromJustNote note Nothing = error $ "fromJustNote ("++note++"): "
 
 -- sanityCheckCabalVersions args cf desc lbi = do
 --   (cabalInstallVer, cabalVer) <- getCabalExecVer
