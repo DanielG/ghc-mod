@@ -45,7 +45,8 @@ type CstGenQT = forall m. GhcMonad m => CstGenQS -> (m [(SrcSpan, Type)], CstGen
 
 collectSpansTypes :: (GhcMonad m) => G.TypecheckedModule -> (Int, Int) -> m [(SrcSpan, Type)]
 collectSpansTypes tcs lc =
-  everythingWithContext M.empty (liftM2 (++))
+  everythingStagedWithContext TypeChecker M.empty (liftM2 (++))
+    (return [])
     ((return [],) `mkQ` hsBind `extQ` hsExpr `extQ` hsPat)
     (G.tm_typechecked_source tcs)
   where
