@@ -1,4 +1,4 @@
-{-# LANGUAGE TupleSections, FlexibleInstances, Rank2Types #-}
+{-# LANGUAGE TupleSections, FlexibleInstances, Rank2Types, ImpredicativeTypes #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
 module Language.Haskell.GhcMod.SrcUtils where
@@ -6,11 +6,14 @@ module Language.Haskell.GhcMod.SrcUtils where
 import Control.Applicative
 import CoreUtils (exprType)
 import Data.Generics
-import Data.Maybe (fromMaybe)
+import Data.Maybe
 import Data.Ord as O
 import GHC (LHsExpr, LPat, Id, DynFlags, SrcSpan, Type, Located, ParsedSource, RenamedSource, TypecheckedSource, GenLocated(L))
+import Var (Var)
 import qualified GHC as G
-import GHC.SYB.Utils (Stage(..), everythingStaged)
+import qualified Var as G
+import qualified Type as G
+import GHC.SYB.Utils
 import GhcMonad
 import qualified Language.Haskell.Exts.Annotated as HE
 import Language.Haskell.GhcMod.Doc
@@ -20,6 +23,9 @@ import OccName (OccName)
 import Outputable (PprStyle)
 import TcHsSyn (hsPatType)
 import Prelude
+import Control.Monad
+import Control.Arrow
+import qualified Data.Map as M
 
 ----------------------------------------------------------------
 
@@ -35,6 +41,48 @@ instance HasType (LPat Id) where
     getType _ (G.L spn pat) = return $ Just (spn, hsPatType pat)
 
 ----------------------------------------------------------------
+
+type CstGenQS = M.Map Var Type
+type CstGenQT = forall m. GhcMonad m => CstGenQS -> (m [(SrcSpan, Type)], CstGenQS)
+
+collectSpansTypes :: (GhcMonad m) => G.TypecheckedModule -> (Int, Int) -> m [(SrcSpan, Type)]
+collectSpansTypes tcs lc =
+  everythingWithContext M.empty (liftM2 (++))
+    ((return [],) `mkQ` hsBind `extQ` hsExpr `extQ` hsPat)
+    (G.tm_typechecked_source tcs)
+  where
+    insExp x = M.insert (G.abe_mono x) (G.varType $ G.abe_poly x)
+    hsBind :: G.LHsBind Id -> CstGenQT
+    hsBind (L _ G.AbsBinds{abs_exports = es'}) s
+      = (return [], foldr insExp s es')
+    hsBind x@(L _ b) s = constrainedType' (G.collectHsBindBinders b) s x
+    hsExpr :: G.LHsExpr Id -> CstGenQT
+    hsExpr x s = (maybeToList <$> getType' x, s)
+    hsPat :: G.LPat Id -> CstGenQT
+    hsPat x@(L _ _) s = constrainedType' (G.collectPatBinders x) s x
+    getType' x@(L spn _)
+      | G.isGoodSrcSpan spn && spn `G.spans` lc
+      = getType tcs x
+      | otherwise = return Nothing
+    constrainedType' pids s x =
+        (maybe [] (uncurry $ constrainedType pids s) <$> getType' x, s)
+    constrainedType pids s spn genTyp =
+      let
+        ctys  = mapMaybe build pids
+        build x | Just cti <- x `M.lookup` s
+                = let
+                    (preds', ctt) = getPreds cti
+                    vt = G.varType x
+                  in (preds',) . (, vt) <$> G.getTyVar_maybe ctt
+                | otherwise = Nothing
+        preds = concatMap fst ctys
+        subs  = G.mkTopTvSubst $ map snd ctys
+        ty    = G.substTy subs $ G.mkFunTys preds genTyp
+      in [(spn, G.tidyTopType ty)]
+    getPreds x | G.isForAllTy x = getPreds $ G.dropForAlls x
+               | Just (c, t) <- G.splitFunTy_maybe x
+               , G.isPredTy c = first (c:) $ getPreds t
+               | otherwise = ([], x)
 
 listifySpans :: Typeable a => TypecheckedSource -> (Int, Int) -> [Located a]
 listifySpans tcs lc = listifyStaged TypeChecker p tcs

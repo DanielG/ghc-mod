@@ -5,13 +5,11 @@ module Language.Haskell.GhcMod.Info (
 
 import Data.Function (on)
 import Data.List (sortBy)
-import Data.Maybe (catMaybes, mapMaybe)
 import System.FilePath
 import Exception (ghandle, SomeException(..))
-import GHC (GhcMonad, LHsBind, LHsExpr, LPat, Id, TypecheckedModule(..), SrcSpan)
+import GHC (GhcMonad, SrcSpan)
 import Prelude
 import qualified GHC as G
-import qualified Var as G (varType)
 import qualified Language.Haskell.GhcMod.Gap as Gap
 
 import Language.Haskell.GhcMod.Convert
@@ -24,9 +22,6 @@ import Language.Haskell.GhcMod.SrcUtils
 import Language.Haskell.GhcMod.Types
 import Language.Haskell.GhcMod.Utils (mkRevRedirMapFunc)
 import Language.Haskell.GhcMod.FileMapping (fileModSummaryWithMapping)
-import Control.Applicative
-import Type
-import Control.Arrow
 
 ----------------------------------------------------------------
 
@@ -76,46 +71,8 @@ types file lineNo colNo =
      gmLog GmException "types" $ showDoc ex
      return []
 
-getSrcSpanType :: GhcMonad m => G.ModSummary -> Int -> Int -> m [(SrcSpan, Type)]
-getSrcSpanType modSum lineNo colNo = do
-  p <- G.parseModule modSum
-  tcm@TypecheckedModule{tm_typechecked_source = tcs} <- G.typecheckModule p
-  let bs = listifySpans tcs (lineNo, colNo) :: [LHsBind Id]
-      es = listifySpans tcs (lineNo, colNo) :: [LHsExpr Id]
-      ps = listifySpans tcs (lineNo, colNo) :: [LPat Id]
-      as = concatMap abtoex $ listifyAbsBinds tcs
-      abtoex (G.L _spn G.AbsBinds{abs_exports = es'})
-        = liftA2 (,) G.abe_mono (G.varType . G.abe_poly) `map` es'
-      abtoex _ = []
-      getType' b = getType tcm b >>= tryGetConstrainedType b
-      tryGetConstrainedType _ Nothing = return Nothing
-      tryGetConstrainedType b (Just gt) =
-        do
-          ids <- getId tcm b
-          return $ ct ids <|> Just gt
-        where
-          ct [pid] = (,) (fst gt) <$> lookup pid as
-          ct []    = Nothing
-          ct pids  =
-            let
-              ctys  = mapMaybe build pids
-              build x | Just cti <- x `lookup` as
-                      = let
-                          (preds', ctt) = getPreds cti
-                          vt = G.varType x
-                        in Just (preds', flip (,) vt <$> getTyVar_maybe ctt)
-                      | otherwise = Nothing
-              sty   = snd gt
-              preds = concatMap fst ctys
-              subs  = mkTopTvSubst $ mapMaybe snd ctys
-              ty    = substTy subs $ mkFunTys preds sty
-            in Just (fst gt, tidyTopType ty)
-          getPreds x | isForAllTy x = getPreds $ dropForAlls x
-                     | Just (c, t) <- splitFunTy_maybe x
-                     , isPredTy c = first (c:) $ getPreds t
-                     | otherwise = ([], x)
-
-  ets <- mapM getType' es
-  bts <- mapM getType' bs
-  pts <- mapM getType' ps
-  return $ catMaybes $ concat [ets, bts, pts]
+getSrcSpanType :: (GhcMonad m) => G.ModSummary -> Int -> Int -> m [(SrcSpan, G.Type)]
+getSrcSpanType modSum lineNo colNo =
+  G.parseModule modSum
+  >>= G.typecheckModule
+  >>= flip collectSpansTypes (lineNo, colNo)
