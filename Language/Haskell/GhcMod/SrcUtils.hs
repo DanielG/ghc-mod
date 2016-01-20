@@ -24,6 +24,7 @@ import Outputable (PprStyle)
 import TcHsSyn (hsPatType)
 import Prelude
 import Control.Monad
+import Data.List (nub)
 import Control.Arrow
 import qualified Data.Map as M
 
@@ -72,7 +73,7 @@ collectSpansTypes withConstraints tcs lc =
         | otherwise = (maybeToList <$> getType' x, s)
     constrainedType pids s spn genTyp =
       let
-        ctys  = mapMaybe build pids
+        ctys  = mapMaybe build (nub pids)
         build x | Just cti <- x `M.lookup` s
                 = let
                     (preds', ctt) = getPreds cti
