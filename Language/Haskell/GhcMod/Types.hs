@@ -71,7 +71,7 @@ data OutputStyle = LispStyle  -- ^ S expression style.
 newtype LineSeparator = LineSeparator String deriving (Show)
 
 data FileMapping =  FileMapping {fmPath :: FilePath, fmTemp :: Bool}
-                  deriving Show
+                  deriving (Eq, Show)
 
 type FileMappingMap = Map FilePath FileMapping
 
