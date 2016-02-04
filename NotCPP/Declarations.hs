@@ -104,9 +104,6 @@ boundNames decl =
 
       TySynD n _ _ -> [(TcClsName, n)]
       ClassD _ n _ _ _ -> [(TcClsName, n)]
-#if __GLASGOW_HASKELL__ < 800
-      FamilyD _ n _ _ -> [(TcClsName, n)]
-#endif
 
 #if __GLASGOW_HASKELL__ >= 800
       DataD _ n _ _ ctors _ ->
