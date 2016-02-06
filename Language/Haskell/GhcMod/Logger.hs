@@ -137,13 +137,12 @@ ppErrMsg err = do
     dflags <- asks gpeDynFlags
     let unqual = errMsgContext err
         st = Gap.mkErrStyle' dflags unqual
-#if __GLASGOW_HASKELL__ < 800
+#if __GLASGOW_HASKELL__ >= 800
+    return $ showPage dflags st msg
+#else
     let ext = showPage dflags st (errMsgExtraInfo err)
-#endif
     m <- ppMsg st spn SevError msg
-    return $ m
-#if __GLASGOW_HASKELL__ < 800
-        ++ (if null ext then "" else "\n" ++ ext)
+    return $ m ++ (if null ext then "" else "\n" ++ ext)
 #endif
    where
      spn = Gap.errorMsgSpan err
