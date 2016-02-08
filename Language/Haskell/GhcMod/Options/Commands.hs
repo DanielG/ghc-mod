@@ -16,15 +16,15 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# OPTIONS_GHC -fno-warn-unused-do-bind #-}
 
-module GHCMod.Options.Commands where
+module Language.Haskell.GhcMod.Options.Commands where
 
 import Options.Applicative
 import Options.Applicative.Types
 import Options.Applicative.Builder.Internal
 import Language.Haskell.GhcMod.Types
 import Language.Haskell.GhcMod.Read
-import GHCMod.Options.DocUtils
-import GHCMod.Options.Help
+import Language.Haskell.GhcMod.Options.DocUtils
+import Language.Haskell.GhcMod.Options.Help
 
 type Symbol = String
 type Expr = String

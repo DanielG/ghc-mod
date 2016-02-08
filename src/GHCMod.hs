@@ -19,7 +19,7 @@ import System.Directory (setCurrentDirectory, getAppUserDataDirectory,
 import System.IO
 import System.Exit
 import Text.PrettyPrint hiding ((<>))
-import GHCMod.Options
+import Language.Haskell.GhcMod.Options.Options
 import Prelude
 
 ghcModStyle :: Style

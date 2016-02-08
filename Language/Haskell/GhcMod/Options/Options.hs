@@ -16,7 +16,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# OPTIONS_GHC -fno-warn-unused-do-bind #-}
 
-module GHCMod.Options (
+module Language.Haskell.GhcMod.Options.Options (
   parseArgs,
   parseArgsInteractive,
   GhcModCommands(..)
@@ -29,11 +29,11 @@ import Control.Arrow
 import Data.Char (toUpper, toLower)
 import Data.List (intercalate)
 import Language.Haskell.GhcMod.Read
-import GHCMod.Options.Commands
-import GHCMod.Version
-import GHCMod.Options.DocUtils
-import GHCMod.Options.Help
-import GHCMod.Options.ShellParse
+import Language.Haskell.GhcMod.Options.Commands
+import Language.Haskell.GhcMod.Options.Version
+import Language.Haskell.GhcMod.Options.DocUtils
+import Language.Haskell.GhcMod.Options.Help
+import Language.Haskell.GhcMod.Options.ShellParse
 
 parseArgs :: IO (Options, GhcModCommands)
 parseArgs =

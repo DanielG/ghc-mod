@@ -152,6 +152,13 @@ Library
                         Language.Haskell.GhcMod.Types
                         Language.Haskell.GhcMod.Utils
                         Language.Haskell.GhcMod.World
+
+                        Language.Haskell.GhcMod.Options.Options
+                        Language.Haskell.GhcMod.Options.Commands
+                        Language.Haskell.GhcMod.Options.Version
+                        Language.Haskell.GhcMod.Options.DocUtils
+                        Language.Haskell.GhcMod.Options.ShellParse
+                        Language.Haskell.GhcMod.Options.Help
   Other-Modules:        Paths_ghc_mod
                         Utils
                         Data.Binary.Generic
@@ -187,6 +194,7 @@ Library
                       , extra             == 1.4.*
                       , pipes             == 4.1.*
                       , safe              < 0.4 && >= 0.3.9
+                      , optparse-applicative >=0.11.0 && <0.13.0
   if impl(ghc < 7.8)
     Build-Depends:      convertible
   if impl(ghc < 7.5)
@@ -198,12 +206,6 @@ Executable ghc-mod
   Default-Language:     Haskell2010
   Main-Is:              GHCMod.hs
   Other-Modules:        Paths_ghc_mod
-                      , GHCMod.Options
-                      , GHCMod.Options.Commands
-                      , GHCMod.Version
-                      , GHCMod.Options.DocUtils
-                      , GHCMod.Options.ShellParse
-                      , GHCMod.Options.Help
   GHC-Options:          -Wall -fno-warn-deprecations -threaded
   Default-Extensions:   ConstraintKinds, FlexibleContexts
   HS-Source-Dirs:       src
@@ -217,7 +219,6 @@ Executable ghc-mod
                       , ghc       < 7.11
                       , monad-control ==1.0.*
                       , fclabels  ==2.0.*
-                      , optparse-applicative >=0.11.0 && <0.13.0
                       , ghc-mod
 
 Executable ghc-modi
