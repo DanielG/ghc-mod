@@ -19,7 +19,8 @@
 module Language.Haskell.GhcMod.Options.Options (
   parseArgs,
   parseArgsInteractive,
-  GhcModCommands(..)
+  GhcModCommands(..),
+  globalArgSpec
 ) where
 
 import Options.Applicative
