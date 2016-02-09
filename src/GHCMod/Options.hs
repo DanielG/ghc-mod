@@ -19,20 +19,15 @@
 module GHCMod.Options (
   parseArgs,
   parseArgsInteractive,
-  GhcModCommands(..),
+  GhcModCommands(..)
 ) where
 
 import Options.Applicative
 import Options.Applicative.Types
 import Language.Haskell.GhcMod.Types
--- import Control.Arrow
--- import Data.Char (toUpper, toLower)
--- import Data.List (intercalate)
--- import Language.Haskell.GhcMod.Read
 import GHCMod.Options.Commands
 import GHCMod.Version
 import Language.Haskell.GhcMod.Options.DocUtils
--- import Language.Haskell.GhcMod.Options.Help
 import Language.Haskell.GhcMod.Options.Options
 import GHCMod.Options.ShellParse
 
