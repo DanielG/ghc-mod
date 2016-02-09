@@ -174,6 +174,11 @@ globalArgSpec = Options
           <=> metavar "OPT"
           <=> help "Option to be passed to GHC"
       <*> many fileMappingSpec
+      <*> strOption
+          $$  long "encoding"
+          <=> value "UTF-8"
+          <=> showDefault
+          <=> help "I/O encoding"
   where
     fileMappingSpec =
       getFileMapping . splitOn '=' <$> strOption
