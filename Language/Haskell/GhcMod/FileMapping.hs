@@ -46,8 +46,10 @@ loadMappedFileSource :: IOish m
                      -> GhcModT m ()
 loadMappedFileSource from src = do
   tmpdir <- cradleTempDir `fmap` cradle
+  enc <- liftIO . mkTextEncoding . optEncoding =<< options
   to <- liftIO $ do
     (fn, h) <- openTempFile tmpdir (takeFileName from)
+    hSetEncoding h enc
     hPutStr h src
     hClose h
     return fn
