@@ -17,9 +17,6 @@
 {-# OPTIONS_GHC -fno-warn-unused-do-bind #-}
 
 module Language.Haskell.GhcMod.Options.Options (
-  parseArgs,
-  parseArgsInteractive,
-  GhcModCommands(..),
   globalArgSpec
 ) where
 
@@ -30,50 +27,8 @@ import Control.Arrow
 import Data.Char (toUpper, toLower)
 import Data.List (intercalate)
 import Language.Haskell.GhcMod.Read
-import Language.Haskell.GhcMod.Options.Commands
-import Language.Haskell.GhcMod.Options.Version
 import Language.Haskell.GhcMod.Options.DocUtils
 import Language.Haskell.GhcMod.Options.Help
-import Language.Haskell.GhcMod.Options.ShellParse
-
-parseArgs :: IO (Options, GhcModCommands)
-parseArgs =
-  execParser opts
-  where
-    opts = info (argAndCmdSpec <**> helpVersion)
-           $$  fullDesc
-           <=> header "ghc-mod: Happy Haskell Programming"
-
-parseArgsInteractive :: String -> Either String GhcModCommands
-parseArgsInteractive args =
-  handle $ execParserPure (prefs idm) opts $ parseCmdLine args
-  where
-    opts = info interactiveCommandsSpec $$ fullDesc
-    handle (Success a) = Right a
-    handle (Failure failure) =
-          Left $ fst $ renderFailure failure ""
-    handle _ = Left "Completion invoked"
-
-helpVersion :: Parser (a -> a)
-helpVersion =
-      helper
-  <*> abortOption (InfoMsg ghcModVersion)
-      $$  long "version"
-      <=> help "Print the version of the program."
-  <*> argument r
-      $$  value id
-      <=> metavar ""
-  where
-    r :: ReadM (a -> a)
-    r = do
-      v <- readerAsk
-      case v of
-        "help" -> readerAbort ShowHelpText
-        "version" -> readerAbort $ InfoMsg ghcModVersion
-        _ -> return id
-
-argAndCmdSpec :: Parser (Options, GhcModCommands)
-argAndCmdSpec = (,) <$> globalArgSpec <*> commandsSpec
 
 splitOn :: Eq a => a -> [a] -> ([a], [a])
 splitOn c = second (drop 1) . break (==c)

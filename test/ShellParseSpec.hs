@@ -1,7 +1,7 @@
 module ShellParseSpec where
 
 
-import Language.Haskell.GhcMod.Options.ShellParse
+import GHCMod.Options.ShellParse
 
 import Test.Hspec
 

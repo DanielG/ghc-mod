@@ -154,10 +154,7 @@ Library
                         Language.Haskell.GhcMod.World
 
                         Language.Haskell.GhcMod.Options.Options
-                        Language.Haskell.GhcMod.Options.Commands
-                        Language.Haskell.GhcMod.Options.Version
                         Language.Haskell.GhcMod.Options.DocUtils
-                        Language.Haskell.GhcMod.Options.ShellParse
                         Language.Haskell.GhcMod.Options.Help
   Other-Modules:        Paths_ghc_mod
                         Utils
@@ -206,6 +203,9 @@ Executable ghc-mod
   Default-Language:     Haskell2010
   Main-Is:              GHCMod.hs
   Other-Modules:        Paths_ghc_mod
+                      , GHCMod.Options.Commands
+                      , GHCMod.Options.ShellParse
+                      , GHCMod.Version
   GHC-Options:          -Wall -fno-warn-deprecations -threaded
   Default-Extensions:   ConstraintKinds, FlexibleContexts
   HS-Source-Dirs:       src
@@ -219,6 +219,7 @@ Executable ghc-mod
                       , ghc       < 7.11
                       , monad-control ==1.0.*
                       , fclabels  ==2.0.*
+                      , optparse-applicative >=0.11.0 && <0.13.0
                       , ghc-mod
 
 Executable ghc-modi

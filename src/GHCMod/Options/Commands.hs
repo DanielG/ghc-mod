@@ -16,7 +16,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# OPTIONS_GHC -fno-warn-unused-do-bind #-}
 
-module Language.Haskell.GhcMod.Options.Commands where
+module GHCMod.Options.Commands where
 
 import Options.Applicative
 import Options.Applicative.Types
