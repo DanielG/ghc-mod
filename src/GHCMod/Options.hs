@@ -176,7 +176,6 @@ globalArgSpec = Options
       <*> many fileMappingSpec
       <*> strOption
           $$  long "encoding"
-          <=> short 'e'
           <=> value "UTF-8"
           <=> showDefault
           <=> help "I/O encoding"
