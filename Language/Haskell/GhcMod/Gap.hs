@@ -156,7 +156,10 @@ setLogAction df f =
 #endif
 
 showDocWith :: DynFlags -> Pretty.Mode -> Pretty.Doc -> String
-#if __GLASGOW_HASKELL__ >= 708
+#if __GLASGOW_HASKELL__ >= 800
+showDocWith dflags mode = Pretty.renderStyle mstyle where
+    mstyle = Pretty.style { Pretty.mode = mode, Pretty.lineLength = pprCols dflags }
+#elif __GLASGOW_HASKELL__ >= 708
 -- Pretty.showDocWith disappeard.
 -- https://github.com/ghc/ghc/commit/08a3536e4246e323fbcd8040e0b80001950fe9bc
 showDocWith dflags mode = Pretty.showDoc mode (pprCols dflags)
@@ -201,7 +204,11 @@ toStringBuffer = liftIO . stringToStringBuffer . unlines
 fOptions :: [String]
 #if __GLASGOW_HASKELL__ >= 710
 fOptions = [option | (FlagSpec option _ _ _) <- fFlags]
+#if __GLASGOW_HASKELL__ >= 800
+        ++ [option | (FlagSpec option _ _ _) <- wWarningFlags]
+#else
         ++ [option | (FlagSpec option _ _ _) <- fWarningFlags]
+#endif
         ++ [option | (FlagSpec option _ _ _) <- fLangFlags]
 #elif __GLASGOW_HASKELL__ >= 704
 fOptions = [option | (option,_,_) <- fFlags]
@@ -467,7 +474,12 @@ type GLMatchI = LMatch Id
 #endif
 
 getClass :: [LInstDecl Name] -> Maybe (Name, SrcSpan)
-#if __GLASGOW_HASKELL__ >= 710
+#if __GLASGOW_HASKELL__ >= 800
+-- Instance declarations of sort 'instance F (G a)'
+getClass [L loc (ClsInstD (ClsInstDecl {cid_poly_ty = HsIB _ (L _ (HsForAllTy _ (L _ (HsAppTy (L _ (HsTyVar (L _ className))) _))))}))] = Just (className, loc)
+-- Instance declarations of sort 'instance F G' (no variables)
+getClass [L loc (ClsInstD (ClsInstDecl {cid_poly_ty = HsIB _ (L _ (HsAppTy (L _ (HsTyVar (L _ className))) _))}))] = Just (className, loc)
+#elif __GLASGOW_HASKELL__ >= 710
 -- Instance declarations of sort 'instance F (G a)'
 getClass [L loc (ClsInstD (ClsInstDecl {cid_poly_ty = (L _ (HsForAllTy _ _ _ _ (L _ (HsAppTy (L _ (HsTyVar className)) _))))}))] = Just (className, loc)
 -- Instance declarations of sort 'instance F G' (no variables)

@@ -104,18 +104,33 @@ boundNames decl =
 
       TySynD n _ _ -> [(TcClsName, n)]
       ClassD _ n _ _ _ -> [(TcClsName, n)]
-      FamilyD _ n _ _ -> [(TcClsName, n)]
 
+#if __GLASGOW_HASKELL__ >= 800
+      DataD _ n _ _ ctors _ ->
+#else
       DataD _ n _ ctors _ ->
+#endif
           [(TcClsName, n)] ++ map ((,) TcClsName) (conNames `concatMap` ctors)
 
+#if __GLASGOW_HASKELL__ >= 800
+      NewtypeD _ n _ _ ctor _ ->
+#else
       NewtypeD _ n _ ctor _ ->
+#endif
           [(TcClsName, n)] ++ map ((,) TcClsName) (conNames ctor)
 
+#if __GLASGOW_HASKELL__ >= 800
+      DataInstD _ _n _ _ ctors _ ->
+#else
       DataInstD _ _n _ ctors _ ->
+#endif
           map ((,) TcClsName) (conNames `concatMap` ctors)
 
+#if __GLASGOW_HASKELL__ >= 800
+      NewtypeInstD _ _n _ _ ctor _ ->
+#else
       NewtypeInstD _ _n _ ctor _ ->
+#endif
           map ((,) TcClsName) (conNames ctor)
 
       InstanceD _ _ty _ ->
@@ -131,8 +146,17 @@ boundNames decl =
 #endif
 
 #if __GLASGOW_HASKELL__ >= 708
-      ClosedTypeFamilyD n _ _ _ -> [(TcClsName, n)]
       RoleAnnotD _n _ -> error "notcpp: RoleAnnotD not supported yet"
+#endif
+
+#if __GLASGOW_HASKELL__ >= 704 && __GLASGOW_HASKELL__ < 800
+      FamilyD _ n _ _ -> [(TcClsName, n)]
+#elif __GLASGOW_HASKELL__ >= 708 && __GLASGOW_HASKELL__ < 800
+      ClosedTypeFamilyD n _ _ _ -> [(TcClsName, n)]
+#else
+      OpenTypeFamilyD (TypeFamilyHead n _ _ _) -> [(TcClsName, n)]
+      ClosedTypeFamilyD (TypeFamilyHead n _ _ _) _ -> [(TcClsName, n)]
+
 #endif
 
 conNames :: Con -> [Name]

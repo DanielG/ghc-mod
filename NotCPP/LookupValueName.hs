@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP             #-}
 {-# LANGUAGE TemplateHaskell #-}
 -- | This module uses scope lookup techniques to either export
 -- 'lookupValueName' from @Language.Haskell.TH@, or define
@@ -25,8 +26,13 @@ bestValueGuess s = do
   case mi of
     Nothing -> no
     Just i -> case i of
+#if __GLASGOW_HASKELL__ >= 800
+      VarI n _ _ -> yes n
+      DataConI n _ _ -> yes n
+#else
       VarI n _ _ _ -> yes n
       DataConI n _ _ _ -> yes n
+#endif
       _ -> err ["unexpected info:", show i]
  where
   no = return Nothing
@@ -34,5 +40,5 @@ bestValueGuess s = do
   err = fail . showString "NotCPP.bestValueGuess: " . unwords
 
 $(recover [d| lookupValueName = bestValueGuess |] $ do
-  VarI _ _ _ _ <- reify (mkName "lookupValueName")
+  VarI{} <- reify (mkName "lookupValueName")
   return [])
