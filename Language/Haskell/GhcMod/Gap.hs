@@ -155,13 +155,34 @@ setLogAction df f =
     df { log_action = f df }
 #endif
 
+
+#if __GLASGOW_HASKELL__ >= 800
+showPage :: DynFlags -> PprStyle -> SDoc -> String
+showPage dflag style = flip (renderWithStyle dflag) style
+
+showOneLine :: DynFlags -> PprStyle -> SDoc -> String
+showOneLine dflag style = showSDocOneLine . withStyle dflag style
+#else
+
+showPage :: DynFlags -> PprStyle -> SDoc -> String
+showPage dflag style = showDocWith dflag PageMode . withStyle dflag style
+
+showOneLine :: DynFlags -> PprStyle -> SDoc -> String
+showOneLine dflag style = showDocWith dflag OneLineMode . withStyle dflag style
+
 showDocWith :: DynFlags -> Pretty.Mode -> Pretty.Doc -> String
-#if __GLASGOW_HASKELL__ >= 708
+#  if __GLASGOW_HASKELL__ >= 708
+
+showDocWith dflag PageMode . withStyle dflag
+
+
 -- Pretty.showDocWith disappeard.
 -- https://github.com/ghc/ghc/commit/08a3536e4246e323fbcd8040e0b80001950fe9bc
 showDocWith dflags mode = Pretty.showDoc mode (pprCols dflags)
-#else
+#  else
 showDocWith _ = Pretty.showDocWith
+#  endif
+
 #endif
 
 ----------------------------------------------------------------

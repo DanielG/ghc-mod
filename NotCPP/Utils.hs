@@ -1,4 +1,4 @@
-{-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE CPP, TemplateHaskell #-}
 module NotCPP.Utils where
 
 import Control.Applicative ((<$>))
@@ -24,6 +24,19 @@ recoverMaybe q = recover (return Nothing) (Just <$> q)
 -- | Returns @'Just' ('VarE' n)@ if the info relates to a value called
 -- @n@, or 'Nothing' if it relates to a different sort of thing.
 infoToExp :: Info -> Maybe Exp
-infoToExp (VarI n _ _ _) = Just (VarE n)
-infoToExp (DataConI n _ _ _) = Just (ConE n)
+
+#if __GLASGOW_HASKELL__ >= 800
+infoToExp (VarI n _ _) =
+#else
+infoToExp (VarI n _ _ _) =
+#endif
+    Just (VarE n)
+
+#if __GLASGOW_HASKELL__ >= 800
+infoToExp (DataConI n _ _) =
+#else
+infoToExp (DataConI n _ _ _) =
+#endif
+    Just (ConE n)
+
 infoToExp _ = Nothing
