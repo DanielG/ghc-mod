@@ -165,7 +165,7 @@ Library
                       , deepseq           < 1.5
                       , directory         < 1.3
                       , filepath          < 1.5
-                      , ghc               < 8.2
+                      , ghc               < 8.2 && >= 7.6
                       , ghc-paths         < 0.2
                       , ghc-syb-utils     < 0.3
                       , hlint             < 1.10 && >= 1.9.26
@@ -192,10 +192,6 @@ Library
                       , syb
   if impl(ghc < 7.8)
     Build-Depends:      convertible
-  if impl(ghc < 7.5)
-    -- Only used to constrain random to a version that still works with GHC 7.4
-    Build-Depends:      random <= 1.0.1.1,
-                        ghc-prim
 
 Executable ghc-mod
   Default-Language:     Haskell2010
@@ -250,8 +246,6 @@ Test-Suite doctest
   Ghc-Options:          -Wall
   Default-Extensions:   ConstraintKinds, FlexibleContexts
   Main-Is:              doctests.hs
-  if impl(ghc == 7.4.*)
-    Buildable:          False
   Build-Depends:        base
                       , doctest >= 0.9.3
 
@@ -284,11 +278,7 @@ Test-Suite spec
                         ShellParseSpec
 
   Build-Depends:        hspec >= 2.0.0
-  if impl(ghc == 7.4.*)
-    Build-Depends:     executable-path
   X-Build-Depends-Like: CLibName
-
-
 
 Source-Repository head
   Type:                 git
