@@ -117,6 +117,7 @@ Library
                         Language.Haskell.GhcMod.DebugLogger
                         Language.Haskell.GhcMod.Doc
                         Language.Haskell.GhcMod.DynFlags
+                        Language.Haskell.GhcMod.DynFlagsTH
                         Language.Haskell.GhcMod.Error
                         Language.Haskell.GhcMod.FileMapping
                         Language.Haskell.GhcMod.FillSig
