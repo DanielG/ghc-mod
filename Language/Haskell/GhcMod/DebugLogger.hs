@@ -62,27 +62,27 @@ import Language.Haskell.GhcMod.Gap
 import Prelude
 
 debugLogAction :: (String -> IO ()) -> GmLogAction
-debugLogAction putErr dflags severity srcSpan style msg
+debugLogAction putErr dflags severity srcSpan style' msg
     = case severity of
-      SevOutput      -> printSDoc putErr msg style
+      SevOutput      -> printSDoc putErr msg style'
 
 #if __GLASGOW_HASKELL__ >= 706
-      SevDump        -> printSDoc putErr (msg Outputable.$$ blankLine) style
+      SevDump        -> printSDoc putErr (msg Outputable.$$ blankLine) style'
 #endif
 
 #if __GLASGOW_HASKELL__ >= 708
       SevInteractive -> let
           putStrSDoc = debugLogActionHPutStrDoc dflags putErr
        in
-          putStrSDoc msg style
+          putStrSDoc msg style'
 #endif
-      SevInfo        -> printErrs putErr msg style
-      SevFatal       -> printErrs putErr msg style
+      SevInfo        -> printErrs putErr msg style'
+      SevFatal       -> printErrs putErr msg style'
       _              -> do putErr "\n"
 #if __GLASGOW_HASKELL__ >= 706
-                           printErrs putErr (mkLocMessage severity srcSpan msg) style
+                           printErrs putErr (mkLocMessage severity srcSpan msg) style'
 #else
-                           printErrs putErr (mkLocMessage srcSpan msg) style
+                           printErrs putErr (mkLocMessage srcSpan msg) style'
 #endif
                            -- careful (#2302): printErrs prints in UTF-8,
                            -- whereas converting to string first and using

@@ -139,16 +139,14 @@ ppErrMsg err = do
         st = Gap.mkErrStyle' dflags unqual
 #if __GLASGOW_HASKELL__ >= 800
     return $ showPage dflags st msg
+ where
+   msg = pprLocErrMsg err
 #else
     let ext = showPage dflags st (errMsgExtraInfo err)
     m <- ppMsg st spn SevError msg
     return $ m ++ (if null ext then "" else "\n" ++ ext)
-#endif
    where
      spn = Gap.errorMsgSpan err
-#if __GLASGOW_HASKELL__ >= 800
-     msg = pprLocErrMsg err
-#else
      msg = errMsgShortDoc err
 #endif
 
