@@ -192,6 +192,8 @@ Library
                       , syb
   if impl(ghc < 7.8)
     Build-Depends:      convertible
+  if impl(ghc >= 8.0)
+    Build-Depends:      ghc-boot
 
 Executable ghc-mod
   Default-Language:     Haskell2010

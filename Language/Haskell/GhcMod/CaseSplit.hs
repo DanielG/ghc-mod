@@ -107,7 +107,11 @@ isPatternVar (L _ (G.VarPat _)) = True
 isPatternVar _                  = False
 
 getPatternVarName :: LPat Id -> G.Name
+#if __GLASGOW_HASKELL__ >= 800
+getPatternVarName (L _ (G.VarPat (L _ vName))) = G.getName vName
+#else
 getPatternVarName (L _ (G.VarPat vName)) = G.getName vName
+#endif
 getPatternVarName _                      = error "This should never happened"
 
 -- TODO: Information for a type family case split
@@ -167,7 +171,11 @@ getDataCon dflag style vName dcon | [] <- Ty.dataConFieldLabels dcon =
 -- 3. Records
 getDataCon dflag style vName dcon =
   let dName = showName dflag style $ Ty.dataConName dcon
+#if __GLASGOW_HASKELL__ >= 800
+      flds  = map Ty.flSelector $ Ty.dataConFieldLabels dcon
+#else
       flds  = Ty.dataConFieldLabels dcon
+#endif
   in dName ++ " { " ++ showFieldNames dflag style vName flds ++ " }"
 
 -- Create a new variable by adjoining a number
