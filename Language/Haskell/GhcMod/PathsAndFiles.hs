@@ -80,6 +80,15 @@ findStackConfigFile dir = do
       Just (d, Just a)  -> return $ Just $ d </> a
       Just (_, Nothing) -> error "findStackConfigFile"
 
+findExplicitOptionsFile :: FilePath -> IO (Maybe FilePath)
+findExplicitOptionsFile dir = do
+    dss <- findFileInParentsP (==explicitOptionsFile) dir
+    return $ case find (not . null . snd) $ dss of
+               Just (expDir, _:_) -> Just (expDir </> explicitOptionsFile)
+               _ -> Nothing
+  where
+    explicitOptionsFile = "ghc-mod.options"
+
 -- | Get path to sandbox config file
 getSandboxDb :: Cradle -> IO (Maybe GhcPkgDb)
 getSandboxDb crdl = do

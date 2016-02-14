@@ -45,13 +45,14 @@ findCradle' dir = run $
     msum [ stackCradle dir
          , cabalCradle dir
          , sandboxCradle dir
+         , explicitCradle dir
          , plainCradle dir
          ]
  where run a = fillTempDir =<< (fromJustNote "findCradle'" <$> runMaybeT a)
 
 findSpecCradle :: (GmLog m, IOish m, GmOut m) => FilePath -> m Cradle
 findSpecCradle dir = do
-    let cfs = [stackCradleSpec, cabalCradle, sandboxCradle]
+    let cfs = [stackCradleSpec, cabalCradle, sandboxCradle, explicitCradle]
     cs <- catMaybes <$> mapM (runMaybeT . ($ dir)) cfs
     gcs <- filterM isNotGmCradle cs
     fillTempDir =<< case gcs of
@@ -147,4 +148,16 @@ plainCradle wdir = do
       , cradleTempDir    = error "tmpDir"
       , cradleCabalFile  = Nothing
       , cradleDistDir    = "dist"
+      }
+
+explicitCradle :: IOish m => FilePath -> MaybeT m Cradle
+explicitCradle wdir = do
+    optionsFile <- MaybeT $ liftIO $ findExplicitOptionsFile wdir
+    return $ Cradle {
+        cradleProject    = ExplicitProject
+      , cradleCurrentDir = wdir
+      , cradleRootDir    = takeDirectory optionsFile
+      , cradleTempDir    = error "tmpDir"
+      , cradleCabalFile  = Just optionsFile
+      , cradleDistDir    = ""
       }
