@@ -14,16 +14,16 @@
 -- You should have received a copy of the GNU Affero General Public License
 -- along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-{-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE CPP, TemplateHaskell #-}
 module Language.Haskell.GhcMod.DynFlagsTH where
 
 import Language.Haskell.TH.Syntax
+import Control.Applicative
 import Data.Maybe
 import Data.Generics.Aliases
 import Data.Generics.Schemes
-import Packages
-import Hooks
 import DynFlags
+import Prelude
 
 deriveEqDynFlags :: Q [Dec] -> Q [Dec]
 deriveEqDynFlags qds = do
@@ -42,24 +42,31 @@ deriveEqDynFlags qds = do
  where
    eq :: Name -> Name -> (Name, Strict, Type) -> Maybe (Q Exp)
    eq a b (fn@(Name (OccName fon) _), _, ft)
-       | not isUneqable = Just expr
+       | not (isUneqable || isIgnored) = Just expr
        | otherwise = Nothing
     where
        isUneqable = everything (||) (mkQ False hasUnEqable) ft
 
        hasUnEqable ArrowT = True
-       hasUnEqable (ConT n@(Name (OccName on) _))
-           | n == ''LogAction = True
-           | any (==n) ignoredTypeNames = True
+       hasUnEqable (ConT (Name (OccName on) _))
+           | any (==on) ignoredTypeNames = True
            | any (==on) ignoredTypeOccNames = True
        hasUnEqable _ = False
 
+       isIgnored = fon `elem` ignoredNames
+
+       ignoredNames = [ "pkgDatabase" -- 7.8
+#if __GLASGOW_HASKELL__ <= 706
+                      , "ways" -- 'Ways' is not exported :/
+#endif
+                      ]
        ignoredTypeNames =
-           [ ''PackageState
-           , ''Hooks
-           , ''FlushOut
-           , ''FlushErr
-           , ''Settings -- I think these can't cange at runtime
+           [ "LogAction"
+           , "PackageState"
+           , "Hooks"
+           , "FlushOut"
+           , "FlushErr"
+           , "Settings" -- I think these can't cange at runtime
            ]
        ignoredTypeOccNames = [ "OnOff" ]
 
@@ -67,13 +74,6 @@ deriveEqDynFlags qds = do
        fb = AppE (VarE fn) (VarE b)
        expr =
          case fon of
-           "language" -> do
-               eqfn <- [| let eqfn (Just Haskell98) (Just Haskell98) = True
-                              eqfn (Just Haskell2010) (Just Haskell2010) = True
-                              eqfn _ _ = False
-                          in eqfn
-                       |]
-               return $ AppE (AppE eqfn fa) fb
            "rtsOptsEnabled" -> do
                eqfn <- [| let eqfn RtsOptsNone RtsOptsNone = True
                               eqfn RtsOptsSafeOnly RtsOptsSafeOnly = True
@@ -83,6 +83,7 @@ deriveEqDynFlags qds = do
                        |]
                return $ AppE (AppE eqfn fa) fb
 
+#if __GLASGOW_HASKELL__ >= 710
            "sigOf" -> do
                eqfn <- [| let eqfn NotSigOf NotSigOf = True
                               eqfn (SigOf a') (SigOf b') = a' == b'
@@ -91,7 +92,30 @@ deriveEqDynFlags qds = do
                           in eqfn
                        |]
                return $ AppE (AppE eqfn fa) fb
+#endif
 
+#if __GLASGOW_HASKELL <= 706
+           "profAuto" -> do
+               eqfn <- [| let eqfn NoProfAuto NoProfAuto = True
+                              eqfn ProfAutoAll ProfAutoAll = True
+                              eqfn ProfAutoTop ProfAutoTop = True
+                              eqfn ProfAutoExports ProfAutoExports = True
+                              eqfn ProfAutoCalls ProfAutoCalls = True
+                              eqfn _ _ = False
+                          in eqfn
+                       |]
+               return $ AppE (AppE eqfn fa) fb
+#endif
+
+#if __GLASGOW_HASKELL__ >= 706
+           "language" -> do
+               eqfn <- [| let eqfn (Just Haskell98) (Just Haskell98) = True
+                              eqfn (Just Haskell2010) (Just Haskell2010) = True
+                              eqfn _ _ = False
+                          in eqfn
+                       |]
+               return $ AppE (AppE eqfn fa) fb
+#endif
 
            _ ->
                return $ InfixE (Just fa) (VarE '(==)) (Just fb)
