@@ -1,4 +1,4 @@
-{-# LANGUAGE CPP #-}
+{-# LANGUAGE CPP, TemplateHaskell #-}
 
 module Language.Haskell.GhcMod.DynFlags where
 
@@ -10,6 +10,7 @@ import GHC.Paths (libdir)
 import qualified Language.Haskell.GhcMod.Gap as Gap
 import Language.Haskell.GhcMod.Types
 import Language.Haskell.GhcMod.DebugLogger
+import Language.Haskell.GhcMod.DynFlagsTH
 import System.IO.Unsafe (unsafePerformIO)
 import Prelude
 
@@ -102,7 +103,14 @@ setNoMaxRelevantBindings df = df { maxRelevantBinds = Nothing }
 setNoMaxRelevantBindings = id
 #endif
 
-deferErrors :: DynFlags -> Ghc DynFlags
+deferErrors :: Monad m => DynFlags -> m DynFlags
 deferErrors df = return $
   Gap.setWarnTypedHoles $ Gap.setDeferTypedHoles $
   Gap.setDeferTypeErrors $ setNoWarningFlags df
+
+----------------------------------------------------------------
+
+deriveEqDynFlags [d|
+  eqDynFlags :: DynFlags -> DynFlags -> Bool
+  eqDynFlags = undefined
+ |]
