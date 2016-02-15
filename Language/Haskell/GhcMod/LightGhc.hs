@@ -42,3 +42,7 @@ runLightGhc :: HscEnv -> LightGhc a -> IO a
 runLightGhc env action = do
   renv <- newIORef env
   flip runReaderT renv $ unLightGhc action
+
+runLightGhc' :: IORef HscEnv -> LightGhc a -> IO a
+runLightGhc' renv action = do
+  flip runReaderT renv $ unLightGhc action

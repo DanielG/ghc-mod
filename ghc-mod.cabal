@@ -117,6 +117,7 @@ Library
                         Language.Haskell.GhcMod.DebugLogger
                         Language.Haskell.GhcMod.Doc
                         Language.Haskell.GhcMod.DynFlags
+                        Language.Haskell.GhcMod.DynFlagsTH
                         Language.Haskell.GhcMod.Error
                         Language.Haskell.GhcMod.FileMapping
                         Language.Haskell.GhcMod.FillSig
@@ -162,24 +163,24 @@ Library
                         System.Directory.ModTime
   Build-Depends:        base              < 5 && >= 4.0
                       , bytestring        < 0.11
-                      , binary            < 0.8 && >= 0.5.1.0
+                      , binary            < 0.9 && >= 0.5.1.0
                       , containers        < 0.6
                       , cabal-helper      < 0.7 && >= 0.6.3.0
                       , deepseq           < 1.5
                       , directory         < 1.3
                       , filepath          < 1.5
-                      , ghc               < 7.11
+                      , ghc               < 8.2 && >= 7.6
                       , ghc-paths         < 0.2
                       , ghc-syb-utils     < 0.3
                       , hlint             < 1.10 && >= 1.9.26
                       , monad-journal     < 0.8 && >= 0.4
                       , old-time          < 1.2
                       , pretty            < 1.2
-                      , process           < 1.3
+                      , process           < 1.5
                       , syb               < 0.7
                       , temporary         < 1.3
-                      , time              < 1.6
-                      , transformers      < 0.5
+                      , time              < 1.7
+                      , transformers      < 0.6
                       , transformers-base < 0.5
                       , mtl               < 2.3 && >= 2.0
                       , monad-control     < 1.1 && >= 1
@@ -192,12 +193,10 @@ Library
                       , pipes             == 4.1.*
                       , safe              < 0.4 && >= 0.3.9
                       , optparse-applicative >=0.11.0 && <0.13.0
+                      , template-haskell
+                      , syb
   if impl(ghc < 7.8)
     Build-Depends:      convertible
-  if impl(ghc < 7.5)
-    -- Only used to constrain random to a version that still works with GHC 7.4
-    Build-Depends:      random <= 1.0.1.1,
-                        ghc-prim
 
 Executable ghc-mod
   Default-Language:     Haskell2010
@@ -214,10 +213,10 @@ Executable ghc-mod
                       , directory < 1.3
                       , filepath  < 1.5
                       , pretty    < 1.2
-                      , process   < 1.3
+                      , process   < 1.5
                       , split     < 0.3
                       , mtl       < 2.3 && >= 2.0
-                      , ghc       < 7.11
+                      , ghc       < 8.1
                       , monad-control ==1.0.*
                       , fclabels  ==2.0.*
                       , optparse-applicative >=0.11.0 && <0.13.0
@@ -234,13 +233,13 @@ Executable ghc-modi
   Default-Extensions:   ConstraintKinds, FlexibleContexts
   HS-Source-Dirs:       src, .
   Build-Depends:        base      < 5 && >= 4.0
-                      , binary    < 0.8 && >= 0.5.1.0
+                      , binary    < 0.9 && >= 0.5.1.0
                       , deepseq   < 1.5
                       , directory < 1.3
                       , filepath  < 1.5
-                      , process   < 1.3
+                      , process   < 1.5
                       , old-time  < 1.2
-                      , time      < 1.6
+                      , time      < 1.7
                       , ghc-mod
 
 Test-Suite doctest
@@ -250,8 +249,6 @@ Test-Suite doctest
   Ghc-Options:          -Wall
   Default-Extensions:   ConstraintKinds, FlexibleContexts
   Main-Is:              doctests.hs
-  if impl(ghc == 7.4.*)
-    Buildable:          False
   Build-Depends:        base
                       , doctest >= 0.9.3
 
@@ -284,11 +281,7 @@ Test-Suite spec
                         ShellParseSpec
 
   Build-Depends:        hspec >= 2.0.0
-  if impl(ghc == 7.4.*)
-    Build-Depends:     executable-path
   X-Build-Depends-Like: CLibName
-
-
 
 Source-Repository head
   Type:                 git
