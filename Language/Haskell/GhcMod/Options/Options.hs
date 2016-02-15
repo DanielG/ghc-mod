@@ -17,10 +17,12 @@
 {-# OPTIONS_GHC -fno-warn-unused-do-bind #-}
 
 module Language.Haskell.GhcMod.Options.Options (
-  globalArgSpec
+    globalArgSpec
+  , parseCmdLineOptions
 ) where
 
 import Options.Applicative
+import Options.Applicative.Help.Chunk
 import Options.Applicative.Types
 import Language.Haskell.GhcMod.Types
 import Control.Arrow
@@ -29,6 +31,22 @@ import Data.List (intercalate)
 import Language.Haskell.GhcMod.Read
 import Language.Haskell.GhcMod.Options.DocUtils
 import Language.Haskell.GhcMod.Options.Help
+
+-- | Parse a set of arguments according to the ghc-mod CLI flag spec, producing
+-- @Options@ set accordingly.
+parseCmdLineOptions :: [String] -> Maybe Options
+parseCmdLineOptions args = execParserMaybe parserInfo args
+  where
+    parserInfo
+      = ParserInfo
+       { infoParser = globalArgSpec
+       , infoFullDesc = True
+       , infoProgDesc = Chunk Nothing
+       , infoHeader   = Chunk Nothing
+       , infoFooter   = Chunk Nothing
+       , infoFailureCode = -1
+       , infoIntersperse = True
+       }
 
 splitOn :: Eq a => a -> [a] -> ([a], [a])
 splitOn c = second (drop 1) . break (==c)
@@ -119,6 +137,9 @@ programsArgSpec = Programs
           <=> showDefault
           <=> help "stack executable to use"
 
+-- | An optparse-applicative @Parser@ sepcification for @Options@ so that
+-- applications making use of the ghc-mod API can have a consistent way of
+-- parsing global options.
 globalArgSpec :: Parser Options
 globalArgSpec = Options
       <$> outputOptsSpec
