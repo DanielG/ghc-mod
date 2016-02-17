@@ -1,6 +1,5 @@
 flags: {}
 packages:
 - '.'
-extra-deps:
-- cabal-helper-0.6.2.0
-resolver: lts-3.20
+extra-deps: []
+resolver: lts-5.3
