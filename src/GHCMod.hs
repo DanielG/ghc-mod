@@ -13,6 +13,7 @@ import Language.Haskell.GhcMod.Internal hiding (MonadIO,liftIO)
 import Language.Haskell.GhcMod.Types
 import Language.Haskell.GhcMod.Monad
 import Language.Haskell.GhcMod.Find (AsyncSymbolDb, newAsyncSymbolDb, getAsyncSymbolDb)
+import Language.Haskell.GhcMod.Encoding
 import System.FilePath ((</>))
 import System.Directory (setCurrentDirectory, getAppUserDataDirectory,
                         removeDirectoryRecursive)
@@ -36,10 +37,9 @@ handler = flip gcatches
 main :: IO ()
 main =
     parseArgs >>= \res@(globalOptions, _) -> do
-      enc <- mkTextEncoding $ optEncoding globalOptions
-      hSetEncoding stdout enc
-      hSetEncoding stderr enc
-      hSetEncoding stdin enc
+      applyEncoding globalOptions stdout
+      applyEncoding globalOptions stderr
+      applyEncoding globalOptions stdin
       catches (progMain res) [
               Handler $ \(e :: GhcModError) ->
                 runGmOutT globalOptions $ exitError $ renderStyle ghcModStyle (gmeDoc e)
