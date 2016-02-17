@@ -105,7 +105,7 @@ data Options = Options {
     -- | GHC command line options set on the @ghc-mod@ command line
   , optGhcUserOptions :: [GHCOption]
   , optFileMappings   :: [(FilePath, Maybe FilePath)]
-  , optEncoding       :: String
+  , optEncoding       :: Maybe String
   } deriving (Show)
 
 -- | A default 'Options'.
@@ -125,7 +125,7 @@ defaultOptions = Options {
     }
   , optGhcUserOptions = []
   , optFileMappings   = []
-  , optEncoding       = "UTF-8"
+  , optEncoding       = Nothing
   }
 
 ----------------------------------------------------------------

@@ -11,6 +11,7 @@ import Language.Haskell.GhcMod.Monad.Types
 import Language.Haskell.GhcMod.Gap
 import Language.Haskell.GhcMod.HomeModuleGraph
 import Language.Haskell.GhcMod.Utils
+import Language.Haskell.GhcMod.Encoding
 
 import System.IO
 import System.FilePath
@@ -46,10 +47,10 @@ loadMappedFileSource :: IOish m
                      -> GhcModT m ()
 loadMappedFileSource from src = do
   tmpdir <- cradleTempDir `fmap` cradle
-  enc <- liftIO . mkTextEncoding . optEncoding =<< options
+  opts <- options
   to <- liftIO $ do
     (fn, h) <- openTempFile tmpdir (takeFileName from)
-    hSetEncoding h enc
+    applyEncoding opts h
     hPutStr h src
     hClose h
     return fn
