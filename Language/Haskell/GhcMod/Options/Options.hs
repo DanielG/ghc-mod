@@ -35,18 +35,7 @@ import Language.Haskell.GhcMod.Options.Help
 -- | Parse a set of arguments according to the ghc-mod CLI flag spec, producing
 -- @Options@ set accordingly.
 parseCmdLineOptions :: [String] -> Maybe Options
-parseCmdLineOptions args = execParserMaybe parserInfo args
-  where
-    parserInfo
-      = ParserInfo
-       { infoParser = globalArgSpec
-       , infoFullDesc = True
-       , infoProgDesc = Chunk Nothing
-       , infoHeader   = Chunk Nothing
-       , infoFooter   = Chunk Nothing
-       , infoFailureCode = -1
-       , infoIntersperse = True
-       }
+parseCmdLineOptions = getParseResult . execParserPure (prefs mempty) (info globalArgSpec mempty)
 
 splitOn :: Eq a => a -> [a] -> ([a], [a])
 splitOn c = second (drop 1) . break (==c)
