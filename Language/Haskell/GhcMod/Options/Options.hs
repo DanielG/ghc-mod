@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 -- ghc-mod: Making Haskell development *more* fun
 -- Copyright (C) 2015  Nikolay Yakimov <root@livid.pp.ru>
 --
@@ -22,12 +23,14 @@ module Language.Haskell.GhcMod.Options.Options (
 ) where
 
 import Options.Applicative
-import Options.Applicative.Help.Chunk
 import Options.Applicative.Types
 import Language.Haskell.GhcMod.Types
 import Control.Arrow
 import Data.Char (toUpper, toLower)
 import Data.List (intercalate)
+#if __GLASGOW_HASKELL__ < 710
+import Data.Monoid (mempty)
+#endif
 import Language.Haskell.GhcMod.Read
 import Language.Haskell.GhcMod.Options.DocUtils
 import Language.Haskell.GhcMod.Options.Help
