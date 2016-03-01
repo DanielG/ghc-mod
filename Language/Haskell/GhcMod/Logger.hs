@@ -169,6 +169,6 @@ checkErrorPrefix :: String
 checkErrorPrefix = "Dummy:0:0:Error:"
 
 warningAsErrorPrefixes :: [String]
-warningAsErrorPrefixes = ["Couldn't match expected type"
+warningAsErrorPrefixes = [ "Couldn't match expected type"
                          , "Couldn't match type"
                          , "No instance for"]

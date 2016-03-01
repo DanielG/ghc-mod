@@ -66,28 +66,40 @@ runGmPkgGhc action = do
     withLightHscEnv pkgOpts $ \env -> liftIO $ runLightGhc env action
 
 initSession :: IOish m
-            => [GHCOption] -> (DynFlags -> Ghc DynFlags) -> GhcModT m ()
+            => [GHCOption] -> (forall gm. GhcMonad gm => DynFlags -> gm DynFlags) -> GhcModT m ()
 initSession opts mdf = do
    s <- gmsGet
    case gmGhcSession s of
-     Just GmGhcSession {..} | gmgsOptions /= opts-> do
-         gmLog GmDebug "initSession" $ text "Flags changed, creating new session"
-         putNewSession s
-     Just _ -> return ()
      Nothing -> do
          gmLog GmDebug "initSession" $ text "Session not initialized, creating new one"
          putNewSession s
+     Just GmGhcSession {..} -> do
+         gmLog GmDebug "initSession" $ text "Flags changed, creating new session"
+         crdl <- cradle
+         changed <- liftIO $ runLightGhc' gmgsSession $ do
+           df <- getSessionDynFlags
+           ndf <- initDF crdl
+           return $ ndf `eqDynFlags` df
 
+         if changed
+            then putNewSession s
+            else return ()
  where
-   putNewSession s = do
-     rghc <- (liftIO . newIORef =<< newSession =<< cradle)
-     gmsPut s { gmGhcSession = Just $ GmGhcSession opts rghc }
-
-   newSession Cradle { cradleTempDir } = liftIO $ do
-     runGhc (Just libdir) $ do
+   initDF Cradle { cradleTempDir } = do
        let setDf df = setTmpDir cradleTempDir <$> (mdf =<< addCmdOpts opts df)
        _ <- setSessionDynFlags =<< setDf =<< getSessionDynFlags
+       getSessionDynFlags
+
+   putNewSession s = do
+     rghc <- (liftIO . newIORef =<< newSession)
+     gmsPut s { gmGhcSession = Just $ GmGhcSession opts rghc }
+
+   newSession = do
+     crdl <- cradle
+     liftIO $ runGhc (Just libdir) $ do
+       _ <- initDF crdl
        getSession
+
 
 -- | Drop the currently active GHC session, the next that requires a GHC session
 -- will initialize a new one.
@@ -114,7 +126,7 @@ runGmlT fns action = runGmlT' fns return action
 -- of certain files or modules, with updated GHC flags
 runGmlT' :: IOish m
               => [Either FilePath ModuleName]
-              -> (DynFlags -> Ghc DynFlags)
+              -> (forall gm. GhcMonad gm => DynFlags -> gm DynFlags)
               -> GmlT m a
               -> GhcModT m a
 runGmlT' fns mdf action = runGmlTWith fns mdf id action
@@ -124,7 +136,7 @@ runGmlT' fns mdf action = runGmlTWith fns mdf id action
 -- transformation
 runGmlTWith :: IOish m
                  => [Either FilePath ModuleName]
-                 -> (DynFlags -> Ghc DynFlags)
+                 -> (forall gm. GhcMonad gm => DynFlags -> gm DynFlags)
                  -> (GmlT m a -> GmlT m b)
                  -> GmlT m a
                  -> GhcModT m b

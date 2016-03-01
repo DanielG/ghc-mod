@@ -105,6 +105,7 @@ data Options = Options {
     -- | GHC command line options set on the @ghc-mod@ command line
   , optGhcUserOptions :: [GHCOption]
   , optFileMappings   :: [(FilePath, Maybe FilePath)]
+  , optEncoding       :: String
   } deriving (Show)
 
 -- | A default 'Options'.
@@ -124,6 +125,7 @@ defaultOptions = Options {
     }
   , optGhcUserOptions = []
   , optFileMappings   = []
+  , optEncoding       = "UTF-8"
   }
 
 ----------------------------------------------------------------
@@ -132,7 +134,7 @@ data Project = CabalProject
              | SandboxProject
              | PlainProject
              | StackProject StackEnv
-               deriving (Eq, Show)
+               deriving (Eq, Show, Ord)
 
 isCabalHelperProject :: Project -> Bool
 isCabalHelperProject StackProject {} = True
@@ -144,7 +146,7 @@ data StackEnv = StackEnv {
     , seBinPath       :: [FilePath]
     , seSnapshotPkgDb :: FilePath
     , seLocalPkgDb    :: FilePath
-    } deriving (Eq, Show)
+    } deriving (Eq, Show, Ord)
 
 -- | The environment where this library is used.
 data Cradle = Cradle {
@@ -159,7 +161,7 @@ data Cradle = Cradle {
   , cradleCabalFile  :: Maybe FilePath
   -- | The build info directory.
   , cradleDistDir    :: FilePath
-  } deriving (Eq, Show)
+  } deriving (Eq, Show, Ord)
 
 data GmStream = GmOutStream | GmErrStream
                 deriving (Show)

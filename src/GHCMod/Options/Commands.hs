@@ -23,8 +23,8 @@ import Options.Applicative.Types
 import Options.Applicative.Builder.Internal
 import Language.Haskell.GhcMod.Types
 import Language.Haskell.GhcMod.Read
-import GHCMod.Options.DocUtils
-import GHCMod.Options.Help
+import Language.Haskell.GhcMod.Options.DocUtils
+import Language.Haskell.GhcMod.Options.Help
 
 type Symbol = String
 type Expr = String
