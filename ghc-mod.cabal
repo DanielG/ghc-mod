@@ -172,7 +172,7 @@ Library
                       , ghc               < 8.2 && >= 7.6
                       , ghc-paths         < 0.2
                       , ghc-syb-utils     < 0.3
-                      , hlint             < 1.10 && >= 1.9.26
+                      , hlint             < 1.10 && >= 1.9.27
                       , monad-journal     < 0.8 && >= 0.4
                       , old-time          < 1.2
                       , pretty            < 1.2
