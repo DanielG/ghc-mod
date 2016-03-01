@@ -463,7 +463,9 @@ loadTargets opts targetStrs = do
     case target' of
       HscNothing -> do
         void $ load LoadAllTargets
-        mapM_ (parseModule >=> typecheckModule >=> desugarModule) mg
+        forM_ mg $
+          handleSourceError (gmLog GmWarning "loadTargets" . text . show)
+          . void . (parseModule >=> typecheckModule >=> desugarModule)
       HscInterpreted -> do
         void $ load LoadAllTargets
       _ -> error ("loadTargets: unsupported hscTarget")
