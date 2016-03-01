@@ -1,4 +1,3 @@
-{-# LANGUAGE CPP #-}
 -- ghc-mod: Making Haskell development *more* fun
 -- Copyright (C) 2015  Nikolay Yakimov <root@livid.pp.ru>
 --
@@ -28,12 +27,11 @@ import Language.Haskell.GhcMod.Types
 import Control.Arrow
 import Data.Char (toUpper, toLower)
 import Data.List (intercalate)
-#if __GLASGOW_HASKELL__ < 710
-import Data.Monoid (mempty)
-#endif
 import Language.Haskell.GhcMod.Read
 import Language.Haskell.GhcMod.Options.DocUtils
 import Language.Haskell.GhcMod.Options.Help
+import Data.Monoid
+import Prelude
 
 -- | Parse a set of arguments according to the ghc-mod CLI flag spec, producing
 -- @Options@ set accordingly.
