@@ -15,7 +15,7 @@
 -- along with this program.  If not, see <http://www.gnu.org/licenses/>.
 {-# LANGUAGE OverloadedStrings, FlexibleInstances, GeneralizedNewtypeDeriving #-}
 
-module GHCMod.Options.Help where
+module Language.Haskell.GhcMod.Options.Help where
 
 import Options.Applicative
 import Options.Applicative.Help.Pretty (Doc)
