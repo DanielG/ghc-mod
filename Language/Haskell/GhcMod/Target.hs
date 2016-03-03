@@ -464,7 +464,7 @@ loadTargets opts targetStrs = do
       HscNothing -> do
         void $ load LoadAllTargets
         forM_ mg $
-          handleSourceError (gmLog GmWarning "loadTargets" . text . show)
+          handleSourceError (gmLog GmDebug "loadTargets" . text . show)
           . void . (parseModule >=> typecheckModule >=> desugarModule)
       HscInterpreted -> do
         void $ load LoadAllTargets
