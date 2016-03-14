@@ -41,50 +41,77 @@ instance HasType (LPat Id) where
 
 ----------------------------------------------------------------
 
+-- | Stores mapping from monomorphic to polymorphic types
 type CstGenQS = M.Map Var Type
+-- | Generic type to simplify SYB definition
 type CstGenQT a = forall m. GhcMonad m => a Id -> CstGenQS -> (m [(SrcSpan, Type)], CstGenQS)
 
 collectSpansTypes :: (GhcMonad m) => Bool -> G.TypecheckedModule -> (Int, Int) -> m [(SrcSpan, Type)]
 collectSpansTypes withConstraints tcs lc =
+  -- This walks AST top-down, left-to-right, while carrying CstGenQS down the tree
+  -- (but not left-to-right)
   everythingStagedWithContext TypeChecker M.empty (liftM2 (++))
     (return [])
     ((return [],)
-      `mkQ`  (hsBind    :: CstGenQT G.LHsBind)
-      `extQ` (genericCT :: CstGenQT G.LHsExpr)
-      `extQ` (genericCT :: CstGenQT G.LPat)
+      `mkQ`  (hsBind    :: CstGenQT G.LHsBind) -- matches on binds
+      `extQ` (genericCT :: CstGenQT G.LHsExpr) -- matches on expressions
+      `extQ` (genericCT :: CstGenQT G.LPat) -- matches on patterns
       )
     (G.tm_typechecked_source tcs)
   where
+    -- Helper function to insert mapping into CstGenQS
     insExp x = M.insert (G.abe_mono x) (G.varType $ G.abe_poly x)
+    -- If there is AbsBinds here, insert mapping into CstGenQS if needed
     hsBind (L _ G.AbsBinds{abs_exports = es'}) s
       | withConstraints = (return [], foldr insExp s es')
       | otherwise       = (return [], s)
+    -- Otherwise, it's the same as other cases
     hsBind x s = genericCT x s
-    genericCT x s = constrainedType' (collectBinders x) s x
+    -- Generic SYB function to get type
+    genericCT x s
+      | withConstraints
+      = (maybe [] (uncurry $ constrainedType (collectBinders x) s) <$> getType' x, s)
+      | otherwise = (maybeToList <$> getType' x, s)
+    -- Collects everything with Id from LHsBind, LHsExpr, or LPat
     collectBinders :: Data a => a -> [Id]
     collectBinders = listifyStaged TypeChecker (const True)
+    -- Gets monomorphic type with location
     getType' x@(L spn _)
       | G.isGoodSrcSpan spn && spn `G.spans` lc
       = getType tcs x
       | otherwise = return Nothing
-    constrainedType' pids s x
-        | withConstraints
-        = (maybe [] (uncurry $ constrainedType pids s) <$> getType' x, s)
-        | otherwise = (maybeToList <$> getType' x, s)
+    -- Gets constrained type
+    constrainedType :: [Var] -- ^ Binders in expression, i.e. anything with Id
+                    -> CstGenQS -- ^ Map from Id to polymorphic type
+                    -> SrcSpan -- ^ extent of expression, copied to result
+                    -> Type -- ^ monomorphic type
+                    -> [(SrcSpan, Type)] -- ^ result
     constrainedType pids s spn genTyp =
       let
+        -- runs build on every binder.
         ctys  = mapMaybe build (nub pids)
+        -- Computes constrained type for x. Returns (constraints, substitutions)
+        -- Substitutions are needed because type variables don't match
+        -- between polymorphic and monomorphic types.
+        -- E.g. poly type might be `Monad m => m ()`, while monomorphic might be `f ()`
         build x | Just cti <- x `M.lookup` s
                 = let
                     (preds', ctt) = getPreds cti
+                    -- list of type variables in monomorphic type
                     vts = listifyStaged TypeChecker G.isTyVar $ G.varType x
+                    -- list of type variables in polymorphic type
                     tvm = listifyStaged TypeChecker G.isTyVarTy ctt
                   in Just (preds', zip vts tvm)
                 | otherwise = Nothing
+        -- list of constraints
         preds = concatMap fst ctys
+        -- Type variable substitutions
         subs  = G.mkTopTvSubst $ concatMap snd ctys
+        -- Constrained type
         ty    = G.substTy subs $ G.mkFunTys preds genTyp
       in [(spn, ty)]
+    -- Splits a given type into list of constraints and simple type. Drops foralls.
+    getPreds :: Type -> ([Type], Type)
     getPreds x | G.isForAllTy x = getPreds $ G.dropForAlls x
                | Just (c, t) <- G.splitFunTy_maybe x
                , G.isPredTy c = first (c:) $ getPreds t
