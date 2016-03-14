@@ -256,6 +256,10 @@ browseArgSpec = CmdBrowse
             <=> short 'd'
             <=> help "Print symbols with accompanying signature"
         <*> switch
+            $$  long "parents"
+            <=> short 'p'
+            <=> help "Print symbols parents"
+        <*> switch
             $$  long "qualified"
             <=> short 'q'
             <=> help "Qualify symbols"
