@@ -107,7 +107,7 @@ showExport opt minfo e = do
                     (" :: " ++ typeName) `justIf` optBrowseDetailed opt
         let parent = do
                     thing <- fmap getOccString $ tyResult >>= tyThingParent_maybe
-                    (" -- " ++ thing) `justIf` optBrowseParents opt
+                    (" -- from:" ++ thing) `justIf` optBrowseParents opt
         return $ case concat $ catMaybes [sig, parent] of
                     [] -> Nothing
                     x  -> Just x
