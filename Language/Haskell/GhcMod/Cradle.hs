@@ -69,11 +69,15 @@ fillTempDir crdl = do
   tmpDir <- liftIO $ newTempDir (cradleRootDir crdl)
   return crdl { cradleTempDir = tmpDir }
 
-cabalCradle :: IOish m => FilePath -> MaybeT m Cradle
+cabalCradle :: (IOish m, GmLog m, GmOut m) => FilePath -> MaybeT m Cradle
 cabalCradle wdir = do
     cabalFile <- MaybeT $ liftIO $ findCabalFile wdir
-
     let cabalDir = takeDirectory cabalFile
+
+    -- If cabal doesn't exist the user probably wants to use something else
+    whenM (isJust <$> liftIO (findExecutable "cabal")) $ do
+      gmLog GmWarning "" $ text "'dist/setup-config' exists but 'cabal' executable wasn't found."
+      mzero
 
     return Cradle {
         cradleProject    = CabalProject
