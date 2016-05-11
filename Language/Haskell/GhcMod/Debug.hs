@@ -9,6 +9,7 @@ import qualified Data.Set as Set
 import Data.Char
 import Data.Version
 import Data.List.Split
+import System.Directory
 import Text.PrettyPrint
 import Language.Haskell.GhcMod.Monad
 import Language.Haskell.GhcMod.Types
@@ -76,8 +77,14 @@ cabalDebug = do
         srcOpts     = Map.map gmcGhcSrcOpts mcs
 
     readProc <- gmReadProcess
-    cabalInstVersion <- liftIO $
-        dropWhileEnd isSpace <$> readProc "cabal" ["--numeric-version"] ""
+    cabalExists <- liftIO $ (/=Nothing) <$> findExecutable "cabal"
+
+    cabalInstVersion <-
+        if cabalExists
+          then liftIO $
+            dropWhileEnd isSpace <$> readProc "cabal" ["--numeric-version"] ""
+          else return ""
+
     packages <- liftIO $ readProc "ghc-pkg" ["list", "--simple-output"] ""
     let cabalPackages = filter ((== ["Cabal"]) . take 1 . splitOn "-") $ splitWhen isSpace packages
 
