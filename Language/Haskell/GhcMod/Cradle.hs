@@ -75,8 +75,8 @@ cabalCradle wdir = do
     let cabalDir = takeDirectory cabalFile
 
     -- If cabal doesn't exist the user probably wants to use something else
-    whenM (isJust <$> liftIO (findExecutable "cabal")) $ do
-      gmLog GmWarning "" $ text "'dist/setup-config' exists but 'cabal' executable wasn't found."
+    whenM ((==Nothing) <$> liftIO (findExecutable "cabal")) $ do
+      gmLog GmInfo "" $ text "'dist/setup-config' exists but 'cabal' executable wasn't found"
       mzero
 
     return Cradle {
