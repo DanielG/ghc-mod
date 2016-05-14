@@ -388,13 +388,15 @@ data BrowseOpts = BrowseOpts {
         -- ^ If 'True', "browseWith" also returns operators.
       , optBrowseDetailed       :: Bool
         -- ^ If 'True', "browseWith" also returns types.
+      , optBrowseParents        :: Bool
+        -- ^ If 'True', "browseWith" also returns parents.
       , optBrowseQualified      :: Bool
         -- ^ If 'True', "browseWith" will return fully qualified name
     } deriving (Show)
 
 -- | Default "BrowseOpts" instance
 defaultBrowseOpts :: BrowseOpts
-defaultBrowseOpts = BrowseOpts False False False
+defaultBrowseOpts = BrowseOpts False False False False
 
 mkLabel ''GhcModCaches
 mkLabel ''GhcModState
