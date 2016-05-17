@@ -95,6 +95,15 @@ Extra-Source-Files:     ChangeLog
                         test/data/stack-project/src/*.hs
                         test/data/stack-project/test/*.hs
 
+Custom-Setup
+  Setup-Depends:         base
+                       , Cabal
+                       , containers
+                       , filepath
+                       , process
+                       , template-haskell
+                       , transformers
+
 Library
   Default-Language:     Haskell2010
   GHC-Options:          -Wall -fno-warn-deprecations
