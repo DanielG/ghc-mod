@@ -39,3 +39,8 @@ spec = do
                 res `shouldBe` "38 21 38 59"++
                         " \"mlReverse' Nil accum = _mlReverse_body\NUL"++
                         "                    mlReverse' (Cons xs'1 xs'2) accum = _mlReverse_body\"\n"
+
+        it "doesn't crash when source doesn't make sense" $
+            withDirectory_ "test/data/case-split" $ do
+                res <- runD $ splits "Crash.hs" 4 6
+                res `shouldBe` []

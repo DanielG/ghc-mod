@@ -165,7 +165,7 @@ Library
                       , bytestring        < 0.11
                       , binary            < 0.9 && >= 0.5.1.0
                       , containers        < 0.6
-                      , cabal-helper      < 0.8 && >= 0.7.0.1
+                      , cabal-helper      < 0.8 && >= 0.7.1.0
                       , deepseq           < 1.5
                       , directory         < 1.3
                       , filepath          < 1.5

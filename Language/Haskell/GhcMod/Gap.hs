@@ -44,6 +44,7 @@ module Language.Haskell.GhcMod.Gap (
   , Language.Haskell.GhcMod.Gap.isSynTyCon
   , parseModuleHeader
   , mkErrStyle'
+  , everythingStagedWithContext
   ) where
 
 import Control.Applicative hiding (empty)
@@ -115,6 +116,8 @@ import Lexer as L
 import Parser
 import SrcLoc
 import Packages
+import Data.Generics (GenericQ, extQ, gmapQ)
+import GHC.SYB.Utils (Stage(..))
 
 import Language.Haskell.GhcMod.Types (Expression(..))
 import Prelude
@@ -607,3 +610,20 @@ instance NFData ByteString where
   rnf Empty       = ()
   rnf (Chunk _ b) = rnf b
 #endif
+
+-- | Like 'everything', but avoid known potholes, based on the 'Stage' that
+--   generated the Ast.
+everythingStagedWithContext :: Stage -> s -> (r -> r -> r) -> r -> GenericQ (s -> (r, s)) -> GenericQ r
+everythingStagedWithContext stage s0 f z q x
+  | (const False
+#if __GLASGOW_HASKELL__ <= 708
+      `extQ` postTcType
+#endif
+      `extQ` fixity `extQ` nameSet) x = z
+  | otherwise = foldl f r (gmapQ (everythingStagedWithContext stage s' f z q) x)
+  where nameSet    = const (stage `elem` [Parser,TypeChecker]) :: NameSet -> Bool
+#if __GLASGOW_HASKELL__ <= 708
+        postTcType = const (stage<TypeChecker)                 :: PostTcType -> Bool
+#endif
+        fixity     = const (stage<Renamer)                     :: GHC.Fixity -> Bool
+        (r, s') = q x s0

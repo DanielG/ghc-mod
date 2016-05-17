@@ -11,6 +11,7 @@ import Data.List
 import Data.Maybe
 import FastString
 import GHC
+import HscTypes
 import qualified GHC as G
 import Language.Haskell.GhcMod.Convert
 import Language.Haskell.GhcMod.Doc (showPage, styleUnqualified)
@@ -96,14 +97,20 @@ showExport opt minfo e = do
     mqualified = (G.moduleNameString (G.moduleName $ G.nameModule e) ++ ".") `justIf` optBrowseQualified opt
     mtype :: m (Maybe String)
     mtype
-      | optBrowseDetailed opt = do
+      | optBrowseDetailed opt || optBrowseParents opt = do
         tyInfo <- G.modInfoLookupName minfo e
         -- If nothing found, load dependent module and lookup global
         tyResult <- maybe (inOtherModule e) (return . Just) tyInfo
         dflag <- G.getSessionDynFlags
-        return $ do
-          typeName <- tyResult >>= showThing dflag
-          (" :: " ++ typeName) `justIf` optBrowseDetailed opt
+        let sig = do
+                    typeName <- tyResult >>= showThing dflag
+                    (" :: " ++ typeName) `justIf` optBrowseDetailed opt
+        let parent = do
+                    thing <- fmap getOccString $ tyResult >>= tyThingParent_maybe
+                    (" -- from:" ++ thing) `justIf` optBrowseParents opt
+        return $ case concat $ catMaybes [sig, parent] of
+                    [] -> Nothing
+                    x  -> Just x
       | otherwise = return Nothing
     formatOp nm
       | null nm    = error "formatOp"

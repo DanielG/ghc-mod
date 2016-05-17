@@ -19,6 +19,7 @@ data World = World {
   , worldCabalFile     :: Maybe TimedFile
   , worldCabalConfig   :: Maybe TimedFile
   , worldCabalSandboxConfig :: Maybe TimedFile
+  , worldMappedFiles   :: FileMappingMap
   } deriving (Eq)
 
 timedPackageCaches :: IOish m => GhcModT m [TimedFile]
@@ -34,12 +35,14 @@ getCurrentWorld = do
     mCabalFile   <- liftIO $ timeFile `traverse` cradleCabalFile crdl
     mCabalConfig <- liftIO $ timeMaybe (setupConfigFile crdl)
     mCabalSandboxConfig <- liftIO $ timeMaybe (sandboxConfigFile crdl)
+    mFileMap     <- getMMappedFiles
 
     return World {
         worldPackageCaches = pkgCaches
       , worldCabalFile     = mCabalFile
       , worldCabalConfig   = mCabalConfig
       , worldCabalSandboxConfig = mCabalSandboxConfig
+      , worldMappedFiles   = mFileMap
       }
 
 didWorldChange :: IOish m => World -> GhcModT m Bool
