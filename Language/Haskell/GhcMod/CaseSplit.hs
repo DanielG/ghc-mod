@@ -27,6 +27,7 @@ import Language.Haskell.GhcMod.SrcUtils
 import Language.Haskell.GhcMod.Doc
 import Language.Haskell.GhcMod.Logging
 import Language.Haskell.GhcMod.Types
+import Language.Haskell.GhcMod.Utils (withMappedFile)
 import Language.Haskell.GhcMod.FileMapping (fileModSummaryWithMapping)
 
 ----------------------------------------------------------------
@@ -57,12 +58,14 @@ splits file lineNo colNo =
       whenFound' oopts (getSrcSpanTypeForSplit modSum lineNo colNo) $ \x -> case x of
         (SplitInfo varName bndLoc (varLoc,varT) _matches) -> do
           let varName' = showName dflag style varName  -- Convert name to string
-          t <- genCaseSplitTextFile file (SplitToTextInfo varName' bndLoc varLoc $
+          t <- withMappedFile file $ \file' ->
+                genCaseSplitTextFile file' (SplitToTextInfo varName' bndLoc varLoc $
                                              getTyCons dflag style varName varT)
           return (fourInts bndLoc, t)
         (TySplitInfo varName bndLoc (varLoc,varT)) -> do
           let varName' = showName dflag style varName  -- Convert name to string
-          t <- genCaseSplitTextFile file (SplitToTextInfo varName' bndLoc varLoc $
+          t <- withMappedFile file $ \file' ->
+                genCaseSplitTextFile file' (SplitToTextInfo varName' bndLoc varLoc $
                                              getTyCons dflag style varName varT)
           return (fourInts bndLoc, t)
  where

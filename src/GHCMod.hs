@@ -111,7 +111,6 @@ getFileSourceFromStdin = do
         else return []
 
 wrapGhcCommands :: (IOish m, GmOut m) => Options -> GhcModCommands -> m ()
-wrapGhcCommands _opts CmdRoot = gmPutStr =<< rootInfo
 wrapGhcCommands opts cmd =
     handleGmError $ runGhcModT opts $ handler $ do
       forM_ (reverse $ optFileMappings opts) $
@@ -141,7 +140,7 @@ ghcCommands (CmdDebug) = debugInfo
 ghcCommands (CmdDebugComponent ts) = componentInfo ts
 ghcCommands (CmdBoot) = boot
 -- ghcCommands (CmdNukeCaches) = nukeCaches >> return ""
--- ghcCommands (CmdRoot) = undefined -- handled in wrapGhcCommands
+ghcCommands (CmdRoot) = rootInfo
 ghcCommands (CmdLegacyInteractive) = legacyInteractive >> return ""
 ghcCommands (CmdModules detail) = modules detail
 ghcCommands (CmdDumpSym) = dumpSymbol >> return ""
