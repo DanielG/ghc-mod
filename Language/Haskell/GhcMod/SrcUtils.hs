@@ -1,4 +1,5 @@
-{-# LANGUAGE TupleSections, FlexibleInstances, Rank2Types, ImpredicativeTypes #-}
+-- TODO: remove CPP once Gap(ed)
+{-# LANGUAGE CPP, TupleSections, FlexibleInstances, Rank2Types, ImpredicativeTypes #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
 module Language.Haskell.GhcMod.SrcUtils where
@@ -106,7 +107,12 @@ collectSpansTypes withConstraints tcs lc =
         -- list of constraints
         preds = concatMap fst ctys
         -- Type variable substitutions
+#if __GLASGOW_HASKELL__ >= 800
+ -- TODO: move to Gap
+        subs  = G.mkTvSubstPrs $ concatMap snd ctys
+#else
         subs  = G.mkTopTvSubst $ concatMap snd ctys
+#endif
         -- Constrained type
         ty    = G.substTy subs $ G.mkFunTys preds genTyp
       in [(spn, ty)]

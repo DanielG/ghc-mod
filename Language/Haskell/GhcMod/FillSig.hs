@@ -134,7 +134,7 @@ getSignature modSum lineNo colNo = do
             Just (clsName,loc) -> obtainClassInfo minfo clsName loc
             _                  -> return Nothing
 #if __GLASGOW_HASKELL__ >= 800
-      [L loc (G.TyClD (G.FamDecl (G.FamilyDecl info (L _ name) (G.HsQTvs _ vars) _ _)))] -> do
+      [L loc (G.TyClD (G.FamDecl (G.FamilyDecl info (L _ name) (G.HsQTvs _ vars _) _ _)))] -> do
 #elif __GLASGOW_HASKELL__ >= 708
       [L loc (G.TyClD (G.FamDecl (G.FamilyDecl info (L _ name) (G.HsQTvs _ vars) _)))] -> do
 #elif __GLASGOW_HASKELL__ >= 706
