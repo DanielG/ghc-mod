@@ -83,7 +83,11 @@ import CoAxiom (coAxiomTyCon)
 #if __GLASGOW_HASKELL__ >= 708
 import FamInstEnv
 import ConLike (ConLike(..))
+#if __GLASGOW_HASKELL__ >= 800
+import PatSyn (PatSyn)
+#else
 import PatSyn (patSynType)
+#endif
 #else
 import TcRnTypes
 #endif
@@ -460,12 +464,19 @@ deSugar tcm e hs_env = snd <$> deSugarExpr hs_env modu rn_env ty_env e
 ----------------------------------------------------------------
 
 data GapThing = GtA Type | GtT TyCon | GtN
+#if __GLASGOW_HASKELL__ >= 800
+                         | GtPatSyn PatSyn
+#endif
 
 fromTyThing :: TyThing -> GapThing
 fromTyThing (AnId i)                   = GtA $ varType i
 #if __GLASGOW_HASKELL__ >= 708
 fromTyThing (AConLike (RealDataCon d)) = GtA $ dataConRepType d
+#if __GLASGOW_HASKELL__ >= 800
+fromTyThing (AConLike (PatSynCon p))   = GtPatSyn p
+#else
 fromTyThing (AConLike (PatSynCon p))   = GtA $ patSynType p
+#endif
 #else
 fromTyThing (ADataCon d)               = GtA $ dataConRepType d
 #endif

@@ -1,5 +1,5 @@
 -- TODO: remove CPP once Gap(ed)
-{-# LANGUAGE CPP, TupleSections, FlexibleInstances, Rank2Types, ImpredicativeTypes #-}
+{-# LANGUAGE CPP, TupleSections, FlexibleInstances, Rank2Types #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
 module Language.Haskell.GhcMod.SrcUtils where

@@ -62,7 +62,11 @@ import Language.Haskell.GhcMod.Gap
 import Prelude
 
 debugLogAction :: (String -> IO ()) -> GmLogAction
+#if __GLASGOW_HASKELL__ >= 800
+debugLogAction putErr dflags _reason severity srcSpan style' msg
+#else
 debugLogAction putErr dflags severity srcSpan style' msg
+#endif
     = case severity of
       SevOutput      -> printSDoc putErr msg style'
 
