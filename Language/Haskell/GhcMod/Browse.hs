@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 module Language.Haskell.GhcMod.Browse (
     browse,
     BrowseOpts(..)
@@ -25,6 +26,9 @@ import TyCon (isAlgTyCon)
 import Type (dropForAlls, splitFunTy_maybe, mkFunTy, isPredTy)
 import Exception (ExceptionMonad, ghandle)
 import Prelude
+#if __GLASGOW_HASKELL__ >= 800
+import PatSyn (pprPatSynType)
+#endif
 
 ----------------------------------------------------------------
 
@@ -131,6 +135,9 @@ showThing' dflag (GtA a) = Just $ formatType dflag a
 showThing' _     (GtT t) = unwords . toList <$> tyType t
   where
     toList t' = t' : getOccString t : map getOccString (G.tyConTyVars t)
+#if __GLASGOW_HASKELL__ >= 800
+showThing' dflag (GtPatSyn p) = Just $ showSDoc dflag $ pprPatSynType p
+#endif
 showThing' _     _       = Nothing
 
 formatType :: DynFlags -> Type -> String

@@ -25,6 +25,9 @@ import HscTypes
 import Outputable
 import qualified GHC as G
 import Bag
+#if __GLASGOW_HASKELL__ >= 800
+import DynFlags (WarnReason)
+#endif
 
 import Language.Haskell.GhcMod.Convert
 import Language.Haskell.GhcMod.Doc (showPage)
@@ -59,8 +62,13 @@ readAndClearLogRef (LogRef ref) = do
     writeIORef ref emptyLog
     return $ b []
 
+#if __GLASGOW_HASKELL__ >= 800
+appendLogRef :: (FilePath -> FilePath) -> DynFlags -> LogRef -> DynFlags -> WarnReason -> Severity -> SrcSpan -> PprStyle -> SDoc -> IO ()
+appendLogRef rfm df (LogRef ref) _ _reason sev src st msg = do
+#else
 appendLogRef :: (FilePath -> FilePath) -> DynFlags -> LogRef -> DynFlags -> Severity -> SrcSpan -> PprStyle -> SDoc -> IO ()
 appendLogRef rfm df (LogRef ref) _ sev src st msg = do
+#endif
     modifyIORef ref update
   where
     gpe = GmPprEnv {
