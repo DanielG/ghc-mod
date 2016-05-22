@@ -20,12 +20,21 @@ spec = do
         it "shows types of the expression and its outers" $ do
             let tdir = "test/data/ghc-mod-check"
             res <- runD' tdir $ types False "lib/Data/Foo.hs" 9 5
+#if __GLASGOW_HASKELL__ >= 800
+            res `shouldBe` "9 5 11 40 \"Int -> t -> t -> t\"\n7 1 11 40 \"Int -> Integer\"\n"
+#else
             res `shouldBe` "9 5 11 40 \"Int -> a -> a -> a\"\n7 1 11 40 \"Int -> Integer\"\n"
+#endif
+
 
         it "shows types of the expression with constraints and its outers" $ do
             let tdir = "test/data/ghc-mod-check"
             res <- runD' tdir $ types True "lib/Data/Foo.hs" 9 5
+#if __GLASGOW_HASKELL__ >= 800
+            res `shouldBe` "9 5 11 40 \"Num t => Int -> t -> t -> t\"\n7 1 11 40 \"Int -> Integer\"\n"
+#else
             res `shouldBe` "9 5 11 40 \"Num a => Int -> a -> a -> a\"\n7 1 11 40 \"Int -> Integer\"\n"
+#endif
 
         it "works with a module using TemplateHaskell" $ do
             let tdir = "test/data/template-haskell"

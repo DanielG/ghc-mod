@@ -58,7 +58,7 @@ spec = do
         it "emits warnings generated in GHC's desugar stage" $ do
             withDirectory_ "test/data/check-missing-warnings" $ do
                 res <- runD $ checkSyntax ["DesugarWarnings.hs"]
-                res `shouldBe` "DesugarWarnings.hs:4:9:Warning: Pattern match(es) are non-exhaustive\NULIn a case alternative: Patterns not matched: _ : _\n"
+                res `shouldSatisfy` ("DesugarWarnings.hs:4:9:Warning: Pattern match(es) are non-exhaustive\NULIn a case alternative: Patterns not matched:" `isPrefixOf`)
 #endif
 
         it "works with cabal builtin preprocessors" $ do
@@ -71,7 +71,9 @@ spec = do
         it "Uses the right qualification style" $ do
             withDirectory_ "test/data/nice-qualification" $ do
                 res <- runD $ checkSyntax ["NiceQualification.hs"]
-#if __GLASGOW_HASKELL__ >= 708
+#if __GLASGOW_HASKELL__ >= 800
+                res `shouldBe` "NiceQualification.hs:4:8:\8226 Couldn't match expected type \8216IO ()\8217 with actual type \8216[Char]\8217\NUL\8226 In the expression: \"wrong type\"\NUL  In an equation for \8216main\8217: main = \"wrong type\"\n"
+#elif __GLASGOW_HASKELL__ >= 708
                 res `shouldBe` "NiceQualification.hs:4:8:Couldn't match expected type \8216IO ()\8217 with actual type \8216[Char]\8217\NULIn the expression: \"wrong type\"\NULIn an equation for \8216main\8217: main = \"wrong type\"\n"
 #else
                 res `shouldBe` "NiceQualification.hs:4:8:Couldn't match expected type `IO ()' with actual type `[Char]'\NULIn the expression: \"wrong type\"\NULIn an equation for `main': main = \"wrong type\"\n"

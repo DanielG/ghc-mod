@@ -13,7 +13,7 @@
 --
 -- You should have received a copy of the GNU Affero General Public License
 -- along with this program.  If not, see <http://www.gnu.org/licenses/>.
-{-# LANGUAGE CPP #-}
+{-# LANGUAGE CPP, RankNTypes #-}
 module Language.Haskell.GhcMod.DebugLogger where
 
 -- (c) The University of Glasgow 2005
@@ -62,11 +62,7 @@ import Language.Haskell.GhcMod.Gap
 import Prelude
 
 debugLogAction :: (String -> IO ()) -> GmLogAction
-#if __GLASGOW_HASKELL__ >= 800
-debugLogAction putErr dflags _reason severity srcSpan style' msg
-#else
-debugLogAction putErr dflags severity srcSpan style' msg
-#endif
+debugLogAction putErr _reason dflags severity srcSpan style' msg
     = case severity of
       SevOutput      -> printSDoc putErr msg style'
 

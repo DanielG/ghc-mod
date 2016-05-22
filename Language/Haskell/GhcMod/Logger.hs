@@ -1,4 +1,4 @@
-{-# LANGUAGE CPP #-}
+{-# LANGUAGE CPP, RankNTypes #-}
 
 module Language.Haskell.GhcMod.Logger (
     withLogger
@@ -14,7 +14,7 @@ import Data.Ord
 import Data.List
 import Data.Maybe
 import Data.Function
-import Control.Monad.Reader (Reader, asks, runReader)
+import Control.Monad.Reader (Reader, ask, runReader)
 import Data.IORef (IORef, newIORef, readIORef, writeIORef, modifyIORef)
 import System.FilePath (normalise)
 import Text.PrettyPrint
@@ -25,9 +25,8 @@ import HscTypes
 import Outputable
 import qualified GHC as G
 import Bag
-#if __GLASGOW_HASKELL__ >= 800
-import DynFlags (WarnReason)
-#endif
+import SrcLoc
+import FastString
 
 import Language.Haskell.GhcMod.Convert
 import Language.Haskell.GhcMod.Doc (showPage)
@@ -62,20 +61,13 @@ readAndClearLogRef (LogRef ref) = do
     writeIORef ref emptyLog
     return $ b []
 
-#if __GLASGOW_HASKELL__ >= 800
-appendLogRef :: (FilePath -> FilePath) -> DynFlags -> LogRef -> DynFlags -> WarnReason -> Severity -> SrcSpan -> PprStyle -> SDoc -> IO ()
-appendLogRef rfm df (LogRef ref) _ _reason sev src st msg = do
-#else
-appendLogRef :: (FilePath -> FilePath) -> DynFlags -> LogRef -> DynFlags -> Severity -> SrcSpan -> PprStyle -> SDoc -> IO ()
-appendLogRef rfm df (LogRef ref) _ sev src st msg = do
-#endif
+appendLogRef :: (FilePath -> FilePath) -> DynFlags -> LogRef -> Gap.GmLogAction
+appendLogRef map_file df (LogRef ref) _reason _df sev src st msg = do
     modifyIORef ref update
   where
-    gpe = GmPprEnv {
-            gpeDynFlags = df
-          , gpeMapFile = rfm
-          }
-    l = runReader (ppMsg st src sev msg) gpe
+    -- TODO: get rid of ppMsg and just do more or less what ghc's
+    -- defaultLogAction does
+    l = ppMsg map_file df st src sev msg
 
     update lg@(Log ls b)
       | l `elem` ls = lg
@@ -142,44 +134,51 @@ sortMsgBag bag = sortBy (compare `on` Gap.errorMsgSpan) $ bagToList bag
 
 ppErrMsg :: ErrMsg -> GmPprEnvM String
 ppErrMsg err = do
-    dflags <- asks gpeDynFlags
+    GmPprEnv {..} <- ask
     let unqual = errMsgContext err
-        st = Gap.mkErrStyle' dflags unqual
-#if __GLASGOW_HASKELL__ >= 800
-    return $ showPage dflags st msg
- where
-   msg = pprLocErrMsg err
-#else
-    let ext = showPage dflags st (errMsgExtraInfo err)
-    m <- ppMsg st spn SevError msg
-    return $ m ++ (if null ext then "" else "\n" ++ ext)
-   where
-     spn = Gap.errorMsgSpan err
-     msg = errMsgShortDoc err
-#endif
+        st = Gap.mkErrStyle' gpeDynFlags unqual
+        err' = Gap.setErrorMsgSpan err $ mapSrcSpanFile gpeMapFile (Gap.errorMsgSpan err)
+    return $ showPage gpeDynFlags st $ pprLocErrMsg err'
 
-ppMsg :: PprStyle -> SrcSpan -> Severity -> SDoc -> GmPprEnvM String
-ppMsg st spn sev msg = do
-  dflags <- asks gpeDynFlags
-  let cts  = showPage dflags st msg
-  prefix <- ppMsgPrefix spn sev cts
-  return $ prefix ++ cts
+mapSrcSpanFile :: (FilePath -> FilePath) -> SrcSpan -> SrcSpan
+mapSrcSpanFile map_file (RealSrcSpan s)   =
+    RealSrcSpan $ mapRealSrcSpanFile map_file s
+mapSrcSpanFile _ (UnhelpfulSpan s) =
+    UnhelpfulSpan s
 
-ppMsgPrefix :: SrcSpan -> Severity -> String -> GmPprEnvM String
-ppMsgPrefix spn sev cts = do
-  dflags <- asks gpeDynFlags
-  mr <- asks gpeMapFile
-  let defaultPrefix
-        | Gap.isDumpSplices dflags = ""
-        | otherwise               = checkErrorPrefix
-  return $ fromMaybe defaultPrefix $ do
-    (line,col,_,_) <- Gap.getSrcSpan spn
-    file <- mr <$> normalise <$> Gap.getSrcFile spn
-    let severityCaption = Gap.showSeverityCaption sev
-        pref0 | or (map (\x -> x `isPrefixOf` cts) warningAsErrorPrefixes)
-                          = file ++ ":" ++ show line ++ ":" ++ show col ++ ":"
-              | otherwise = file ++ ":" ++ show line ++ ":" ++ show col ++ ":" ++ severityCaption
-    return pref0
+mapRealSrcSpanFile :: (FilePath -> FilePath) -> RealSrcSpan -> RealSrcSpan
+mapRealSrcSpanFile map_file s = let
+    start = mapRealSrcLocFile map_file $ realSrcSpanStart s
+    end   = mapRealSrcLocFile map_file $ realSrcSpanEnd s
+  in
+    mkRealSrcSpan start end
+
+mapRealSrcLocFile :: (FilePath -> FilePath) -> RealSrcLoc -> RealSrcLoc
+mapRealSrcLocFile map_file l = let
+    file = mkFastString $ map_file $ unpackFS $ srcLocFile l
+    line = srcLocLine l
+    col  = srcLocCol l
+  in
+    mkRealSrcLoc file line col
+
+ppMsg :: (FilePath -> FilePath) -> DynFlags -> PprStyle -> SrcSpan -> Severity -> SDoc -> String
+ppMsg map_file df st spn sev msg = let
+    cts = showPage df st msg
+  in
+    ppMsgPrefix map_file df spn sev cts ++ cts
+
+ppMsgPrefix :: (FilePath -> FilePath) -> DynFlags -> SrcSpan -> Severity -> String -> String
+ppMsgPrefix map_file df spn sev cts =
+  let
+      defaultPrefix = if Gap.isDumpSplices df then "" else checkErrorPrefix
+  in
+    fromMaybe defaultPrefix $ do
+      (line,col,_,_) <- Gap.getSrcSpan spn
+      file <- map_file <$> normalise <$> Gap.getSrcFile spn
+      return $ file ++ ":" ++ show line ++ ":" ++ show col ++ ":" ++
+        if or (map (\x -> x `isPrefixOf` cts) warningAsErrorPrefixes)
+          then ""
+          else Gap.showSeverityCaption sev
 
 checkErrorPrefix :: String
 checkErrorPrefix = "Dummy:0:0:Error:"

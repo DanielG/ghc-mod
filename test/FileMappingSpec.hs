@@ -136,7 +136,7 @@ spec = do
               loadMappedFile "File.hs" "File_Redir_Lint.hs"
               types False "File.hs" 4 12
             res `shouldBe` "4 12 4 15 \"a -> a -> a\"\n4 12 4 17 \"a -> a\"\n4 12 4 19 \"a\"\n4 1 4 19 \"a -> a -> a\"\n"
-        it "shows types of the expression with constraints for redirected files" $ do
+        it "shows types of the expression with constraints for redirected files" $ do --
             let tdir = "test/data/file-mapping"
             res <- runD' tdir $ do
               loadMappedFile "File.hs" "File_Redir_Lint.hs"

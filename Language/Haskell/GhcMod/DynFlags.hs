@@ -1,4 +1,4 @@
-{-# LANGUAGE CPP, TemplateHaskell #-}
+{-# LANGUAGE TemplateHaskell #-}
 
 module Language.Haskell.GhcMod.DynFlags where
 
@@ -16,11 +16,7 @@ import Prelude
 
 setEmptyLogger :: DynFlags -> DynFlags
 setEmptyLogger df =
-#if __GLASGOW_HASKELL__ >= 800
     Gap.setLogAction df $ \_ _ _ _ _ _ -> return ()
-#else
-    Gap.setLogAction df $ \_ _ _ _ _ -> return ()
-#endif
 
 setDebugLogger :: (String -> IO ()) -> DynFlags -> DynFlags
 setDebugLogger put df = do
@@ -98,14 +94,6 @@ allWarningFlags = unsafePerformIO $
         return $ G.warningFlags df'
 
 ----------------------------------------------------------------
-
--- | Set 'DynFlags' equivalent to "-fno-max-relevant-bindings".
-setNoMaxRelevantBindings :: DynFlags -> DynFlags
-#if __GLASGOW_HASKELL__ >= 708
-setNoMaxRelevantBindings df = df { maxRelevantBinds = Nothing }
-#else
-setNoMaxRelevantBindings = id
-#endif
 
 deferErrors :: Monad m => DynFlags -> m DynFlags
 deferErrors df = return $

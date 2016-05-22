@@ -9,7 +9,7 @@ module Language.Haskell.GhcMod.Gap (
   , getSrcSpan
   , getSrcFile
   , withInteractiveContext
-  , fOptions
+  , ghcCmdOptions
   , toStringBuffer
   , showSeverityCaption
   , setCabalPkg
@@ -18,12 +18,14 @@ module Language.Haskell.GhcMod.Gap (
   , setDeferTypedHoles
   , setWarnTypedHoles
   , setDumpSplices
+  , setNoMaxRelevantBindings
   , isDumpSplices
   , filterOutChildren
   , infoThing
   , pprInfo
   , HasType(..)
   , errorMsgSpan
+  , setErrorMsgSpan
   , typeForUser
   , nameForUser
   , occNameForUser
@@ -83,11 +85,7 @@ import CoAxiom (coAxiomTyCon)
 #if __GLASGOW_HASKELL__ >= 708
 import FamInstEnv
 import ConLike (ConLike(..))
-#if __GLASGOW_HASKELL__ >= 800
-import PatSyn (PatSyn)
-#else
-import PatSyn (patSynType)
-#endif
+import PatSyn
 #else
 import TcRnTypes
 #endif
@@ -152,18 +150,25 @@ withStyle = withPprStyleDoc
 withStyle _ = withPprStyleDoc
 #endif
 
-#if __GLASGOW_HASKELL__ >= 706
-type GmLogAction = LogAction
+#if __GLASGOW_HASKELL__ >= 800
+-- flip LogAction
+type GmLogAction = WarnReason -> DynFlags -> Severity -> SrcSpan -> PprStyle -> MsgDoc -> IO ()
+#elif __GLASGOW_HASKELL__ >= 706
+type GmLogAction = forall a. a -> LogAction
 #else
-type GmLogAction = DynFlags -> LogAction
+type GmLogAction = forall a. a -> DynFlags -> LogAction
 #endif
+
+--  DynFlags -> WarnReason -> Severity -> SrcSpan -> PprStyle -> MsgDoc -> IO ()
 
 setLogAction :: DynFlags -> GmLogAction -> DynFlags
 setLogAction df f =
-#if __GLASGOW_HASKELL__ >= 706
-    df { log_action = f }
+#if __GLASGOW_HASKELL__ >= 800
+    df { log_action = flip f }
+#elif __GLASGOW_HASKELL__ >= 706
+    df { log_action = f (error "setLogAction") }
 #else
-    df { log_action = f df }
+    df { log_action = f (error "setLogAction") df }
 #endif
 
 showDocWith :: DynFlags -> Pretty.Mode -> Pretty.Doc -> String
@@ -212,23 +217,26 @@ toStringBuffer = liftIO . stringToStringBuffer . unlines
 
 ----------------------------------------------------------------
 
-fOptions :: [String]
+ghcCmdOptions :: [String]
 #if __GLASGOW_HASKELL__ >= 710
-fOptions = [option | (FlagSpec option _ _ _) <- fFlags]
-#if __GLASGOW_HASKELL__ >= 800
-        ++ [option | (FlagSpec option _ _ _) <- wWarningFlags]
+-- this also includes -X options and all sorts of other things so the
+ghcCmdOptions = flagsForCompletion False
 #else
-        ++ [option | (FlagSpec option _ _ _) <- fWarningFlags]
-#endif
-        ++ [option | (FlagSpec option _ _ _) <- fLangFlags]
-#elif __GLASGOW_HASKELL__ >= 704
-fOptions = [option | (option,_,_) <- fFlags]
+ghcCmdOptions = [ "-f" ++ prefix ++ option
+                | option <- opts
+                , prefix <- ["","no-"]
+                ]
+#  if __GLASGOW_HASKELL__ >= 704
+ where opts =
+           [option | (option,_,_) <- fFlags]
         ++ [option | (option,_,_) <- fWarningFlags]
         ++ [option | (option,_,_) <- fLangFlags]
-#else
-fOptions = [option | (option,_,_,_) <- fFlags]
+#  else
+ where opts =
+           [option | (option,_,_,_) <- fFlags]
         ++ [option | (option,_,_,_) <- fWarningFlags]
         ++ [option | (option,_,_,_) <- fLangFlags]
+#  endif
 #endif
 
 ----------------------------------------------------------------
@@ -328,6 +336,16 @@ setWarnTypedHoles :: DynFlags -> DynFlags
 setWarnTypedHoles dflag = wopt_set dflag Opt_WarnTypedHoles
 #else
 setWarnTypedHoles = id
+#endif
+
+----------------------------------------------------------------
+
+-- | Set 'DynFlags' equivalent to "-fno-max-relevant-bindings".
+setNoMaxRelevantBindings :: DynFlags -> DynFlags
+#if __GLASGOW_HASKELL__ >= 708
+setNoMaxRelevantBindings df = df { maxRelevantBinds = Nothing }
+#else
+setNoMaxRelevantBindings = id
 #endif
 
 ----------------------------------------------------------------
@@ -434,6 +452,13 @@ errorMsgSpan = errMsgSpan
 errorMsgSpan = head . errMsgSpans
 #endif
 
+setErrorMsgSpan :: ErrMsg -> SrcSpan -> ErrMsg
+#if __GLASGOW_HASKELL__ >= 708
+setErrorMsgSpan err s = err { errMsgSpan = s }
+#else
+setErrorMsgSpan err s = err { errMsgSpans = [s] }
+#endif
+
 typeForUser :: Type -> SDoc
 #if __GLASGOW_HASKELL__ >= 708
 typeForUser = pprTypeForUser
@@ -463,9 +488,11 @@ deSugar tcm e hs_env = snd <$> deSugarExpr hs_env modu rn_env ty_env e
 ----------------------------------------------------------------
 ----------------------------------------------------------------
 
-data GapThing = GtA Type | GtT TyCon | GtN
+data GapThing = GtA Type
+              | GtT TyCon
+              | GtN
 #if __GLASGOW_HASKELL__ >= 800
-                         | GtPatSyn PatSyn
+              | GtPatSyn PatSyn
 #endif
 
 fromTyThing :: TyThing -> GapThing
