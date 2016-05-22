@@ -271,7 +271,7 @@ instance Binary GmModuleGraph where
         mpGraph = Map.map (Set.map intToMp) $ Map.mapKeys intToMp graph
     return $ GmModuleGraph mpGraph
     where
-      swapMap :: (Ord k, Ord v) => Map k v -> Map v k
+      swapMap :: Ord v => Map k v -> Map v k
       swapMap = Map.fromList . map (\(x, y) -> (y, x)) . Map.toList
 
 instance Monoid GmModuleGraph where
