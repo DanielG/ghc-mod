@@ -99,7 +99,7 @@ Library
                       , deepseq
                       , directory
                       , filepath
-                      , ghc
+                      , ghc >= 7.4 && < 7.10
                       , ghc-paths
                       , ghc-syb-utils
                       , hlint >= 1.8.61
@@ -142,7 +142,7 @@ Executable ghc-mod
                       , pretty
                       , process
                       , mtl >= 2.0
-                      , ghc
+                      , ghc >= 7.4 && < 7.10
                       , ghc-mod
 
 Executable ghc-modi
@@ -165,7 +165,7 @@ Executable ghc-modi
                       , process
                       , split
                       , time
-                      , ghc
+                      , ghc >= 7.4 && < 7.10
                       , ghc-mod
 
 Test-Suite doctest
@@ -203,7 +203,7 @@ Test-Suite spec
                       , deepseq
                       , directory
                       , filepath
-                      , ghc
+                      , ghc >= 7.4 && < 7.10
                       , ghc-paths
                       , ghc-syb-utils
                       , hlint >= 1.7.1
