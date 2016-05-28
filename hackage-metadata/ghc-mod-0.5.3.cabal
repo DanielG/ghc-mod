@@ -1,5 +1,6 @@
 Name:                   ghc-mod
 Version:                0.5.3
+x-revision: 1
 Author:                 Kazu Yamamoto <kazu@iij.ad.jp>
 Maintainer:             Kazu Yamamoto <kazu@iij.ad.jp>
 License:                BSD3
@@ -28,7 +29,7 @@ Executable ghc-mod
     GHC-Options:        -Wall -fno-warn-unused-do-bind
   else
     GHC-Options:        -Wall
-  Build-Depends:        base >= 4.0 && 4.3, ghc, ghc-paths,
+  Build-Depends:        base >= 4.0 && < 4.3, ghc, ghc-paths,
                         process, directory, filepath, old-time,
                         hlint >= 1.7.1
 Source-Repository head
