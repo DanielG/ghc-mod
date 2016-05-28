@@ -28,7 +28,7 @@ Executable ghc-mod
     GHC-Options:        -Wall -fno-warn-unused-do-bind
   else
     GHC-Options:        -Wall
-  Build-Depends:        base >= 4.0 && < 5, ghc, ghc-paths, transformers,
+  Build-Depends:        base >= 4.0 && < 4.3, ghc, ghc-paths, transformers,
                         process, directory, filepath, old-time,
                         hlint >= 1.7.1, regex-posix,
                         attoparsec, enumerator, attoparsec-enumerator

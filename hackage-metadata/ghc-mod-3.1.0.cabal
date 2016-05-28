@@ -58,7 +58,7 @@ Library
                         Language.Haskell.GhcMod.Lint
                         Language.Haskell.GhcMod.List
                         Language.Haskell.GhcMod.Types
-  Build-Depends:        base >= 4.0 && < 5
+  Build-Depends:        base >= 4.0 && < 4.7
                       , Cabal >= 1.10
                       , containers
                       , convertible
@@ -81,7 +81,7 @@ Executable ghc-mod
   Other-Modules:        Paths_ghc_mod
   GHC-Options:          -Wall
   HS-Source-Dirs:       src
-  Build-Depends:        base >= 4.0 && < 5
+  Build-Depends:        base >= 4.0 && < 4.7
                       , directory
                       , filepath
                       , ghc
@@ -111,7 +111,7 @@ Test-Suite spec
                         LangSpec
                         LintSpec
                         ListSpec
-  Build-Depends:        base >= 4.0 && < 5
+  Build-Depends:        base >= 4.0 && < 4.7
                       , Cabal >= 1.10
                       , containers
                       , convertible

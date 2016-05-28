@@ -42,7 +42,7 @@ Executable ghc-mod
     GHC-Options:        -Wall -fno-warn-unused-do-bind
   else
     GHC-Options:        -Wall
-  Build-Depends:        base >= 4.0 && < 5
+  Build-Depends:        base >= 4.0 && < 4.3
                       , Cabal
                       , alternative-io
                       , directory

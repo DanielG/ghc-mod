@@ -69,7 +69,7 @@ Library
                         Language.Haskell.GhcMod.PkgDoc
                         Language.Haskell.GhcMod.Utils
                         Language.Haskell.GhcMod.Types
-  Build-Depends:        base >= 4.0 && < 5
+  Build-Depends:        base >= 4.0 && < 4.8
                       , containers
                       , deepseq
                       , directory
@@ -95,7 +95,7 @@ Executable ghc-mod
   Other-Modules:        Paths_ghc_mod
   GHC-Options:          -Wall
   HS-Source-Dirs:       src
-  Build-Depends:        base >= 4.0 && < 5
+  Build-Depends:        base >= 4.0 && < 4.8
                       , directory
                       , filepath
                       , ghc
@@ -107,7 +107,7 @@ Executable ghc-modi
   Other-Modules:        Paths_ghc_mod
   GHC-Options:          -Wall
   HS-Source-Dirs:       src
-  Build-Depends:        base >= 4.0 && < 5
+  Build-Depends:        base >= 4.0 && < 4.8
                       , containers
                       , directory
                       , filepath
@@ -139,7 +139,7 @@ Test-Suite spec
                         LintSpec
                         ListSpec
                         GhcPkgSpec
-  Build-Depends:        base >= 4.0 && < 5
+  Build-Depends:        base >= 4.0 && < 4.8
                       , containers
                       , deepseq
                       , directory
