@@ -1,0 +1,35 @@
+Name:                   ghc-mod
+Version:                0.4.1
+Author:                 Kazu Yamamoto <kazu@iij.ad.jp>
+Maintainer:             Kazu Yamamoto <kazu@iij.ad.jp>
+License:                BSD3
+License-File:           LICENSE
+Homepage:               http://www.mew.org/~kazu/proj/ghc-mod/
+Synopsis:               Happy Haskell programming on Emacs
+Description:            This packages includes Elisp files
+			and a Haskell command, "ghc-mod".
+			"ghc*.el" enable completion of
+			Haskell symbols on Emacs.
+                        Flymake is also integrated.
+			"ghc-mod" is a backend of "ghc*.el".
+			It lists up all installed modules
+                        or extracts names of functions, classes,
+                        and data declarations.
+Category:               Development
+Cabal-Version:          >= 1.6
+Build-Type:             Simple
+Data-Dir:               elisp
+Data-Files:             Makefile ghc.el ghc-func.el ghc-doc.el ghc-comp.el
+                        ghc-flymake.el ghc-command.el
+Executable ghc-mod
+  Main-Is:              GHCMod.hs
+  Other-Modules:        List Browse Check Lang Lint Types
+  if impl(ghc >= 6.12)
+    GHC-Options:        -Wall -fno-warn-unused-do-bind
+  else
+    GHC-Options:        -Wall
+  Build-Depends:        base >= 4.0 && < 5, ghc, ghc-paths,
+                        process, directory, filepath
+Source-Repository head
+  Type:                 git
+  Location:             git://github.com/kazu-yamamoto/ghc-mod.git
