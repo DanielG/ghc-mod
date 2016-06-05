@@ -103,7 +103,7 @@ runGmOutT opts ma = do
                   (const $ liftIO $ flushStdoutGateway gmoChan)
                   action
 
-runGmOutT' :: IOish m => GhcModOut -> GmOutT m a -> m a
+runGmOutT' :: GhcModOut -> GmOutT m a -> m a
 runGmOutT' gmo ma = flip runReaderT gmo $ unGmOutT ma
 
 -- | Run a @GhcModT m@ computation.

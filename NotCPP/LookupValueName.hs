@@ -1,4 +1,5 @@
-{-# LANGUAGE CPP, TemplateHaskell #-}
+{-# LANGUAGE CPP             #-}
+{-# LANGUAGE TemplateHaskell #-}
 -- | This module uses scope lookup techniques to either export
 -- 'lookupValueName' from @Language.Haskell.TH@, or define
 -- its own 'lookupValueName', which attempts to do the
@@ -39,9 +40,5 @@ bestValueGuess s = do
   err = fail . showString "NotCPP.bestValueGuess: " . unwords
 
 $(recover [d| lookupValueName = bestValueGuess |] $ do
-#if __GLASGOW_HASKELL__ >= 800
-  VarI _ _ _ <- reify (mkName "lookupValueName")
-#else
-  VarI _ _ _ _ <- reify (mkName "lookupValueName")
-#endif
+  VarI{} <- reify (mkName "lookupValueName")
   return [])

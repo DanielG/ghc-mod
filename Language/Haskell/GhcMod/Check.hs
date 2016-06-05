@@ -33,7 +33,7 @@ check files =
     runGmlTWith
       (map Left files)
       return
-      ((fmap fst <$>) . withLogger setNoMaxRelevantBindings)
+      ((fmap fst <$>) . withLogger Gap.setNoMaxRelevantBindings)
       (return ())
 
 ----------------------------------------------------------------

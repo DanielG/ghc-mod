@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 module Language.Haskell.GhcMod.Browse (
     browse,
     BrowseOpts(..)
@@ -11,6 +12,7 @@ import Data.List
 import Data.Maybe
 import FastString
 import GHC
+import HscTypes
 import qualified GHC as G
 import Language.Haskell.GhcMod.Convert
 import Language.Haskell.GhcMod.Doc (showPage, styleUnqualified)
@@ -24,6 +26,9 @@ import TyCon (isAlgTyCon)
 import Type (dropForAlls, splitFunTy_maybe, mkFunTy, isPredTy)
 import Exception (ExceptionMonad, ghandle)
 import Prelude
+#if __GLASGOW_HASKELL__ >= 800
+import PatSyn (pprPatSynType)
+#endif
 
 ----------------------------------------------------------------
 
@@ -96,14 +101,20 @@ showExport opt minfo e = do
     mqualified = (G.moduleNameString (G.moduleName $ G.nameModule e) ++ ".") `justIf` optBrowseQualified opt
     mtype :: m (Maybe String)
     mtype
-      | optBrowseDetailed opt = do
+      | optBrowseDetailed opt || optBrowseParents opt = do
         tyInfo <- G.modInfoLookupName minfo e
         -- If nothing found, load dependent module and lookup global
         tyResult <- maybe (inOtherModule e) (return . Just) tyInfo
         dflag <- G.getSessionDynFlags
-        return $ do
-          typeName <- tyResult >>= showThing dflag
-          (" :: " ++ typeName) `justIf` optBrowseDetailed opt
+        let sig = do
+                    typeName <- tyResult >>= showThing dflag
+                    (" :: " ++ typeName) `justIf` optBrowseDetailed opt
+        let parent = do
+                    thing <- fmap getOccString $ tyResult >>= tyThingParent_maybe
+                    (" -- from:" ++ thing) `justIf` optBrowseParents opt
+        return $ case concat $ catMaybes [sig, parent] of
+                    [] -> Nothing
+                    x  -> Just x
       | otherwise = return Nothing
     formatOp nm
       | null nm    = error "formatOp"
@@ -124,6 +135,9 @@ showThing' dflag (GtA a) = Just $ formatType dflag a
 showThing' _     (GtT t) = unwords . toList <$> tyType t
   where
     toList t' = t' : getOccString t : map getOccString (G.tyConTyVars t)
+#if __GLASGOW_HASKELL__ >= 800
+showThing' dflag (GtPatSyn p) = Just $ showSDoc dflag $ pprPatSynType p
+#endif
 showThing' _     _       = Nothing
 
 formatType :: DynFlags -> Type -> String

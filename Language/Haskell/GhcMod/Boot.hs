@@ -7,12 +7,13 @@ import Language.Haskell.GhcMod.Flag
 import Language.Haskell.GhcMod.Lang
 import Language.Haskell.GhcMod.Monad
 import Language.Haskell.GhcMod.Modules
+import Language.Haskell.GhcMod.Types (defaultBrowseOpts)
 
 -- | Printing necessary information for front-end booting.
 boot :: IOish m => GhcModT m String
 boot = concat <$> sequence ms
   where
-    ms = [modules False, languages, flags, concat <$> mapM (browse (BrowseOpts False False False)) preBrowsedModules]
+    ms = [modules False, languages, flags, concat <$> mapM (browse defaultBrowseOpts) preBrowsedModules]
 
 preBrowsedModules :: [String]
 preBrowsedModules = [
