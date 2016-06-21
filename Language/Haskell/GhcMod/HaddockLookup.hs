@@ -73,11 +73,7 @@ import Control.Monad.Catch
 
 import qualified DynFlags()
 
-import Language.Haskell.GhcMod (
-      findCradle
-    , cradleRootDir
-    , Cradle(..)
-    )
+import Language.Haskell.GhcMod
 
 import Language.Haskell.GhcMod.SrcUtils (listifySpans)
 import Language.Haskell.GhcMod.Pretty
@@ -90,6 +86,7 @@ import Language.Haskell.GhcMod.Monad.Types
 import Language.Haskell.GhcMod.DynFlags
 import Language.Haskell.GhcMod.Gap
 import Language.Haskell.GhcMod.Target
+import Language.Haskell.GhcMod.PkgDoc
 
 import Data.List
 
@@ -125,7 +122,7 @@ type GHCFixmeOption = String
 
 type QualifiedName = String -- ^ A qualified name, e.g. @Foo.bar@.
 
-type Symbol = String -- ^ A symbol, possibly qualified, e.g. @bar@ or @Foo.bar@.
+type FixmeSymbol = String -- ^ A symbol, possibly qualified, e.g. @bar@ or @Foo.bar@.
 
 newtype GhcFixmeOptions
     -- | List of user-supplied GHC options, refer to @tets@ subdirectory for example usage. Note that
@@ -206,45 +203,6 @@ getStackLocalPkgDb = do
         Just ""     -> Nothing
         Just x'     -> Just x'
 
--- | Use "stack ghci" with our fake ghc binary to get all the GHC options related
--- to the local Stack configuration (if present).
-getGhcOptionsViaStack :: IO (Maybe [String])
-getGhcOptionsViaStack = do
-    putStrLn "getGhcOptionsViaStack..."
-
-    stackSnapshotPkgDb <- fmap ("-package-db " ++) <$> getStackSnapshotPkgDb :: IO (Maybe String)
-    stackLocalPkgDb    <- fmap ("-package-db " ++) <$> getStackLocalPkgDb    :: IO (Maybe String)
-
-    case (stackSnapshotPkgDb, stackLocalPkgDb) of
-        (Nothing, _) -> return Nothing
-        (_, Nothing) -> return Nothing
-        (Just stackSnapshotPkgDb', Just stackLocalPkgDb') -> do
-            x <- executeFallibly' "stack" ["ghci", "--with-ghc=fake-ghc-for-ghc-imported-from"]
-
-            let result = case x of
-                            Nothing         -> []
-                            Just (x', _)    -> filter ("--interactive" `isPrefixOf`) . lines $ x'
-
-            return $ case result of
-                [r] -> Just $ filterOpts (words r) ++ [stackSnapshotPkgDb', stackLocalPkgDb']
-                _   -> Nothing
-
--- | Use "cabal repl" with our fake ghc binary to get all the GHC options related
--- to the local cabal sandbox (if present).
-getGhcOptionsViaCabalRepl :: IO (Maybe [String])
-getGhcOptionsViaCabalRepl = do
-    putStrLn "getGhcOptionsViaCabalRepl..."
-
-    x <- executeFallibly' "cabal" ["repl", "--with-ghc=fake-ghc-for-ghc-imported-from"]
-
-    let result = case x of
-                    Nothing         -> []
-                    Just (x', _)    -> filter ("--interactive" `isPrefixOf`) . lines $ x'
-
-    return $ case result of
-        [r] -> Just $ filterOpts (words r)
-        _   -> Nothing
-
 -- | GHC options that we don't use when partially compiling the source module.
 filterOpts :: [String] -> [String]
 filterOpts xs = filter (\x -> x /= "--interactive" && x /= "-fbuilding-cabal-package" && x /= "-Wall") $ dropModuleNames xs
@@ -315,132 +273,6 @@ parsePackageAndQualNameWithHash = do
 
     parsePackageFinalQualName :: TP.ParsecT String u Data.Functor.Identity.Identity String
     parsePackageFinalQualName = TP.many1 TP.anyChar
-
--- | Use "cabal repl" or "stack ghci" to try to get GHC options. Lots of things here, for
--- example:
---
---      --interactive -fbuilding-cabal-package -O0 -outputdir dist/build/rename-photos/rename-photos-tmp
---      -odir dist/build/rename-photos/rename-photos-tmp -hidir dist/build/rename-photos/rename-photos-tmp
---      -stubdir dist/build/rename-photos/rename-photos-tmp -i -idist/build/rename-photos/rename-photos-tmp
---      -i. -idist/build/autogen -Idist/build/autogen -Idist/build/rename-photos/rename-photos-tmp
---      -optP-include -optPdist/build/autogen/cabal_macros.h -dynload deploy
---      -optl-Wl,-rpath,/opt/ghc/7.10.3/lib/ghc-7.10.3/array_67iodizgJQIIxYVTp4emlA
---      -optl-Wl,-rpath,/opt/ghc/7.10.3/lib/ghc-7.10.3/base_HQfYBxpPvuw8OunzQu6JGM
---      -optl-Wl,-rpath,/opt/ghc/7.10.3/lib/ghc-7.10.3/binar_3uXFWMoAGBg0xKP9MHKRwi
---      -optl-Wl,-rpath,/opt/ghc/7.10.3/lib/ghc-7.10.3/rts
---      -optl-Wl,-rpath,/opt/ghc/7.10.3/lib/ghc-7.10.3/bytes_6VWy06pWzJq9evDvK2d4w6
---      -optl-Wl,-rpath,/opt/ghc/7.10.3/lib/ghc-7.10.3/conta_2C3ZI8RgPO2LBMidXKTvIU
---      -optl-Wl,-rpath,/opt/ghc/7.10.3/lib/ghc-7.10.3/deeps_6vMKxt5sPFR0XsbRWvvq59
---      -optl-Wl,-rpath,/opt/ghc/7.10.3/lib/ghc-7.10.3/direc_0hFG6ZxK1nk4zsyOqbNHfm
---      -optl-Wl,-rpath,/opt/ghc/7.10.3/lib/ghc-7.10.3/filep_Ey7a1in9roBAE8bUFJ5R9m
---      -optl-Wl,-rpath,/opt/ghc/7.10.3/lib/ghc-7.10.3/ghcpr_8TmvWUcS1U1IKHT0levwg3
---      -optl-Wl,-rpath,/opt/ghc/7.10.3/lib/ghc-7.10.3/integ_2aU3IZNMF9a7mQ0OzsZ0dS
---      -optl-Wl,-rpath,/scratch/sandboxes/camera-scripts/lib/x86_64-linux-ghc-7.10.3/mmorph-1.0.6-2Jm5FlYBlmjDhcU1ovZRKP
---      -optl-Wl,-rpath,/scratch/sandboxes/camera-scripts/lib/x86_64-linux-ghc-7.10.3/mtl-2.2.1-Aue4leSeVkpKLsfHIV51E8
---      -optl-Wl,-rpath,/scratch/sandboxes/camera-scripts/lib/x86_64-linux-ghc-7.10.3/parsec-3.1.9-EE5NO1mlYLh4J8mgDEshNv
---      -optl-Wl,-rpath,/scratch/sandboxes/camera-scripts/lib/x86_64-linux-ghc-7.10.3/pipes-4.1.8-77ihSQ5c6PS0Tlq86aN8G4
---      -optl-Wl,-rpath,/opt/ghc/7.10.3/lib/ghc-7.10.3/proce_52AgREEfSrnJLlkGV9YZZJ
---      -optl-Wl,-rpath,/scratch/sandboxes/camera-scripts/lib/x86_64-linux-ghc-7.10.3/text-1.2.2.0-5c7VCmRXJenGcMPs3kwpkI
---      -optl-Wl,-rpath,/opt/ghc/7.10.3/lib/ghc-7.10.3/time_FTheb6LSxyX1UABIbBXRfn
---      -optl-Wl,-rpath,/opt/ghc/7.10.3/lib/ghc-7.10.3/trans_GZTjP9K5WFq01xC9BAGQpF
---      -optl-Wl,-rpath,/scratch/sandboxes/camera-scripts/lib/x86_64-linux-ghc-7.10.3/transformers-compat-0.5.1.4-EfAx8JliEAN1Gu6x0L8GYr
---      -optl-Wl,-rpath,/opt/ghc/7.10.3/lib/ghc-7.10.3/unix_KZL8h98IqDM57kQSPo1mKx
---      -hide-all-packages
---      -no-user-package-db
---      -package-db /scratch/sandboxes/camera-scripts/x86_64-linux-ghc-7.10.3-packages.conf.d
---      -package-db dist/package.conf.inplace
---      -package-id base-4.8.2.0-0d6d1084fbc041e1cded9228e80e264d
---      -package-id bytestring-0.10.6.0-c60f4c543b22c7f7293a06ae48820437
---      -package-id containers-0.5.6.2-e59c9b78d840fa743d4169d4bea15592
---      -package-id directory-1.2.2.0-f8e14a9d121b76a00a0f669ee724a732
---      -package-id filepath-1.4.0.0-f97d1e4aebfd7a03be6980454fe31d6e
---      -package-id parsec-3.1.9-a68c5d78bf2a63f486c525b960f2dddd
---      -package-id pipes-4.1.8-394d3831f54f6d7e2c83d050d94ecb3a
---      -package-id process-1.2.3.0-78f206acb2330ea8066c6c19c87356f0
---      -package-id text-1.2.2.0-daec687352505adca80a15e023cbae5c
---      -package-id transformers-0.4.2.0-81450cd8f86b36eaa8fa0cbaf6efc3a3
---      -XHaskell98
---      ./renamePhotos.hs
-getGhcOptionsViaCabalOrStack :: IO [String]
-getGhcOptionsViaCabalOrStack = do
-    x <- fromMaybe [] <$> shortcut [getGhcOptionsViaStack, getGhcOptionsViaCabalRepl]
-    putStrLn $ "getGhcOptionsViaCabalOrStack: " ++ show x
-    return x
-
--- | Set GHC options and run 'initPackages' in 'GhcMonad'.
---
--- Typical use:
---
--- > defaultErrorHandler defaultFatalMessager defaultFlushOut $ do
--- >    runGhc (Just libdir) $ do
--- >        getSessionDynFlags >>= setDynamicFlags (GhcOptions myGhcOptionList)
--- >        -- do stuff
-setDynamicFlags :: GhcMonad m => GhcFixmeOptions -> DynFlags -> m ([GHCOption], DynFlags)
-setDynamicFlags (GhcFixmeOptions extraGHCOpts) dflags0 = do
-    (allGhcOpts, dflags1) <- undefined -- GhcMonad.liftIO $ modifyDFlags extraGHCOpts dflags0
-
-    void $ setSessionDynFlags dflags1
-    _ <- GhcMonad.liftIO $ Packages.initPackages dflags1
-
-    return (allGhcOpts, dflags1)
-
--- |Read the textual imports in a file.
---
--- Example:
---
--- >>> (showSDoc tracingDynFlags) . ppr <$> getTextualImports "test/data/Hiding.hs" "Hiding" >>= putStrLn
--- [ import (implicit) Prelude, import qualified Safe
--- , import System.Environment ( getArgs )
--- , import Data.List hiding ( map )
--- ]
---
--- See also 'toHaskellModule' and 'getSummary'.
-getTextualImports :: GhcMonad m => GhcFixmeOptions -> FilePath -> String -> m ([GHCOption], [SrcLoc.Located (ImportDecl RdrName)])
-getTextualImports ghcopts targetFile targetModuleName = do
-    GhcMonad.liftIO $ putStrLn $ "getTextualImports: " ++ show (targetFile, targetModuleName)
-    (allGhcOpts, modSum) <- getSummary ghcopts targetFile targetModuleName
-
-    GhcMonad.liftIO $ putStrLn $ "getTextualImports: allGhcOpts: " ++ show allGhcOpts
-
-    -- graph <- getModuleGraph
-    -- GhcMonad.liftIO $ error $ show $ map ms_hspp_file graph
-
-    return (allGhcOpts, ms_textual_imps modSum)
-
--- | Get the module summary for a particular file/module. The first and second components of the
--- return value are @ghcOpts1@ and @ghcOpts2@; see 'setDynamicFlags'.
-getSummary :: GhcMonad m => GhcFixmeOptions -> FilePath -> String -> m ([GHCFixmeOption], ModSummary)
-getSummary ghcopts targetFile targetModuleName = do
-            GhcMonad.liftIO $ putStrLn "getSummary, setting dynamic flags..."
-            (allGhcOpts, _) <- getSessionDynFlags >>= setDynamicFlags ghcopts
-
-            GhcMonad.liftIO $ putStrLn $ "getSummary, allGhcOpts: " ++ show allGhcOpts
-
-            -- Load the target file (e.g. "Muddle.hs").
-            GhcMonad.liftIO $ putStrLn "getSummary, loading the target file..."
-            target <- guessTarget targetFile Nothing
-            setTargets [target]
-
-            _ <- load LoadAllTargets
-
-            -- Set the context by loading the module, e.g. "Muddle" which is in "Muddle.hs".
-            GhcMonad.liftIO $ putStrLn "getSummary, setting the context..."
-
-            setContext [(IIDecl . simpleImportDecl . mkModuleName) targetModuleName]
-                   `gcatch` (\(e  :: SourceError)   -> GhcMonad.liftIO (putStrLn $ "getSummary: setContext failed with a SourceError, trying to continue anyway..." ++ show e))
-                   `gcatch` (\(g  :: GhcApiError)   -> GhcMonad.liftIO (putStrLn $ "getSummary: setContext failed with a GhcApiError, trying to continue anyway..." ++ show g))
-                   `gcatch` (\(se :: SomeException) -> GhcMonad.liftIO (putStrLn $ "getSummary: setContext failed with a SomeException, trying to continue anyway..." ++ show se))
-
-            -- Extract the module summary.
-            GhcMonad.liftIO $ putStrLn "getSummary, extracting the module summary..."
-            modSum <- getModSummary (mkModuleName targetModuleName)
-
-            -- graph <- GHC.depanal [] False
-            -- -- graph <- getModuleGraph
-            -- let graph_names = map (GHC.moduleNameString . GHC.ms_mod_name) graph
-            -- GhcMonad.liftIO $ print $ "graph_names: " ++ show graph_names
-
-            return (allGhcOpts, modSum)
 
 -- |Convenience function for converting an 'GHC.ImportDecl' to a 'HaskellModule'.
 --
@@ -550,7 +382,7 @@ separateBy chr = unfoldr sep' where
 -- False
 -- >>> postfixMatch "bar" "bar"
 -- True
-postfixMatch :: Symbol -> QualifiedName -> Bool
+postfixMatch :: FixmeSymbol -> QualifiedName -> Bool
 postfixMatch originalSymbol qName = endTerm `isSuffixOf` qName
   where endTerm = last $ separateBy '.' originalSymbol
 
@@ -910,10 +742,6 @@ filterMatchingQualifiedImport symbol hmodules =
     case moduleOfQualifiedName symbol of Nothing    -> []
                                          asBit@(Just _) -> filter (\z -> asBit == modImportedAs z) hmodules
 
--- Copied from ghc-mod-5.5.0.0
-findCradleNoLog  :: forall m. (IOish m, GmOut m) => m Cradle
-findCradleNoLog = fst <$> (runJournalT findCradle :: m (Cradle, GhcModLog))
-
 getModuleExports :: GhcFixmeOptions
                  -> GhcPkgFixmeOptions
                  -> HaskellModule
@@ -977,7 +805,7 @@ refineRemoveHiding exports = map (\e -> e { qualifiedExports = f e }) exports
              hiding' = map (qualifyName thisExports) hiding  :: [String]    -- Qualified version of hiding.
              thisExports = qualifiedExports export         -- Things that this module exports.
 
-    qualifyName :: [QualifiedName] -> Symbol -> QualifiedName
+    qualifyName :: [QualifiedName] -> FixmeSymbol -> QualifiedName
     qualifyName qualifiedNames name
         -- = case filter (postfixMatch name) qualifiedNames of
         = case nub (filter (name `f`) qualifiedNames) of
@@ -1051,17 +879,10 @@ getLastMatch exports = Safe.lastMay $ filter f exports
 -- (lots of output)
 -- SUCCESS: file:///home/carlo/opt/ghc-7.6.3_build/share/doc/ghc/html/libraries/base-4.6.0.1/Data-Maybe.html
 
-guessHaddockUrl :: FilePath -> String -> Symbol -> Int -> Int -> GhcFixmeOptions -> GhcPkgFixmeOptions -> IO (Either String String)
-guessHaddockUrl _targetFile targetModule symbol lineNr colNr (GhcFixmeOptions ghcOpts0) ghcPkgFixmeOptions = do
-    cradle <- runGmOutT GhcModTypes.defaultOptions findCradleNoLog
-    let currentDir = cradleCurrentDir cradle
-        workDir = cradleRootDir cradle
-    setCurrentDirectory workDir
-
-    let targetFile = currentDir </> _targetFile
-
-    putStrLn $ "currentDir: " ++ currentDir
-    putStrLn $ "workDir: " ++ workDir
+guessHaddockUrl :: Cradle -> FilePath -> String -> FixmeSymbol -> Int -> Int -> GhcFixmeOptions -> GhcPkgFixmeOptions -> IO (Either String String)
+guessHaddockUrl crdl _targetFile targetModule symbol lineNr colNr (GhcFixmeOptions ghcOpts0) ghcPkgFixmeOptions = do
+    -- let targetFile = currentDir </> _targetFile
+    let targetFile = _targetFile
 
     putStrLn $ "targetFile: " ++ targetFile
     putStrLn $ "targetModule: " ++ targetModule
@@ -1073,7 +894,9 @@ guessHaddockUrl _targetFile targetModule symbol lineNr colNr (GhcFixmeOptions gh
     putStrLn $ "GhcPkgFixmeOptions: " ++ show ghcPkgFixmeOptions
 
     runGhc (Just libdir) $ do
-        (allGhcOpts, textualImports) <- getTextualImports (GhcFixmeOptions ghcOpts0) targetFile targetModule
+        let allGhcOpts      = undefined
+            modSum          = undefined
+            textualImports  = ms_textual_imps modSum
 
         let haskellModules0 = map toHaskellModule textualImports
             haskellModuleNames0 = map modName haskellModules0
@@ -1208,13 +1031,13 @@ guessHaddockUrl _targetFile targetModule symbol lineNr colNr (GhcFixmeOptions gh
         return $ Right url
 
 -- | Top level function; use this one from src/Main.hs.
-haddockUrl :: Options -> FilePath -> String -> String -> Int -> Int -> IO String
-haddockUrl opt file modstr symbol lineNr colNr = do
+haddockUrl :: Cradle -> Options -> FilePath -> String -> String -> Int -> Int -> IO String
+haddockUrl crdl opt file modstr symbol lineNr colNr = do
 
     let ghcopts    = undefined -- GhcOptions    $ ghcOpts    opt
     let ghcpkgopts = undefined -- GhcPkgOptions $ ghcPkgOpts opt
 
-    res <- guessHaddockUrl file modstr symbol lineNr colNr ghcopts ghcpkgopts
+    res <- guessHaddockUrl crdl file modstr symbol lineNr colNr ghcopts ghcpkgopts
     print ("res", show res)
 
     case res of Right x  -> return $ "SUCCESS: " ++ x ++ "\n"
