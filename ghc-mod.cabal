@@ -124,6 +124,7 @@ Library
                         Language.Haskell.GhcMod.Flag
                         Language.Haskell.GhcMod.Gap
                         Language.Haskell.GhcMod.GhcPkg
+                        Language.Haskell.GhcMod.HaddockLookup
                         Language.Haskell.GhcMod.HomeModuleGraph
                         Language.Haskell.GhcMod.Info
                         Language.Haskell.GhcMod.Lang
@@ -163,10 +164,12 @@ Library
                       , cabal-helper      < 0.7 && >= 0.6.3.0
                       , deepseq           < 1.5
                       , directory         < 1.3
+                      , exceptions
                       , filepath          < 1.5
                       , ghc               < 7.11
                       , ghc-paths         < 0.2
                       , ghc-syb-utils     < 0.3
+                      , haddock-api
                       , hlint             < 1.10 && >= 1.8.61
                       , monad-journal     < 0.8 && >= 0.4
                       , old-time          < 1.2
@@ -179,6 +182,9 @@ Library
                       , transformers-base < 0.5
                       , mtl               < 2.3 && >= 2.0
                       , monad-control     < 1.1 && >= 1
+                      , parsec
+                      , process
+                      , process-streaming >= 0.9.0.0
                       , split             < 0.3
                       , haskell-src-exts  < 1.18
                       , text              < 1.3
