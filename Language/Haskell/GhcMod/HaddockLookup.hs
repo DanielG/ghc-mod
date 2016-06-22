@@ -1038,8 +1038,9 @@ haddock :: IOish m
       => FilePath     -- ^ A target file.
       -> Int          -- ^ Line number.
       -> Int          -- ^ Column number.
+      -> Expression   -- ^ Expression (symbol)
       -> GhcModT m String
-haddock file lineNo colNo =
+haddock file lineNo colNo (Expression symbol) =
   ghandle handler $
     runGmlT' [Left file] deferErrors $
       withInteractiveContext $ do
@@ -1049,8 +1050,7 @@ haddock file lineNo colNo =
         -- dflag        <- G.getSessionDynFlags
         -- st           <- getStyle
         -- convert' $ map (toTup dflag st) $ sortBy (cmp `on` fst) srcSpanTypes
-        let modstr = "Language.Haskell.GhcMod.HaddockLookup" -- FIXME testing
-            symbol = "return" -- FIXME testing
+        let modstr = moduleNameString $ ms_mod_name modSum :: String
         blargh <- haddockUrl modSum crdl {- opt -} file modstr symbol lineNo colNo
         return blargh
  where
