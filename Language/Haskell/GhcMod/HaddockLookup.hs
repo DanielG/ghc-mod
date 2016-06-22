@@ -489,14 +489,13 @@ readRestOfHandle h = do
         then return ""
         else hGetContents h
 
-optsForGhcPkg :: [String] -> [String]
-optsForGhcPkg [] = []
-optsForGhcPkg ("-no-user-package-db":rest)   = "--no-user-package-db"          : optsForGhcPkg rest
-optsForGhcPkg ("-package-db":pd:rest)        = ("--package-db" ++ "=" ++ pd)   : optsForGhcPkg rest
-optsForGhcPkg ("-package-conf":pc:rest)      = ("--package-conf" ++ "=" ++ pc) : optsForGhcPkg rest
-optsForGhcPkg ("-no-user-package-conf":rest) = "--no-user-package-conf"        : optsForGhcPkg rest
-optsForGhcPkg (_:rest) = optsForGhcPkg rest
-
+ghcPkgHaddockUrl
+    :: forall (m :: * -> *).  MonadIO m
+    => FilePath
+    -> (FilePath -> [String] -> String -> IO String)
+    -> [GhcPkgDb]
+    -> String
+    -> m (Maybe String)
 ghcPkgHaddockUrl ghcPkg readProc pkgDbStack p = do
     hout <- liftIO $ readProc ghcPkg (toDocDirOpts p pkgDbStack) ""
     return $ Safe.lastMay $ words $ reverse . dropWhile (== '\n') . reverse $ hout
@@ -505,82 +504,27 @@ ghcPkgHaddockUrl ghcPkg readProc pkgDbStack p = do
     -- pkgDoc elsewhere in ghc-mod.
     toDocDirOpts pkg dbs = ["field", pkg, "haddock-html", "--global", "--user"] ++ ghcPkgDbStackOpts dbs
 
-readHaddockHtmlOutput :: FilePath -> [String] -> IO (Maybe String)
-readHaddockHtmlOutput cmd opts = do
-    x <- executeFallibly' cmd opts
-
-    case x of
-        Nothing             -> return Nothing
-        Just (hout, _)      -> do let line = reverse . dropWhile (== '\n') . reverse $ hout
-                                  print ("line", line)
-
-                                  if "haddock-html:" `isInfixOf` line
-                                      then do print ("line2", Safe.lastMay $ words line)
-                                              return $ Safe.lastMay $ words line
-                                      else return Nothing
-
-ghcPkgHaddockInterface :: {- [String] -> GhcPkgFixmeOptions -> -} String -> IO (Maybe String)
-ghcPkgHaddockInterface {- allGhcOptions (GhcPkgFixmeOptions extraGHCPkgOpts) -} p =
-    shortcut [ stackGhcPkgHaddockInterface
-             , cabalPkgHaddockInterface
-             , _ghcPkgHaddockInterface
-             ]
-
+ghcPkgHaddockInterface
+    :: forall (m :: * -> *).  MonadIO m
+    => FilePath
+    -> (FilePath -> [String] -> String -> IO String)
+    -> [GhcPkgDb]
+    -> String
+    -> m (Maybe String)
+ghcPkgHaddockInterface ghcPkg readProc pkgDbStack p = do
+    hout <- liftIO $ readProc ghcPkg (toHaskellInterfaces p pkgDbStack) ""
+    return $ Safe.lastMay $ words $ reverse . dropWhile (== '\n') . reverse $ hout
   where
-
-    _ghcPkgHaddockInterface :: IO (Maybe String)
-    _ghcPkgHaddockInterface = do
-        let opts = ["field", p, "haddock-interfaces"] ++ ["--global", "--user"] ++ optsForGhcPkg [] {- allGhcOptions ++ extraGHCPkgOpts -}
-        putStrLn $ "ghc-pkg "++ show opts
-
-        x <- executeFallibly' "ghc-pkg" opts
-
-        return $ case x of
-            Nothing         -> Nothing
-            Just (hout, _)  -> Safe.lastMay $ words $ reverse . dropWhile (== '\n') . reverse $ hout
-
-    -- | Call cabal sandbox hc-pkg to find the haddock Interfaces.
-    cabalPkgHaddockInterface :: IO (Maybe String)
-    cabalPkgHaddockInterface = do
-        let opts = ["sandbox", "hc-pkg", "field", p, "haddock-interfaces"]
-        putStrLn $ "cabal sandbox hc-pkg field " ++ p ++ " haddock-interfaces"
-
-        x <- executeFallibly' "cabal" opts
-
-        case x of
-            Nothing         -> return Nothing
-            Just (hout, _)  -> do let line = reverse . dropWhile (== '\n') . reverse $ hout
-                                  print ("ZZZZZZZZZZZZZ", line)
-
-                                  return $ if "haddock-interfaces" `isInfixOf` line
-                                      then Safe.lastMay $ words line
-                                      else Nothing
-
-    -- | Call stack to find the haddock Interfaces.
-    stackGhcPkgHaddockInterface :: IO (Maybe String)
-    stackGhcPkgHaddockInterface = do
-        let opts = ["exec", "ghc-pkg", "field", p, "haddock-interfaces"]
-        putStrLn $ "stack exec ghc-pkg field " ++ p ++ " haddock-interfaces"
-
-        x <- executeFallibly' "stack" opts
-
-        case x of
-            Nothing         -> return Nothing
-            Just (hout, _)  -> do let line = reverse . dropWhile (== '\n') . reverse $ hout
-                                  print ("UUUUUUUUUUUUU", line, opts)
-
-                                  return $ if "haddock-interfaces" `isInfixOf` line
-                                      then Safe.lastMay $ words line
-                                      else Nothing
+    toHaskellInterfaces pkg dbs = ["field", pkg, "haddock-interfaces", "--global", "--user"] ++ ghcPkgDbStackOpts dbs
 
 getVisibleExports
     :: forall m. (GhcMonad m,
                   MonadIO  m)
-    => {- [String] -> GhcPkgFixmeOptions -> -}
-       String
+    => (String -> IO (Maybe String))
+    -> String
     -> m (Maybe (M.Map String [String]))
-getVisibleExports {- allGhcOptions (GhcPkgFixmeOptions extraGHCPkgOpts) -} p = do
-    haddockInterfaceFile <- liftIO $ ghcPkgHaddockInterface {- allGhcOptions (GhcPkgFixmeOptions extraGHCPkgOpts) -} p
+getVisibleExports getHaddockInterfaces p = do
+    haddockInterfaceFile <- liftIO $ getHaddockInterfaces p
     join <$> traverse getVisibleExports' haddockInterfaceFile
 
 ------------------------------------------------------------------------------------------------------------------------
@@ -794,17 +738,17 @@ refineLeadingDot (MySymbolSysQualified symb)         exports = map (\e -> e { qu
 refineVisibleExports
     :: forall m. (GhcMonad m,
                   MonadIO  m)
-    => {- [String] -> GhcPkgFixmeOptions -> -}
-       [ModuleExports]
+    => (String -> IO (Maybe String))
+    -> [ModuleExports]
     -> m [ModuleExports]
-refineVisibleExports {- allGhcOpts ghcPkgFixmeOptions -} exports = mapM f exports
+refineVisibleExports getHaddockInterfaces exports = mapM f exports
   where
     f :: ModuleExports -> m ModuleExports
     f mexports = do
         let pname          = mPackageName     mexports -- e.g. "base-4.8.2.0"
             thisModuleName = mName            mexports -- e.g. "Prelude"
             qexports       = qualifiedExports mexports -- e.g. ["base-4.8.2.0:GHC.Base.Just", ...]
-        visibleExportsMap <- getVisibleExports {- allGhcOpts ghcPkgFixmeOptions -} pname
+        visibleExportsMap <- getVisibleExports getHaddockInterfaces pname
         liftIO $ print visibleExportsMap
 
         let thisModVisibleExports = fromMaybe
@@ -848,10 +792,11 @@ guessHaddockUrl
     -> Int
     -> Int
     -> (String -> IO (Maybe String))
+    -> (String -> IO (Maybe String))
     -- -> GhcFixmeOptions
     -- -> GhcPkgFixmeOptions
     -> m (Either String String)
-guessHaddockUrl modSum crdl _targetFile targetModule symbol lineNr colNr {- (GhcFixmeOptions ghcOpts0) ghcPkgFixmeOptions -} getHaddockUrl = do
+guessHaddockUrl modSum crdl _targetFile targetModule symbol lineNr colNr {- (GhcFixmeOptions ghcOpts0) ghcPkgFixmeOptions -} getHaddockUrl getHaddockInterfaces = do
     -- let targetFile = currentDir </> _targetFile
     let targetFile = _targetFile
 
@@ -971,7 +916,7 @@ guessHaddockUrl modSum crdl _targetFile targetModule symbol lineNr colNr {- (Ghc
     liftIO $ putStrLn "upToNow3"
     liftIO $ forM_ upToNow3 $ \x -> putStrLn $ pprModuleExports x
 
-    upToNow4 <- refineVisibleExports {- allGhcOpts ghcPkgFixmeOptions -} upToNow3
+    upToNow4 <- refineVisibleExports getHaddockInterfaces upToNow3
     liftIO $ putStrLn "upToNow4"
     liftIO $ forM_ upToNow4 $ \x -> putStrLn $ pprModuleExports x
 
@@ -1003,8 +948,22 @@ guessHaddockUrl modSum crdl _targetFile targetModule symbol lineNr colNr {- (Ghc
 
 -- | Top level function; use this one from src/Main.hs.
 -- haddockUrl :: forall m. (GhcMonad m, MonadIO m) => ModSummary -> Cradle {- -> Options -} -> FilePath -> String -> String -> Int -> Int -> m String
-haddockUrl modSum crdl {- opt -} file modstr symbol lineNr colNr getHaddockUrl = do
-    res <- guessHaddockUrl modSum crdl file modstr symbol lineNr colNr {- ghcopts ghcpkgopts -} getHaddockUrl
+
+
+haddockUrl
+    :: forall (m :: * -> *).  (MonadIO m, GhcMonad m)
+    => ModSummary
+    -> Cradle
+    -> FilePath
+    -> String
+    -> FixmeSymbol
+    -> Int
+    -> Int
+    -> (String -> IO (Maybe String))
+    -> (String -> IO (Maybe String))
+    -> m [Char]
+haddockUrl modSum crdl {- opt -} file modstr symbol lineNr colNr getHaddockUrl getHaddockInterfaces = do
+    res <- guessHaddockUrl modSum crdl file modstr symbol lineNr colNr {- ghcopts ghcpkgopts -} getHaddockUrl getHaddockInterfaces
     liftIO $ print ("res", show res)
 
     case res of Right x  -> return $ "SUCCESS: " ++ x ++ "\n"
@@ -1024,7 +983,8 @@ haddock file lineNo colNo (Expression symbol) = do
     readProc   <- gmReadProcess
     pkgDbStack <- getPackageDbStack
 
-    let gphurl = ghcPkgHaddockUrl ghcPkg readProc pkgDbStack
+    let gphurl = ghcPkgHaddockUrl       ghcPkg readProc pkgDbStack
+        gphint = ghcPkgHaddockInterface ghcPkg readProc pkgDbStack
 
     ghandle handler $
       runGmlT' [Left file] deferErrors $
@@ -1037,7 +997,7 @@ haddock file lineNo colNo (Expression symbol) = do
           -- convert' $ map (toTup dflag st) $ sortBy (cmp `on` fst) srcSpanTypes
           let modstr = moduleNameString $ ms_mod_name modSum :: String
   
-          blargh <- haddockUrl modSum crdl {- opt -} file modstr symbol lineNo colNo gphurl
+          blargh <- haddockUrl modSum crdl {- opt -} file modstr symbol lineNo colNo gphurl gphint
           return blargh
  where
    handler (SomeException ex) = do
