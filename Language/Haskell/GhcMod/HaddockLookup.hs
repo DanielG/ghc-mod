@@ -505,25 +505,6 @@ ghcPkgHaddockUrl ghcPkg readProc pkgDbStack p = do
     -- pkgDoc elsewhere in ghc-mod.
     toDocDirOpts pkg dbs = ["field", pkg, "haddock-html", "--global", "--user"] ++ ghcPkgDbStackOpts dbs
 
---ghcPkgHaddockUrl :: {- [String] -> GhcPkgFixmeOptions -> -} String -> IO (Maybe String)
---ghcPkgHaddockUrl {- allGhcOptions (GhcPkgFixmeOptions extraGHCPkgOpts) -} p =
---    shortcut [ stackPkgHaddockUrl p
---             , sandboxPkgHaddockUrl p
---             , _ghcPkgHaddockUrl {- allGhcOptions (GhcPkgFixmeOptions extraGHCPkgOpts) -} p
---             ]
-
--- | Call @ghc-pkg field@ to get the @haddock-html@ field for a package.
-_ghcPkgHaddockUrl :: {- [String] -> GhcPkgFixmeOptions -> -} String -> IO (Maybe String)
-_ghcPkgHaddockUrl {- allGhcOptions (GhcPkgFixmeOptions extraGHCPkgOpts) -} p = do
-    let opts = ["field", p, "haddock-html"] ++ ["--global", "--user"] ++ optsForGhcPkg [] {- allGhcOptions ++ extraGHCPkgOpts -}
-    putStrLn $ "ghc-pkg "++ show opts
-
-    x <- executeFallibly' "ghc-pkg" opts
-
-    case x of
-        Nothing             -> return Nothing
-        Just (hout, _)      -> return $ Safe.lastMay $ words $ reverse . dropWhile (== '\n') . reverse $ hout
-
 readHaddockHtmlOutput :: FilePath -> [String] -> IO (Maybe String)
 readHaddockHtmlOutput cmd opts = do
     x <- executeFallibly' cmd opts
@@ -537,20 +518,6 @@ readHaddockHtmlOutput cmd opts = do
                                       then do print ("line2", Safe.lastMay $ words line)
                                               return $ Safe.lastMay $ words line
                                       else return Nothing
-
--- | Call cabal sandbox hc-pkg to find the haddock url.
-sandboxPkgHaddockUrl :: String -> IO (Maybe String)
-sandboxPkgHaddockUrl p = do
-    let opts = ["sandbox", "hc-pkg", "field", p, "haddock-html"]
-    putStrLn $ "cabal sandbox hc-pkg field " ++ p ++ " haddock-html"
-    readHaddockHtmlOutput "cabal" opts
-
--- | Call cabal stack to find the haddock url.
-stackPkgHaddockUrl :: String -> IO (Maybe String)
-stackPkgHaddockUrl p = do
-    let opts = ["exec", "ghc-pkg", "field", p, "haddock-html"]
-    putStrLn $ "stack exec hc-pkg field " ++ p ++ " haddock-html"
-    readHaddockHtmlOutput "stack" opts
 
 ghcPkgHaddockInterface :: {- [String] -> GhcPkgFixmeOptions -> -} String -> IO (Maybe String)
 ghcPkgHaddockInterface {- allGhcOptions (GhcPkgFixmeOptions extraGHCPkgOpts) -} p =
