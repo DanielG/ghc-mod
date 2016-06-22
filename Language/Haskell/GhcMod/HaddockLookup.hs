@@ -497,14 +497,20 @@ optsForGhcPkg ("-package-conf":pc:rest)      = ("--package-conf" ++ "=" ++ pc) :
 optsForGhcPkg ("-no-user-package-conf":rest) = "--no-user-package-conf"        : optsForGhcPkg rest
 optsForGhcPkg (_:rest) = optsForGhcPkg rest
 
-ghcPkgFindModule _ = return $ Just "base-4.8.2.0" -- FIXME use the other thing
+ghcPkgHaddockUrl ghcPkg readProc pkgDbStack p = do
+    hout <- liftIO $ readProc ghcPkg (toDocDirOpts p pkgDbStack) ""
+    return $ Safe.lastMay $ words $ reverse . dropWhile (== '\n') . reverse $ hout
+  where
+    -- This fails unless we have --global and --user, unlike
+    -- pkgDoc elsewhere in ghc-mod.
+    toDocDirOpts pkg dbs = ["field", pkg, "haddock-html", "--global", "--user"] ++ ghcPkgDbStackOpts dbs
 
-ghcPkgHaddockUrl :: {- [String] -> GhcPkgFixmeOptions -> -} String -> IO (Maybe String)
-ghcPkgHaddockUrl {- allGhcOptions (GhcPkgFixmeOptions extraGHCPkgOpts) -} p =
-    shortcut [ stackPkgHaddockUrl p
-             , sandboxPkgHaddockUrl p
-             , _ghcPkgHaddockUrl {- allGhcOptions (GhcPkgFixmeOptions extraGHCPkgOpts) -} p
-             ]
+--ghcPkgHaddockUrl :: {- [String] -> GhcPkgFixmeOptions -> -} String -> IO (Maybe String)
+--ghcPkgHaddockUrl {- allGhcOptions (GhcPkgFixmeOptions extraGHCPkgOpts) -} p =
+--    shortcut [ stackPkgHaddockUrl p
+--             , sandboxPkgHaddockUrl p
+--             , _ghcPkgHaddockUrl {- allGhcOptions (GhcPkgFixmeOptions extraGHCPkgOpts) -} p
+--             ]
 
 -- | Call @ghc-pkg field@ to get the @haddock-html@ field for a package.
 _ghcPkgHaddockUrl :: {- [String] -> GhcPkgFixmeOptions -> -} String -> IO (Maybe String)
@@ -874,10 +880,11 @@ guessHaddockUrl
     -> FixmeSymbol
     -> Int
     -> Int
+    -> (String -> IO (Maybe String))
     -- -> GhcFixmeOptions
     -- -> GhcPkgFixmeOptions
     -> m (Either String String)
-guessHaddockUrl modSum crdl _targetFile targetModule symbol lineNr colNr {- (GhcFixmeOptions ghcOpts0) ghcPkgFixmeOptions -} = do
+guessHaddockUrl modSum crdl _targetFile targetModule symbol lineNr colNr {- (GhcFixmeOptions ghcOpts0) ghcPkgFixmeOptions -} getHaddockUrl = do
     -- let targetFile = currentDir </> _targetFile
     let targetFile = _targetFile
 
@@ -1019,7 +1026,7 @@ guessHaddockUrl modSum crdl _targetFile targetModule symbol lineNr colNr {- (Ghc
                                 Just p -> p
                                 _      -> error $ "No nice match in lastMatch for package name: " ++ show lastMatch
 
-    haddock <- liftIO $ (maybe (return Nothing) (ghcPkgHaddockUrl {- allGhcOpts ghcPkgFixmeOptions -} ) . Just) matchedPackageName
+    haddock <- liftIO $ (maybe (return Nothing) getHaddockUrl . Just) matchedPackageName
 
     liftIO $ putStrLn $ "at the end now: " ++ show (matchedModule, moduleNameToHtmlFile matchedModule, matchedPackageName, haddock)
 
@@ -1028,9 +1035,9 @@ guessHaddockUrl modSum crdl _targetFile targetModule symbol lineNr colNr {- (Ghc
     return $ Right url
 
 -- | Top level function; use this one from src/Main.hs.
-haddockUrl :: forall m. (GhcMonad m, MonadIO m) => ModSummary -> Cradle {- -> Options -} -> FilePath -> String -> String -> Int -> Int -> m String
-haddockUrl modSum crdl {- opt -} file modstr symbol lineNr colNr = do
-    res <- guessHaddockUrl modSum crdl file modstr symbol lineNr colNr {- ghcopts ghcpkgopts -}
+-- haddockUrl :: forall m. (GhcMonad m, MonadIO m) => ModSummary -> Cradle {- -> Options -} -> FilePath -> String -> String -> Int -> Int -> m String
+haddockUrl modSum crdl {- opt -} file modstr symbol lineNr colNr getHaddockUrl = do
+    res <- guessHaddockUrl modSum crdl file modstr symbol lineNr colNr {- ghcopts ghcpkgopts -} getHaddockUrl
     liftIO $ print ("res", show res)
 
     case res of Right x  -> return $ "SUCCESS: " ++ x ++ "\n"
@@ -1043,19 +1050,28 @@ haddock :: IOish m
       -> Int          -- ^ Column number.
       -> Expression   -- ^ Expression (symbol)
       -> GhcModT m String
-haddock file lineNo colNo (Expression symbol) =
-  ghandle handler $
-    runGmlT' [Left file] deferErrors $
-      withInteractiveContext $ do
-        crdl         <- cradle
-        modSum       <- fileModSummaryWithMapping (cradleCurrentDir crdl </> file)
-        -- srcSpanTypes <- getSrcSpanType modSum lineNo colNo
-        -- dflag        <- G.getSessionDynFlags
-        -- st           <- getStyle
-        -- convert' $ map (toTup dflag st) $ sortBy (cmp `on` fst) srcSpanTypes
-        let modstr = moduleNameString $ ms_mod_name modSum :: String
-        blargh <- haddockUrl modSum crdl {- opt -} file modstr symbol lineNo colNo
-        return blargh
+haddock file lineNo colNo (Expression symbol) = do
+    -- To run ghc-pkg we need to precalculate a few
+    -- things. See also Language.Haskell.GhcMod.PkgDoc.
+    ghcPkg     <- getGhcPkgProgram
+    readProc   <- gmReadProcess
+    pkgDbStack <- getPackageDbStack
+
+    let gphurl = ghcPkgHaddockUrl ghcPkg readProc pkgDbStack
+
+    ghandle handler $
+      runGmlT' [Left file] deferErrors $
+        withInteractiveContext $ do
+          crdl         <- cradle
+          modSum       <- fileModSummaryWithMapping (cradleCurrentDir crdl </> file)
+          -- srcSpanTypes <- getSrcSpanType modSum lineNo colNo
+          -- dflag        <- G.getSessionDynFlags
+          -- st           <- getStyle
+          -- convert' $ map (toTup dflag st) $ sortBy (cmp `on` fst) srcSpanTypes
+          let modstr = moduleNameString $ ms_mod_name modSum :: String
+  
+          blargh <- haddockUrl modSum crdl {- opt -} file modstr symbol lineNo colNo gphurl
+          return blargh
  where
    handler (SomeException ex) = do
      gmLog GmException "haddock" $ showDoc ex
