@@ -495,18 +495,18 @@ optsForGhcPkg ("-package-conf":pc:rest)      = ("--package-conf" ++ "=" ++ pc) :
 optsForGhcPkg ("-no-user-package-conf":rest) = "--no-user-package-conf"        : optsForGhcPkg rest
 optsForGhcPkg (_:rest) = optsForGhcPkg rest
 
-ghcPkgFindModule :: [String] -> GhcPkgFixmeOptions -> String -> IO (Maybe String)
-ghcPkgFindModule allGhcOptions (GhcPkgFixmeOptions extraGHCPkgOpts) m =
+ghcPkgFindModule :: {- [String] -> GhcPkgFixmeOptions -> -} String -> IO (Maybe String)
+ghcPkgFindModule {- allGhcOptions (GhcPkgFixmeOptions extraGHCPkgOpts) -} m =
     shortcut [ stackGhcPkgFindModule m
              , hcPkgFindModule   m
-             , _ghcPkgFindModule allGhcOptions (GhcPkgFixmeOptions extraGHCPkgOpts) m
+             , _ghcPkgFindModule {- allGhcOptions (GhcPkgFixmeOptions extraGHCPkgOpts) -} m
              ]
 
 -- | Call @ghc-pkg find-module@ to determine that package that provides a module, e.g. @Prelude@ is defined
 -- in @base-4.6.0.1@.
-_ghcPkgFindModule :: [String] -> GhcPkgFixmeOptions -> String -> IO (Maybe String)
-_ghcPkgFindModule allGhcOptions (GhcPkgFixmeOptions extraGHCPkgOpts) m = do
-    let opts = ["find-module", m, "--simple-output"] ++ ["--global", "--user"] ++ optsForGhcPkg allGhcOptions ++ extraGHCPkgOpts
+_ghcPkgFindModule :: {- [String] -> GhcPkgFixmeOptions -> -} String -> IO (Maybe String)
+_ghcPkgFindModule {- allGhcOptions (GhcPkgFixmeOptions extraGHCPkgOpts) -} m = do
+    let opts = ["find-module", m, "--simple-output"] ++ ["--global", "--user"] ++ optsForGhcPkg [] {- allGhcOptions ++ extraGHCPkgOpts -}
     putStrLn $ "ghc-pkg " ++ show opts
 
     x <- executeFallibly' "ghc-pkg" opts
@@ -543,17 +543,17 @@ stackGhcPkgFindModule m = do
                                   putStrLn $ "stackGhcPkgFindModule stderr: " ++ show err
                                   return $ join $ (Safe.lastMay . words) <$> (Safe.lastMay . lines) output
 
-ghcPkgHaddockUrl :: [String] -> GhcPkgFixmeOptions -> String -> IO (Maybe String)
-ghcPkgHaddockUrl allGhcOptions (GhcPkgFixmeOptions extraGHCPkgOpts) p =
+ghcPkgHaddockUrl :: {- [String] -> GhcPkgFixmeOptions -> -} String -> IO (Maybe String)
+ghcPkgHaddockUrl {- allGhcOptions (GhcPkgFixmeOptions extraGHCPkgOpts) -} p =
     shortcut [ stackPkgHaddockUrl p
              , sandboxPkgHaddockUrl p
-             , _ghcPkgHaddockUrl allGhcOptions (GhcPkgFixmeOptions extraGHCPkgOpts) p
+             , _ghcPkgHaddockUrl {- allGhcOptions (GhcPkgFixmeOptions extraGHCPkgOpts) -} p
              ]
 
 -- | Call @ghc-pkg field@ to get the @haddock-html@ field for a package.
-_ghcPkgHaddockUrl :: [String] -> GhcPkgFixmeOptions -> String -> IO (Maybe String)
-_ghcPkgHaddockUrl allGhcOptions (GhcPkgFixmeOptions extraGHCPkgOpts) p = do
-    let opts = ["field", p, "haddock-html"] ++ ["--global", "--user"] ++ optsForGhcPkg allGhcOptions ++ extraGHCPkgOpts
+_ghcPkgHaddockUrl :: {- [String] -> GhcPkgFixmeOptions -> -} String -> IO (Maybe String)
+_ghcPkgHaddockUrl {- allGhcOptions (GhcPkgFixmeOptions extraGHCPkgOpts) -} p = do
+    let opts = ["field", p, "haddock-html"] ++ ["--global", "--user"] ++ optsForGhcPkg [] {- allGhcOptions ++ extraGHCPkgOpts -}
     putStrLn $ "ghc-pkg "++ show opts
 
     x <- executeFallibly' "ghc-pkg" opts
@@ -590,8 +590,8 @@ stackPkgHaddockUrl p = do
     putStrLn $ "stack exec hc-pkg field " ++ p ++ " haddock-html"
     readHaddockHtmlOutput "stack" opts
 
-ghcPkgHaddockInterface :: [String] -> GhcPkgFixmeOptions -> String -> IO (Maybe String)
-ghcPkgHaddockInterface allGhcOptions (GhcPkgFixmeOptions extraGHCPkgOpts) p =
+ghcPkgHaddockInterface :: {- [String] -> GhcPkgFixmeOptions -> -} String -> IO (Maybe String)
+ghcPkgHaddockInterface {- allGhcOptions (GhcPkgFixmeOptions extraGHCPkgOpts) -} p =
     shortcut [ stackGhcPkgHaddockInterface
              , cabalPkgHaddockInterface
              , _ghcPkgHaddockInterface
@@ -601,7 +601,7 @@ ghcPkgHaddockInterface allGhcOptions (GhcPkgFixmeOptions extraGHCPkgOpts) p =
 
     _ghcPkgHaddockInterface :: IO (Maybe String)
     _ghcPkgHaddockInterface = do
-        let opts = ["field", p, "haddock-interfaces"] ++ ["--global", "--user"] ++ optsForGhcPkg allGhcOptions ++ extraGHCPkgOpts
+        let opts = ["field", p, "haddock-interfaces"] ++ ["--global", "--user"] ++ optsForGhcPkg [] {- allGhcOptions ++ extraGHCPkgOpts -}
         putStrLn $ "ghc-pkg "++ show opts
 
         x <- executeFallibly' "ghc-pkg" opts
@@ -647,12 +647,11 @@ ghcPkgHaddockInterface allGhcOptions (GhcPkgFixmeOptions extraGHCPkgOpts) p =
 getVisibleExports
     :: forall m. (GhcMonad m,
                   MonadIO  m)
-    => [String]
-    -> GhcPkgFixmeOptions
-    -> String
+    => {- [String] -> GhcPkgFixmeOptions -> -}
+       String
     -> m (Maybe (M.Map String [String]))
-getVisibleExports allGhcOptions (GhcPkgFixmeOptions extraGHCPkgOpts) p = do
-    haddockInterfaceFile <- liftIO $ ghcPkgHaddockInterface allGhcOptions (GhcPkgFixmeOptions extraGHCPkgOpts) p
+getVisibleExports {- allGhcOptions (GhcPkgFixmeOptions extraGHCPkgOpts) -} p = do
+    haddockInterfaceFile <- liftIO $ ghcPkgHaddockInterface {- allGhcOptions (GhcPkgFixmeOptions extraGHCPkgOpts) -} p
     join <$> traverse getVisibleExports' haddockInterfaceFile
 
 ------------------------------------------------------------------------------------------------------------------------
@@ -767,15 +766,15 @@ filterMatchingQualifiedImport symbol hmodules =
 getModuleExports
     :: forall m. (GhcMonad m,
                   MonadIO  m)
-    => GhcFixmeOptions
+    => {- GhcFixmeOptions
     -> GhcPkgFixmeOptions
-    -> HaskellModule
+    -> -} HaskellModule
     -> m (Maybe ([String], String))
-getModuleExports (GhcFixmeOptions gopts) ghcpkgOpts m = do
+getModuleExports {- (GhcFixmeOptions gopts) ghcpkgOpts -} m = do
     minfo     <- (findModule (mkModuleName $ modName m) Nothing >>= getModuleInfo)
                    `gcatch` (\(_  :: SourceError)   -> return Nothing)
 
-    p <- liftIO $ ghcPkgFindModule gopts ghcpkgOpts (modName m)
+    p <- liftIO $ ghcPkgFindModule {- gopts ghcpkgOpts -} (modName m)
 
     case (minfo, p) of
         (Nothing, _)            -> return Nothing
@@ -867,18 +866,17 @@ refineLeadingDot (MySymbolSysQualified symb)         exports = map (\e -> e { qu
 refineVisibleExports
     :: forall m. (GhcMonad m,
                   MonadIO  m)
-    => [String]
-    -> GhcPkgFixmeOptions
-    -> [ModuleExports]
+    => {- [String] -> GhcPkgFixmeOptions -> -}
+       [ModuleExports]
     -> m [ModuleExports]
-refineVisibleExports allGhcOpts ghcPkgFixmeOptions exports = mapM f exports
+refineVisibleExports {- allGhcOpts ghcPkgFixmeOptions -} exports = mapM f exports
   where
     f :: ModuleExports -> m ModuleExports
     f mexports = do
         let pname          = mPackageName     mexports -- e.g. "base-4.8.2.0"
             thisModuleName = mName            mexports -- e.g. "Prelude"
             qexports       = qualifiedExports mexports -- e.g. ["base-4.8.2.0:GHC.Base.Just", ...]
-        visibleExportsMap <- getVisibleExports allGhcOpts ghcPkgFixmeOptions pname
+        visibleExportsMap <- getVisibleExports {- allGhcOpts ghcPkgFixmeOptions -} pname
         liftIO $ print visibleExportsMap
 
         let thisModVisibleExports = fromMaybe
@@ -921,10 +919,10 @@ guessHaddockUrl
     -> FixmeSymbol
     -> Int
     -> Int
-    -> GhcFixmeOptions
-    -> GhcPkgFixmeOptions
+    -- -> GhcFixmeOptions
+    -- -> GhcPkgFixmeOptions
     -> m (Either String String)
-guessHaddockUrl modSum crdl _targetFile targetModule symbol lineNr colNr (GhcFixmeOptions ghcOpts0) ghcPkgFixmeOptions = do
+guessHaddockUrl modSum crdl _targetFile targetModule symbol lineNr colNr {- (GhcFixmeOptions ghcOpts0) ghcPkgFixmeOptions -} = do
     -- let targetFile = currentDir </> _targetFile
     let targetFile = _targetFile
 
@@ -934,8 +932,8 @@ guessHaddockUrl modSum crdl _targetFile targetModule symbol lineNr colNr (GhcFix
     liftIO $ putStrLn $ "line nr: " ++ show lineNr
     liftIO $ putStrLn $ "col nr: " ++ show colNr
 
-    liftIO $ putStrLn $ "ghcOpts0: " ++ show ghcOpts0
-    liftIO $ putStrLn $ "GhcPkgFixmeOptions: " ++ show ghcPkgFixmeOptions
+    -- liftIO $ putStrLn $ "ghcOpts0: " ++ show ghcOpts0
+    -- liftIO $ putStrLn $ "GhcPkgFixmeOptions: " ++ show ghcPkgFixmeOptions
 
     let allGhcOpts      = undefined
         textualImports  = ms_textual_imps modSum
@@ -989,7 +987,7 @@ guessHaddockUrl modSum crdl _targetFile targetModule symbol lineNr colNr (GhcFix
     -- Try to use the qnames_with_qualified_printing case, which has something like "base-4.8.2.0:GHC.Base.map",
     -- which will be more accurate to filter on.
 
-    exports <- mapM (getModuleExports (GhcFixmeOptions ghcOpts0) ghcPkgFixmeOptions) (haskellModules0 ++ extraModules)
+    exports <- mapM (getModuleExports {- (GhcFixmeOptions ghcOpts0) ghcPkgFixmeOptions -} ) (haskellModules0 ++ extraModules)
 
     -- Sometimes the modules in extraModules might be hidden or weird ones like GHC.Base that we can't
     -- load, so filter out the successfully loaded ones.
@@ -1042,7 +1040,7 @@ guessHaddockUrl modSum crdl _targetFile targetModule symbol lineNr colNr (GhcFix
     liftIO $ putStrLn "upToNow3"
     liftIO $ forM_ upToNow3 $ \x -> putStrLn $ pprModuleExports x
 
-    upToNow4 <- refineVisibleExports allGhcOpts ghcPkgFixmeOptions upToNow3
+    upToNow4 <- refineVisibleExports {- allGhcOpts ghcPkgFixmeOptions -} upToNow3
     liftIO $ putStrLn "upToNow4"
     liftIO $ forM_ upToNow4 $ \x -> putStrLn $ pprModuleExports x
 
@@ -1064,7 +1062,7 @@ guessHaddockUrl modSum crdl _targetFile targetModule symbol lineNr colNr (GhcFix
                                 Just p -> p
                                 _      -> error $ "No nice match in lastMatch for package name: " ++ show lastMatch
 
-    haddock <- liftIO $ (maybe (return Nothing) (ghcPkgHaddockUrl allGhcOpts ghcPkgFixmeOptions) . Just) matchedPackageName
+    haddock <- liftIO $ (maybe (return Nothing) (ghcPkgHaddockUrl {- allGhcOpts ghcPkgFixmeOptions -} ) . Just) matchedPackageName
 
     liftIO $ putStrLn $ "at the end now: " ++ show (matchedModule, moduleNameToHtmlFile matchedModule, matchedPackageName, haddock)
 
@@ -1079,24 +1077,11 @@ haddockUrl modSum crdl opt file modstr symbol lineNr colNr = do
     let ghcopts    = undefined -- GhcOptions    $ ghcOpts    opt
     let ghcpkgopts = undefined -- GhcPkgOptions $ ghcPkgOpts opt
 
-    res <- guessHaddockUrl modSum crdl file modstr symbol lineNr colNr ghcopts ghcpkgopts
+    res <- guessHaddockUrl modSum crdl file modstr symbol lineNr colNr {- ghcopts ghcpkgopts -}
     liftIO $ print ("res", show res)
 
     case res of Right x  -> return $ "SUCCESS: " ++ x ++ "\n"
                 Left err -> return $ "FAIL: " ++ show err ++ "\n"
-
--- COPY THIS ONE, TYPE SIG
-____getSrcSpanType :: GhcMonad m => G.ModSummary -> Int -> Int -> m [(SrcSpan, Type)]
-____getSrcSpanType modSum lineNo colNo = do
-    p <- G.parseModule modSum
-    tcm@TypecheckedModule{tm_typechecked_source = tcs} <- G.typecheckModule p
-    let bs = listifySpans tcs (lineNo, colNo) :: [LHsBind Id]
-        es = listifySpans tcs (lineNo, colNo) :: [LHsExpr Id]
-        ps = listifySpans tcs (lineNo, colNo) :: [LPat Id]
-    bts <- mapM (getType tcm) bs
-    ets <- mapM (getType tcm) es
-    pts <- mapM (getType tcm) ps
-    return $ catMaybes $ concat [ets, bts, pts]
 
 -- | Look up Haddock docs for a symbol.
 haddock :: IOish m
