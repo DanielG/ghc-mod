@@ -23,6 +23,7 @@ import Control.Applicative
 import Control.Monad
 import Data.Char (isAlpha)
 import Data.List
+import Data.List.Split
 import Data.Maybe
 import Data.Typeable()
 import Desugar()
@@ -721,15 +722,14 @@ filterMatchingQualifiedImport symbol hmodules =
 getModuleExports
     :: forall m. (GhcMonad m,
                   MonadIO  m)
-    => {- GhcFixmeOptions
-    -> GhcPkgFixmeOptions
-    -> -} HaskellModule
+    => Maybe String
+    -> HaskellModule
     -> m (Maybe ([String], String))
-getModuleExports {- (GhcFixmeOptions gopts) ghcpkgOpts -} m = do
+getModuleExports {- (GhcFixmeOptions gopts) ghcpkgOpts -} p m = do
     minfo     <- (findModule (mkModuleName $ modName m) Nothing >>= getModuleInfo)
                    `gcatch` (\(_  :: SourceError)   -> return Nothing)
 
-    p <- ghcPkgFindModule {- gopts ghcpkgOpts -} (modName m)
+    -- p <- ghcPkgFindModule {- gopts ghcpkgOpts -} (modName m)
 
     case (minfo, p) of
         (Nothing, _)            -> return Nothing
@@ -938,10 +938,13 @@ guessHaddockUrl modSum crdl _targetFile targetModule symbol lineNr colNr {- (Ghc
 
     liftIO $ print extraModules
 
-    -- Try to use the qnames_with_qualified_printing case, which has something like "base-4.8.2.0:GHC.Base.map",
+    -- Use the qnames_with_qualified_printing case, which has something like "base-4.8.2.0:GHC.Base.map",
     -- which will be more accurate to filter on.
+    let package = case splitOn ":" symbolToUse of
+                    [p, _]  -> Just p
+                    _       -> Nothing
 
-    exports <- mapM (getModuleExports {- (GhcFixmeOptions ghcOpts0) ghcPkgFixmeOptions -} ) (haskellModules0 ++ extraModules)
+    exports <- mapM (getModuleExports {- (GhcFixmeOptions ghcOpts0) ghcPkgFixmeOptions -} package ) (haskellModules0 ++ extraModules)
 
     -- Sometimes the modules in extraModules might be hidden or weird ones like GHC.Base that we can't
     -- load, so filter out the successfully loaded ones.
