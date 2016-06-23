@@ -38,12 +38,7 @@ import System.Directory
 import System.Environment()
 import System.FilePath
 import System.IO
-import System.Process
 import TcRnTypes()
-import System.Process.Streaming
-import qualified Data.ByteString as B
-import qualified Data.ByteString.Lazy as BL
-import Data.ByteString.Internal (w2c)
 
 import qualified GhcMonad
 import qualified MonadUtils()
@@ -82,16 +77,14 @@ import Language.Haskell.GhcMod.SrcUtils (listifySpans)
 import Language.Haskell.GhcMod.Pretty
 
 import Language.Haskell.GhcMod.Types
-import Language.Haskell.GhcMod.Logging
-import Language.Haskell.GhcMod.Doc
+-- import Language.Haskell.GhcMod.Logging
+-- import Language.Haskell.GhcMod.Doc
 import Language.Haskell.GhcMod.FileMapping
 import Language.Haskell.GhcMod.Monad.Types
 import Language.Haskell.GhcMod.DynFlags
 import Language.Haskell.GhcMod.Gap
 import Language.Haskell.GhcMod.Target
 import Language.Haskell.GhcMod.PkgDoc
-
-import Data.List
 
 #if __GLASGOW_HASKELL__ >= 708
 import DynFlags ( unsafeGlobalDynFlags )
@@ -103,42 +96,9 @@ tdflags :: DynFlags
 tdflags = tracingDynFlags
 #endif
 
--- FIXME We don't support LineSeparator; might be handy for
--- Windows (?) with CRLF encoding?
--- newtype LineSeparator = LineSeparator String deriving (Show)
-
-data FixmeOptions = FixmeOptions {
-      ghcOpts       :: [String]
-    , ghcPkgOpts    :: [String]
-    , lineSeparator :: LineSeparator
-    } deriving (Show)
-
-defaultFixmeOptions :: FixmeOptions
-defaultFixmeOptions = FixmeOptions {
-      ghcOpts       = []
-    , ghcPkgOpts    = []
-    , lineSeparator = LineSeparator "\0"
-    }
-
-
-type GHCFixmeOption = String
-
 type QualifiedName = String -- ^ A qualified name, e.g. @Foo.bar@.
 
 type FixmeSymbol = String -- ^ A symbol, possibly qualified, e.g. @bar@ or @Foo.bar@.
-
-newtype GhcFixmeOptions
-    -- | List of user-supplied GHC options, refer to @tets@ subdirectory for example usage. Note that
-    -- GHC API and ghc-pkg have inconsistencies in the naming of options, see <http://www.vex.net/~trebla/haskell/sicp.xhtml> for more details.
-    = GhcFixmeOptions [String] deriving (Show)
-
---instance Monoid GhcOptions where
---    mempty  = GhcOptions []
---    (GhcOptions g) `mappend` (GhcOptions h) = GhcOptions $ g ++ h
-
-newtype GhcPkgFixmeOptions
-    -- | List of user-supplied ghc-pkg options.
-    = GhcPkgFixmeOptions [String] deriving (Show)
 
 data HaskellModule
     -- | Information about an import of a Haskell module.
@@ -156,85 +116,6 @@ data HaskellModule
 
 -- trace'' :: Outputable x => String -> x -> b -> b
 -- trace'' m x = trace (m ++ ">>> " ++ showSDoc tdflags (ppr x))
-
--- | Evaluate IO actions in sequence, returning the first that
--- succeeds.
-shortcut :: [IO (Maybe a)] -> IO (Maybe a)
-shortcut []     = return Nothing
-shortcut (a:as) = do
-    a' <- a
-
-    case a' of
-        a''@(Just _)    -> return a''
-        Nothing         -> shortcut as
-
-executeFallibly' :: String -> [String] -> IO (Maybe (String, String))
-executeFallibly' cmd args = do
-    x <- (executeFallibly (piped (proc cmd args)) ((,) <$> (foldOut intoLazyBytes) <*> (foldErr intoLazyBytes)))
-         `catchIOError` -- FIXME Later, propagate the error so we can log it. Top level type should be an Either or something, not a Maybe.
-         (\e -> return $ Left $ show e)
-
-    return $ case x of
-        Left e              -> Nothing
-        Right (a, b)   -> Just $ (b2s a, b2s b)
-
-  where
-
-    b2s = map w2c . B.unpack . BL.toStrict
-
--- | Use "stack path" to get the snapshot package db location.
-getStackSnapshotPkgDb :: IO (Maybe String)
-getStackSnapshotPkgDb = do
-    putStrLn "getStackSnapshotPkgDb ..."
-
-    x <- join <$> (fmap (fmap unwords . fmap words . Safe.headMay . lines) . fmap fst) <$> executeFallibly' "stack" ["path", "--snapshot-pkg-db"]
-
-    return $ case x of
-        Nothing     -> Nothing
-        Just ""     -> Nothing
-        Just x'     -> Just x'
-
--- | Use "stack path" to get the local package db location.
-getStackLocalPkgDb :: IO (Maybe String)
-getStackLocalPkgDb = do
-    putStrLn "getStackLocalPkgDb ..."
-
-    x <- join <$> (fmap (fmap unwords . fmap words . Safe.headMay . lines) . fmap fst) <$> executeFallibly' "stack" ["path", "--local-pkg-db"]
-
-    return $ case x of
-        Nothing     -> Nothing
-        Just ""     -> Nothing
-        Just x'     -> Just x'
-
--- | GHC options that we don't use when partially compiling the source module.
-filterOpts :: [String] -> [String]
-filterOpts xs = filter (\x -> x /= "--interactive" && x /= "-fbuilding-cabal-package" && x /= "-Wall") $ dropModuleNames xs
-
-   where
-
-    dropModuleNames :: [String] -> [String]
-    dropModuleNames = filter parseHelper
-
-    parseHelper :: String -> Bool
-    parseHelper s = case TP.parse (parseFullHaskellModuleName <* TP.eof) "" s of Right _ -> False
-                                                                                 Left _  -> True
-
-    parseFullHaskellModuleName :: TP.ParsecT String u Data.Functor.Identity.Identity String
-    parseFullHaskellModuleName = do
-        h <- parseHaskellModuleName
-        rest <- many parseDottedHaskellModuleName
-
-        return $ intercalate "." (h:rest)
-
-    parseHaskellModuleName :: TP.ParsecT String u Data.Functor.Identity.Identity String
-    parseHaskellModuleName = do
-        c <- TP.upper
-        cs <- TP.many (TP.choice [TP.lower, TP.upper, TP.char '_', TP.digit])
-        return (c:cs)
-
-    parseDottedHaskellModuleName :: TP.ParsecT String u Data.Functor.Identity.Identity String
-    parseDottedHaskellModuleName = TP.char '.' >> parseHaskellModuleName
-
 
 parsePackageAndQualName :: forall u. TP.ParsecT String u Identity (String, String)
 parsePackageAndQualName = TP.choice [TP.try parsePackageAndQualNameWithHash, parsePackageAndQualNameNoHash]
@@ -359,15 +240,6 @@ toHaskellModule idecl = HaskellModule name qualifier isImplicit hiding importedA
           parseSpecifically (Just (False, h)) = grabNames' h
           parseSpecifically _                 = []
 
--- | List of possible modules which have resulted in
--- the name being in the current scope. Using a
--- global reader we get the provenance data and then
--- get the list of import specs.
-symbolImportedFrom :: GlobalRdrElt -> [ModuleName]
-symbolImportedFrom occNameLookup = map importSpecModule whys
-  where prov = gre_prov occNameLookup :: Provenance
-        Imported (whys :: [ImportSpec])  = prov
-
 -- This definition of separateBy is taken
 -- from: http://stackoverflow.com/a/4978733
 separateBy :: Eq a => a -> [a] -> [[a]]
@@ -425,8 +297,8 @@ qualifiedName targetModuleName lineNr colNr importList = do
                                                    setContext $ map (IIDecl . simpleImportDecl . mkModuleName) importList)
 
         modSummary <- getModSummary $ mkModuleName targetModuleName :: m ModSummary
-        p <- parseModule modSummary   :: m ParsedModule
-        t <- typecheckModule p        :: m TypecheckedModule
+        p <- parseModule modSummary                                 :: m ParsedModule
+        t <- typecheckModule p                                      :: m TypecheckedModule
 
         let TypecheckedModule{tm_typechecked_source = tcs} = t
             bs = listifySpans tcs (lineNr, colNr) :: [LHsBind Id]
@@ -458,36 +330,19 @@ qualifiedName' targetModuleName lineNr colNr symbol importList = do
                                                    setContext $ map (IIDecl . simpleImportDecl . mkModuleName) importList)
 
         modSummary <- getModSummary $ mkModuleName targetModuleName :: m ModSummary
-        p <- parseModule modSummary   :: m ParsedModule
-        t <- typecheckModule p        :: m TypecheckedModule
+        p <- parseModule modSummary                                 :: m ParsedModule
+        t <- typecheckModule p                                      :: m TypecheckedModule
 
         let TypecheckedModule{tm_typechecked_source = tcs} = t
             bs = listifySpans tcs (lineNr, colNr) :: [LHsBind Id]
             es = listifySpans tcs (lineNr, colNr) :: [LHsExpr Id]
             ps = listifySpans tcs (lineNr, colNr) :: [LPat Id]
-            -- ls0 = listifySpans tcs (lineNr, colNr) :: [LHsBindLR Id Id]
-            -- ls1 = listifySpans tcs (lineNr, colNr) :: [LIPBind Id]
-            -- ls2 = listifySpans tcs (lineNr, colNr) :: [LPat Id]
-            -- ls3 = listifySpans tcs (lineNr, colNr) :: [LHsDecl Id]
-            -- ls4 = listifySpans tcs (lineNr, colNr) :: [LHsExpr Id]
-            -- ls5 = listifySpans tcs (lineNr, colNr) :: [LHsTupArg Id]
-            -- ls6 = listifySpans tcs (lineNr, colNr) :: [LHsCmd Id]
-            -- ls7 = listifySpans tcs (lineNr, colNr) :: [LHsCmdTop Id]
 
         let bs' = map (showSDocForUser tdflags reallyAlwaysQualify . ppr) bs
             es' = map (showSDocForUser tdflags reallyAlwaysQualify . ppr) es
             ps' = map (showSDocForUser tdflags reallyAlwaysQualify . ppr) ps
 
         return $ filter (postfixMatch symbol) $ concatMap words $ bs' ++ es' ++ ps'
-
--- Read everything else available on a handle, and return the empty
--- string if we have hit EOF.
-readRestOfHandle :: Handle -> IO String
-readRestOfHandle h = do
-    ineof <- hIsEOF h
-    if ineof
-        then return ""
-        else hGetContents h
 
 ghcPkgHaddockUrl
     :: forall (m :: * -> *).  MonadIO m
@@ -527,35 +382,35 @@ getVisibleExports getHaddockInterfaces p = do
     haddockInterfaceFile <- liftIO $ getHaddockInterfaces p
     join <$> traverse getVisibleExports' haddockInterfaceFile
 
-------------------------------------------------------------------------------------------------------------------------
--- Copied from http://hackage.haskell.org/package/haddock-api-2.16.1/docs/src/Haddock-InterfaceFile.html#nameCacheFromGhc
--- but for a general monad m instead of the specific monad Ghc.
-------------------------------------------------------------------------------------------------------------------------
-nameCacheFromGhc :: forall m. (GhcMonad m, MonadIO m) => Haddock.NameCacheAccessor m
-nameCacheFromGhc = ( read_from_session , write_to_session )
   where
-    read_from_session = do
-       ref <- GhcMonad.withSession (return . hsc_NC)
-       liftIO $ readIORef ref
-    write_to_session nc' = do
-       ref <- GhcMonad.withSession (return . hsc_NC)
-       liftIO $ writeIORef ref nc'
 
-getVisibleExports' :: forall m. (GhcMonad m, MonadIO m) => FilePath -> m (Maybe (M.Map String [String]))
-getVisibleExports' ifile = do
-    iface <- Haddock.readInterfaceFile nameCacheFromGhc ifile
+    getVisibleExports' :: forall m. (GhcMonad m, MonadIO m) => FilePath -> m (Maybe (M.Map String [String]))
+    getVisibleExports' ifile = do
+        iface <- Haddock.readInterfaceFile nameCacheFromGhc ifile
 
-    case iface of
-        Left _          -> liftIO $ do putStrLn $ "Failed to read the Haddock interface file: " ++ ifile
-                                       putStrLn "You probably installed packages without using the '--enable-documentation' flag."
-                                       putStrLn ""
-                                       putStrLn "Try something like:\n\n\tcabal install --enable-documentation p"
-                                       error "No haddock interfaces file, giving up."
-        Right iface'    -> do let m  = map (\ii -> (Haddock.instMod ii, Haddock.instVisibleExports ii)) $ Haddock.ifInstalledIfaces iface' :: [(Module, [Name])]
-                                  m' = map (\(mname, names) -> (showSDoc tdflags $ ppr mname, map (showSDoc tdflags . ppr) names)) m       :: [(String, [String])]
-                              return $ Just $ M.fromList m'
+        case iface of
+            Left _          -> liftIO $ do putStrLn $ "Failed to read the Haddock interface file: " ++ ifile
+                                           putStrLn "You probably installed packages without using the '--enable-documentation' flag."
+                                           putStrLn ""
+                                           putStrLn "Try something like:\n\n\tcabal install --enable-documentation p"
+                                           error "No haddock interfaces file, giving up."
+            Right iface'    -> do let m  = map (\ii -> (Haddock.instMod ii, Haddock.instVisibleExports ii)) $ Haddock.ifInstalledIfaces iface' :: [(Module, [Name])]
+                                      m' = map (\(mname, names) -> (showSDoc tdflags $ ppr mname, map (showSDoc tdflags . ppr) names)) m       :: [(String, [String])]
+                                  return $ Just $ M.fromList m'
 
-
+    ------------------------------------------------------------------------------------------------------------------------
+    -- Copied from http://hackage.haskell.org/package/haddock-api-2.16.1/docs/src/Haddock-InterfaceFile.html#nameCacheFromGhc
+    -- but for a general monad m instead of the specific monad Ghc.
+    ------------------------------------------------------------------------------------------------------------------------
+    nameCacheFromGhc :: forall m. (GhcMonad m, MonadIO m) => Haddock.NameCacheAccessor m
+    nameCacheFromGhc = ( read_from_session , write_to_session )
+      where
+        read_from_session = do
+           ref <- GhcMonad.withSession (return . hsc_NC)
+           liftIO $ readIORef ref
+        write_to_session nc' = do
+           ref <- GhcMonad.withSession (return . hsc_NC)
+           liftIO $ writeIORef ref nc'
 
 -- | Convert a module name string, e.g. @Data.List@ to @Data-List.html@.
 moduleNameToHtmlFile :: String -> String
@@ -563,52 +418,6 @@ moduleNameToHtmlFile m =  map f m ++ ".html"
     where f :: Char -> Char
           f '.' = '-'
           f c   = c
-
-{-
-I don't want to use this any more. The refiner works so much better with
-the local haddock interfaces file...
-
--- | Convert a file path to a Hackage HTML file to its equivalent on @https://hackage.haskell.org@.
-toHackageUrl :: FilePath -> String -> String -> String
-toHackageUrl filepath package modulename = "https://hackage.haskell.org/package/" ++ package ++ "/" ++ "docs/" ++ modulename''
-    where filepath'    = map repl filepath
-          modulename'  = head $ separateBy '.' $ head $ separateBy '-' modulename
-          modulename'' = drop (fromJust $ substringP modulename' filepath') filepath'
-
-          -- On Windows we get backslashes in the file path; convert
-          -- to forward slashes for the URL.
-          repl :: Char -> Char
-          repl '\\' = '/'
-          repl c    = c
-
-          -- Adapted from http://www.haskell.org/pipermail/haskell-cafe/2010-June/078702.html
-          substringP :: String -> String -> Maybe Int
-          substringP _ []  = Nothing
-          substringP sub str = if sub `isPrefixOf` str then Just 0 else (+1) <$> substringP sub (tail str)
-
--- | Convert our match to a URL, either @file://@ if the file exists, or to @hackage.org@ otherwise.
-matchToUrl :: (Maybe String, Maybe String, Maybe String, Maybe String) -> IO String
-matchToUrl (importedFrom, haddock, foundModule, base) = do
-    when (isNothing importedFrom) $ error "importedFrom is Nothing :("
-    when (isNothing haddock) $ error "haddock is Nothing :("
-    when (isNothing foundModule) $ error "foundModule is Nothing :("
-    when (isNothing base) $ error "base is Nothing :("
-
-    let importedFrom' = fromJust importedFrom
-        haddock'      = fromJust haddock
-        foundModule'  = fromJust foundModule
-        base'         = fromJust base
-
-        f = haddock' </> base'
-
-    e <- doesFileExist f
-
-    if e then return $ "file://" ++ f
-         else do putStrLn $ "f:  " ++ show f
-                 putStrLn $ "foundModule2: " ++ show foundModule'
-                 putStrLn $ "calling toHackageUrl with params: " ++ show (f, foundModule', importedFrom')
-                 return $ toHackageUrl f foundModule' importedFrom'
--}
 
 -- | Convert our match to a URL of the form @file://@ so that we can open it in a web browser.
 matchToUrl :: (Maybe String, Maybe String, Maybe String, Maybe String) -> IO String
@@ -642,18 +451,15 @@ getModuleExports
     => Maybe String
     -> HaskellModule
     -> m (Maybe ([String], String))
-getModuleExports {- (GhcFixmeOptions gopts) ghcpkgOpts -} p m = do
+getModuleExports p m = do
     minfo     <- (findModule (mkModuleName $ modName m) Nothing >>= getModuleInfo)
                    `gcatch` (\(_  :: SourceError)   -> return Nothing)
-
-    -- p <- ghcPkgFindModule {- gopts ghcpkgOpts -} (modName m)
 
     case (minfo, p) of
         (Nothing, _)            -> return Nothing
         (_, Nothing)            -> return Nothing
         (Just minfo', Just p')  -> return $ Just (map (showSDocForUser tdflags reallyAlwaysQualify . ppr) $ modInfoExports minfo', p')
 
--- type UnqualifiedName    = String    -- ^ e.g. "Just"
 type FullyQualifiedName = String    -- ^ e.g. e.g. "base-4.8.2.0:Data.Foldable.length"
 type StrModuleName      = String    -- ^ e.g. "Data.List"
 
@@ -785,7 +591,6 @@ guessHaddockUrl
        (GhcMonad m,
         MonadIO  m)
     => ModSummary
-    -> Cradle
     -> FilePath
     -> String
     -> FixmeSymbol
@@ -793,10 +598,8 @@ guessHaddockUrl
     -> Int
     -> (String -> IO (Maybe String))
     -> (String -> IO (Maybe String))
-    -- -> GhcFixmeOptions
-    -- -> GhcPkgFixmeOptions
     -> m (Either String String)
-guessHaddockUrl modSum crdl _targetFile targetModule symbol lineNr colNr {- (GhcFixmeOptions ghcOpts0) ghcPkgFixmeOptions -} getHaddockUrl getHaddockInterfaces = do
+guessHaddockUrl modSum _targetFile targetModule symbol lineNr colNr getHaddockUrl getHaddockInterfaces = do
     -- let targetFile = currentDir </> _targetFile
     let targetFile = _targetFile
 
@@ -805,9 +608,6 @@ guessHaddockUrl modSum crdl _targetFile targetModule symbol lineNr colNr {- (Ghc
     liftIO $ putStrLn $ "symbol: " ++ show symbol
     liftIO $ putStrLn $ "line nr: " ++ show lineNr
     liftIO $ putStrLn $ "col nr: " ++ show colNr
-
-    -- liftIO $ putStrLn $ "ghcOpts0: " ++ show ghcOpts0
-    -- liftIO $ putStrLn $ "GhcPkgFixmeOptions: " ++ show ghcPkgFixmeOptions
 
     let textualImports  = ms_textual_imps modSum
 
@@ -863,7 +663,7 @@ guessHaddockUrl modSum crdl _targetFile targetModule symbol lineNr colNr {- (Ghc
                     [p, _]  -> Just p
                     _       -> Nothing
 
-    exports <- mapM (getModuleExports {- (GhcFixmeOptions ghcOpts0) ghcPkgFixmeOptions -} package ) (haskellModules0 ++ extraModules)
+    exports <- mapM (getModuleExports package) (haskellModules0 ++ extraModules)
 
     -- Sometimes the modules in extraModules might be hidden or weird ones like GHC.Base that we can't
     -- load, so filter out the successfully loaded ones.
@@ -946,14 +746,9 @@ guessHaddockUrl modSum crdl _targetFile targetModule symbol lineNr colNr {- (Ghc
 
     return $ Right url
 
--- | Top level function; use this one from src/Main.hs.
--- haddockUrl :: forall m. (GhcMonad m, MonadIO m) => ModSummary -> Cradle {- -> Options -} -> FilePath -> String -> String -> Int -> Int -> m String
-
-
 haddockUrl
     :: forall (m :: * -> *).  (MonadIO m, GhcMonad m)
     => ModSummary
-    -> Cradle
     -> FilePath
     -> String
     -> FixmeSymbol
@@ -962,8 +757,8 @@ haddockUrl
     -> (String -> IO (Maybe String))
     -> (String -> IO (Maybe String))
     -> m [Char]
-haddockUrl modSum crdl {- opt -} file modstr symbol lineNr colNr getHaddockUrl getHaddockInterfaces = do
-    res <- guessHaddockUrl modSum crdl file modstr symbol lineNr colNr {- ghcopts ghcpkgopts -} getHaddockUrl getHaddockInterfaces
+haddockUrl modSum file modstr symbol lineNr colNr getHaddockUrl getHaddockInterfaces = do
+    res <- guessHaddockUrl modSum file modstr symbol lineNr colNr getHaddockUrl getHaddockInterfaces
     liftIO $ print ("res", show res)
 
     case res of Right x  -> return $ "SUCCESS: " ++ x ++ "\n"
@@ -983,22 +778,17 @@ haddock file lineNo colNo (Expression symbol) = do
     readProc   <- gmReadProcess
     pkgDbStack <- getPackageDbStack
 
-    let gphurl = ghcPkgHaddockUrl       ghcPkg readProc pkgDbStack
-        gphint = ghcPkgHaddockInterface ghcPkg readProc pkgDbStack
+    let gphurl = ghcPkgHaddockUrl       ghcPkg readProc pkgDbStack :: String -> IO (Maybe String)
+        gphint = ghcPkgHaddockInterface ghcPkg readProc pkgDbStack :: String -> IO (Maybe String)
 
     ghandle handler $
       runGmlT' [Left file] deferErrors $
         withInteractiveContext $ do
-          crdl         <- cradle
-          modSum       <- fileModSummaryWithMapping (cradleCurrentDir crdl </> file)
-          -- srcSpanTypes <- getSrcSpanType modSum lineNo colNo
-          -- dflag        <- G.getSessionDynFlags
-          -- st           <- getStyle
-          -- convert' $ map (toTup dflag st) $ sortBy (cmp `on` fst) srcSpanTypes
+          crdl   <- cradle
+          modSum <- fileModSummaryWithMapping (cradleCurrentDir crdl </> file)
           let modstr = moduleNameString $ ms_mod_name modSum :: String
   
-          blargh <- haddockUrl modSum crdl {- opt -} file modstr symbol lineNo colNo gphurl gphint
-          return blargh
+          haddockUrl modSum file modstr symbol lineNo colNo gphurl gphint
  where
    handler (SomeException ex) = do
      gmLog GmException "haddock" $ showDoc ex
