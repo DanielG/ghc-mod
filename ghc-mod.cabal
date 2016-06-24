@@ -274,6 +274,7 @@ Test-Suite spec
                         CustomPackageDbSpec
                         CheckSpec
                         FlagSpec
+                        HaddockSpec
                         InfoSpec
                         LangSpec
                         LintSpec

@@ -315,8 +315,7 @@ qualifiedName targetModuleName lineNr colNr importList = do
 -- Like qualifiedName but uses 'reallyAlwaysQualify' to show the fully qualified name, e.g.
 -- "containers-0.5.6.2@conta_2C3ZI8RgPO2LBMidXKTvIU:Data.Map.Base.fromList" instead of
 -- "Data.Map.Base.fromList". Will probably replace qualifiedName once more testing has
--- been done. If this works we can also remove 'ghcPkgFindModule' which uses a shell
--- call to try to find the package name.
+-- been done.
 qualifiedName'
     :: forall m. (GhcMonad m, MonadIO m, GmOut m, GmLog m)
     => String -> Int -> Int -> String -> [String] -> m [String]
