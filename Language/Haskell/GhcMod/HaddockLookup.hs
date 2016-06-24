@@ -77,7 +77,7 @@ import Language.Haskell.GhcMod.SrcUtils (listifySpans)
 import Language.Haskell.GhcMod.Pretty
 
 import Language.Haskell.GhcMod.Types
--- import Language.Haskell.GhcMod.Logging
+import Language.Haskell.GhcMod.Logging
 -- import Language.Haskell.GhcMod.Doc
 import Language.Haskell.GhcMod.FileMapping
 import Language.Haskell.GhcMod.Monad.Types
@@ -285,15 +285,15 @@ moduleOfQualifiedName qn = if null bits
 -- "h = Data.Map.Base.fromList [(\"x\", \"y\")]"
 -- "Data.Map.Base.fromList [(\"x\", \"y\")]"
 -- "Data.Map.Base.fromList"
-qualifiedName :: forall m. GhcMonad m => String -> Int -> Int -> [String] -> m [String]
+qualifiedName :: forall m. (GhcMonad m, MonadIO m, GmOut m, GmLog m) => String -> Int -> Int -> [String] -> m [String]
 qualifiedName targetModuleName lineNr colNr importList = do
         -- FIXME Move this context stuff elsewhere?
         setContext (map (IIDecl . simpleImportDecl . mkModuleName) (targetModuleName:importList))
-           `gcatch` (\(s  :: SourceError)    -> do GhcMonad.liftIO $ putStrLn $ "qualifiedName: setContext failed with a SourceError, trying to continue anyway..." ++ show s
+           `gcatch` (\(s  :: SourceError)    -> do gmLog GmDebug "" $ strDoc $ "qualifiedName: setContext failed with a SourceError, trying to continue anyway..." ++ show s
                                                    setContext $ map (IIDecl . simpleImportDecl . mkModuleName) importList)
-           `gcatch` (\(g  :: GhcApiError)    -> do GhcMonad.liftIO $ putStrLn $ "qualifiedName: setContext failed with a GhcApiError, trying to continue anyway..." ++ show g
+           `gcatch` (\(g  :: GhcApiError)    -> do gmLog GmDebug "" $ strDoc $ "qualifiedName: setContext failed with a GhcApiError, trying to continue anyway..." ++ show g
                                                    setContext $ map (IIDecl . simpleImportDecl . mkModuleName) importList)
-           `gcatch` (\(se :: SomeException)  -> do GhcMonad.liftIO $ putStrLn $ "qualifiedName: setContext failed with a SomeException, trying to continue anyway..." ++ show se
+           `gcatch` (\(se :: SomeException)  -> do gmLog GmDebug "" $ strDoc $ "qualifiedName: setContext failed with a SomeException, trying to continue anyway..." ++ show se
                                                    setContext $ map (IIDecl . simpleImportDecl . mkModuleName) importList)
 
         modSummary <- getModSummary $ mkModuleName targetModuleName :: m ModSummary
@@ -318,15 +318,15 @@ qualifiedName targetModuleName lineNr colNr importList = do
 -- been done. If this works we can also remove 'ghcPkgFindModule' which uses a shell
 -- call to try to find the package name.
 qualifiedName'
-    :: forall m. (GhcMonad m)
+    :: forall m. (GhcMonad m, MonadIO m, GmOut m, GmLog m)
     => String -> Int -> Int -> String -> [String] -> m [String]
 qualifiedName' targetModuleName lineNr colNr symbol importList = do
         setContext (map (IIDecl . simpleImportDecl . mkModuleName) (targetModuleName:importList))
-           `gcatch` (\(s  :: SourceError)    -> do GhcMonad.liftIO $ putStrLn $ "qualifiedName: setContext failed with a SourceError, trying to continue anyway..." ++ show s
+           `gcatch` (\(s  :: SourceError)    -> do gmLog GmDebug "" $ strDoc $ "qualifiedName: setContext failed with a SourceError, trying to continue anyway..." ++ show s
                                                    setContext $ map (IIDecl . simpleImportDecl . mkModuleName) importList)
-           `gcatch` (\(g  :: GhcApiError)    -> do GhcMonad.liftIO $ putStrLn $ "qualifiedName: setContext failed with a GhcApiError, trying to continue anyway..." ++ show g
+           `gcatch` (\(g  :: GhcApiError)    -> do gmLog GmDebug "" $ strDoc $ "qualifiedName: setContext failed with a GhcApiError, trying to continue anyway..." ++ show g
                                                    setContext $ map (IIDecl . simpleImportDecl . mkModuleName) importList)
-           `gcatch` (\(se :: SomeException)  -> do GhcMonad.liftIO $ putStrLn $ "qualifiedName: setContext failed with a SomeException, trying to continue anyway..." ++ show se
+           `gcatch` (\(se :: SomeException)  -> do gmLog GmDebug "" $ strDoc $ "qualifiedName: setContext failed with a SomeException, trying to continue anyway..." ++ show se
                                                    setContext $ map (IIDecl . simpleImportDecl . mkModuleName) importList)
 
         modSummary <- getModSummary $ mkModuleName targetModuleName :: m ModSummary
@@ -373,8 +373,7 @@ ghcPkgHaddockInterface ghcPkg readProc pkgDbStack p = do
     toHaskellInterfaces pkg dbs = ["field", pkg, "haddock-interfaces", "--global", "--user"] ++ ghcPkgDbStackOpts dbs
 
 getVisibleExports
-    :: forall m. (GhcMonad m,
-                  MonadIO  m)
+    :: forall m. (GhcMonad m, MonadIO m, GmOut m, GmLog m)
     => (String -> IO (Maybe String))
     -> String
     -> m (Maybe (M.Map String [String]))
@@ -384,16 +383,16 @@ getVisibleExports getHaddockInterfaces p = do
 
   where
 
-    getVisibleExports' :: forall m. (GhcMonad m, MonadIO m) => FilePath -> m (Maybe (M.Map String [String]))
+    getVisibleExports' :: forall m. (GhcMonad m, MonadIO m, GmOut m, GmLog m) => FilePath -> m (Maybe (M.Map String [String]))
     getVisibleExports' ifile = do
         iface <- Haddock.readInterfaceFile nameCacheFromGhc ifile
 
         case iface of
-            Left _          -> liftIO $ do putStrLn $ "Failed to read the Haddock interface file: " ++ ifile
-                                           putStrLn "You probably installed packages without using the '--enable-documentation' flag."
-                                           putStrLn ""
-                                           putStrLn "Try something like:\n\n\tcabal install --enable-documentation p"
-                                           error "No haddock interfaces file, giving up."
+            Left _          -> do gmErrStrLn $ "Failed to read the Haddock interface file: " ++ ifile
+                                            ++ "You probably installed packages without using the '--enable-documentation' flag."
+                                            ++ ""
+                                            ++ "Try something like:\n\n\tcabal install --enable-documentation p"
+                                  error "No haddock interfaces file, giving up."
             Right iface'    -> do let m  = map (\ii -> (Haddock.instMod ii, Haddock.instVisibleExports ii)) $ Haddock.ifInstalledIfaces iface' :: [(Module, [Name])]
                                       m' = map (\(mname, names) -> (showSDoc tdflags $ ppr mname, map (showSDoc tdflags . ppr) names)) m       :: [(String, [String])]
                                   return $ Just $ M.fromList m'
@@ -402,7 +401,7 @@ getVisibleExports getHaddockInterfaces p = do
     -- Copied from http://hackage.haskell.org/package/haddock-api-2.16.1/docs/src/Haddock-InterfaceFile.html#nameCacheFromGhc
     -- but for a general monad m instead of the specific monad Ghc.
     ------------------------------------------------------------------------------------------------------------------------
-    nameCacheFromGhc :: forall m. (GhcMonad m, MonadIO m) => Haddock.NameCacheAccessor m
+    nameCacheFromGhc :: forall m. (GhcMonad m, MonadIO m, GmOut m, GmLog m) => Haddock.NameCacheAccessor m
     nameCacheFromGhc = ( read_from_session , write_to_session )
       where
         read_from_session = do
@@ -420,7 +419,10 @@ moduleNameToHtmlFile m =  map f m ++ ".html"
           f c   = c
 
 -- | Convert our match to a URL of the form @file://@ so that we can open it in a web browser.
-matchToUrl :: (Maybe String, Maybe String, Maybe String, Maybe String) -> IO String
+matchToUrl
+    :: forall m. (MonadIO m, GmOut m, GmLog m)
+    => (Maybe String, Maybe String, Maybe String, Maybe String)
+    -> m String
 matchToUrl (importedFrom, haddock, foundModule, base) = do
     when (isNothing importedFrom)   $ error "importedFrom is Nothing :("
     when (isNothing haddock)        $ error "haddock is Nothing :("
@@ -434,10 +436,10 @@ matchToUrl (importedFrom, haddock, foundModule, base) = do
 
         f = haddock' </> base'
 
-    e <- doesFileExist f
+    e <- liftIO $ doesFileExist f
 
     if e then return $ "file://" ++ f
-         else do putStrLn "Please reinstall packages using the flag '--enable-documentation' for 'cabal install.\n"
+         else do gmErrStrLn "Please reinstall packages using the flag '--enable-documentation' for 'cabal install.\n"
                  error $ "Could not find " ++ f
 
 filterMatchingQualifiedImport :: String -> [HaskellModule] -> [HaskellModule]
@@ -446,8 +448,7 @@ filterMatchingQualifiedImport symbol hmodules =
                                          asBit@(Just _) -> filter (\z -> asBit == modImportedAs z) hmodules
 
 getModuleExports
-    :: forall m. (GhcMonad m,
-                  MonadIO  m)
+    :: forall m. (GhcMonad m, MonadIO m, GmOut m, GmLog m)
     => Maybe String
     -> HaskellModule
     -> m (Maybe ([String], String))
@@ -542,8 +543,7 @@ refineLeadingDot (MySymbolSysQualified symb)         exports = map (\e -> e { qu
        where thisExports = qualifiedExports export         -- Things that this module exports.
 
 refineVisibleExports
-    :: forall m. (GhcMonad m,
-                  MonadIO  m)
+    :: forall m. (GhcMonad m, MonadIO m, GmOut m, GmLog m)
     => (String -> IO (Maybe String))
     -> [ModuleExports]
     -> m [ModuleExports]
@@ -555,7 +555,7 @@ refineVisibleExports getHaddockInterfaces exports = mapM f exports
             thisModuleName = mName            mexports -- e.g. "Prelude"
             qexports       = qualifiedExports mexports -- e.g. ["base-4.8.2.0:GHC.Base.Just", ...]
         visibleExportsMap <- getVisibleExports getHaddockInterfaces pname
-        liftIO $ print visibleExportsMap
+        gmLog GmDebug "" $ strDoc $ "visibleExportsMap: " ++ show visibleExportsMap
 
         let thisModVisibleExports = fromMaybe
                                         (error $ "Could not get visible exports of " ++ pname)
@@ -563,7 +563,7 @@ refineVisibleExports getHaddockInterfaces exports = mapM f exports
 
         let qexports' = filter (hasPostfixMatch thisModVisibleExports) qexports
 
-        liftIO $ print (qexports, qexports')
+        gmLog GmDebug "" $ strDoc $ show (qexports, qexports')
 
         return $ mexports { qualifiedExports = qexports' }
 
@@ -588,8 +588,7 @@ getLastMatch exports = Safe.lastMay $ filter f exports
 
 guessHaddockUrl
     :: forall m.
-       (GhcMonad m,
-        MonadIO  m)
+       (GhcMonad m, MonadIO m, GmOut m, GmLog m)
     => ModSummary
     -> FilePath
     -> String
@@ -603,18 +602,18 @@ guessHaddockUrl modSum _targetFile targetModule symbol lineNr colNr getHaddockUr
     -- let targetFile = currentDir </> _targetFile
     let targetFile = _targetFile
 
-    liftIO $ putStrLn $ "targetFile: " ++ targetFile
-    liftIO $ putStrLn $ "targetModule: " ++ targetModule
-    liftIO $ putStrLn $ "symbol: " ++ show symbol
-    liftIO $ putStrLn $ "line nr: " ++ show lineNr
-    liftIO $ putStrLn $ "col nr: " ++ show colNr
+    gmLog GmDebug "" $ strDoc $ "targetFile: " ++ targetFile
+    gmLog GmDebug "" $ strDoc $ "targetModule: " ++ targetModule
+    gmLog GmDebug "" $ strDoc $ "symbol: " ++ show symbol
+    gmLog GmDebug "" $ strDoc $ "line nr: " ++ show lineNr
+    gmLog GmDebug "" $ strDoc $ "col nr: " ++ show colNr
 
     let textualImports  = ms_textual_imps modSum
 
     let haskellModules0 = map toHaskellModule textualImports
         haskellModuleNames0 = map modName haskellModules0
-    liftIO $ putStrLn $ "haskellModuleNames0: " ++ show haskellModuleNames0
-    liftIO $ putStrLn $ "haskellModuleNames0 (full detail): " ++ show haskellModules0
+    gmLog GmDebug "" $ strDoc $ "haskellModuleNames0: " ++ show haskellModuleNames0
+    gmLog GmDebug "" $ strDoc $ "haskellModuleNames0 (full detail): " ++ show haskellModules0
 
     -- If symbol is something like DM.lookup, then restrict haskellModuleNames to the
     -- one that has modImportedAs == Just "DM".
@@ -623,15 +622,15 @@ guessHaddockUrl modSum _targetFile targetModule symbol lineNr colNr getHaddockUr
     let haskellModuleNames = if null filterThings then map modName haskellModules0 else map modName filterThings
 
     qnames <- filter (not . (' ' `elem`)) <$> qualifiedName targetModule lineNr colNr haskellModuleNames
-    liftIO $ putStrLn $ "qualified names: " ++ show qnames
+    gmLog GmDebug "" $ strDoc $ "qualified names: " ++ show qnames
 
     qnames_with_qualified_printing <- filter (not . (' ' `elem`)) <$> qualifiedName' targetModule lineNr colNr symbol haskellModuleNames :: m [String]
-    liftIO $ putStrLn $ "qualified names with qualified printing: " ++ show qnames_with_qualified_printing
+    gmLog GmDebug "" $ strDoc $ "qualified names with qualified printing: " ++ show qnames_with_qualified_printing
 
     let parsedPackagesAndQualNames :: [Either TP.ParseError (String, String)]
         parsedPackagesAndQualNames = map (TP.parse parsePackageAndQualName "") qnames_with_qualified_printing
 
-    liftIO $ putStrLn $ "qqqqqq1: " ++ show parsedPackagesAndQualNames
+    gmLog GmDebug "" $ strDoc $ "qqqqqq1: " ++ show parsedPackagesAndQualNames
 
     let symbolToUse :: String
         symbolToUse = case (qnames_with_qualified_printing, qnames) of
@@ -639,7 +638,7 @@ guessHaddockUrl modSum _targetFile targetModule symbol lineNr colNr getHaddockUr
                         ([], qn:_)    -> qn   -- No qualified names (oh dear) so fall back to qnames list.
                         ([], [])        -> error "Lists 'qnames' and 'qnames_with_qualified_printing' are both empty."
 
-    liftIO $ print ("symbolToUse", symbolToUse)
+    gmLog GmDebug "" $ strDoc $ show ("symbolToUse", symbolToUse)
 
     -- Possible extra modules...
     let extraModules :: [HaskellModule]
@@ -655,7 +654,7 @@ guessHaddockUrl modSum _targetFile targetModule symbol lineNr colNr getHaddockUr
                                                                                Nothing -> []
                         _                   -> []
 
-    liftIO $ print extraModules
+    gmLog GmDebug "" $ strDoc $ show extraModules
 
     -- Use the qnames_with_qualified_printing case, which has something like "base-4.8.2.0:GHC.Base.map",
     -- which will be more accurate to filter on.
@@ -684,7 +683,7 @@ guessHaddockUrl modSum _targetFile targetModule symbol lineNr colNr getHaddockUr
                                             , qualifiedExports  = e
                                             }) successes'
 
-    liftIO $ forM_ upToNow $ \x -> putStrLn $ pprModuleExports x
+    -- liftIO $ forM_ upToNow $ \x -> putStrLn $ pprModuleExports x
 
     -- Get all "as" imports.
     let asImports :: [String]
@@ -698,33 +697,33 @@ guessHaddockUrl modSum _targetFile targetModule symbol lineNr colNr getHaddockUr
                                         then MySymbolUserQualified symbol
                                         else MySymbolSysQualified symbolToUse
 
-    liftIO $ print mySymbol
+    gmLog GmDebug "" $ strDoc $ show mySymbol
 
     let upToNow0 = refineAs mySymbol upToNow
-    liftIO $ putStrLn "upToNow0"
-    liftIO $ forM_ upToNow0 $ \x -> putStrLn $ pprModuleExports x
+    gmLog GmDebug "" $ strDoc "upToNow0"
+    -- liftIO $ forM_ upToNow0 $ \x -> putStrLn $ pprModuleExports x
 
     let upToNow1 = refineRemoveHiding upToNow0
-    liftIO $ putStrLn "upToNow1"
-    liftIO $ forM_ upToNow1 $ \x -> putStrLn $ pprModuleExports x
+    gmLog GmDebug "" $ strDoc "upToNow1"
+    -- liftIO $ forM_ upToNow1 $ \x -> putStrLn $ pprModuleExports x
 
     let upToNow2 = refineExportsIt symbolToUse upToNow1
-    liftIO $ putStrLn "upToNow2"
-    liftIO $ forM_ upToNow2 $ \x -> putStrLn $ pprModuleExports x
+    gmLog GmDebug "" $ strDoc "upToNow2"
+    -- liftIO $ forM_ upToNow2 $ \x -> putStrLn $ pprModuleExports x
 
     let upToNow3 = refineLeadingDot mySymbol upToNow2
-    liftIO $ putStrLn "upToNow3"
-    liftIO $ forM_ upToNow3 $ \x -> putStrLn $ pprModuleExports x
+    gmLog GmDebug "" $ strDoc "upToNow3"
+    -- liftIO $ forM_ upToNow3 $ \x -> putStrLn $ pprModuleExports x
 
     upToNow4 <- refineVisibleExports getHaddockInterfaces upToNow3
-    liftIO $ putStrLn "upToNow4"
-    liftIO $ forM_ upToNow4 $ \x -> putStrLn $ pprModuleExports x
+    gmLog GmDebug "" $ strDoc "upToNow4"
+    -- liftIO $ forM_ upToNow4 $ \x -> putStrLn $ pprModuleExports x
 
     let lastMatch3 = getLastMatch upToNow3
         lastMatch4 = getLastMatch upToNow4
         lastMatch  = Safe.headMay $ catMaybes [lastMatch4, lastMatch3]
 
-    liftIO $ print $ "last match: " ++ show lastMatch
+    gmLog GmDebug "" $ strDoc $ show $ "last match: " ++ show lastMatch
 
     -- "last match: Just (ModuleExports {mName = \"Control.Monad\", mInfo = HaskellModule {modName = \"Control.Monad\", modQualifier = Nothing, modIsImplicit = False, modHiding = [], modImportedAs = Nothing, modSpecifically = [\"forM_\",\"liftM\",\"filterM\",\"when\",\"unless\"]}, qualifiedExports = [\"base-4.8.2.0:GHC.Base.when\"]})"
 
@@ -740,14 +739,14 @@ guessHaddockUrl modSum _targetFile targetModule symbol lineNr colNr getHaddockUr
 
     haddock <- liftIO $ (maybe (return Nothing) getHaddockUrl . Just) matchedPackageName
 
-    liftIO $ putStrLn $ "at the end now: " ++ show (matchedModule, moduleNameToHtmlFile matchedModule, matchedPackageName, haddock)
+    gmLog GmDebug "" $ strDoc $ "at the end now: " ++ show (matchedModule, moduleNameToHtmlFile matchedModule, matchedPackageName, haddock)
 
-    url <- liftIO $ matchToUrl (Just matchedModule, haddock, Just matchedModule, Just $ moduleNameToHtmlFile matchedModule)
+    url <- matchToUrl (Just matchedModule, haddock, Just matchedModule, Just $ moduleNameToHtmlFile matchedModule)
 
     return $ Right url
 
 haddockUrl
-    :: forall (m :: * -> *).  (MonadIO m, GhcMonad m)
+    :: forall m. (MonadIO m, GhcMonad m, GmLog m, GmOut m)
     => ModSummary
     -> FilePath
     -> String
@@ -759,7 +758,7 @@ haddockUrl
     -> m [Char]
 haddockUrl modSum file modstr symbol lineNr colNr getHaddockUrl getHaddockInterfaces = do
     res <- guessHaddockUrl modSum file modstr symbol lineNr colNr getHaddockUrl getHaddockInterfaces
-    liftIO $ print ("res", show res)
+    gmLog GmDebug "" $ strDoc $ show ("res", show res)
 
     case res of Right x  -> return $ "SUCCESS: " ++ x ++ "\n"
                 Left err -> return $ "FAIL: " ++ show err ++ "\n"
