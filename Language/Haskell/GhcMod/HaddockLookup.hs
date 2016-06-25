@@ -343,15 +343,28 @@ qualifiedName' targetModuleName lineNr colNr symbol importList = do
 
         return $ filter (postfixMatch symbol) $ concatMap words $ bs' ++ es' ++ ps'
 
+ghcPkgFindModule ghcPkg readProc pkgDbStack m = do
+    -- let opts = ["find-module", m, "--simple-output"] ++ ["--global", "--user"] ++ optsForGhcPkg allGhcOptions ++ extraGHCPkgOpts
+    hout <- liftIO $ readProc ghcPkg (toOpts m pkgDbStack) ""
+    return $ join $ (Safe.lastMay . words) <$> (Safe.lastMay . lines) hout
+  where
+    toOpts m dbs = ["find-module", m, "--global", "--user"] ++ ghcPkgDbStackOpts dbs
+
 ghcPkgHaddockUrl
-    :: forall (m :: * -> *).  MonadIO m
+    :: forall m. (GmLog m, GmOut m, MonadIO m)
     => FilePath
     -> (FilePath -> [String] -> String -> IO String)
     -> [GhcPkgDb]
     -> String
     -> m (Maybe String)
 ghcPkgHaddockUrl ghcPkg readProc pkgDbStack p = do
-    hout <- liftIO $ readProc ghcPkg (toDocDirOpts p pkgDbStack) ""
+    gmLog GmDebug "" $ strDoc $ "ghcPkgHaddockUrl: " ++ p
+
+    let p' = case splitOn "@" p of
+                [p0, _] -> p0
+                _       -> p
+
+    hout <- liftIO $ readProc ghcPkg (toDocDirOpts p' pkgDbStack) ""
     return $ Safe.lastMay $ words $ reverse . dropWhile (== '\n') . reverse $ hout
   where
     -- This fails unless we have --global and --user, unlike
@@ -373,11 +386,18 @@ ghcPkgHaddockInterface ghcPkg readProc pkgDbStack p = do
 
 getVisibleExports
     :: forall m. (GhcMonad m, MonadIO m, GmOut m, GmLog m)
-    => (String -> IO (Maybe String))
+    => (String -> m (Maybe String))
     -> String
     -> m (Maybe (M.Map String [String]))
 getVisibleExports getHaddockInterfaces p = do
-    haddockInterfaceFile <- liftIO $ getHaddockInterfaces p
+    -- gmLog GmDebug "" $ strDoc $ "getVisibleExports: " ++ p
+    liftIO $ print $ "getVisibleExports: " ++ p
+
+    let p' = case splitOn "@" p of
+                [p0, _] -> p0
+                _       -> p
+    
+    haddockInterfaceFile <- getHaddockInterfaces p'
     join <$> traverse getVisibleExports' haddockInterfaceFile
 
   where
@@ -446,14 +466,15 @@ filterMatchingQualifiedImport symbol hmodules =
     case moduleOfQualifiedName symbol of Nothing    -> []
                                          asBit@(Just _) -> filter (\z -> asBit == modImportedAs z) hmodules
 
-getModuleExports
-    :: forall m. (GhcMonad m, MonadIO m, GmOut m, GmLog m)
-    => Maybe String
-    -> HaskellModule
-    -> m (Maybe ([String], String))
-getModuleExports p m = do
+--getModuleExports
+--    :: forall m. (GhcMonad m, MonadIO m, GmOut m, GmLog m)
+--    => HaskellModule
+--    -> m (Maybe ([String], String))
+getModuleExports ghcPkg readProc pkgDbStack m = do
     minfo     <- (findModule (mkModuleName $ modName m) Nothing >>= getModuleInfo)
                    `gcatch` (\(_  :: SourceError)   -> return Nothing)
+
+    p <- ghcPkgFindModule ghcPkg readProc pkgDbStack (modName m)
 
     case (minfo, p) of
         (Nothing, _)            -> return Nothing
@@ -543,7 +564,7 @@ refineLeadingDot (MySymbolSysQualified symb)         exports = map (\e -> e { qu
 
 refineVisibleExports
     :: forall m. (GhcMonad m, MonadIO m, GmOut m, GmLog m)
-    => (String -> IO (Maybe String))
+    => (String -> m (Maybe String))
     -> [ModuleExports]
     -> m [ModuleExports]
 refineVisibleExports getHaddockInterfaces exports = mapM f exports
@@ -594,10 +615,11 @@ guessHaddockUrl
     -> FixmeSymbol
     -> Int
     -> Int
-    -> (String -> IO (Maybe String))
-    -> (String -> IO (Maybe String))
+    -> (String -> m (Maybe String))
+    -> (String -> m (Maybe String))
+    -> (FilePath, FilePath -> [String] -> String -> IO String, [GhcPkgDb])
     -> m (Either String String)
-guessHaddockUrl modSum _targetFile targetModule symbol lineNr colNr getHaddockUrl getHaddockInterfaces = do
+guessHaddockUrl modSum _targetFile targetModule symbol lineNr colNr getHaddockUrl getHaddockInterfaces (ghcPkg, readProc, pkgDbStack) = do
     -- let targetFile = currentDir </> _targetFile
     let targetFile = _targetFile
 
@@ -624,6 +646,13 @@ guessHaddockUrl modSum _targetFile targetModule symbol lineNr colNr getHaddockUr
     gmLog GmDebug "" $ strDoc $ "qualified names: " ++ show qnames
 
     qnames_with_qualified_printing <- filter (not . (' ' `elem`)) <$> qualifiedName' targetModule lineNr colNr symbol haskellModuleNames :: m [String]
+
+    -- Sometimes we get a leading '('. Should deal with these upstream, but for
+    -- now just cut them off.
+    let dropParen n = case n of ('(':n') -> n'
+                                _        -> n
+    qnames_with_qualified_printing <- return $ map dropParen qnames_with_qualified_printing
+
     gmLog GmDebug "" $ strDoc $ "qualified names with qualified printing: " ++ show qnames_with_qualified_printing
 
     let parsedPackagesAndQualNames :: [Either TP.ParseError (String, String)]
@@ -657,11 +686,14 @@ guessHaddockUrl modSum _targetFile targetModule symbol lineNr colNr getHaddockUr
 
     -- Use the qnames_with_qualified_printing case, which has something like "base-4.8.2.0:GHC.Base.map",
     -- which will be more accurate to filter on.
-    let package = case splitOn ":" symbolToUse of
-                    [p, _]  -> Just p
-                    _       -> Nothing
+    -- ... or something like "safe-0.3.9@safe_Eus5OohxO2XHvdWxKAmhFS:Safe.headMay" ?
+    --let package = case splitOn ":" symbolToUse of
+    --                [p, _]  -> Just p
+    --                _       -> Nothing
 
-    exports <- mapM (getModuleExports package) (haskellModules0 ++ extraModules)
+    exports <- mapM (getModuleExports ghcPkg readProc pkgDbStack) (haskellModules0 ++ extraModules)
+
+    error $ show exports
 
     -- Sometimes the modules in extraModules might be hidden or weird ones like GHC.Base that we can't
     -- load, so filter out the successfully loaded ones.
@@ -699,28 +731,31 @@ guessHaddockUrl modSum _targetFile targetModule symbol lineNr colNr getHaddockUr
     gmLog GmDebug "" $ strDoc $ show mySymbol
 
     let upToNow0 = refineAs mySymbol upToNow
-    gmLog GmDebug "" $ strDoc "upToNow0"
-    -- liftIO $ forM_ upToNow0 $ \x -> putStrLn $ pprModuleExports x
+    -- gmLog GmDebug "" $ strDoc "upToNow0"
+    liftIO $ print "upToNow0"
+    liftIO $ forM_ upToNow0 $ \x -> putStrLn $ pprModuleExports x
 
     let upToNow1 = refineRemoveHiding upToNow0
     gmLog GmDebug "" $ strDoc "upToNow1"
-    -- liftIO $ forM_ upToNow1 $ \x -> putStrLn $ pprModuleExports x
+    liftIO $ forM_ upToNow1 $ \x -> putStrLn $ pprModuleExports x
 
     let upToNow2 = refineExportsIt symbolToUse upToNow1
     gmLog GmDebug "" $ strDoc "upToNow2"
-    -- liftIO $ forM_ upToNow2 $ \x -> putStrLn $ pprModuleExports x
+    liftIO $ forM_ upToNow2 $ \x -> putStrLn $ pprModuleExports x
 
     let upToNow3 = refineLeadingDot mySymbol upToNow2
     gmLog GmDebug "" $ strDoc "upToNow3"
-    -- liftIO $ forM_ upToNow3 $ \x -> putStrLn $ pprModuleExports x
+    liftIO $ forM_ upToNow3 $ \x -> putStrLn $ pprModuleExports x
 
     upToNow4 <- refineVisibleExports getHaddockInterfaces upToNow3
-    gmLog GmDebug "" $ strDoc "upToNow4"
-    -- liftIO $ forM_ upToNow4 $ \x -> putStrLn $ pprModuleExports x
+    liftIO $ print "upToNow4"
+    liftIO $ forM_ upToNow4 $ \x -> putStrLn $ pprModuleExports x
 
     let lastMatch3 = getLastMatch upToNow3
         lastMatch4 = getLastMatch upToNow4
         lastMatch  = Safe.headMay $ catMaybes [lastMatch4, lastMatch3]
+
+    error $ show (lastMatch3, lastMatch4)
 
     gmLog GmDebug "" $ strDoc $ show $ "last match: " ++ show lastMatch
 
@@ -736,7 +771,7 @@ guessHaddockUrl modSum _targetFile targetModule symbol lineNr colNr getHaddockUr
                                 Just p -> p
                                 _      -> error $ "No nice match in lastMatch for package name: " ++ show lastMatch
 
-    haddock <- liftIO $ (maybe (return Nothing) getHaddockUrl . Just) matchedPackageName
+    haddock <- (maybe (return Nothing) getHaddockUrl . Just) matchedPackageName
 
     gmLog GmDebug "" $ strDoc $ "at the end now: " ++ show (matchedModule, moduleNameToHtmlFile matchedModule, matchedPackageName, haddock)
 
@@ -752,23 +787,25 @@ haddockUrl
     -> FixmeSymbol
     -> Int
     -> Int
-    -> (String -> IO (Maybe String))
-    -> (String -> IO (Maybe String))
+    -> (String -> m (Maybe String))
+    -> (String -> m (Maybe String))
+    -> (FilePath, FilePath -> [String] -> String -> IO String, [GhcPkgDb]) 
     -> m [Char]
-haddockUrl modSum file modstr symbol lineNr colNr getHaddockUrl getHaddockInterfaces = do
-    res <- guessHaddockUrl modSum file modstr symbol lineNr colNr getHaddockUrl getHaddockInterfaces
+haddockUrl modSum file modstr symbol lineNr colNr getHaddockUrl getHaddockInterfaces (ghcPkg, readProc, pkgDbStack) = do
+    res <- guessHaddockUrl modSum file modstr symbol lineNr colNr getHaddockUrl getHaddockInterfaces (ghcPkg, readProc, pkgDbStack)
     gmLog GmDebug "" $ strDoc $ show ("res", show res)
 
     case res of Right x  -> return $ "SUCCESS: " ++ x ++ "\n"
                 Left err -> return $ "FAIL: " ++ show err ++ "\n"
 
 -- | Look up Haddock docs for a symbol.
-haddock :: IOish m
-      => FilePath     -- ^ A target file.
-      -> Int          -- ^ Line number.
-      -> Int          -- ^ Column number.
-      -> Expression   -- ^ Expression (symbol)
-      -> GhcModT m String
+haddock
+    :: forall m. IOish m
+    => FilePath     -- ^ A target file.
+    -> Int          -- ^ Line number.
+    -> Int          -- ^ Column number.
+    -> Expression   -- ^ Expression (symbol)
+    -> GhcModT m String
 haddock file lineNo colNo (Expression symbol) = do
     -- To run ghc-pkg we need to precalculate a few
     -- things. See also Language.Haskell.GhcMod.PkgDoc.
@@ -776,8 +813,8 @@ haddock file lineNo colNo (Expression symbol) = do
     readProc   <- gmReadProcess
     pkgDbStack <- getPackageDbStack
 
-    let gphurl = ghcPkgHaddockUrl       ghcPkg readProc pkgDbStack :: String -> IO (Maybe String)
-        gphint = ghcPkgHaddockInterface ghcPkg readProc pkgDbStack :: String -> IO (Maybe String)
+    let gphurl = ghcPkgHaddockUrl       ghcPkg readProc pkgDbStack -- :: String -> IO (Maybe String)
+        gphint = ghcPkgHaddockInterface ghcPkg readProc pkgDbStack -- :: String -> IO (Maybe String)
 
     ghandle handler $
       runGmlT' [Left file] deferErrors $
@@ -786,7 +823,7 @@ haddock file lineNo colNo (Expression symbol) = do
           modSum <- fileModSummaryWithMapping (cradleCurrentDir crdl </> file)
           let modstr = moduleNameString $ ms_mod_name modSum :: String
   
-          haddockUrl modSum file modstr symbol lineNo colNo gphurl gphint
+          haddockUrl modSum file modstr symbol lineNo colNo gphurl gphint (ghcPkg, readProc, pkgDbStack)
  where
    handler (SomeException ex) = do
      gmLog GmException "haddock" $ showDoc ex
