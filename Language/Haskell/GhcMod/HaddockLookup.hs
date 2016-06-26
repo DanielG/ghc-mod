@@ -86,6 +86,12 @@ import Language.Haskell.GhcMod.Gap
 import Language.Haskell.GhcMod.Target
 import Language.Haskell.GhcMod.PkgDoc
 
+import System.Process
+import System.Process.Streaming
+import qualified Data.ByteString as B
+import qualified Data.ByteString.Lazy as BL
+import Data.ByteString.Internal (w2c)
+
 #if __GLASGOW_HASKELL__ >= 708
 import DynFlags ( unsafeGlobalDynFlags )
 tdflags :: DynFlags
@@ -343,12 +349,99 @@ qualifiedName' targetModuleName lineNr colNr symbol importList = do
 
         return $ filter (postfixMatch symbol) $ concatMap words $ bs' ++ es' ++ ps'
 
+{-
 ghcPkgFindModule ghcPkg readProc pkgDbStack m = do
     -- let opts = ["find-module", m, "--simple-output"] ++ ["--global", "--user"] ++ optsForGhcPkg allGhcOptions ++ extraGHCPkgOpts
-    hout <- liftIO $ readProc ghcPkg (toOpts m pkgDbStack) ""
+    let opts = toOpts m pkgDbStack
+    hout <- liftIO $ readProc ghcPkg opts ""
+    error $ show (ghcPkg, hout, opts)
     return $ join $ (Safe.lastMay . words) <$> (Safe.lastMay . lines) hout
   where
-    toOpts m dbs = ["find-module", m, "--global", "--user"] ++ ghcPkgDbStackOpts dbs
+    toOpts m dbs = ["find-module", m {- , "--global", "--user" -} ] ++ ghcPkgDbStackOpts dbs
+-}
+
+executeFallibly' :: String -> [String] -> IO (Maybe (String, String))
+executeFallibly' cmd args = do
+    x <- (executeFallibly (piped (proc cmd args)) ((,) <$> (foldOut intoLazyBytes) <*> (foldErr intoLazyBytes)))
+         `catchIOError` -- FIXME Later, propagate the error so we can log it. Top level type should be an Either or something, not a Maybe.
+         (\e -> return $ Left $ show e)
+
+    return $ case x of
+        Left e              -> Nothing
+        Right (a, b)   -> Just $ (b2s a, b2s b)
+  where
+
+    b2s = map w2c . B.unpack . BL.toStrict
+
+
+
+-- ghcPkgFindModule :: String -> IO (Maybe String)
+ghcPkgFindModule _ _ _ m =
+    shortcut [ stackGhcPkgFindModule m
+             , hcPkgFindModule       m
+             , _ghcPkgFindModule     m
+             ]
+
+
+
+ where
+    shortcut :: [IO (Maybe a)] -> IO (Maybe a)
+    shortcut []     = return Nothing
+    shortcut (a:as) = do
+        a' <- a
+
+        case a' of
+            a''@(Just _)    -> return a''
+            Nothing         -> shortcut as
+
+optsForGhcPkg :: [String] -> [String]
+optsForGhcPkg [] = []
+optsForGhcPkg ("-no-user-package-db":rest)   = "--no-user-package-db"          : optsForGhcPkg rest
+optsForGhcPkg ("-package-db":pd:rest)        = ("--package-db" ++ "=" ++ pd)   : optsForGhcPkg rest
+optsForGhcPkg ("-package-conf":pc:rest)      = ("--package-conf" ++ "=" ++ pc) : optsForGhcPkg rest
+optsForGhcPkg ("-no-user-package-conf":rest) = "--no-user-package-conf"        : optsForGhcPkg rest
+optsForGhcPkg (_:rest) = optsForGhcPkg rest
+
+-- | Call @ghc-pkg find-module@ to determine that package that provides a module, e.g. @Prelude@ is defined
+-- in @base-4.6.0.1@.
+_ghcPkgFindModule :: String -> IO (Maybe String)
+_ghcPkgFindModule m = do
+    let opts = ["find-module", m, "--simple-output"] ++ ["--global", "--user"] ++ optsForGhcPkg []
+    putStrLn $ "ghc-pkg " ++ show opts
+
+    x <- executeFallibly' "ghc-pkg" opts
+
+    case x of
+        Nothing             -> return Nothing
+        Just (output, err)  -> do putStrLn $ "_ghcPkgFindModule stdout: " ++ show output
+                                  putStrLn $ "_ghcPkgFindModule stderr: " ++ show err
+                                  return $ join $ (Safe.lastMay . words) <$> (Safe.lastMay . lines) output
+
+-- | Call @cabal sandbox hc-pkg@ to find the package the provides a module.
+hcPkgFindModule :: String -> IO (Maybe String)
+hcPkgFindModule m = do
+    let opts = ["sandbox", "hc-pkg", "find-module", m, "--", "--simple-output"]
+
+    x <- executeFallibly' "cabal" opts
+
+    case x of
+        Nothing             -> return Nothing
+        Just (output, err)  -> do putStrLn $ "hcPkgFindModule stdout: " ++ show output
+                                  putStrLn $ "hcPkgFindModule stderr: " ++ show err
+                                  return $ join $ (Safe.lastMay . words) <$> (Safe.lastMay . lines) output
+
+-- | Call @stack exec ghc-pkg@ to find the package the provides a module.
+stackGhcPkgFindModule :: String -> IO (Maybe String)
+stackGhcPkgFindModule m = do
+    let opts = ["exec", "ghc-pkg", "find-module", m, "--", "--simple-output"]
+
+    x <- executeFallibly' "stack" opts
+
+    case x of
+        Nothing             -> return Nothing
+        Just (output, err)  -> do putStrLn $ "stackGhcPkgFindModule stdout: " ++ show output
+                                  putStrLn $ "stackGhcPkgFindModule stderr: " ++ show err
+                                  return $ join $ (Safe.lastMay . words) <$> (Safe.lastMay . lines) output
 
 ghcPkgHaddockUrl
     :: forall m. (GmLog m, GmOut m, MonadIO m)
@@ -474,7 +567,7 @@ getModuleExports ghcPkg readProc pkgDbStack m = do
     minfo     <- (findModule (mkModuleName $ modName m) Nothing >>= getModuleInfo)
                    `gcatch` (\(_  :: SourceError)   -> return Nothing)
 
-    p <- ghcPkgFindModule ghcPkg readProc pkgDbStack (modName m)
+    p <- liftIO $ ghcPkgFindModule ghcPkg readProc pkgDbStack (modName m)
 
     case (minfo, p) of
         (Nothing, _)            -> return Nothing
@@ -693,7 +786,7 @@ guessHaddockUrl modSum _targetFile targetModule symbol lineNr colNr getHaddockUr
 
     exports <- mapM (getModuleExports ghcPkg readProc pkgDbStack) (haskellModules0 ++ extraModules)
 
-    error $ show exports
+    -- error $ show exports
 
     -- Sometimes the modules in extraModules might be hidden or weird ones like GHC.Base that we can't
     -- load, so filter out the successfully loaded ones.
@@ -746,6 +839,7 @@ guessHaddockUrl modSum _targetFile targetModule symbol lineNr colNr getHaddockUr
     let upToNow3 = refineLeadingDot mySymbol upToNow2
     gmLog GmDebug "" $ strDoc "upToNow3"
     liftIO $ forM_ upToNow3 $ \x -> putStrLn $ pprModuleExports x
+    -- error $ show upToNow3
 
     upToNow4 <- refineVisibleExports getHaddockInterfaces upToNow3
     liftIO $ print "upToNow4"
@@ -755,7 +849,7 @@ guessHaddockUrl modSum _targetFile targetModule symbol lineNr colNr getHaddockUr
         lastMatch4 = getLastMatch upToNow4
         lastMatch  = Safe.headMay $ catMaybes [lastMatch4, lastMatch3]
 
-    error $ show (lastMatch3, lastMatch4)
+    -- error $ show (lastMatch3, lastMatch4)
 
     gmLog GmDebug "" $ strDoc $ show $ "last match: " ++ show lastMatch
 
