@@ -249,10 +249,10 @@ moduleOfQualifiedName qn = if null bits
 -- Returns a fully qualified name thatincludes the package, hash, and name, e.g.
 --
 -- "containers-0.5.6.2@conta_2C3ZI8RgPO2LBMidXKTvIU:Data.Map.Base.fromList".
-qualifiedName'
+qualifiedName
     :: forall m. (GhcMonad m, MonadIO m, GmOut m, GmLog m)
     => String -> Int -> Int -> String -> [String] -> m [String]
-qualifiedName' targetModuleName lineNr colNr symbol importList = do
+qualifiedName targetModuleName lineNr colNr symbol importList = do
         setContext (map (IIDecl . simpleImportDecl . mkModuleName) (targetModuleName:importList))
            `gcatch` (\(s  :: SourceError)    -> do gmLog GmDebug "" $ strDoc $ "qualifiedName: setContext failed with a SourceError, trying to continue anyway..." ++ show s
                                                    setContext $ map (IIDecl . simpleImportDecl . mkModuleName) importList)
@@ -595,48 +595,51 @@ guessHaddockUrl
     -> [GhcPkgDb]
     -> m (Either String String)
 guessHaddockUrl modSum targetFile targetModule symbol lineNr colNr ghcPkg readProc pkgDbStack = do
-    gmLog GmDebug "" $ strDoc $ "targetFile: " ++ targetFile
-    gmLog GmDebug "" $ strDoc $ "targetModule: " ++ targetModule
-    gmLog GmDebug "" $ strDoc $ "symbol: " ++ show symbol
-    gmLog GmDebug "" $ strDoc $ "line nr: " ++ show lineNr
-    gmLog GmDebug "" $ strDoc $ "col nr: " ++ show colNr
+    gmLog GmDebug "" $ strDoc $ "guessHaddockUrl: targetFile: "   ++ targetFile
+    gmLog GmDebug "" $ strDoc $ "guessHaddockUrl: targetModule: " ++ targetModule
+    gmLog GmDebug "" $ strDoc $ "guessHaddockUrl: symbol: "       ++ show symbol
+    gmLog GmDebug "" $ strDoc $ "guessHaddockUrl: line nr: "      ++ show lineNr
+    gmLog GmDebug "" $ strDoc $ "guessHaddockUrl: col nr: "       ++ show colNr
 
     let textualImports  = ms_textual_imps modSum
+        haskellModules0 = map toHaskellModule textualImports
 
-    let haskellModules0 = map toHaskellModule textualImports
-        haskellModuleNames0 = map modName haskellModules0
-    gmLog GmDebug "" $ strDoc $ "haskellModuleNames0: " ++ show haskellModuleNames0
-    gmLog GmDebug "" $ strDoc $ "haskellModuleNames0 (full detail): " ++ show haskellModules0
+    gmLog GmDebug "" $ strDoc $ "guessHaddockUrl: haskellModuleNames0: " ++ show haskellModules0
 
-    -- If symbol is something like DM.lookup, then restrict haskellModuleNames to the
+    -- If symbol is something like DM.lookup, then restrict haskellModules0 to the
     -- one that has modImportedAs == Just "DM".
-    let filterThings = filterMatchingQualifiedImport symbol haskellModules0
-    let haskellModuleNames = if null filterThings then map modName haskellModules0 else map modName filterThings
+    let haskellModules1 = filterMatchingQualifiedImport symbol haskellModules0
 
-    qnames_with_qualified_printing <- filter (not . (' ' `elem`)) <$> qualifiedName' targetModule lineNr colNr symbol haskellModuleNames :: m [String]
+    -- If that filter left us with nothing, revert back to the original list.
+    let haskellModules2 = if null haskellModules1
+                                then haskellModules0
+                                else haskellModules1
 
-    -- Sometimes we get a leading '('. Should deal with these upstream, but for
+    qnames <- filter (not . (' ' `elem`)) <$> qualifiedName targetModule lineNr colNr symbol (map modName haskellModules2) :: m [String]
+
+    -- FIXME Sometimes we get a leading '('. Should deal with these upstream, but for
     -- now just cut them off.
     let dropParen n = case n of ('(':n') -> n'
                                 _        -> n
-    qnames_with_qualified_printing <- return $ map dropParen qnames_with_qualified_printing
+    qnames <- return $ map dropParen qnames
 
-    gmLog GmDebug "" $ strDoc $ "qualified names with qualified printing: " ++ show qnames_with_qualified_printing
-
-    let parsedPackagesAndQualNames :: [Either TP.ParseError (String, String)]
-        parsedPackagesAndQualNames = map (TP.parse parsePackageAndQualName "") qnames_with_qualified_printing
-
-    gmLog GmDebug "" $ strDoc $ "qqqqqq1: " ++ show parsedPackagesAndQualNames
+    gmLog GmDebug "" $ strDoc $ "guessHaddockUrl: qnames: " ++ show qnames
 
     let symbolToUse :: String
-        symbolToUse = case qnames_with_qualified_printing of
+        symbolToUse = case qnames of
                         (qq:_) -> qq -- We got a qualified name, with qualified printing. Qualified!
-                        []     -> error "qnames_with_qualified_printing is empty."
+                        []     -> error "qnames is empty."
 
-    gmLog GmDebug "" $ strDoc $ show ("symbolToUse", symbolToUse)
+    gmLog GmDebug "" $ strDoc $ "guessHaddockUrl: symbolToUse: " ++ symbolToUse
 
-    -- Possible extra modules...
-    let extraModules :: [HaskellModule]
+    -- Sometimes we have to load an extra module (using setContext) otherwise
+    -- we can't look up the global reader environment without causing a GHC panic.
+    -- For example 'Int' comes from GHC.Types, which is picked up here via the
+    -- full qualified name.
+    let parsedPackagesAndQualNames :: [Either TP.ParseError (String, String)]
+        parsedPackagesAndQualNames = map (TP.parse parsePackageAndQualName "") qnames
+
+        extraModules :: [HaskellModule]
         extraModules = case Safe.headMay parsedPackagesAndQualNames of
                         Just (Right (_, x)) -> case moduleOfQualifiedName x of Just x' -> [ HaskellModule { modName         = x'
                                                                                                           , modQualifier    = Nothing
@@ -649,100 +652,91 @@ guessHaddockUrl modSum targetFile targetModule symbol lineNr colNr ghcPkg readPr
                                                                                Nothing -> []
                         _                   -> []
 
-    gmLog GmDebug "" $ strDoc $ show extraModules
+        haskellModules3 = haskellModules2 ++ extraModules
 
-    -- Use the qnames_with_qualified_printing case, which has something like "base-4.8.2.0:GHC.Base.map",
-    -- which will be more accurate to filter on.
-    -- ... or something like "safe-0.3.9@safe_Eus5OohxO2XHvdWxKAmhFS:Safe.headMay" ?
-    --let package = case splitOn ":" symbolToUse of
-    --                [p, _]  -> Just p
-    --                _       -> Nothing
+    gmLog GmDebug "" $ strDoc $ "guessHaddockUrl: parsedPackagesAndQualNames: " ++ show parsedPackagesAndQualNames
+    gmLog GmDebug "" $ strDoc $ "guessHaddockUrl: extraModules: " ++ show extraModules
 
-    exports <- mapM (getModuleExports ghcPkg readProc pkgDbStack) (haskellModules0 ++ extraModules)
+    exports0 <- mapM (getModuleExports ghcPkg readProc pkgDbStack) haskellModules3 :: m [Maybe ([String], String)]
 
     -- Sometimes the modules in extraModules might be hidden or weird ones like GHC.Base that we can't
     -- load, so filter out the successfully loaded ones.
     let successes :: [(HaskellModule, Maybe ([String], String))]
-        successes = filter (isJust . snd) (zip (haskellModules0 ++ extraModules) exports)
+        successes = filter (isJust . snd) (zip haskellModules3 exports0)
 
-        bubble :: (HaskellModule, Maybe ([FullyQualifiedName], String)) -> Maybe (HaskellModule, ([FullyQualifiedName], String))
-        bubble (h, Just x)  = Just (h, x)
-        bubble (_, Nothing) = Nothing
+        toMaybe :: (HaskellModule, Maybe ([FullyQualifiedName], String)) -> Maybe (HaskellModule, ([FullyQualifiedName], String))
+        toMaybe (h, Just x)  = Just (h, x)
+        toMaybe (_, Nothing) = Nothing
 
         successes' :: [(HaskellModule, ([String], String))]
-        successes' = mapMaybe bubble successes
+        successes' = mapMaybe toMaybe successes
 
-        upToNow = map (\(m, (e, p)) -> ModuleExports
+        stage0 = map (\(m, (e, p)) -> ModuleExports
                                             { mName             = modName m
                                             , mPackageName      = p
                                             , mInfo             = m
                                             , qualifiedExports  = e
                                             }) successes'
 
-    -- liftIO $ forM_ upToNow $ \x -> putStrLn $ pprModuleExports x
-
     -- Get all "as" imports.
+    -- FIXME Can a user do "import xxx as Foo.Bar"?
     let asImports :: [String]
-        asImports = mapMaybe (modImportedAs . mInfo) upToNow
+        asImports = mapMaybe (modImportedAs . mInfo) stage0
 
-    -- Can a user do "import xxx as Foo.Bar"??? Check this.
-
-    let mySymbol = case moduleOfQualifiedName symbol of
+        mySymbol = case moduleOfQualifiedName symbol of
                     Nothing     -> MySymbolSysQualified symbolToUse
                     Just x      -> if x `elem` asImports
                                         then MySymbolUserQualified symbol
                                         else MySymbolSysQualified symbolToUse
 
-    gmLog GmDebug "" $ strDoc $ show mySymbol
+    gmLog GmDebug "" $ strDoc $ "guessHaddockUrl: mySymbol: " ++ show mySymbol
 
-    let upToNow0 = refineAs mySymbol upToNow
-    -- gmLog GmDebug "" $ strDoc "upToNow0"
-    -- liftIO $ print "upToNow0"
-    -- liftIO $ forM_ upToNow0 $ \x -> putStrLn $ pprModuleExports x
+    let stage1 = refineAs mySymbol stage0
+    -- gmLog GmDebug "" $ strDoc "stage1"
+    -- liftIO $ print "stage1"
+    -- liftIO $ forM_ stage1 $ \x -> putStrLn $ pprModuleExports x
 
-    let upToNow1 = refineRemoveHiding upToNow0
-    gmLog GmDebug "" $ strDoc "upToNow1"
-    -- liftIO $ forM_ upToNow1 $ \x -> putStrLn $ pprModuleExports x
+    let stage2 = refineRemoveHiding stage1
+    gmLog GmDebug "" $ strDoc "stage2"
+    -- liftIO $ forM_ stage2 $ \x -> putStrLn $ pprModuleExports x
 
-    let upToNow2 = refineExportsIt symbolToUse upToNow1
-    gmLog GmDebug "" $ strDoc "upToNow2"
-    -- liftIO $ forM_ upToNow2 $ \x -> putStrLn $ pprModuleExports x
+    let stage3 = refineExportsIt symbolToUse stage2
+    gmLog GmDebug "" $ strDoc "stage3"
+    -- liftIO $ forM_ stage3 $ \x -> putStrLn $ pprModuleExports x
 
-    let upToNow3 = refineLeadingDot mySymbol upToNow2
-    gmLog GmDebug "" $ strDoc "upToNow3"
-    -- liftIO $ forM_ upToNow3 $ \x -> putStrLn $ pprModuleExports x
+    let stage4 = refineLeadingDot mySymbol stage3
+    gmLog GmDebug "" $ strDoc "stage4"
+    -- liftIO $ forM_ stage4 $ \x -> putStrLn $ pprModuleExports x
 
-    upToNow4 <- refineVisibleExports (ghcPkgHaddockInterface ghcPkg readProc pkgDbStack) upToNow3
-    gmLog GmDebug "" $ strDoc "upToNow4"
-    -- liftIO $ forM_ upToNow4 $ \x -> putStrLn $ pprModuleExports x
+    stage5 <- refineVisibleExports (ghcPkgHaddockInterface ghcPkg readProc pkgDbStack) stage4
+    gmLog GmDebug "" $ strDoc "stage5"
+    -- liftIO $ forM_ stage5 $ \x -> putStrLn $ pprModuleExports x
 
-    let lastMatch3 = getLastMatch upToNow3
-        lastMatch4 = getLastMatch upToNow4
-        lastMatch  = Safe.headMay $ catMaybes [lastMatch4, lastMatch3]
+    let lastMatch  = Safe.headMay $ catMaybes [getLastMatch stage5, getLastMatch stage4]
 
-    gmLog GmDebug "" $ strDoc $ show $ "last match: " ++ show lastMatch
+    gmLog GmDebug "" $ strDoc $ show $ "guessHaddockUrl: lastMatch: " ++ show lastMatch
 
-    -- "last match: Just (ModuleExports {mName = \"Control.Monad\", mInfo = HaskellModule {modName = \"Control.Monad\", modQualifier = Nothing, modIsImplicit = False, modHiding = [], modImportedAs = Nothing, modSpecifically = [\"forM_\",\"liftM\",\"filterM\",\"when\",\"unless\"]}, qualifiedExports = [\"base-4.8.2.0:GHC.Base.when\"]})"
-
-    let matchedModule :: String
-        matchedModule = case mName <$> lastMatch of
+    let lastMatchModule :: String
+        lastMatchModule = case mName <$> lastMatch of
                             Just modn   -> modn
                             _           -> error $ "No nice match in lastMatch for module: " ++ show lastMatch
 
-    let matchedPackageName :: String
-        matchedPackageName = case mPackageName <$> lastMatch of
+        lastMatchPackageName :: String
+        lastMatchPackageName = case mPackageName <$> lastMatch of
                                 Just p -> p
                                 _      -> error $ "No nice match in lastMatch for package name: " ++ show lastMatch
 
-    let getHaddockUrl = ghcPkgHaddockUrl ghcPkg readProc pkgDbStack -- :: String -> IO (Maybe String)
+    let getHaddockUrl = ghcPkgHaddockUrl ghcPkg readProc pkgDbStack :: String -> m (Maybe String)
 
-    haddock <- (maybe (return Nothing) getHaddockUrl . Just) matchedPackageName
+    haddock <- (maybe (return Nothing) getHaddockUrl . Just) lastMatchPackageName
 
-    gmLog GmDebug "" $ strDoc $ "at the end now: " ++ show (matchedModule, moduleNameToHtmlFile matchedModule, matchedPackageName, haddock)
+    gmLog GmDebug "" $ strDoc $ "guessHaddockUrl: lastMatchModule:      " ++ lastMatchModule
+    gmLog GmDebug "" $ strDoc $ "guessHaddockUrl: lastMatchPackageName: " ++ lastMatchPackageName
+    gmLog GmDebug "" $ strDoc $ "guessHaddockUrl: haddock:              " ++ show haddock
 
     haddock <- return $ fromMaybe (error "haddock is Nothing :(") haddock
 
-    let f = haddock </> (moduleNameToHtmlFile matchedModule)
+    let f = haddock </> (moduleNameToHtmlFile lastMatchModule)
 
     e <- liftIO $ doesFileExist f
 
