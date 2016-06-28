@@ -5,92 +5,51 @@
 
 module Language.Haskell.GhcMod.HaddockLookup (haddock) where
 
-import Exception (ghandle)
--- import Control.Exception (SomeException(..))
--- import Language.Haskell.GhcMod.Logger (checkErrorPrefix)
--- import Language.Haskell.GhcMod.Convert
-import Language.Haskell.GhcMod.GhcPkg
-import Language.Haskell.GhcMod.Output
--- import Language.Haskell.GhcMod.Monad
--- import Language.Haskell.HLint (hlint)
-
--- import Language.Haskell.GhcMod.Utils (withMappedFile)
-
--- import Data.List (stripPrefix)
-
-import Data.IORef
-import Control.Applicative
+import Control.Applicative()
+import Control.Exception
 import Control.Monad
+import Control.Monad.Catch
+import Data.ByteString.Internal (w2c)
 import Data.Char (isAlpha)
+import Data.Functor.Identity
+import Data.IORef
 import Data.List
 import Data.List.Split
 import Data.Maybe
 import Data.Typeable()
 import Desugar()
+import Exception (ghandle)
 import FastString
 import GHC
-import GHC.Paths (libdir)
 import GHC.SYB.Utils()
 import HscTypes
+import Language.Haskell.GhcMod
+import Language.Haskell.GhcMod.DynFlags
+import Language.Haskell.GhcMod.FileMapping
+import Language.Haskell.GhcMod.Gap
+import Language.Haskell.GhcMod.GhcPkg
+import Language.Haskell.GhcMod.Logging
+import Language.Haskell.GhcMod.Monad
+import Language.Haskell.GhcMod.Output
+import Language.Haskell.GhcMod.SrcUtils (listifySpans)
 import Outputable
-import RdrName
 import System.Directory
 import System.Environment()
 import System.FilePath
-import System.IO
-import TcRnTypes()
-
-import qualified GhcMonad
-import qualified MonadUtils()
-import qualified Packages
-import qualified SrcLoc
-import qualified Safe
-import qualified GHC as G
-
-import qualified Data.Map as M
-
-import Language.Haskell.GhcMod.Monad ( runGmOutT )
-import qualified Language.Haskell.GhcMod.Types as GhcModTypes
-
-import Language.Haskell.GhcMod.Types       (IOish)
-import Language.Haskell.GhcMod.Monad.Types (GhcModLog(..), GmOut(..))
-import Control.Monad.Trans.Journal (runJournalT)
-
--- import Language.Haskell.GhcImportedFrom.UtilsFromGhcMod
--- import Language.Haskell.GhcImportedFrom.Types
-
-import Control.Exception (SomeException)
-
-import qualified Text.Parsec as TP
-import Data.Functor.Identity
-
-import qualified Documentation.Haddock as Haddock
-
-import Control.Exception
-import Control.Monad.Catch
-
-import qualified DynFlags()
-
-import Language.Haskell.GhcMod
-
-import Language.Haskell.GhcMod.SrcUtils (listifySpans)
-import Language.Haskell.GhcMod.Pretty
-
-import Language.Haskell.GhcMod.Types
-import Language.Haskell.GhcMod.Logging
--- import Language.Haskell.GhcMod.Doc
-import Language.Haskell.GhcMod.FileMapping
-import Language.Haskell.GhcMod.Monad.Types
-import Language.Haskell.GhcMod.DynFlags
-import Language.Haskell.GhcMod.Gap
-import Language.Haskell.GhcMod.Target
-import Language.Haskell.GhcMod.PkgDoc
-
 import System.Process
 import System.Process.Streaming
+import TcRnTypes()
+
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Lazy as BL
-import Data.ByteString.Internal (w2c)
+import qualified Data.Map as M
+import qualified Documentation.Haddock as Haddock
+import qualified DynFlags()
+import qualified GhcMonad
+import qualified MonadUtils()
+import qualified Safe
+import qualified SrcLoc
+import qualified Text.Parsec as TP
 
 #if __GLASGOW_HASKELL__ >= 708
 import DynFlags ( unsafeGlobalDynFlags )
@@ -207,44 +166,48 @@ parsePackageAndQualNameWithHash = do
 --                 }
 -- ]
 toHaskellModule :: SrcLoc.Located (GHC.ImportDecl GHC.RdrName) -> HaskellModule
-toHaskellModule idecl = HaskellModule name qualifier isImplicit hiding importedAs specifically
-    where idecl'     = SrcLoc.unLoc idecl
-          name       = showSDoc tdflags (ppr $ GHC.ideclName idecl')
-          isImplicit = GHC.ideclImplicit idecl'
-          qualifier  = unpackFS <$> GHC.ideclPkgQual idecl'
-          hiding     = (catMaybes . parseHiding . GHC.ideclHiding) idecl'
-          importedAs = (showSDoc tdflags . ppr) <$> ideclAs idecl'
-          specifically = (parseSpecifically . GHC.ideclHiding) idecl'
+toHaskellModule idecl = HaskellModule
+                            { modName           = name
+                            , modQualifier      = qualifier
+                            , modIsImplicit     = isImplicit
+                            , modHiding         = hiding
+                            , modImportedAs     = importedAs
+                            , modSpecifically   = specifically
+                            }
+  where
+    idecl'       = SrcLoc.unLoc idecl
+    name         = showSDoc tdflags (ppr $ GHC.ideclName idecl')
+    isImplicit   = GHC.ideclImplicit idecl'
+    qualifier    = unpackFS <$> GHC.ideclPkgQual idecl'
+    hiding       = (catMaybes . parseHiding . GHC.ideclHiding) idecl'
+    importedAs   = (showSDoc tdflags . ppr) <$> ideclAs idecl'
+    specifically = (parseSpecifically . GHC.ideclHiding) idecl'
 
-          --grabNames :: GHC.Located (GHC.IE GHC.RdrName) -> String
-          --grabNames loc = showSDoc tdflags (ppr names)
-          --  where names = GHC.ieNames $ SrcLoc.unLoc loc
+    grabNames :: GHC.Located [GHC.LIE GHC.RdrName] -> [String]
+    grabNames loc = map (showSDoc tdflags . ppr) names
+      where names :: [RdrName]
+            names = map (ieName . SrcLoc.unLoc) $ SrcLoc.unLoc loc
+            -- FIXME We are throwing away location info by using unLoc each time?
+            -- Trace these things to see what we are losing.
 
-          grabNames' :: GHC.Located [GHC.LIE GHC.RdrName] -> [String]
-          grabNames' loc = map (showSDoc tdflags . ppr) names
-            where names :: [RdrName]
-                  names = map (ieName . SrcLoc.unLoc) $ SrcLoc.unLoc loc
-                  -- FIXME We are throwing away location info by using unLoc each time?
-                  -- Trace these things to see what we are losing.
-                  --
-          parseHiding :: Maybe (Bool, Located [LIE RdrName]) -> [Maybe String]
-          parseHiding Nothing = [Nothing]
+    parseHiding :: Maybe (Bool, Located [LIE RdrName]) -> [Maybe String]
+    parseHiding Nothing = [Nothing]
 
-          -- If we do
-          --
-          --     import System.Environment ( getArgs )
-          --
-          -- then we get ["getArgs"] here, but we don't really need it...
-          parseHiding (Just (False, _)) = []
+    -- If we do
+    --
+    --     import System.Environment ( getArgs )
+    --
+    -- then we get ["getArgs"] here, but we don't really need it...
+    parseHiding (Just (False, _)) = []
 
-          -- Actually hid names, e.g.
-          --
-          --     import Data.List hiding (map)
-          parseHiding (Just (True, h))  = map Just $ grabNames' h
+    -- Actually hid names, e.g.
+    --
+    --     import Data.List hiding (map)
+    parseHiding (Just (True, h))  = map Just $ grabNames h
 
-          parseSpecifically :: Maybe (Bool, Located [LIE RdrName]) -> [String]
-          parseSpecifically (Just (False, h)) = grabNames' h
-          parseSpecifically _                 = []
+    parseSpecifically :: Maybe (Bool, Located [LIE RdrName]) -> [String]
+    parseSpecifically (Just (False, h)) = grabNames h
+    parseSpecifically _                 = []
 
 -- This definition of separateBy is taken
 -- from: http://stackoverflow.com/a/4978733
@@ -372,13 +335,13 @@ ghcPkgFindModule mod
 
     executeFallibly' :: String -> [String] -> IO (Maybe (String, String))
     executeFallibly' cmd args = do
-        x <- (executeFallibly (piped (proc cmd args)) ((,) <$> (foldOut intoLazyBytes) <*> (foldErr intoLazyBytes)))
-             `catchIOError` -- FIXME Later, propagate the error so we can log it. Top level type should be an Either or something, not a Maybe.
-             (\e -> return $ Left $ show e)
+        x <- executeFallibly (piped (proc cmd args)) ((,) <$> foldOut intoLazyBytes <*> foldErr intoLazyBytes)
+             `catchIOError`
+             (return . Left . show)
 
         return $ case x of
-            Left e              -> Nothing
-            Right (a, b)   -> Just $ (b2s a, b2s b)
+            Left e       -> Nothing
+            Right (a, b) -> Just (b2s a, b2s b)
       where
         b2s = map w2c . B.unpack . BL.toStrict
 
@@ -868,7 +831,7 @@ haddockUrl
     -> (String -> m (Maybe String))
     -> (String -> m (Maybe String))
     -> (FilePath, FilePath -> [String] -> String -> IO String, [GhcPkgDb]) 
-    -> m [Char]
+    -> m String
 haddockUrl modSum file modstr symbol lineNr colNr getHaddockUrl getHaddockInterfaces (ghcPkg, readProc, pkgDbStack) = do
     res <- guessHaddockUrl modSum file modstr symbol lineNr colNr getHaddockUrl getHaddockInterfaces (ghcPkg, readProc, pkgDbStack)
     gmLog GmDebug "" $ strDoc $ show ("res", show res)
