@@ -245,46 +245,9 @@ moduleOfQualifiedName qn = if null bits
   where bits = reverse $ drop 1 $ reverse $ separateBy '.' qn
 
 -- | Find the possible qualified names for the symbol at line/col in the given Haskell file and module.
+-- Returns a fully qualified name thatincludes the package, hash, and name, e.g.
 --
--- Example:
---
--- >>> x <- qualifiedName "tests/data/data/Muddle.hs" "Muddle" 27 5 ["Data.Maybe", "Data.List", "Data.Map", "Safe"]
--- >>> forM_ x print
--- "AbsBinds [] []\n  {Exports: [Muddle.h <= h\n               <>]\n   Exported types: Muddle.h\n                     :: Data.Map.Base.Map GHC.Base.String GHC.Base.String\n                   [LclId]\n   Binds: h = Data.Map.Base.fromList [(\"x\", \"y\")]}"
--- "h = Data.Map.Base.fromList [(\"x\", \"y\")]"
--- "Data.Map.Base.fromList [(\"x\", \"y\")]"
--- "Data.Map.Base.fromList"
-qualifiedName :: forall m. (GhcMonad m, MonadIO m, GmOut m, GmLog m) => String -> Int -> Int -> [String] -> m [String]
-qualifiedName targetModuleName lineNr colNr importList = do
-        -- FIXME Move this context stuff elsewhere?
-        setContext (map (IIDecl . simpleImportDecl . mkModuleName) (targetModuleName:importList))
-           `gcatch` (\(s  :: SourceError)    -> do gmLog GmDebug "" $ strDoc $ "qualifiedName: setContext failed with a SourceError, trying to continue anyway..." ++ show s
-                                                   setContext $ map (IIDecl . simpleImportDecl . mkModuleName) importList)
-           `gcatch` (\(g  :: GhcApiError)    -> do gmLog GmDebug "" $ strDoc $ "qualifiedName: setContext failed with a GhcApiError, trying to continue anyway..." ++ show g
-                                                   setContext $ map (IIDecl . simpleImportDecl . mkModuleName) importList)
-           `gcatch` (\(se :: SomeException)  -> do gmLog GmDebug "" $ strDoc $ "qualifiedName: setContext failed with a SomeException, trying to continue anyway..." ++ show se
-                                                   setContext $ map (IIDecl . simpleImportDecl . mkModuleName) importList)
-
-        modSummary <- getModSummary $ mkModuleName targetModuleName :: m ModSummary
-        p <- parseModule modSummary                                 :: m ParsedModule
-        t <- typecheckModule p                                      :: m TypecheckedModule
-
-        let TypecheckedModule{tm_typechecked_source = tcs} = t
-            bs = listifySpans tcs (lineNr, colNr) :: [LHsBind Id]
-            es = listifySpans tcs (lineNr, colNr) :: [LHsExpr Id]
-            ps = listifySpans tcs (lineNr, colNr) :: [LPat Id]
-
-        let foo x = showSDoc tdflags $ ppr x
-            bs' = map foo bs
-            es' = map foo es
-            ps' = map foo ps
-
-        return $ bs' ++ es' ++ ps'
-
--- Like qualifiedName but uses 'reallyAlwaysQualify' to show the fully qualified name, e.g.
--- "containers-0.5.6.2@conta_2C3ZI8RgPO2LBMidXKTvIU:Data.Map.Base.fromList" instead of
--- "Data.Map.Base.fromList". Will probably replace qualifiedName once more testing has
--- been done.
+-- "containers-0.5.6.2@conta_2C3ZI8RgPO2LBMidXKTvIU:Data.Map.Base.fromList".
 qualifiedName'
     :: forall m. (GhcMonad m, MonadIO m, GmOut m, GmLog m)
     => String -> Int -> Int -> String -> [String] -> m [String]
@@ -685,8 +648,9 @@ guessHaddockUrl modSum _targetFile targetModule symbol lineNr colNr getHaddockUr
     -- let haskellModules = if null filterThings then haskellModules0 else filterThings
     let haskellModuleNames = if null filterThings then map modName haskellModules0 else map modName filterThings
 
-    qnames <- filter (not . (' ' `elem`)) <$> qualifiedName targetModule lineNr colNr haskellModuleNames
-    gmLog GmDebug "" $ strDoc $ "qualified names: " ++ show qnames
+    -- qnames <- filter (not . (' ' `elem`)) <$> qualifiedName targetModule lineNr colNr haskellModuleNames
+    -- gmLog GmDebug "" $ strDoc $ "qualified names: " ++ show qnames
+    let qnames = [] -- FIXME get rid of this.
 
     qnames_with_qualified_printing <- filter (not . (' ' `elem`)) <$> qualifiedName' targetModule lineNr colNr symbol haskellModuleNames :: m [String]
 
