@@ -70,6 +70,11 @@ spec = do
                 (res, _) <- runGmOutDef $ runGhcModT defaultOptions $ haddock "Haddock01.hs" 29 6  (Expression "Safe.headMay")
                 res `shouldSatisfy` isRight
 
+        it "can look up Foo.Bar.length" $ do
+            withDirectory_ "test/data/haddock" $ do
+                (res, _) <- runGmOutDef $ runGhcModT defaultOptions $ haddock "Haddock01.hs" 34 17 (Expression "Foo.Bar.length")
+                res `shouldSatisfy` isRight
+
         it "can look up map" $ do
             withDirectory_ "test/data/haddock" $ do
                 (res, _) <- runGmOutDef $ runGhcModT defaultOptions $ haddock "Haddock02.hs" 14 5  (Expression "map")

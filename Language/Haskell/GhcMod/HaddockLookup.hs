@@ -55,6 +55,8 @@ import System.Process
 import System.Process.Streaming
 import TcRnTypes()
 
+import qualified Data.ByteString as B.X
+
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Lazy as BL
 import qualified Data.Map as M
@@ -688,7 +690,6 @@ guessHaddockUrl modSum targetFile targetModule symbol lineNr colNr ghcPkg readPr
                                             }) successes'
 
     -- Get all "as" imports.
-    -- FIXME Can a user do "import xxx as Foo.Bar"?
     let asImports :: [String]
         asImports = mapMaybe (modImportedAs . mInfo) stage0
 

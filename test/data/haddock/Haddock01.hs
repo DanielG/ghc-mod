@@ -6,7 +6,7 @@ import Data.Maybe
 import qualified Data.List as DL
 import qualified Data.Map as DM
 import qualified Safe
--- import Data.List hiding (map)
+import qualified Data.List as Foo.Bar
 
 f :: a -> Maybe a
 f x = Just x
@@ -31,3 +31,4 @@ sh = Safe.headMay []
 i = 3 :: Int
 i' = 3 :: Integer
 
+len = Foo.Bar.length
