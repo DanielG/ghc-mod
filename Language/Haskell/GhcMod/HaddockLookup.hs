@@ -78,8 +78,6 @@ tdflags = tracingDynFlags
 
 type QualifiedName = String -- ^ A qualified name, e.g. @Foo.bar@.
 
-type FixmeSymbol = String -- ^ A symbol, possibly qualified, e.g. @bar@ or @Foo.bar@.
-
 data HaskellModule
     -- | Information about an import of a Haskell module.
     = HaskellModule { modName           :: String
@@ -242,7 +240,7 @@ separateBy chr = unfoldr sep' where
 -- >>> postfixMatch "bar" "bar"
 -- True
 
-postfixMatch :: FixmeSymbol -> QualifiedName -> Bool
+postfixMatch :: String -> QualifiedName -> Bool
 postfixMatch originalSymbol qName = endTerm `isSuffixOf` qName
   where endTerm = last $ separateBy '.' originalSymbol
 
@@ -498,9 +496,6 @@ data ModuleExports = ModuleExports
     }
     deriving Show
 
-pprModuleExports :: ModuleExports -> String
-pprModuleExports me = mName me ++ "\n" ++ show (mInfo me) ++ "\n" ++ unwords (map show $ qualifiedExports me)
-
 refineAs :: MySymbol -> [ModuleExports] -> [ModuleExports]
 
 -- User qualified the symbol, so we can filter out anything that doesn't have a matching 'modImportedAs'.
@@ -526,7 +521,7 @@ refineRemoveHiding exports = map (\e -> e { qualifiedExports = f e }) exports
              hiding' = map (qualifyName thisExports) hiding  :: [String]    -- Qualified version of hiding.
              thisExports = qualifiedExports export         -- Things that this module exports.
 
-    qualifyName :: [QualifiedName] -> FixmeSymbol -> QualifiedName
+    qualifyName :: [QualifiedName] -> String -> QualifiedName
     qualifyName qualifiedNames name
         -- = case filter (postfixMatch name) qualifiedNames of
         = case nub (filter (name `f`) qualifiedNames) of
@@ -602,7 +597,7 @@ guessHaddockUrl
     => ModSummary
     -> FilePath
     -> String
-    -> FixmeSymbol
+    -> String
     -> Int
     -> Int
     -> FilePath
@@ -706,26 +701,27 @@ guessHaddockUrl modSum targetFile targetModule symbol lineNr colNr ghcPkg readPr
 
     gmLog GmDebug "" $ strDoc $ "guessHaddockUrl: mySymbol: " ++ show mySymbol
 
+    let pprModuleExports :: ModuleExports -> String
+        pprModuleExports me = "(" ++ mName me ++ ", " ++ show (mInfo me) ++ ", " ++ unwords (map show $ qualifiedExports me) ++ ")"
+
+        showDebugStage stageNr stage = forM_ stage $ \x -> gmLog GmDebug "" $ strDoc $ "guessHaddockUrl: " ++ stageNr ++ " " ++ pprModuleExports x
+
+    showDebugStage "stage0" stage0
+
     let stage1 = refineAs mySymbol stage0
-    -- gmLog GmDebug "" $ strDoc "stage1"
-    -- liftIO $ print "stage1"
-    -- liftIO $ forM_ stage1 $ \x -> putStrLn $ pprModuleExports x
+    showDebugStage "stage1" stage1
 
     let stage2 = refineRemoveHiding stage1
-    gmLog GmDebug "" $ strDoc "stage2"
-    -- liftIO $ forM_ stage2 $ \x -> putStrLn $ pprModuleExports x
+    showDebugStage "stage2" stage2
 
     let stage3 = refineExportsIt symbolToUse stage2
-    gmLog GmDebug "" $ strDoc "stage3"
-    -- liftIO $ forM_ stage3 $ \x -> putStrLn $ pprModuleExports x
+    showDebugStage "stage3" stage3
 
     let stage4 = refineLeadingDot mySymbol stage3
-    gmLog GmDebug "" $ strDoc "stage4"
-    -- liftIO $ forM_ stage4 $ \x -> putStrLn $ pprModuleExports x
+    showDebugStage "stage4" stage4
 
     stage5 <- refineVisibleExports (ghcPkgHaddockInterface ghcPkg readProc pkgDbStack) stage4
-    gmLog GmDebug "" $ strDoc "stage5"
-    -- liftIO $ forM_ stage5 $ \x -> putStrLn $ pprModuleExports x
+    showDebugStage "stage5" stage5
 
     let lastMatch  = Safe.headMay $ catMaybes [getLastMatch stage5, getLastMatch stage4]
 
