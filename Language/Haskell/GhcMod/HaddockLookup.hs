@@ -78,15 +78,17 @@ tdflags = tracingDynFlags
 
 type QualifiedName = String -- ^ A qualified name, e.g. @Foo.bar@.
 
-data HaskellModule
-    -- | Information about an import of a Haskell module.
-    = HaskellModule { modName           :: String
-                    , modQualifier      :: Maybe String
-                    , modIsImplicit     :: Bool
-                    , modHiding         :: [String]
-                    , modImportedAs     :: Maybe String
-                    , modSpecifically   :: [String]
-                    } deriving (Show, Eq)
+data NiceImportDecl
+    -- | Information about an import of a Haskell module. Convenience type
+    -- for the bits of a 'GHC.ImportDecl' that we need.
+    = NiceImportDecl
+        { modName           :: String
+        , modQualifier      :: Maybe String
+        , modIsImplicit     :: Bool
+        , modHiding         :: [String]
+        , modImportedAs     :: Maybe String
+        , modSpecifically   :: [String]
+        } deriving (Show, Eq)
 
 
 -- trace' :: Show x => String -> x -> b -> b
@@ -136,7 +138,7 @@ parsePackageAndQualNameWithHash = do
     parsePackageFinalQualName :: TP.ParsecT String u Data.Functor.Identity.Identity String
     parsePackageFinalQualName = TP.many1 TP.anyChar
 
--- |Convenience function for converting an 'GHC.ImportDecl' to a 'HaskellModule'.
+-- | Convenience function for converting an 'GHC.ImportDecl' to a 'NiceImportDecl'.
 --
 -- Example:
 --
@@ -148,38 +150,38 @@ parsePackageAndQualNameWithHash = do
 --
 -- then:
 --
--- >>> map toHaskellModule <$> getTextualImports "tests/data/data/Hiding.hs" "Hiding" >>= print
--- [ HaskellModule { modName = "Prelude"
---                 , modQualifier = Nothing
---                 , modIsImplicit = True
---                 , modHiding = []
---                 , modImportedAs = Nothing
---                 , modSpecifically = []
---                 }
--- , HaskellModule {modName = "Safe"
---                 , modQualifier = Nothing
---                 , modIsImplicit = False
---                 , modHiding = []
---                 , modImportedAs = Nothing
---                 , modSpecifically = []
---                 }
--- , HaskellModule { modName = "System.Environment"
---                 , modQualifier = Nothing
---                 , modIsImplicit = False
---                 , modHiding = []
---                 , modImportedAs = Nothing
---                 , modSpecifically = ["getArgs"]
---                 }
--- , HaskellModule { modName = "Data.List"
---                 , modQualifier = Nothing
---                 , modIsImplicit = False
---                 , modHiding = ["map"]
---                 , modImportedAs = Nothing
---                 , modSpecifically = []
---                 }
+-- >>> map toImportDecl <$> getTextualImports "tests/data/data/Hiding.hs" "Hiding" >>= print
+-- [ NiceImportDecl { modName = "Prelude"
+--                  , modQualifier = Nothing
+--                  , modIsImplicit = True
+--                  , modHiding = []
+--                  , modImportedAs = Nothing
+--                  , modSpecifically = []
+--                  }
+-- , NiceImportDecl {modName = "Safe"
+--                  , modQualifier = Nothing
+--                  , modIsImplicit = False
+--                  , modHiding = []
+--                  , modImportedAs = Nothing
+--                  , modSpecifically = []
+--                  }
+-- , NiceImportDecl { modName = "System.Environment"
+--                  , modQualifier = Nothing
+--                  , modIsImplicit = False
+--                  , modHiding = []
+--                  , modImportedAs = Nothing
+--                  , modSpecifically = ["getArgs"]
+--                  }
+-- , NiceImportDecl { modName = "Data.List"
+--                  , modQualifier = Nothing
+--                  , modIsImplicit = False
+--                  , modHiding = ["map"]
+--                  , modImportedAs = Nothing
+--                  , modSpecifically = []
+--                  }
 -- ]
-toHaskellModule :: SrcLoc.Located (GHC.ImportDecl GHC.RdrName) -> HaskellModule
-toHaskellModule idecl = HaskellModule
+toImportDecl :: SrcLoc.Located (GHC.ImportDecl GHC.RdrName) -> NiceImportDecl
+toImportDecl idecl = NiceImportDecl
                             { modName           = name
                             , modQualifier      = qualifier
                             , modIsImplicit     = isImplicit
@@ -457,15 +459,18 @@ moduleNameToHtmlFile m =  map f m ++ ".html"
           f '.' = '-'
           f c   = c
 
-filterMatchingQualifiedImport :: String -> [HaskellModule] -> [HaskellModule]
+filterMatchingQualifiedImport :: String -> [NiceImportDecl] -> [NiceImportDecl]
 filterMatchingQualifiedImport symbol hmodules =
     case moduleOfQualifiedName symbol of Nothing    -> []
                                          asBit@(Just _) -> filter (\z -> asBit == modImportedAs z) hmodules
 
---getModuleExports
---    :: forall m. (GhcMonad m, MonadIO m, GmOut m, GmLog m)
---    => HaskellModule
---    -> m (Maybe ([String], String))
+getModuleExports
+    :: forall m. (GhcMonad m, MonadIO m, GmOut m, GmLog m)
+    => FilePath
+    -> (FilePath -> [String] -> String -> IO String)
+    -> [GhcPkgDb]
+    -> NiceImportDecl
+    -> m (Maybe ([String], String))
 getModuleExports ghcPkg readProc pkgDbStack m = do
     minfo     <- (findModule (mkModuleName $ modName m) Nothing >>= getModuleInfo)
                    `gcatch` (\(_  :: SourceError)   -> return Nothing)
@@ -487,12 +492,12 @@ data MySymbol = MySymbolSysQualified  String  -- ^ e.g. "base-4.8.2.0:Data.Folda
 data ModuleExports = ModuleExports
     { mName            :: StrModuleName            -- ^ e.g. "Data.List"
     , mPackageName     :: String                   -- ^ e.g. "snap-0.14.0.6"
-    , mInfo            :: HaskellModule            -- ^ Our parse of the module import, with info like "hiding (map)".
+    , mInfo            :: NiceImportDecl           -- ^ Our parse of the module import, with info like "hiding (map)".
     , qualifiedExports :: [FullyQualifiedName]     -- ^ e.g. [ "base-4.8.2.0:GHC.Base.++"
-                                                        --        , "base-4.8.2.0:GHC.List.filter"
-                                                        --        , "base-4.8.2.0:GHC.List.zip"
-                                                        --        , ...
-                                                        --        ]
+                                                   --        , "base-4.8.2.0:GHC.List.filter"
+                                                   --        , "base-4.8.2.0:GHC.List.zip"
+                                                   --        , ...
+                                                   --        ]
     }
     deriving Show
 
@@ -612,20 +617,20 @@ guessHaddockUrl modSum targetFile targetModule symbol lineNr colNr ghcPkg readPr
     gmLog GmDebug "" $ strDoc $ "guessHaddockUrl: col nr: "       ++ show colNr
 
     let textualImports  = ms_textual_imps modSum
-        haskellModules0 = map toHaskellModule textualImports
+        importDecls0 = map toImportDecl textualImports
 
-    gmLog GmDebug "" $ strDoc $ "guessHaddockUrl: haskellModuleNames0: " ++ show haskellModules0
+    gmLog GmDebug "" $ strDoc $ "guessHaddockUrl: haskellModuleNames0: " ++ show importDecls0
 
-    -- If symbol is something like DM.lookup, then restrict haskellModules0 to the
+    -- If symbol is something like DM.lookup, then restrict importDecls0 to the
     -- one that has modImportedAs == Just "DM".
-    let haskellModules1 = filterMatchingQualifiedImport symbol haskellModules0
+    let importDecls1 = filterMatchingQualifiedImport symbol importDecls0
 
     -- If that filter left us with nothing, revert back to the original list.
-    let haskellModules2 = if null haskellModules1
-                                then haskellModules0
-                                else haskellModules1
+    let importDecls2 = if null importDecls1
+                                then importDecls0
+                                else importDecls1
 
-    qnames <- filter (not . (' ' `elem`)) <$> qualifiedName targetModule lineNr colNr symbol (map modName haskellModules2) :: m [String]
+    qnames <- filter (not . (' ' `elem`)) <$> qualifiedName targetModule lineNr colNr symbol (map modName importDecls2) :: m [String]
 
     -- FIXME Sometimes we get a leading '('. Should deal with these upstream, but for
     -- now just cut them off.
@@ -649,36 +654,37 @@ guessHaddockUrl modSum targetFile targetModule symbol lineNr colNr ghcPkg readPr
     let parsedPackagesAndQualNames :: [Either TP.ParseError (String, String)]
         parsedPackagesAndQualNames = map (TP.parse parsePackageAndQualName "") qnames
 
-        extraModules :: [HaskellModule]
-        extraModules = case Safe.headMay parsedPackagesAndQualNames of
-                        Just (Right (_, x)) -> case moduleOfQualifiedName x of Just x' -> [ HaskellModule { modName         = x'
-                                                                                                          , modQualifier    = Nothing
-                                                                                                          , modIsImplicit   = False
-                                                                                                          , modHiding       = []
-                                                                                                          , modImportedAs   = Nothing
-                                                                                                          , modSpecifically = []
-                                                                                                          }
+        extraImportDecls :: [NiceImportDecl]
+        extraImportDecls = case Safe.headMay parsedPackagesAndQualNames of
+                        Just (Right (_, x)) -> case moduleOfQualifiedName x of Just x' -> [ NiceImportDecl
+                                                                                                { modName         = x'
+                                                                                                , modQualifier    = Nothing
+                                                                                                , modIsImplicit   = False
+                                                                                                , modHiding       = []
+                                                                                                , modImportedAs   = Nothing
+                                                                                                , modSpecifically = []
+                                                                                                }
                                                                                           ]
                                                                                Nothing -> []
                         _                   -> []
 
-        haskellModules3 = haskellModules2 ++ extraModules
+        importDecls3 = importDecls2 ++ extraImportDecls
 
     gmLog GmDebug "" $ strDoc $ "guessHaddockUrl: parsedPackagesAndQualNames: " ++ show parsedPackagesAndQualNames
-    gmLog GmDebug "" $ strDoc $ "guessHaddockUrl: extraModules: " ++ show extraModules
+    gmLog GmDebug "" $ strDoc $ "guessHaddockUrl: extraImportDecls: " ++ show extraImportDecls
 
-    exports0 <- mapM (getModuleExports ghcPkg readProc pkgDbStack) haskellModules3 :: m [Maybe ([String], String)]
+    exports0 <- mapM (getModuleExports ghcPkg readProc pkgDbStack) importDecls3 :: m [Maybe ([String], String)]
 
-    -- Sometimes the modules in extraModules might be hidden or weird ones like GHC.Base that we can't
+    -- Sometimes the modules in extraImportDecls might be hidden or weird ones like GHC.Base that we can't
     -- load, so filter out the successfully loaded ones.
-    let successes :: [(HaskellModule, Maybe ([String], String))]
-        successes = filter (isJust . snd) (zip haskellModules3 exports0)
+    let successes :: [(NiceImportDecl, Maybe ([String], String))]
+        successes = filter (isJust . snd) (zip importDecls3 exports0)
 
-        toMaybe :: (HaskellModule, Maybe ([FullyQualifiedName], String)) -> Maybe (HaskellModule, ([FullyQualifiedName], String))
+        toMaybe :: (NiceImportDecl, Maybe ([FullyQualifiedName], String)) -> Maybe (NiceImportDecl, ([FullyQualifiedName], String))
         toMaybe (h, Just x)  = Just (h, x)
         toMaybe (_, Nothing) = Nothing
 
-        successes' :: [(HaskellModule, ([String], String))]
+        successes' :: [(NiceImportDecl, ([String], String))]
         successes' = mapMaybe toMaybe successes
 
         stage0 = map (\(m, (e, p)) -> ModuleExports
