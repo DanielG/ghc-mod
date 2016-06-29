@@ -631,13 +631,6 @@ guessHaddockUrl modSum targetFile targetModule symbol lineNr colNr ghcPkg readPr
                                 else importDecls1
 
     qnames <- filter (not . (' ' `elem`)) <$> qualifiedName targetModule lineNr colNr symbol (map modName importDecls2) :: m [String]
-
-    -- FIXME Sometimes we get a leading '('. Should deal with these upstream, but for
-    -- now just cut them off.
-    let dropParen n = case n of ('(':n') -> n'
-                                _        -> n
-    qnames <- return $ map dropParen qnames
-
     gmLog GmDebug "" $ strDoc $ "guessHaddockUrl: qnames: " ++ show qnames
 
     let symbolToUse :: String
