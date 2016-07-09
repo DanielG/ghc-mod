@@ -16,12 +16,12 @@ spec = do
     describe "getSandboxDb" $ do
         it "can parse a config file and extract the sandbox package-db" $ do
             cwd <- getCurrentDirectory
-            Just crdl <- runMaybeT $ plainCradle "test/data/cabal-project"
+            Just crdl <- runLogDef $ runMaybeT $ plainCradle "test/data/cabal-project"
             Just db <- getSandboxDb crdl
             db `shouldSatisfy` isPkgDbAt (cwd </> "test/data/cabal-project/.cabal-sandbox")
 
         it "returns Nothing if the sandbox config file is broken" $ do
-            Just crdl <- runMaybeT $ plainCradle "test/data/broken-sandbox"
+            Just crdl <- runLogDef $ runMaybeT $ plainCradle "test/data/broken-sandbox"
             getSandboxDb crdl  `shouldReturn` Nothing
 
     describe "findCabalFile" $ do

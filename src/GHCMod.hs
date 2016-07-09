@@ -35,9 +35,12 @@ handler = flip gcatches
           ]
 
 main :: IO ()
-main = do
-    hSetEncoding stdout utf8
-    parseArgs >>= \res@(globalOptions, _) ->
+main =
+    parseArgs >>= \res@(globalOptions, _) -> do
+      enc <- mkTextEncoding $ optEncoding globalOptions
+      hSetEncoding stdout enc
+      hSetEncoding stderr enc
+      hSetEncoding stdin enc
       catches (progMain res) [
               Handler $ \(e :: GhcModError) ->
                 runGmOutT globalOptions $ exitError $ renderStyle ghcModStyle (gmeDoc e)
@@ -108,9 +111,7 @@ getFileSourceFromStdin = do
         then fmap (x:) readStdin'
         else return []
 
--- Someone please already rewrite the cmdline parsing code *weep* :'(
 wrapGhcCommands :: (IOish m, GmOut m) => Options -> GhcModCommands -> m ()
-wrapGhcCommands _opts CmdRoot = gmPutStr =<< rootInfo
 wrapGhcCommands opts cmd =
     handleGmError $ runGhcModT opts $ handler $ do
       forM_ (reverse $ optFileMappings opts) $
@@ -140,7 +141,7 @@ ghcCommands (CmdDebug) = debugInfo
 ghcCommands (CmdDebugComponent ts) = componentInfo ts
 ghcCommands (CmdBoot) = boot
 -- ghcCommands (CmdNukeCaches) = nukeCaches >> return ""
--- ghcCommands (CmdRoot) = undefined -- handled in wrapGhcCommands
+ghcCommands (CmdRoot) = rootInfo
 ghcCommands (CmdLegacyInteractive) = legacyInteractive >> return ""
 ghcCommands (CmdModules detail) = modules detail
 ghcCommands (CmdDumpSym) = dumpSymbol >> return ""
@@ -152,7 +153,7 @@ ghcCommands (CmdCheck files) = checkSyntax files
 ghcCommands (CmdExpand files) = expandTemplate files
 ghcCommands (CmdHaddock file (line, col) symb) = haddock file line col $ Expression symb
 ghcCommands (CmdInfo file symb) = info file $ Expression symb
-ghcCommands (CmdType file (line, col)) = types file line col
+ghcCommands (CmdType wCon file (line, col)) = types wCon file line col
 ghcCommands (CmdSplit file (line, col)) = splits file line col
 ghcCommands (CmdSig file (line, col)) = sig file line col
 ghcCommands (CmdAuto file (line, col)) = auto file line col

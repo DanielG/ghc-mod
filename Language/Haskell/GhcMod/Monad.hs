@@ -53,11 +53,17 @@ import System.Directory
 import System.IO.Unsafe
 import Prelude
 
-withGhcModEnv :: (IOish m, GmOut m) => FilePath -> Options -> ((GhcModEnv, GhcModLog)  -> m a) -> m a
-withGhcModEnv = withGhcModEnv' withCradle
+withGhcModEnv :: (IOish m, GmOut m) => FilePath -> Options -> ((GhcModEnv, GhcModLog) -> m a) -> m a
+withGhcModEnv dir opts f = withGhcModEnv' withCradle dir opts f
  where
-   withCradle dir =
-       gbracket (runJournalT $ findCradle' dir) (liftIO . cleanupCradle . fst)
+   withCradle dir' =
+       gbracket
+         (runJournalT $ do
+            gmSetLogLevel $ ooptLogLevel $ optOutput opts
+            findCradle' (optPrograms opts) dir')
+         (liftIO . cleanupCradle . fst)
+
+
 
 cwdLock :: MVar ThreadId
 cwdLock = unsafePerformIO $ newEmptyMVar

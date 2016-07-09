@@ -6,6 +6,7 @@ module TestUtils (
   , runE
   , runNullLog
   , runGmOutDef
+  , runLogDef
   , shouldReturnError
   , isPkgDbAt
   , isPkgConfDAt
@@ -43,10 +44,6 @@ extract action = do
     Right a ->  return a
     Left e -> error $ show e
 
-withSpecCradle :: (IOish m, GmOut m) => FilePath -> ((Cradle, GhcModLog) -> m a) -> m a
-withSpecCradle cradledir f = do
-    gbracket (runJournalT $ findSpecCradle cradledir) (liftIO . cleanupCradle . fst) f
-
 runGhcModTSpec :: Options -> GhcModT IO a -> IO (Either GhcModError a, GhcModLog)
 runGhcModTSpec opt action = do
   dir <- getCurrentDirectory
@@ -59,6 +56,13 @@ runGhcModTSpec' dir opt action = liftIO (canonicalizePath dir) >>= \dir' -> do
     withGhcModEnv' withSpecCradle dir' opt $ \(env,_) -> do
       first (fst <$>) <$> runGhcModT' env defaultGhcModState
         (gmSetLogLevel (ooptLogLevel $ optOutput opt) >> action)
+ where
+   withSpecCradle :: (IOish m, GmOut m) => FilePath -> ((Cradle, GhcModLog) -> m a) -> m a
+   withSpecCradle cradledir f =
+     gbracket
+       (runJournalT $ findSpecCradle (optPrograms opt) cradledir)
+       (liftIO . cleanupCradle . fst) f
+
 
 -- | Run GhcMod
 run :: Options -> GhcModT IO a -> IO a
@@ -87,6 +91,9 @@ runNullLog action = do
 
 runGmOutDef :: IOish m => GmOutT m a -> m a
 runGmOutDef = runGmOutT defaultOptions
+
+runLogDef :: IOish m => GmOutT (JournalT GhcModLog m) a -> m a
+runLogDef = fmap fst . runJournalT . runGmOutDef
 
 shouldReturnError :: Show a
                   => IO (Either GhcModError a, GhcModLog)

@@ -27,7 +27,9 @@ import Language.Haskell.GhcMod.SrcUtils
 import Language.Haskell.GhcMod.Doc
 import Language.Haskell.GhcMod.Logging
 import Language.Haskell.GhcMod.Types
+import Language.Haskell.GhcMod.Utils (withMappedFile)
 import Language.Haskell.GhcMod.FileMapping (fileModSummaryWithMapping)
+import Control.DeepSeq
 
 ----------------------------------------------------------------
 -- CASE SPLITTING
@@ -54,17 +56,17 @@ splits file lineNo colNo =
       style <- getStyle
       dflag <- G.getSessionDynFlags
       modSum <- fileModSummaryWithMapping (cradleCurrentDir crdl </> file)
-      whenFound' oopts (getSrcSpanTypeForSplit modSum lineNo colNo) $ \x -> case x of
-        (SplitInfo varName bndLoc (varLoc,varT) _matches) -> do
-          let varName' = showName dflag style varName  -- Convert name to string
-          t <- genCaseSplitTextFile file (SplitToTextInfo varName' bndLoc varLoc $
+      whenFound' oopts (getSrcSpanTypeForSplit modSum lineNo colNo) $ \x -> do
+          let (varName, bndLoc, (varLoc,varT))
+                | (SplitInfo vn bl vlvt _matches) <- x
+                = (vn, bl, vlvt)
+                | (TySplitInfo vn bl vlvt) <- x
+                = (vn, bl, vlvt)
+              varName' = showName dflag style varName  -- Convert name to string
+          t <- withMappedFile file $ \file' ->
+                genCaseSplitTextFile file' (SplitToTextInfo varName' bndLoc varLoc $
                                              getTyCons dflag style varName varT)
-          return (fourInts bndLoc, t)
-        (TySplitInfo varName bndLoc (varLoc,varT)) -> do
-          let varName' = showName dflag style varName  -- Convert name to string
-          t <- genCaseSplitTextFile file (SplitToTextInfo varName' bndLoc varLoc $
-                                             getTyCons dflag style varName varT)
-          return (fourInts bndLoc, t)
+          return $!! (fourInts bndLoc, t)
  where
    handler (SomeException ex) = do
      gmLog GmException "splits" $
@@ -204,8 +206,8 @@ genCaseSplitTextFile file info = liftIO $ do
   return $ getCaseSplitText (T.lines t) info
 
 getCaseSplitText :: [T.Text] -> SplitToTextInfo -> String
-getCaseSplitText t (SplitToTextInfo { sVarName = sVN, sBindingSpan = sBS
-                                       , sVarSpan = sVS, sTycons = sT })  =
+getCaseSplitText t SplitToTextInfo{ sVarName = sVN, sBindingSpan = sBS
+                                       , sVarSpan = sVS, sTycons = sT }  =
   let bindingText = getBindingText t sBS
       difference  = srcSpanDifference sBS sVS
       replaced    = map (replaceVarWithTyCon bindingText difference sVN) sT

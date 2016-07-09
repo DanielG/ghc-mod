@@ -220,7 +220,7 @@ packageCache = "package.cache"
 
 -- | Filename of the symbol table cache file.
 symbolCache :: Cradle -> FilePath
-symbolCache crdl = cradleTempDir crdl </> symbolCacheFile
+symbolCache crdl = cradleRootDir crdl </> cradleDistDir crdl </> symbolCacheFile
 
 symbolCacheFile :: String
 symbolCacheFile = "ghc-mod.symbol-cache"

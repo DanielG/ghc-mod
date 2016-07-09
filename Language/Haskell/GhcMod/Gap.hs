@@ -44,6 +44,7 @@ module Language.Haskell.GhcMod.Gap (
   , Language.Haskell.GhcMod.Gap.isSynTyCon
   , parseModuleHeader
   , mkErrStyle'
+  , everythingStagedWithContext
   ) where
 
 import Control.Applicative hiding (empty)
@@ -74,6 +75,10 @@ import qualified Name
 import qualified InstEnv
 import qualified Pretty
 import qualified StringBuffer as SB
+
+#if __GLASGOW_HASKELL__ >= 710
+import CoAxiom (coAxiomTyCon)
+#endif
 
 #if __GLASGOW_HASKELL__ >= 708
 import FamInstEnv
@@ -111,6 +116,8 @@ import Lexer as L
 import Parser
 import SrcLoc
 import Packages
+import Data.Generics (GenericQ, extQ, gmapQ)
+import GHC.SYB.Utils (Stage(..))
 
 import Language.Haskell.GhcMod.Types (Expression(..))
 import Prelude
@@ -357,28 +364,44 @@ pprInfo :: (FilePath -> FilePath) -> Bool -> (TyThing, GHC.Fixity, [ClsInst], [F
 pprInfo m _ (thing, fixity, insts, famInsts)
     = pprTyThingInContextLoc' thing
    $$ show_fixity fixity
-   $$ InstEnv.pprInstances insts
-   $$ pprFamInsts famInsts
+   $$ vcat (map pprInstance' insts)
+   $$ vcat (map pprFamInst' famInsts)
 #else
 pprInfo :: (FilePath -> FilePath) -> PrintExplicitForalls -> (TyThing, GHC.Fixity, [ClsInst]) -> SDoc
 pprInfo m pefas (thing, fixity, insts)
     = pprTyThingInContextLoc' pefas thing
    $$ show_fixity fixity
-   $$ vcat (map pprInstance insts)
+   $$ vcat (map pprInstance' insts)
 #endif
   where
     show_fixity fx
       | fx == defaultFixity = Outputable.empty
       | otherwise           = ppr fx <+> ppr (getName thing)
 #if __GLASGOW_HASKELL__ >= 708
-    pprTyThingInContextLoc' thing' = hang (pprTyThingInContext thing') 2
-                                        (char '\t' <> ptext (sLit "--") <+> loc)
-                         where loc = ptext (sLit "Defined") <+> pprNameDefnLoc' (getName thing')
+    pprTyThingInContextLoc' thing' = showWithLoc (pprDefinedAt' thing') (pprTyThingInContext thing')
+#if __GLASGOW_HASKELL__ >= 710
+    pprFamInst' (FamInst { fi_flavor = DataFamilyInst rep_tc })
+      = pprTyThingInContextLoc (ATyCon rep_tc)
+
+    pprFamInst' (FamInst { fi_flavor = SynFamilyInst, fi_axiom = axiom
+                        , fi_tys = lhs_tys, fi_rhs = rhs })
+      = showWithLoc (pprDefinedAt' (getName axiom)) $
+        hang (ptext (sLit "type instance") <+> pprTypeApp (coAxiomTyCon axiom) lhs_tys)
+           2 (equals <+> ppr rhs)
 #else
-    pprTyThingInContextLoc' pefas' thing' = hang (pprTyThingInContext pefas' thing') 2
-                                    (char '\t' <> ptext (sLit "--") <+> loc)
-                               where loc = ptext (sLit "Defined") <+> pprNameDefnLoc' (getName thing')
+    pprFamInst' ispec = showWithLoc (pprDefinedAt' (getName ispec)) (pprFamInstHdr ispec)
 #endif
+#else
+    pprTyThingInContextLoc' pefas' thing' = showWithLoc (pprDefinedAt' thing') (pprTyThingInContext pefas' thing')
+#endif
+    showWithLoc loc doc
+        = hang doc 2 (char '\t' <> comment <+> loc)
+        -- The tab tries to make them line up a bit
+      where
+        comment = ptext (sLit "--")
+    pprInstance' ispec = hang (pprInstanceHdr ispec)
+        2 (ptext (sLit "--") <+> pprDefinedAt' (getName ispec))
+    pprDefinedAt' thing' = ptext (sLit "Defined") <+> pprNameDefnLoc' (getName thing')
     pprNameDefnLoc' name
       = case Name.nameSrcLoc name of
            RealSrcLoc s -> ptext (sLit "at") <+> ppr (subst s)
@@ -575,3 +598,20 @@ instance NFData ByteString where
   rnf Empty       = ()
   rnf (Chunk _ b) = rnf b
 #endif
+
+-- | Like 'everything', but avoid known potholes, based on the 'Stage' that
+--   generated the Ast.
+everythingStagedWithContext :: Stage -> s -> (r -> r -> r) -> r -> GenericQ (s -> (r, s)) -> GenericQ r
+everythingStagedWithContext stage s0 f z q x
+  | (const False
+#if __GLASGOW_HASKELL__ <= 708
+      `extQ` postTcType
+#endif
+      `extQ` fixity `extQ` nameSet) x = z
+  | otherwise = foldl f r (gmapQ (everythingStagedWithContext stage s' f z q) x)
+  where nameSet    = const (stage `elem` [Parser,TypeChecker]) :: NameSet -> Bool
+#if __GLASGOW_HASKELL__ <= 708
+        postTcType = const (stage<TypeChecker)                 :: PostTcType -> Bool
+#endif
+        fixity     = const (stage<Renamer)                     :: GHC.Fixity -> Bool
+        (r, s') = q x s0
