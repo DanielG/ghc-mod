@@ -272,6 +272,7 @@ browseArgSpec = CmdBrowse
 debugComponentArgSpec = filesArgsSpec (pure CmdDebugComponent)
 checkArgSpec = filesArgsSpec (pure CmdCheck)
 expandArgSpec = filesArgsSpec (pure CmdExpand)
+haddockArgSpec = locArgSpec (pure CmdHaddock) <*> strArg "SYMBOL"
 infoArgSpec = CmdInfo
     <$> strArg "FILE"
     <*> strArg "SYMBOL"
