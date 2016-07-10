@@ -1,3 +1,13 @@
+2016-07-10 v5.6.0.0
+	* Bump cabal-helper to 0.7, adds support for Cabal-1.24
+	* Merge #737, `map-file` caching issues
+	* Merge #767, Add `browse` option to show symbol "parents"
+	* Merge #731, Type constraints
+	* Fix #69 (via #731), Missing type constraints
+	* Fix #438, Case splitting not working
+	* Fix #790, Don't try to use 'cabal' or 'stack' when it's not installed
+	* Add support for GHC 8.0
+
 2016-01-19 v5.5.0.0
 	* Fix #660, cabal-helper errors when no global GHC is installed (Stack)
 	* Fix #665, Reinstate internally managed CWD (no more `ghc-mod root`
@@ -29,9 +39,9 @@
 	  super slowness)
 	* Expose all internal modules because API will get a major
 	  redesign soon anyways
-        * ghc-mod(i) executable must now be run in project directory for
-          commands other than `root`
-        * Add --line-prefix option for multiplexing stdout/err onto one stream
+	* ghc-mod(i) executable must now be run in project directory for
+	  commands other than `root`
+	* Add --line-prefix option for multiplexing stdout/err onto one stream
 
 2015-08-14 v5.3.0.0
 	* Re-license majority of code under the AGPL-3
@@ -39,72 +49,72 @@
 	* Remove `cabalDependPackages', `cabalAllTargets'
 	* Merge #434, Fix finding sandbox config file and directory.
 	* Merge #431, Re-add output line separator global option for expand
-          command.
+	  command.
 	* Merge #470, Support for overriding the package-db stack
 	* Merge #486, Fix ineffective cache invalidation for `find`
 
 2014-12-31 v5.2.1.2
 	* Merge #377, Fix `browse` erroneously thinking haskell2010 identifiers
 	  are operators
-        * Fix incompatibility with monad-control >= 1.0.0
-        * Fix temporary directories not being removed properly
-        * Merge #405, #408, a race condition in the Emacs frontend
-        * Merge #403, Support unicode quotes in module regexp
+	* Fix incompatibility with monad-control >= 1.0.0
+	* Fix temporary directories not being removed properly
+	* Merge #405, #408, a race condition in the Emacs frontend
+	* Merge #403, Support unicode quotes in module regexp
 
 2014-11-03 v5.2.1.1
-        * Fix `findCabalFiles` thinking `$HOME/.cabal` is a cabal file.
-        * Support `where` clauses, `let` bindings and `case` expressions
-          in case splitting, #400
+	* Fix `findCabalFiles` thinking `$HOME/.cabal` is a cabal file.
+	* Support `where` clauses, `let` bindings and `case` expressions
+	  in case splitting, #400
 
 2014-11-02 v5.2.1.0
-        * Fix `newTempDir` on Windows
-        * GhcModT's liftIO instance now converts GhcMOdError exceptions
-          into monadic failures
+	* Fix `newTempDir` on Windows
+	* GhcModT's liftIO instance now converts GhcMOdError exceptions
+	  into monadic failures
 
 2014-10-30 v5.2.0.0
-        * Return type of `loadSymbolDb` is now in GhcModT
-        * Function `dumpSymbol` now takes the path of the target directory
-        * Fix #387, Pattern match failure in GhcPkg
-        * Fix #386, `ghc-mod version` should not check `cabal configure`
-        * Fix #391, Error on command `-g` when used before command despite
-          --help output saying this is valid
-        * Fix formatting of `ghc-version` constant in the elisp code.  in
-          version 5.1.1.0 the string was "v5.1.1.0" instead of "5.1.1.0".
+	* Return type of `loadSymbolDb` is now in GhcModT
+	* Function `dumpSymbol` now takes the path of the target directory
+	* Fix #387, Pattern match failure in GhcPkg
+	* Fix #386, `ghc-mod version` should not check `cabal configure`
+	* Fix #391, Error on command `-g` when used before command despite
+	  --help output saying this is valid
+	* Fix formatting of `ghc-version` constant in the elisp code.  in
+	  version 5.1.1.0 the string was "v5.1.1.0" instead of "5.1.1.0".
 
 2014-10-04 v5.1.1.0
-        * Handle various consistency related issues: #222, #224, #326, #332
-        * Add `isOutdated` to Language.Haskell.GhcMod
+	* Handle various consistency related issues: #222, #224, #326, #332
+	* Add `isOutdated` to Language.Haskell.GhcMod
 
 2014-09-17 v5.1.0.2
-        * Fix building with haskell-src-exts < 1.16.0
+	* Fix building with haskell-src-exts < 1.16.0
 
 2014-09-16 v5.1.0.1
-        * Fix building with haskell-src-exts-1.16.0
-        * Loosen monad-journal dependency
+	* Fix building with haskell-src-exts-1.16.0
+	* Loosen monad-journal dependency
 
 2014-09-12 v5.1.0.0
-        * GhcModError is now a recursive data type (`GMECabalConfigure`'s
-          type changed)
-        * GhcModT's MonadIO instance now converts IOError's to failures in
-          the ErrorT part of GhcModT on `liftIO`.
-        * Make `loadSymbolDb` polimorphic in the return types's monad.
-        * Add `hoistGhcModT` to Language.Haskell.GhcMod.Internal
-        * Fix `check` command for modules using `-XPatternSynonyms`
-        * Merge #364, Support cabal configuration flags
+	* GhcModError is now a recursive data type (`GMECabalConfigure`'s
+	  type changed)
+	* GhcModT's MonadIO instance now converts IOError's to failures in
+	  the ErrorT part of GhcModT on `liftIO`.
+	* Make `loadSymbolDb` polimorphic in the return types's monad.
+	* Add `hoistGhcModT` to Language.Haskell.GhcMod.Internal
+	* Fix `check` command for modules using `-XPatternSynonyms`
+	* Merge #364, Support cabal configuration flags
 
 2014-08-29 v5.0.1.2
-        * Merge #345, Try fixing duplicate errors
-        * Merge #344, elisp: Use advice to check syntax on save-buffer
-        * Merge #341, support `browse -d` in ghc-modi
-        * Merge #352, elisp: Fix C-u accidentally getting turned into a
-          prefix command
+	* Merge #345, Try fixing duplicate errors
+	* Merge #344, elisp: Use advice to check syntax on save-buffer
+	* Merge #341, support `browse -d` in ghc-modi
+	* Merge #352, elisp: Fix C-u accidentally getting turned into a
+	  prefix command
 
 2014-08-24 v5.0.1.1
-        * Fix CaseSplitting faliure when using "fancy types" (see #336)
-        * Print error information in "spec" test suite when using `extract`
+	* Fix CaseSplitting faliure when using "fancy types" (see #336)
+	* Print error information in "spec" test suite when using `extract`
 
 2014-08-20 v5.0.1
-        * Fix missing file in "Data-Files"
+	* Fix missing file in "Data-Files"
 
 2014-08-20 v5.0.0
 	* ghc-mod consumes much less memory than ghc-mod-4.1.
