@@ -72,7 +72,16 @@ data SymbolDb = SymbolDb
   , sdTimestamp         :: ModTime
   } deriving (Generic)
 
+#if __GLASGOW_HASKELL__ >= 708
 instance Binary SymbolDb
+#else
+instance Binary SymbolDb where
+  put (SymbolDb a b) = put a >> put b
+  get = do
+    a <- get
+    b <- get
+    return (SymbolDb a b)
+#endif
 instance NFData SymbolDb
 
 isOutdated :: IOish m => SymbolDb -> GhcModT m Bool
