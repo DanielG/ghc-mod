@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 module CaseSplitSpec where
 
 import Language.Haskell.GhcMod
@@ -43,4 +44,8 @@ spec = do
         it "doesn't crash when source doesn't make sense" $
             withDirectory_ "test/data/case-split" $ do
                 res <- runD $ splits "Crash.hs" 4 6
-                res `shouldBe` []
+#if __GLASGOW_HASKELL__ < 710
+                res `shouldBe` "4 1 4 19 \"test x = undefined\"\n"
+#else
+                res `shouldBe` ""
+#endif
