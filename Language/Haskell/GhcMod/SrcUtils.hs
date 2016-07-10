@@ -66,6 +66,20 @@ collectSpansTypes withConstraints tcs lc =
     hsBind (L _ G.AbsBinds{abs_exports = es'}) s
       | withConstraints = (return [], foldr insExp s es')
       | otherwise       = (return [], s)
+#if __GLASGOW_HASKELL__ >= 800
+    -- TODO: move to Gap
+    -- Note: this deals with bindings with explicit type signature, e.g.
+    --    double :: Num a => a -> a
+    --    double x = 2*x
+    hsBind (L _ G.AbsBindsSig{abs_sig_export = poly, abs_sig_bind = bind}) s
+      | withConstraints =
+          let new_s =
+                case bind of
+                  G.L _ G.FunBind{fun_id = i} -> M.insert (G.unLoc i) (G.varType poly) s
+                  _ -> s
+          in (return [], new_s)
+      | otherwise       = (return [], s)
+#endif
     -- Otherwise, it's the same as other cases
     hsBind x s = genericCT x s
     -- Generic SYB function to get type
