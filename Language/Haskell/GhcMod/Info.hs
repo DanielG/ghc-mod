@@ -5,10 +5,9 @@ module Language.Haskell.GhcMod.Info (
 
 import Data.Function (on)
 import Data.List (sortBy)
-import Data.Maybe (catMaybes)
 import System.FilePath
 import Exception (ghandle, SomeException(..))
-import GHC (GhcMonad, LHsBind, LHsExpr, LPat, Id, TypecheckedModule(..), SrcSpan, Type)
+import GHC (GhcMonad, SrcSpan)
 import Prelude
 import qualified GHC as G
 import qualified Language.Haskell.GhcMod.Gap as Gap
@@ -53,17 +52,18 @@ info file expr =
 
 -- | Obtaining type of a target expression. (GHCi's type:)
 types :: IOish m
-      => FilePath     -- ^ A target file.
+      => Bool         -- ^ Include constraints into type signature
+      -> FilePath     -- ^ A target file.
       -> Int          -- ^ Line number.
       -> Int          -- ^ Column number.
       -> GhcModT m String
-types file lineNo colNo =
+types withConstraints file lineNo colNo =
   ghandle handler $
     runGmlT' [Left file] deferErrors $
       withInteractiveContext $ do
         crdl         <- cradle
         modSum       <- fileModSummaryWithMapping (cradleCurrentDir crdl </> file)
-        srcSpanTypes <- getSrcSpanType modSum lineNo colNo
+        srcSpanTypes <- getSrcSpanType withConstraints modSum lineNo colNo
         dflag        <- G.getSessionDynFlags
         st           <- getStyle
         convert' $ map (toTup dflag st) $ sortBy (cmp `on` fst) srcSpanTypes
@@ -72,14 +72,8 @@ types file lineNo colNo =
      gmLog GmException "types" $ showDoc ex
      return []
 
-getSrcSpanType :: GhcMonad m => G.ModSummary -> Int -> Int -> m [(SrcSpan, Type)]
-getSrcSpanType modSum lineNo colNo = do
-  p <- G.parseModule modSum
-  tcm@TypecheckedModule{tm_typechecked_source = tcs} <- G.typecheckModule p
-  let bs = listifySpans tcs (lineNo, colNo) :: [LHsBind Id]
-      es = listifySpans tcs (lineNo, colNo) :: [LHsExpr Id]
-      ps = listifySpans tcs (lineNo, colNo) :: [LPat Id]
-  bts <- mapM (getType tcm) bs
-  ets <- mapM (getType tcm) es
-  pts <- mapM (getType tcm) ps
-  return $ catMaybes $ concat [ets, bts, pts]
+getSrcSpanType :: (GhcMonad m) => Bool -> G.ModSummary -> Int -> Int -> m [(SrcSpan, G.Type)]
+getSrcSpanType withConstraints modSum lineNo colNo =
+  G.parseModule modSum
+  >>= G.typecheckModule
+  >>= flip (collectSpansTypes withConstraints) (lineNo, colNo)

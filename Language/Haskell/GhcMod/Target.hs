@@ -21,6 +21,9 @@ import Control.Arrow
 import Control.Applicative
 import Control.Category ((.))
 import GHC
+#if __GLASGOW_HASKELL__ >= 800
+import GHC.LanguageExtensions
+#endif
 import GHC.Paths (libdir)
 import SysTools
 import DynFlags
@@ -66,28 +69,40 @@ runGmPkgGhc action = do
     withLightHscEnv pkgOpts $ \env -> liftIO $ runLightGhc env action
 
 initSession :: IOish m
-            => [GHCOption] -> (DynFlags -> Ghc DynFlags) -> GhcModT m ()
+            => [GHCOption] -> (forall gm. GhcMonad gm => DynFlags -> gm DynFlags) -> GhcModT m ()
 initSession opts mdf = do
    s <- gmsGet
    case gmGhcSession s of
-     Just GmGhcSession {..} | gmgsOptions /= opts-> do
-         gmLog GmDebug "initSession" $ text "Flags changed, creating new session"
-         putNewSession s
-     Just _ -> return ()
      Nothing -> do
          gmLog GmDebug "initSession" $ text "Session not initialized, creating new one"
          putNewSession s
+     Just GmGhcSession {..} -> do
+         gmLog GmDebug "initSession" $ text "Flags changed, creating new session"
+         crdl <- cradle
+         changed <- liftIO $ runLightGhc' gmgsSession $ do
+           df <- getSessionDynFlags
+           ndf <- initDF crdl
+           return $ ndf `eqDynFlags` df
 
+         if changed
+            then putNewSession s
+            else return ()
  where
-   putNewSession s = do
-     rghc <- (liftIO . newIORef =<< newSession =<< cradle)
-     gmsPut s { gmGhcSession = Just $ GmGhcSession opts rghc }
-
-   newSession Cradle { cradleTempDir } = liftIO $ do
-     runGhc (Just libdir) $ do
+   initDF Cradle { cradleTempDir } = do
        let setDf df = setTmpDir cradleTempDir <$> (mdf =<< addCmdOpts opts df)
        _ <- setSessionDynFlags =<< setDf =<< getSessionDynFlags
+       getSessionDynFlags
+
+   putNewSession s = do
+     rghc <- (liftIO . newIORef =<< newSession)
+     gmsPut s { gmGhcSession = Just $ GmGhcSession opts rghc }
+
+   newSession = do
+     crdl <- cradle
+     liftIO $ runGhc (Just libdir) $ do
+       _ <- initDF crdl
        getSession
+
 
 -- | Drop the currently active GHC session, the next that requires a GHC session
 -- will initialize a new one.
@@ -114,7 +129,7 @@ runGmlT fns action = runGmlT' fns return action
 -- of certain files or modules, with updated GHC flags
 runGmlT' :: IOish m
               => [Either FilePath ModuleName]
-              -> (DynFlags -> Ghc DynFlags)
+              -> (forall gm. GhcMonad gm => DynFlags -> gm DynFlags)
               -> GmlT m a
               -> GhcModT m a
 runGmlT' fns mdf action = runGmlTWith fns mdf id action
@@ -124,7 +139,7 @@ runGmlT' fns mdf action = runGmlTWith fns mdf id action
 -- transformation
 runGmlTWith :: IOish m
                  => [Either FilePath ModuleName]
-                 -> (DynFlags -> Ghc DynFlags)
+                 -> (forall gm. GhcMonad gm => DynFlags -> gm DynFlags)
                  -> (GmlT m a -> GmlT m b)
                  -> GmlT m a
                  -> GhcModT m b
@@ -275,8 +290,7 @@ findCandidates scns = foldl1 Set.intersection scns
 pickComponent :: Set ChComponentName -> ChComponentName
 pickComponent scn = Set.findMin scn
 
-packageGhcOptions :: (Applicative m, IOish m, Gm m)
-                  => m [GHCOption]
+packageGhcOptions :: (IOish m, Applicative m, Gm m) => m [GHCOption]
 packageGhcOptions = do
     crdl <- cradle
     case cradleProject crdl of
@@ -451,7 +465,9 @@ loadTargets opts targetStrs = do
     case target' of
       HscNothing -> do
         void $ load LoadAllTargets
-        mapM_ (parseModule >=> typecheckModule >=> desugarModule) mg
+        forM_ mg $
+          handleSourceError (gmLog GmDebug "loadTargets" . text . show)
+          . void . (parseModule >=> typecheckModule >=> desugarModule)
       HscInterpreted -> do
         void $ load LoadAllTargets
       _ -> error ("loadTargets: unsupported hscTarget")
@@ -477,10 +493,16 @@ loadTargets opts targetStrs = do
 needsHscInterpreted :: ModuleGraph -> Bool
 needsHscInterpreted = any $ \ms ->
                 let df = ms_hspp_opts ms in
+#if __GLASGOW_HASKELL__ >= 800
+                   TemplateHaskell `xopt` df
+                || QuasiQuotes     `xopt` df
+                || PatternSynonyms `xopt` df
+#else
                    Opt_TemplateHaskell `xopt` df
                 || Opt_QuasiQuotes     `xopt` df
 #if __GLASGOW_HASKELL__ >= 708
                 || (Opt_PatternSynonyms `xopt` df)
+#endif
 #endif
 
 cabalResolvedComponents :: (IOish m) =>

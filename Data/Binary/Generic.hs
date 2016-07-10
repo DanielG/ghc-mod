@@ -66,7 +66,6 @@ instance Binary a => GGBinary (K1 i a) where
 #define GETSUM(WORD) GUARD(WORD) = (get :: Get WORD) >>= checkGetSum (fromIntegral size)
 
 instance ( GSum     a, GSum     b
-         , GGBinary a, GGBinary b
          , SumSize    a, SumSize    b) => GGBinary (a :+: b) where
     ggput | PUTSUM(Word8) | PUTSUM(Word16) | PUTSUM(Word32) | PUTSUM(Word64)
          | otherwise = sizeError "encode" size
@@ -96,7 +95,7 @@ class GSum f where
     getSum :: (Ord word, Num word, Bits word) => word -> word -> Get (f a)
     putSum :: (Num w, Bits w, Binary w) => w -> w -> f a -> Put
 
-instance (GSum a, GSum b, GGBinary a, GGBinary b) => GSum (a :+: b) where
+instance (GSum a, GSum b) => GSum (a :+: b) where
     getSum !code !size | code < sizeL = L1 <$> getSum code           sizeL
                        | otherwise    = R1 <$> getSum (code - sizeL) sizeR
         where

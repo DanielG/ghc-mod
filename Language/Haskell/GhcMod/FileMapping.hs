@@ -46,8 +46,10 @@ loadMappedFileSource :: IOish m
                      -> GhcModT m ()
 loadMappedFileSource from src = do
   tmpdir <- cradleTempDir `fmap` cradle
+  enc <- liftIO . mkTextEncoding . optEncoding =<< options
   to <- liftIO $ do
     (fn, h) <- openTempFile tmpdir (takeFileName from)
+    hSetEncoding h enc
     hPutStr h src
     hClose h
     return fn
@@ -61,23 +63,22 @@ loadMappedFile' from to isTemp = do
   let to' = makeRelative (cradleRootDir crdl) to
   addMMappedFile cfn (FileMapping to' isTemp)
 
-mapFile :: (IOish m, GmState m, GhcMonad m, GmEnv m) =>
-            HscEnv -> Target -> m Target
+mapFile :: (IOish m, GmState m) => HscEnv -> Target -> m Target
 mapFile _ (Target tid@(TargetFile filePath _) taoc _) = do
   mapping <- lookupMMappedFile filePath
-  mkMappedTarget (Just filePath) tid taoc mapping
+  return $ mkMappedTarget (Just filePath) tid taoc mapping
 mapFile env (Target tid@(TargetModule moduleName) taoc _) = do
   (fp, mapping) <- do
     filePath <- fmap (fmap mpPath) (liftIO $ findModulePath env moduleName)
     mmf <- runMaybeT $ MaybeT (return filePath) >>= MaybeT . lookupMMappedFile
     return (filePath, mmf)
-  mkMappedTarget fp tid taoc mapping
+  return $ mkMappedTarget fp tid taoc mapping
 
-mkMappedTarget :: (IOish m, GmState m, GmEnv m, GhcMonad m) =>
-                  Maybe FilePath -> TargetId -> Bool -> Maybe FileMapping -> m Target
+mkMappedTarget :: Maybe FilePath -> TargetId -> Bool -> Maybe FileMapping -> Target
 mkMappedTarget _ _ taoc (Just to) =
-  return $ mkTarget (TargetFile (fmPath to) Nothing) taoc Nothing
-mkMappedTarget _ tid taoc _ = return $ mkTarget tid taoc Nothing
+  mkTarget (TargetFile (fmPath to) Nothing) taoc Nothing
+mkMappedTarget _ tid taoc _ =
+  mkTarget tid taoc Nothing
 
 {-|
 unloads previously mapped file \'file\', so that it's no longer mapped,

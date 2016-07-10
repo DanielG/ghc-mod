@@ -53,11 +53,17 @@ import System.Directory
 import System.IO.Unsafe
 import Prelude
 
-withGhcModEnv :: (IOish m, GmOut m) => FilePath -> Options -> ((GhcModEnv, GhcModLog)  -> m a) -> m a
-withGhcModEnv = withGhcModEnv' withCradle
+withGhcModEnv :: (IOish m, GmOut m) => FilePath -> Options -> ((GhcModEnv, GhcModLog) -> m a) -> m a
+withGhcModEnv dir opts f = withGhcModEnv' withCradle dir opts f
  where
-   withCradle dir =
-       gbracket (runJournalT $ findCradle' dir) (liftIO . cleanupCradle . fst)
+   withCradle dir' =
+       gbracket
+         (runJournalT $ do
+            gmSetLogLevel $ ooptLogLevel $ optOutput opts
+            findCradle' (optPrograms opts) dir')
+         (liftIO . cleanupCradle . fst)
+
+
 
 cwdLock :: MVar ThreadId
 cwdLock = unsafePerformIO $ newEmptyMVar
@@ -97,7 +103,7 @@ runGmOutT opts ma = do
                   (const $ liftIO $ flushStdoutGateway gmoChan)
                   action
 
-runGmOutT' :: IOish m => GhcModOut -> GmOutT m a -> m a
+runGmOutT' :: GhcModOut -> GmOutT m a -> m a
 runGmOutT' gmo ma = flip runReaderT gmo $ unGmOutT ma
 
 -- | Run a @GhcModT m@ computation.

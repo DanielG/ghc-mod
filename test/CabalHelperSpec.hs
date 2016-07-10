@@ -33,7 +33,11 @@ pkgOptions (x:y:xs) | x == "-package-id" = [name y] ++ pkgOptions xs
                     | otherwise = pkgOptions (y:xs)
  where
    stripDash s = maybe s id $ (flip drop s . (+1) <$> findIndex (=='-') s)
+#if __GLASGOW_HASKELL__ >= 800
+   name s = reverse $ stripDash $ reverse s
+#else
    name s = reverse $ stripDash $ stripDash $ reverse s
+#endif
 
 idirOpts :: [(c, [String])] -> [(c, [String])]
 idirOpts = map (second $ map (drop 2) . filter ("-i"`isPrefixOf`))
@@ -69,7 +73,7 @@ spec = do
         it "extracts build dependencies" $ do
             let tdir = "test/data/cabal-project"
             opts <- map gmcGhcOpts <$> runD' tdir getComponents
-            let ghcOpts = head opts
+            let ghcOpts:_ = opts
                 pkgs = pkgOptions ghcOpts
             pkgs `shouldBe` ["Cabal","base","template-haskell"]
 

@@ -123,24 +123,30 @@ spec = do
             res <- runD $ do
               loadMappedFile "File.hs" "File_Redir_Lint.hs"
               lint defaultLintOpts "File.hs"
-            res `shouldBe` "File.hs:4:1: Error: Eta reduce\NULFound:\NUL  func a b = (*) a b\NULWhy not:\NUL  func = (*)\n"
+            res `shouldBe` "File.hs:4:1: Warning: Eta reduce\NULFound:\NUL  func a b = (*) a b\NULWhy not:\NUL  func = (*)\n"
         it "lints in-memory file if one is specified and outputs original filename" $ do
           withDirectory_ "test/data/file-mapping" $ do
             res <- runD $ do
               loadMappedFileSource "File.hs" "func a b = (++) a b\n"
               lint defaultLintOpts "File.hs"
-            res `shouldBe` "File.hs:1:1: Error: Eta reduce\NULFound:\NUL  func a b = (++) a b\NULWhy not:\NUL  func = (++)\n"
+            res `shouldBe` "File.hs:1:1: Warning: Eta reduce\NULFound:\NUL  func a b = (++) a b\NULWhy not:\NUL  func = (++)\n"
         it "shows types of the expression for redirected files" $ do
             let tdir = "test/data/file-mapping"
             res <- runD' tdir $ do
               loadMappedFile "File.hs" "File_Redir_Lint.hs"
-              types "File.hs" 4 12
+              types False "File.hs" 4 12
             res `shouldBe` "4 12 4 15 \"a -> a -> a\"\n4 12 4 17 \"a -> a\"\n4 12 4 19 \"a\"\n4 1 4 19 \"a -> a -> a\"\n"
+        it "shows types of the expression with constraints for redirected files" $ do --
+            let tdir = "test/data/file-mapping"
+            res <- runD' tdir $ do
+              loadMappedFile "File.hs" "File_Redir_Lint.hs"
+              types True "File.hs" 4 12
+            res `shouldBe` "4 12 4 15 \"a -> a -> a\"\n4 12 4 17 \"a -> a\"\n4 12 4 19 \"a\"\n4 1 4 19 \"Num a => a -> a -> a\"\n"
         it "shows types of the expression for in-memory files" $ do
             let tdir = "test/data/file-mapping"
             res <- runD' tdir $ do
               loadMappedFileSource "File.hs" "main = putStrLn \"Hello!\""
-              types "File.hs" 1 14
+              types False "File.hs" 1 14
             res `shouldBe` "1 8 1 16 \"String -> IO ()\"\n1 8 1 25 \"IO ()\"\n1 1 1 25 \"IO ()\"\n"
         it "shows info for the expression for redirected files" $ do
             let tdir = "test/data/file-mapping"
@@ -184,14 +190,14 @@ spec = do
             res <- runD $ do
               loadMappedFile "File.hs" "File_Redir_Lint.hs"
               lint defaultLintOpts "File.hs"
-            res `shouldBe` "File.hs:6:1: Error: Eta reduce\NULFound:\NUL  func a b = (*) a b\NULWhy not:\NUL  func = (*)\n"
+            res `shouldBe` "File.hs:6:1: Warning: Eta reduce\NULFound:\NUL  func a b = (*) a b\NULWhy not:\NUL  func = (*)\n"
         it "lints in-memory file if one is specified and outputs original filename" $ do
           withDirectory_ "test/data/file-mapping/preprocessor" $ do
             src <- readFile "File_Redir_Lint.hs"
             res <- runD $ do
               loadMappedFileSource "File.hs" src
               lint defaultLintOpts "File.hs"
-            res `shouldBe` "File.hs:6:1: Error: Eta reduce\NULFound:\NUL  func a b = (*) a b\NULWhy not:\NUL  func = (*)\n"
+            res `shouldBe` "File.hs:6:1: Warning: Eta reduce\NULFound:\NUL  func a b = (*) a b\NULWhy not:\NUL  func = (*)\n"
       describe "literate haskell tests" $ do
         it "checks redirected file if one is specified and outputs original filename" $ do
           withDirectory_ "test/data/file-mapping/lhs" $ do
@@ -234,7 +240,7 @@ spec = do
                        ,("Bar.hs", tmpdir </> "Bar_Redir.hs")]
               res <- run defaultOptions $ do
                 mapM_ (uncurry loadMappedFile) fm
-                types "Bar.hs" 5 1
+                types False "Bar.hs" 5 1
               res `shouldBe` unlines ["5 1 5 20 \"[Char]\""]
         it "works with a memory module using TemplateHaskell" $ do
           srcFoo <- readFile "test/data/template-haskell/Foo.hs"
@@ -244,5 +250,5 @@ spec = do
                      ,("Bar.hs", srcBar)]
             res <- run defaultOptions $ do
               mapM_ (uncurry loadMappedFileSource) fm
-              types "Bar.hs" 5 1
+              types False "Bar.hs" 5 1
             res `shouldBe` unlines ["5 1 5 20 \"[Char]\""]

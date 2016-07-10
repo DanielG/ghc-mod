@@ -1,4 +1,5 @@
 {-# LANGUAGE PatternSynonyms #-}
+
 module A where
 
 data SomeType a b = SomeType (a,b)

@@ -3,11 +3,12 @@ module Language.Haskell.GhcMod.Debug (debugInfo, rootInfo, componentInfo) where
 import Control.Arrow (first)
 import Control.Applicative
 import Control.Monad
-import Control.Monad.Trans.Journal
 import qualified Data.Map as Map
 import qualified Data.Set as Set
 import Data.Char
+import Data.Version
 import Data.List.Split
+import System.Directory
 import Text.PrettyPrint
 import Language.Haskell.GhcMod.Monad
 import Language.Haskell.GhcMod.Types
@@ -17,6 +18,11 @@ import Language.Haskell.GhcMod.Pretty
 import Language.Haskell.GhcMod.Utils
 import Language.Haskell.GhcMod.Cradle
 import Language.Haskell.GhcMod.Stack
+import Language.Haskell.GhcMod.Output
+
+import Paths_ghc_mod (version)
+
+import Config (cProjectVersion)
 
 ----------------------------------------------------------------
 
@@ -34,14 +40,20 @@ debugInfo = do
 
     pkgOpts <- packageGhcOptions
 
+    readProc <- gmReadProcess
+
+    ghcVersion <- liftIO $
+        dropWhileEnd isSpace <$> readProc "ghc" ["--numeric-version"] ""
+
     return $ unlines $
-      [ "Root directory:       " ++ cradleRootDir
+      [ "Version:              ghc-mod-" ++ showVersion version
+      , "Library GHC Version:  " ++ cProjectVersion
+      , "System GHC Version:   " ++ ghcVersion
+      , "Root directory:       " ++ cradleRootDir
       , "Current directory:    " ++ cradleCurrentDir
       , "GHC Package flags:\n"   ++ render (nest 4 $
               fsep $ map text pkgOpts)
       , "GHC System libraries: " ++ ghcLibDir
-      , "GHC user options:\n"    ++ render (nest 4 $
-              fsep $ map text optGhcUserOptions)
       ] ++ cabal
 
 stackPaths :: IOish m => GhcModT m [String]
@@ -63,9 +75,24 @@ cabalDebug = do
         opts        = Map.map gmcGhcOpts mcs
         srcOpts     = Map.map gmcGhcSrcOpts mcs
 
+    readProc <- gmReadProcess
+    cabalExists <- liftIO $ (/=Nothing) <$> findExecutable "cabal"
+
+    cabalInstVersion <-
+        if cabalExists
+          then liftIO $
+            dropWhileEnd isSpace <$> readProc "cabal" ["--numeric-version"] ""
+          else return ""
+
+    packages <- liftIO $ readProc "ghc-pkg" ["list", "--simple-output"] ""
+    let cabalPackages = filter ((== ["Cabal"]) . take 1 . splitOn "-") $ splitWhen isSpace packages
+
     return $
-         [ "Cabal file:           " ++ show cradleCabalFile
-         , "Project:   " ++ show cradleProject
+         [ "cabal-install Version: "    ++ cabalInstVersion
+         , "Cabal Library Versions:\n"  ++ render (nest 4 $
+              fsep $ map text cabalPackages)
+         , "Cabal file:            "    ++ show cradleCabalFile
+         , "Project:               " ++ show cradleProject
          , "Cabal entrypoints:\n"       ++ render (nest 4 $
               mapDoc gmComponentNameDoc smpDoc entrypoints)
          , "Cabal components:\n"        ++ render (nest 4 $
@@ -139,5 +166,7 @@ mapDoc kd ad m = vcat $
 ----------------------------------------------------------------
 
 -- | Obtaining root information.
-rootInfo :: forall m. (IOish m, GmOut m) => m String
-rootInfo = (++"\n") . cradleRootDir <$> fst `liftM` (runJournalT findCradle :: m (Cradle, GhcModLog))
+rootInfo :: forall m. (IOish m, GmOut m, GmEnv m) => m String
+rootInfo = do
+    crdl <- findCradleNoLog =<< (optPrograms <$> options)
+    return $ cradleRootDir crdl ++ "\n"

@@ -1,4 +1,4 @@
-{-# LANGUAGE CPP, DeriveGeneric #-}
+{-# LANGUAGE CPP, BangPatterns, TupleSections, DeriveGeneric #-}
 
 module Language.Haskell.GhcMod.Find
 #ifndef SPEC
@@ -18,6 +18,13 @@ module Language.Haskell.GhcMod.Find
 #endif
   where
 
+import qualified GHC as G
+import FastString
+import Module
+import OccName
+import HscTypes
+import Exception
+
 import Language.Haskell.GhcMod.Convert
 import Language.Haskell.GhcMod.Gap
 import Language.Haskell.GhcMod.Monad
@@ -25,38 +32,56 @@ import Language.Haskell.GhcMod.Output
 import Language.Haskell.GhcMod.Types
 import Language.Haskell.GhcMod.Utils
 import Language.Haskell.GhcMod.World
-
-import qualified GHC as G
-import Name
-import Module
-import Exception
+import Language.Haskell.GhcMod.LightGhc
 
 import Control.Applicative
+import Control.DeepSeq
 import Control.Monad
 import Control.Monad.Trans.Control
 import Control.Concurrent
-import Control.DeepSeq
-import Data.Function
+
 import Data.List
-import qualified Data.ByteString.Lazy as BS
 import Data.Binary
+import Data.Function
+import qualified Data.ByteString as BS
+import qualified Data.ByteString.Lazy as LBS
+import Data.IORef
+
+import System.Directory.ModTime
+import System.IO.Unsafe
+
 import GHC.Generics (Generic)
+
 import Data.Map (Map)
 import qualified Data.Map as M
-import System.Directory.ModTime
+import Data.Set (Set)
+import qualified Data.Set as S
+import Language.Haskell.GhcMod.PathsAndFiles
+import System.Directory
 import Prelude
 
 ----------------------------------------------------------------
 
 -- | Type of function and operation names.
-type Symbol = String
+type Symbol = BS.ByteString
+type ModuleNameBS = BS.ByteString
+
 -- | Database from 'Symbol' to \['ModuleString'\].
 data SymbolDb = SymbolDb
-  { sdTable             :: Map Symbol [ModuleString]
+  { sdTable             :: Map Symbol (Set ModuleNameBS)
   , sdTimestamp         :: ModTime
   } deriving (Generic)
 
+#if __GLASGOW_HASKELL__ >= 708
 instance Binary SymbolDb
+#else
+instance Binary SymbolDb where
+  put (SymbolDb a b) = put a >> put b
+  get = do
+    a <- get
+    b <- get
+    return (SymbolDb a b)
+#endif
 instance NFData SymbolDb
 
 isOutdated :: IOish m => SymbolDb -> GhcModT m Bool
@@ -67,18 +92,33 @@ isOutdated db =
 
 -- | Looking up 'SymbolDb' with 'Symbol' to \['ModuleString'\]
 --   which will be concatenated. 'loadSymbolDb' is called internally.
-findSymbol :: IOish m => Symbol -> GhcModT m String
-findSymbol sym = loadSymbolDb >>= lookupSymbol sym
+findSymbol :: IOish m => String -> GhcModT m String
+findSymbol sym = loadSymbolDb' >>= lookupSymbol sym
 
 -- | Looking up 'SymbolDb' with 'Symbol' to \['ModuleString'\]
 --   which will be concatenated.
-lookupSymbol :: IOish m => Symbol -> SymbolDb -> GhcModT m String
-lookupSymbol sym db = convert' $ lookupSym sym db
+lookupSymbol :: IOish m => String -> SymbolDb -> GhcModT m String
+lookupSymbol sym db = convert' $ lookupSym (fastStringToByteString $ mkFastString sym) db
 
 lookupSym :: Symbol -> SymbolDb -> [ModuleString]
-lookupSym sym db = M.findWithDefault [] sym $ sdTable db
+lookupSym sym db = map (ModuleString . unpackFS . mkFastStringByteString') $ S.toList $ M.findWithDefault S.empty sym $ sdTable db
 
 ---------------------------------------------------------------
+
+loadSymbolDb' :: IOish m => GhcModT m SymbolDb
+loadSymbolDb' = do
+  cache <- symbolCache <$> cradle
+  let doLoad True = do
+        db <- decode <$> liftIO (LBS.readFile cache)
+        outdated <- isOutdated db
+        if outdated
+        then doLoad False
+        else return db
+      doLoad False = do
+        db <- loadSymbolDb
+        liftIO $ LBS.writeFile cache $ encode db
+        return db
+  doLoad =<< liftIO (doesFileExist cache)
 
 -- | Loading a file and creates 'SymbolDb'.
 loadSymbolDb :: IOish m => GhcModT m SymbolDb
@@ -95,9 +135,9 @@ loadSymbolDb = do
 dumpSymbol :: IOish m => GhcModT m ()
 dumpSymbol = do
   ts <- liftIO getCurrentModTime
-  st <- runGmPkgGhc getGlobalSymbolTable
-  liftIO . BS.putStr $ encode SymbolDb {
-      sdTable = M.fromAscList st
+  st <- runGmPkgGhc $ (liftIO . getGlobalSymbolTable) =<< G.getSession
+  liftIO . LBS.putStr $ encode SymbolDb {
+      sdTable = st
     , sdTimestamp = ts
     }
 
@@ -108,28 +148,42 @@ isOlderThan tCache files =
   any (tCache <=) $ map tfTime files -- including equal just in case
 
 -- | Browsing all functions in all system modules.
-getGlobalSymbolTable :: LightGhc [(Symbol, [ModuleString])]
-getGlobalSymbolTable = do
-  df  <- G.getSessionDynFlags
-  let mods = listVisibleModules df
-  moduleInfos <- mapM G.getModuleInfo mods
-  return $ collectModules
-         $ extractBindings `concatMap` (moduleInfos `zip` mods)
+getGlobalSymbolTable :: HscEnv -> IO (Map Symbol (Set ModuleNameBS))
+getGlobalSymbolTable hsc_env =
+  foldM (extend hsc_env) M.empty $ listVisibleModules $ hsc_dflags hsc_env
 
-extractBindings :: (Maybe G.ModuleInfo, G.Module)
-                -> [(Symbol, ModuleString)]
-extractBindings (Nothing,  _)   = []
-extractBindings (Just inf, mdl) =
-  map (\name -> (getOccString name, modStr)) names
-  where
-    names  = G.modInfoExports inf
-    modStr = ModuleString $ moduleNameString $ moduleName mdl
+extend :: HscEnv
+       -> Map Symbol (Set ModuleNameBS)
+       -> Module
+       -> IO (Map Symbol (Set ModuleNameBS))
+extend hsc_env mm mdl = do
+  eps <- readIORef $ hsc_EPS hsc_env
+  modinfo <- unsafeInterleaveIO $ runLightGhc hsc_env $ do
+    G.getModuleInfo mdl <* liftIO (writeIORef (hsc_EPS hsc_env) eps)
 
-collectModules :: [(Symbol, ModuleString)]
-               -> [(Symbol, [ModuleString])]
-collectModules = map tieup . groupBy ((==) `on` fst) . sort
-  where
-    tieup x = (head (map fst x), map snd x)
+  return $ M.unionWith S.union mm $ extractBindings modinfo mdl
+
+extractBindings :: Maybe G.ModuleInfo
+                -> G.Module
+                -> Map Symbol (Set ModuleNameBS)
+extractBindings Nothing  _   = M.empty
+extractBindings (Just inf) mdl = M.fromList $ do
+  name <- G.modInfoExports inf
+  let sym = fastStringToByteString $ occNameFS $ G.getOccName name
+      mdls = S.singleton $ fastStringToByteString $ moduleNameFS $ moduleName mdl
+  return (sym, mdls)
+
+mkFastStringByteString' :: BS.ByteString -> FastString
+#if !MIN_VERSION_ghc(7,8,0)
+fastStringToByteString :: FastString -> BS.ByteString
+fastStringToByteString = BS.pack . bytesFS
+
+mkFastStringByteString' = mkFastStringByteList . BS.unpack
+#elif __GLASGOW_HASKELL__ == 708
+mkFastStringByteString' = unsafePerformIO . mkFastStringByteString
+#else
+mkFastStringByteString' = mkFastStringByteString
+#endif
 
 ----------------------------------------------------------------
 

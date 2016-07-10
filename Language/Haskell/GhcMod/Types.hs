@@ -71,7 +71,7 @@ data OutputStyle = LispStyle  -- ^ S expression style.
 newtype LineSeparator = LineSeparator String deriving (Show)
 
 data FileMapping =  FileMapping {fmPath :: FilePath, fmTemp :: Bool}
-                  deriving Show
+                  deriving (Eq, Show)
 
 type FileMappingMap = Map FilePath FileMapping
 
@@ -105,6 +105,7 @@ data Options = Options {
     -- | GHC command line options set on the @ghc-mod@ command line
   , optGhcUserOptions :: [GHCOption]
   , optFileMappings   :: [(FilePath, Maybe FilePath)]
+  , optEncoding       :: String
   } deriving (Show)
 
 -- | A default 'Options'.
@@ -124,6 +125,7 @@ defaultOptions = Options {
     }
   , optGhcUserOptions = []
   , optFileMappings   = []
+  , optEncoding       = "UTF-8"
   }
 
 ----------------------------------------------------------------
@@ -132,7 +134,7 @@ data Project = CabalProject
              | SandboxProject
              | PlainProject
              | StackProject StackEnv
-               deriving (Eq, Show)
+               deriving (Eq, Show, Ord)
 
 isCabalHelperProject :: Project -> Bool
 isCabalHelperProject StackProject {} = True
@@ -144,7 +146,7 @@ data StackEnv = StackEnv {
     , seBinPath       :: [FilePath]
     , seSnapshotPkgDb :: FilePath
     , seLocalPkgDb    :: FilePath
-    } deriving (Eq, Show)
+    } deriving (Eq, Show, Ord)
 
 -- | The environment where this library is used.
 data Cradle = Cradle {
@@ -159,7 +161,7 @@ data Cradle = Cradle {
   , cradleCabalFile  :: Maybe FilePath
   -- | The build info directory.
   , cradleDistDir    :: FilePath
-  } deriving (Eq, Show)
+  } deriving (Eq, Show, Ord)
 
 data GmStream = GmOutStream | GmErrStream
                 deriving (Show)
@@ -269,7 +271,7 @@ instance Binary GmModuleGraph where
         mpGraph = Map.map (Set.map intToMp) $ Map.mapKeys intToMp graph
     return $ GmModuleGraph mpGraph
     where
-      swapMap :: (Ord k, Ord v) => Map k v -> Map v k
+      swapMap :: Ord v => Map k v -> Map v k
       swapMap = Map.fromList . map (\(x, y) -> (y, x)) . Map.toList
 
 instance Monoid GmModuleGraph where
@@ -386,13 +388,15 @@ data BrowseOpts = BrowseOpts {
         -- ^ If 'True', "browseWith" also returns operators.
       , optBrowseDetailed       :: Bool
         -- ^ If 'True', "browseWith" also returns types.
+      , optBrowseParents        :: Bool
+        -- ^ If 'True', "browseWith" also returns parents.
       , optBrowseQualified      :: Bool
         -- ^ If 'True', "browseWith" will return fully qualified name
     } deriving (Show)
 
 -- | Default "BrowseOpts" instance
 defaultBrowseOpts :: BrowseOpts
-defaultBrowseOpts = BrowseOpts False False False
+defaultBrowseOpts = BrowseOpts False False False False
 
 mkLabel ''GhcModCaches
 mkLabel ''GhcModState
