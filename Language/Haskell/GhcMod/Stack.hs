@@ -75,12 +75,12 @@ findExecutablesInStackBinPath exe StackEnv {..} =
 
 findExecutablesInDirectories' :: [FilePath] -> String -> IO [FilePath]
 findExecutablesInDirectories' path binary =
-    U.findFilesWith' isExecutable path (binary <.> exeExtension)
+    U.findFilesWith' isExecutable path (binary <.> exeExtension')
    where isExecutable file = do
              perms <- getPermissions file
              return $ executable perms
 
-         exeExtension = if isWindows then "exe" else ""
+         exeExtension' = if isWindows then "exe" else ""
 
 readStack :: (IOish m, GmOut m, GmLog m) => [String] -> MaybeT m String
 readStack args = do

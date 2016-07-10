@@ -9,7 +9,7 @@ module Language.Haskell.GhcMod.Gap (
   , getSrcSpan
   , getSrcFile
   , withInteractiveContext
-  , fOptions
+  , ghcCmdOptions
   , toStringBuffer
   , showSeverityCaption
   , setCabalPkg
@@ -18,12 +18,14 @@ module Language.Haskell.GhcMod.Gap (
   , setDeferTypedHoles
   , setWarnTypedHoles
   , setDumpSplices
+  , setNoMaxRelevantBindings
   , isDumpSplices
   , filterOutChildren
   , infoThing
   , pprInfo
   , HasType(..)
   , errorMsgSpan
+  , setErrorMsgSpan
   , typeForUser
   , nameForUser
   , occNameForUser
@@ -44,6 +46,7 @@ module Language.Haskell.GhcMod.Gap (
   , Language.Haskell.GhcMod.Gap.isSynTyCon
   , parseModuleHeader
   , mkErrStyle'
+  , everythingStagedWithContext
   ) where
 
 import Control.Applicative hiding (empty)
@@ -82,7 +85,7 @@ import CoAxiom (coAxiomTyCon)
 #if __GLASGOW_HASKELL__ >= 708
 import FamInstEnv
 import ConLike (ConLike(..))
-import PatSyn (patSynType)
+import PatSyn
 #else
 import TcRnTypes
 #endif
@@ -115,6 +118,8 @@ import Lexer as L
 import Parser
 import SrcLoc
 import Packages
+import Data.Generics (GenericQ, extQ, gmapQ)
+import GHC.SYB.Utils (Stage(..))
 
 import Language.Haskell.GhcMod.Types (Expression(..))
 import Prelude
@@ -145,22 +150,32 @@ withStyle = withPprStyleDoc
 withStyle _ = withPprStyleDoc
 #endif
 
-#if __GLASGOW_HASKELL__ >= 706
-type GmLogAction = LogAction
+#if __GLASGOW_HASKELL__ >= 800
+-- flip LogAction
+type GmLogAction = WarnReason -> DynFlags -> Severity -> SrcSpan -> PprStyle -> MsgDoc -> IO ()
+#elif __GLASGOW_HASKELL__ >= 706
+type GmLogAction = forall a. a -> LogAction
 #else
-type GmLogAction = DynFlags -> LogAction
+type GmLogAction = forall a. a -> DynFlags -> LogAction
 #endif
+
+--  DynFlags -> WarnReason -> Severity -> SrcSpan -> PprStyle -> MsgDoc -> IO ()
 
 setLogAction :: DynFlags -> GmLogAction -> DynFlags
 setLogAction df f =
-#if __GLASGOW_HASKELL__ >= 706
-    df { log_action = f }
+#if __GLASGOW_HASKELL__ >= 800
+    df { log_action = flip f }
+#elif __GLASGOW_HASKELL__ >= 706
+    df { log_action = f (error "setLogAction") }
 #else
-    df { log_action = f df }
+    df { log_action = f (error "setLogAction") df }
 #endif
 
 showDocWith :: DynFlags -> Pretty.Mode -> Pretty.Doc -> String
-#if __GLASGOW_HASKELL__ >= 708
+#if __GLASGOW_HASKELL__ >= 800
+showDocWith dflags mode = Pretty.renderStyle mstyle where
+    mstyle = Pretty.style { Pretty.mode = mode, Pretty.lineLength = pprCols dflags }
+#elif __GLASGOW_HASKELL__ >= 708
 -- Pretty.showDocWith disappeard.
 -- https://github.com/ghc/ghc/commit/08a3536e4246e323fbcd8040e0b80001950fe9bc
 showDocWith dflags mode = Pretty.showDoc mode (pprCols dflags)
@@ -202,19 +217,26 @@ toStringBuffer = liftIO . stringToStringBuffer . unlines
 
 ----------------------------------------------------------------
 
-fOptions :: [String]
+ghcCmdOptions :: [String]
 #if __GLASGOW_HASKELL__ >= 710
-fOptions = [option | (FlagSpec option _ _ _) <- fFlags]
-        ++ [option | (FlagSpec option _ _ _) <- fWarningFlags]
-        ++ [option | (FlagSpec option _ _ _) <- fLangFlags]
-#elif __GLASGOW_HASKELL__ >= 704
-fOptions = [option | (option,_,_) <- fFlags]
+-- this also includes -X options and all sorts of other things so the
+ghcCmdOptions = flagsForCompletion False
+#else
+ghcCmdOptions = [ "-f" ++ prefix ++ option
+                | option <- opts
+                , prefix <- ["","no-"]
+                ]
+#  if __GLASGOW_HASKELL__ >= 704
+ where opts =
+           [option | (option,_,_) <- fFlags]
         ++ [option | (option,_,_) <- fWarningFlags]
         ++ [option | (option,_,_) <- fLangFlags]
-#else
-fOptions = [option | (option,_,_,_) <- fFlags]
+#  else
+ where opts =
+           [option | (option,_,_,_) <- fFlags]
         ++ [option | (option,_,_,_) <- fWarningFlags]
         ++ [option | (option,_,_,_) <- fLangFlags]
+#  endif
 #endif
 
 ----------------------------------------------------------------
@@ -314,6 +336,16 @@ setWarnTypedHoles :: DynFlags -> DynFlags
 setWarnTypedHoles dflag = wopt_set dflag Opt_WarnTypedHoles
 #else
 setWarnTypedHoles = id
+#endif
+
+----------------------------------------------------------------
+
+-- | Set 'DynFlags' equivalent to "-fno-max-relevant-bindings".
+setNoMaxRelevantBindings :: DynFlags -> DynFlags
+#if __GLASGOW_HASKELL__ >= 708
+setNoMaxRelevantBindings df = df { maxRelevantBinds = Nothing }
+#else
+setNoMaxRelevantBindings = id
 #endif
 
 ----------------------------------------------------------------
@@ -420,6 +452,13 @@ errorMsgSpan = errMsgSpan
 errorMsgSpan = head . errMsgSpans
 #endif
 
+setErrorMsgSpan :: ErrMsg -> SrcSpan -> ErrMsg
+#if __GLASGOW_HASKELL__ >= 708
+setErrorMsgSpan err s = err { errMsgSpan = s }
+#else
+setErrorMsgSpan err s = err { errMsgSpans = [s] }
+#endif
+
 typeForUser :: Type -> SDoc
 #if __GLASGOW_HASKELL__ >= 708
 typeForUser = pprTypeForUser
@@ -449,13 +488,22 @@ deSugar tcm e hs_env = snd <$> deSugarExpr hs_env modu rn_env ty_env e
 ----------------------------------------------------------------
 ----------------------------------------------------------------
 
-data GapThing = GtA Type | GtT TyCon | GtN
+data GapThing = GtA Type
+              | GtT TyCon
+              | GtN
+#if __GLASGOW_HASKELL__ >= 800
+              | GtPatSyn PatSyn
+#endif
 
 fromTyThing :: TyThing -> GapThing
 fromTyThing (AnId i)                   = GtA $ varType i
 #if __GLASGOW_HASKELL__ >= 708
 fromTyThing (AConLike (RealDataCon d)) = GtA $ dataConRepType d
+#if __GLASGOW_HASKELL__ >= 800
+fromTyThing (AConLike (PatSynCon p))   = GtPatSyn p
+#else
 fromTyThing (AConLike (PatSynCon p))   = GtA $ patSynType p
+#endif
 #else
 fromTyThing (ADataCon d)               = GtA $ dataConRepType d
 #endif
@@ -487,7 +535,12 @@ type GLMatchI = LMatch Id
 #endif
 
 getClass :: [LInstDecl Name] -> Maybe (Name, SrcSpan)
-#if __GLASGOW_HASKELL__ >= 710
+#if __GLASGOW_HASKELL__ >= 800
+-- Instance declarations of sort 'instance F (G a)'
+getClass [L loc (ClsInstD (ClsInstDecl {cid_poly_ty = HsIB _ (L _ (HsForAllTy _ (L _ (HsAppTy (L _ (HsTyVar (L _ className))) _))))}))] = Just (className, loc)
+-- Instance declarations of sort 'instance F G' (no variables)
+getClass [L loc (ClsInstD (ClsInstDecl {cid_poly_ty = HsIB _ (L _ (HsAppTy (L _ (HsTyVar (L _ className))) _))}))] = Just (className, loc)
+#elif __GLASGOW_HASKELL__ >= 710
 -- Instance declarations of sort 'instance F (G a)'
 getClass [L loc (ClsInstD (ClsInstDecl {cid_poly_ty = (L _ (HsForAllTy _ _ _ _ (L _ (HsAppTy (L _ (HsTyVar className)) _))))}))] = Just (className, loc)
 -- Instance declarations of sort 'instance F G' (no variables)
@@ -595,3 +648,20 @@ instance NFData ByteString where
   rnf Empty       = ()
   rnf (Chunk _ b) = rnf b
 #endif
+
+-- | Like 'everything', but avoid known potholes, based on the 'Stage' that
+--   generated the Ast.
+everythingStagedWithContext :: Stage -> s -> (r -> r -> r) -> r -> GenericQ (s -> (r, s)) -> GenericQ r
+everythingStagedWithContext stage s0 f z q x
+  | (const False
+#if __GLASGOW_HASKELL__ <= 708
+      `extQ` postTcType
+#endif
+      `extQ` fixity `extQ` nameSet) x = z
+  | otherwise = foldl f r (gmapQ (everythingStagedWithContext stage s' f z q) x)
+  where nameSet    = const (stage `elem` [Parser,TypeChecker]) :: NameSet -> Bool
+#if __GLASGOW_HASKELL__ <= 708
+        postTcType = const (stage<TypeChecker)                 :: PostTcType -> Bool
+#endif
+        fixity     = const (stage<Renamer)                     :: GHC.Fixity -> Bool
+        (r, s') = q x s0

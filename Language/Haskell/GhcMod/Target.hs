@@ -21,6 +21,9 @@ import Control.Arrow
 import Control.Applicative
 import Control.Category ((.))
 import GHC
+#if __GLASGOW_HASKELL__ >= 800
+import GHC.LanguageExtensions
+#endif
 import GHC.Paths (libdir)
 import SysTools
 import DynFlags
@@ -287,8 +290,7 @@ findCandidates scns = foldl1 Set.intersection scns
 pickComponent :: Set ChComponentName -> ChComponentName
 pickComponent scn = Set.findMin scn
 
-packageGhcOptions :: (Applicative m, IOish m, Gm m)
-                  => m [GHCOption]
+packageGhcOptions :: (IOish m, Applicative m, Gm m) => m [GHCOption]
 packageGhcOptions = do
     crdl <- cradle
     case cradleProject crdl of
@@ -491,10 +493,16 @@ loadTargets opts targetStrs = do
 needsHscInterpreted :: ModuleGraph -> Bool
 needsHscInterpreted = any $ \ms ->
                 let df = ms_hspp_opts ms in
+#if __GLASGOW_HASKELL__ >= 800
+                   TemplateHaskell `xopt` df
+                || QuasiQuotes     `xopt` df
+                || PatternSynonyms `xopt` df
+#else
                    Opt_TemplateHaskell `xopt` df
                 || Opt_QuasiQuotes     `xopt` df
 #if __GLASGOW_HASKELL__ >= 708
                 || (Opt_PatternSynonyms `xopt` df)
+#endif
 #endif
 
 cabalResolvedComponents :: (IOish m) =>

@@ -9,6 +9,6 @@ import Prelude
 spec :: Spec
 spec = do
     describe "flags" $ do
-        it "contains at least `-fno-warn-orphans'" $ do
+        it "contains at least `-fprint-explicit-foralls" $ do
             f <- runD $ lines <$> flags
-            f `shouldContain` ["-fno-warn-orphans"]
+            f `shouldContain` ["-fprint-explicit-foralls"]

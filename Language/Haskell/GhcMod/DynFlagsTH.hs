@@ -27,7 +27,12 @@ import Prelude
 
 deriveEqDynFlags :: Q [Dec] -> Q [Dec]
 deriveEqDynFlags qds = do
-  ~(TyConI (DataD [] _ [] [ctor] _ )) <- reify ''DynFlags
+#if __GLASGOW_HASKELL__ <= 710
+  ~(TyConI (DataD [] _ [] [ctor] _ ))
+#else
+  ~(TyConI (DataD [] _ [] _ [ctor] _ ))
+#endif
+      <- reify ''DynFlags
   let ~(RecC _ fs) = ctor
 
   a <- newName "a"
@@ -83,7 +88,7 @@ deriveEqDynFlags qds = do
                        |]
                return $ AppE (AppE eqfn fa) fb
 
-#if __GLASGOW_HASKELL__ >= 710
+#if __GLASGOW_HASKELL__ >= 710 && __GLASGOW_HASKELL__ < 800
            "sigOf" -> do
                eqfn <- [| let eqfn NotSigOf NotSigOf = True
                               eqfn (SigOf a') (SigOf b') = a' == b'

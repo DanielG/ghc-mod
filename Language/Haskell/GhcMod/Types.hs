@@ -71,7 +71,7 @@ data OutputStyle = LispStyle  -- ^ S expression style.
 newtype LineSeparator = LineSeparator String deriving (Show)
 
 data FileMapping =  FileMapping {fmPath :: FilePath, fmTemp :: Bool}
-                  deriving Show
+                  deriving (Eq, Show)
 
 type FileMappingMap = Map FilePath FileMapping
 
@@ -271,7 +271,7 @@ instance Binary GmModuleGraph where
         mpGraph = Map.map (Set.map intToMp) $ Map.mapKeys intToMp graph
     return $ GmModuleGraph mpGraph
     where
-      swapMap :: (Ord k, Ord v) => Map k v -> Map v k
+      swapMap :: Ord v => Map k v -> Map v k
       swapMap = Map.fromList . map (\(x, y) -> (y, x)) . Map.toList
 
 instance Monoid GmModuleGraph where
@@ -388,13 +388,15 @@ data BrowseOpts = BrowseOpts {
         -- ^ If 'True', "browseWith" also returns operators.
       , optBrowseDetailed       :: Bool
         -- ^ If 'True', "browseWith" also returns types.
+      , optBrowseParents        :: Bool
+        -- ^ If 'True', "browseWith" also returns parents.
       , optBrowseQualified      :: Bool
         -- ^ If 'True', "browseWith" will return fully qualified name
     } deriving (Show)
 
 -- | Default "BrowseOpts" instance
 defaultBrowseOpts :: BrowseOpts
-defaultBrowseOpts = BrowseOpts False False False
+defaultBrowseOpts = BrowseOpts False False False False
 
 mkLabel ''GhcModCaches
 mkLabel ''GhcModState

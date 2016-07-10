@@ -133,7 +133,7 @@ boundNames decl =
 #endif
           map ((,) TcClsName) (conNames ctor)
 
-      InstanceD _ _ty _ ->
+      InstanceD {}  -> -- _ _ty _
           error "notcpp: Instance declarations are not supported yet"
       ForeignD _ ->
           error "notcpp: Foreign declarations are not supported yet"
