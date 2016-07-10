@@ -9,7 +9,7 @@ import Language.Haskell.GhcMod.Monad
 import Language.Haskell.HLint3
 
 import Language.Haskell.GhcMod.Utils (withMappedFile)
-import Language.Haskell.Exts.Pretty (prettyPrint)
+import Language.Haskell.Exts.SrcLoc (SrcLoc(..))
 import System.IO
 
 -- | Checking syntax of a target file using hlint.
@@ -27,7 +27,8 @@ lint opt file = ghandle handler $
     case res of
       Right m -> pack . map show $ applyHints classify hint [m]
       Left ParseError{parseErrorLocation=loc, parseErrorMessage=err} ->
-        return $ prettyPrint loc ++ ":Error:" ++ err ++ "\n"
+        return $ showSrcLoc loc ++ ":Error:" ++ err ++ "\n"
   where
     pack = convert' . map init -- init drops the last \n.
     handler (SomeException e) = return $ checkErrorPrefix ++ show e ++ "\n"
+    showSrcLoc (SrcLoc f l c) = concat [f, ":", show l, ":", show c]
