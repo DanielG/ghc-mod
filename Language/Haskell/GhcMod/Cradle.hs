@@ -25,6 +25,7 @@ import Control.Monad.Trans.Maybe
 import Data.Maybe
 import System.Directory
 import System.FilePath
+import System.Environment
 import Prelude
 import Control.Monad.Trans.Journal (runJournalT)
 
@@ -77,15 +78,17 @@ fillTempDir crdl = do
 cabalCradle ::
     (IOish m, GmLog m, GmOut m) => FilePath -> FilePath -> MaybeT m Cradle
 cabalCradle cabalProg wdir = do
-    -- If cabal doesn't exist the user probably wants to use something else
-    whenM ((==Nothing) <$> liftIO (findExecutable cabalProg)) $ do
-      gmLog GmInfo "" $ text "'dist/setup-config' exists but 'cabal' executable wasn't found"
-      mzero
-
     cabalFile <- MaybeT $ liftIO $ findCabalFile wdir
     let cabalDir = takeDirectory cabalFile
 
-    gmLog GmInfo "" $ text "found Cabal project at" <+>: text cabalDir
+    gmLog GmInfo "" $ text "Found Cabal project at" <+>: text cabalDir
+
+    -- If cabal doesn't exist the user probably wants to use something else
+    whenM ((==Nothing) <$> liftIO (findExecutable cabalProg)) $ do
+      gmLog GmInfo "" $ text "'cabal' executable wasn't found, trying next project type"
+      mzero
+
+    gmLog GmInfo "" $ text "Using Cabal project at" <+>: text cabalDir
     return Cradle {
         cradleProject    = CabalProject
       , cradleCurrentDir = wdir
@@ -103,26 +106,37 @@ stackCradle stackProg wdir = do
     mzero
 #endif
 
-    -- If cabal doesn't exist the user probably wants to use something else
-    whenM ((==Nothing) <$> liftIO (findExecutable stackProg)) $ do
-      gmLog GmInfo "" $ text "'dist/setup-config' exists but 'cabal' executable wasn't found"
-      mzero
-
     cabalFile <- MaybeT $ liftIO $ findCabalFile wdir
-
     let cabalDir = takeDirectory cabalFile
-
     _stackConfigFile <- MaybeT $ liftIO $ findStackConfigFile cabalDir
 
-    -- If dist/setup-config already exists the user probably wants to use cabal
-    -- rather than stack, or maybe that's just me ;)
-    whenM (liftIO $ doesFileExist $ cabalDir </> setupConfigPath "dist") $ do
-      gmLog GmWarning "" $ text "'dist/setup-config' exists, ignoring Stack and using cabal-install instead"
-      mzero
+    gmLog GmInfo "" $ text "Found Stack project at" <+>: text cabalDir
+
+    stackExeSet    <- liftIO $ isJust <$> lookupEnv "STACK_EXE"
+    stackExeExists <- liftIO $ isJust <$> findExecutable stackProg
+    setupCfgExists <- liftIO $ doesFileExist $ cabalDir </> setupConfigPath "dist"
+
+    case (stackExeExists, stackExeSet) of
+      (False, True) -> do
+        gmLog GmWarning "" $ text "'stack' executable wasn't found but STACK_EXE is set, trying next project type"
+        mzero
+
+      (False, False) -> do
+        gmLog GmInfo "" $ text "'stack' executable wasn't found, trying next project type"
+        mzero
+
+      (True, True) -> do
+        gmLog GmWarning "" $ text "STACK_EXE set, preferring Stack project"
+
+      (True, False) | setupCfgExists -> do
+        gmLog GmWarning "" $ text "'dist/setup-config' exists, ignoring Stack project"
+        mzero
+
+      (True, False) -> return ()
 
     senv <- MaybeT $ getStackEnv cabalDir
 
-    gmLog GmInfo "" $ text "found Stack project at" <+>: text cabalDir
+    gmLog GmInfo "" $ text "Using Stack project at" <+>: text cabalDir
     return Cradle {
         cradleProject    = StackProject senv
       , cradleCurrentDir = wdir
@@ -149,7 +163,7 @@ stackCradleSpec stackProg wdir = do
 sandboxCradle :: (IOish m, GmLog m, GmOut m) => FilePath -> MaybeT m Cradle
 sandboxCradle wdir = do
     sbDir <- MaybeT $ liftIO $ findCabalSandboxDir wdir
-    gmLog GmInfo "" $ text "Found sandbox project at" <+>: text sbDir
+    gmLog GmInfo "" $ text "Using sandbox project at" <+>: text sbDir
     return Cradle {
         cradleProject    = SandboxProject
       , cradleCurrentDir = wdir
