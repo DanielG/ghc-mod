@@ -1,43 +1,49 @@
-language: haskell
-ghc:
-  - 7.6
-  - 7.8
+language: c
+# language: haskell
+# ghc:
+#   - 7.6
+#   - 7.8
 
 sudo: false
-
-addons:
-  apt:
-    packages:
-    - zlib1g-dev
 
 cache:
   apt: true
   directories:
-  - ~/.cabal
-  - ~/.ghc
-  - ~/.stack
+  - $HOME/7.6.3/.cabal
+  - $HOME/7.6.3/.ghc
+  - $HOME/7.6.3/.stack
+  - $HOME/7.8.4/.cabal
+  - $HOME/7.8.4/.ghc
+  - $HOME/7.8.4/.stack
+  - $HOME/7.10.3/.cabal
+  - $HOME/7.10.3/.ghc
+  - $HOME/7.10.3/.stack
 
 before_cache:
-  - rm -f $HOME/.cabal/logs $HOME/.cabal/packages/*/build-reports.log
+  - rm -rf $HOME/.cabal/logs $HOME/.cabal/packages/*/build-reports.log
+  - export HOME=$OLDHOME
 
 before_install:
-  - wget https://github.com/commercialhaskell/stack/releases/download/v0.1.3.1/stack-0.1.3.1-x86_64-linux.gz
+  - mkdir $GHCVER
+  - export OLDHOME=$HOME
+  - export HOME=$HOME/$GHCVER
+  - export PATH=$HOME/.cabal/bin:/opt/ghc/$GHCVER/bin:/opt/cabal/$CABALVER/bin:/opt/happy/1.19.5/bin:$PATH
+  - wget https://www.stackage.org/stack/linux-x86_64 -O stack.tar.gz
   - mkdir stack-bin
-  - gunzip stack-0.1.3.1-x86_64-linux.gz
-  - mv stack-0.1.3.1-x86_64-linux stack-bin/stack
-  - chmod +x stack-bin/stack
+  - tar zxf stack.tar.gz --strip-components=1 --wildcards -C stack-bin '*/stack'
   - export PATH=$(pwd)/stack-bin:$PATH
   - stack --version
 
 install:
-  - export CABAL_VER="$(ghc-pkg describe ghc | sed -n '/^depends:/,/^[a-z]/p' | head -n-1 | sed '1{s/^depends://}' | grep " *Cabal" | tr -d "[:space:]" | sed 's/^Cabal-\([0-9.]*\)-.*/\1/g')"
-  - echo $CABAL_VER
   - cabal update
-  - cabal install happy
   - happy --version
   - git clone --depth=1 https://github.com/DanielG/cabal-helper.git
-  - cabal install cabal-helper/ --constraint "Cabal == ${CABAL_VER}"
+  - cabal install cabal-helper/ --constraint "Cabal == ${CABALVER}.*"
   - cabal install -j --only-dependencies --enable-tests
+  - '[[ "$GHCVER" == "7.10.3" ]] && cabal install cabal-install --constraint "cabal-install == ${CABALVER}.*" || :'
+  - cabal --version
+  - which cabal
+  - which hsc2hs
 
 
 script:
@@ -48,12 +54,37 @@ script:
   - rm -rf /tmp/test && mkdir -p /tmp/test
   - cd /tmp/test
   - tar -xf $SRC_TGZ && cd ghc-mod*/
-  - if [ -n "$(ghc --version | awk '{ print $8 }' | sed -n '/^7.8/p')" ]; then export WERROR="--ghc-option=-Werror"; fi
   - cabal configure --enable-tests $WERROR
-  - cabal build
+  - cabal build $JOBS
   - export ghc_mod_datadir=$PWD
   - cabal test
 
 matrix:
-  allow_failures:
-    - env: GHCVER=head
+  include:
+  - env: GHCVER=7.6.3 CABALVER=1.16
+    addons:
+      apt:
+        sources:
+        - hvr-ghc
+        packages:
+        - ghc-7.6.3
+        - cabal-install-1.16
+        - happy-1.19.5
+  - env: GHCVER=7.8.4 CABALVER=1.18 WERROR=--ghc-option=-Werror
+    addons:
+      apt:
+        sources:
+        - hvr-ghc
+        packages:
+        - ghc-7.8.4
+        - cabal-install-1.18
+        - happy-1.19.5
+  - env: GHCVER=7.10.3 CABALVER=1.22 WERROR=--ghc-option=-Werror JOBS=-j1
+    addons:
+      apt:
+        sources:
+        - hvr-ghc
+        packages:
+        - ghc-7.10.3
+        - cabal-install-1.22
+        - happy-1.19.5
