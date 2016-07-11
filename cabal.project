@@ -1,0 +1,3 @@
+-- do not build sub-packages when using features from
+-- http://blog.ezyang.com/2016/05/announcing-cabal-new-build-nix-style-local-builds/
+packages: .

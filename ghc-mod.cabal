@@ -31,6 +31,7 @@ Data-Files:             elisp/Makefile
                         elisp/*.el
 Data-Files:             LICENSE COPYING.BSD3 COPYING.AGPL3
 Extra-Source-Files:     ChangeLog
+                        cabal.project
                         SetupCompat.hs
                         NotCPP/*.hs
                         NotCPP/COPYING

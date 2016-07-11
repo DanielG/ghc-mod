@@ -19,3 +19,4 @@ cabal.sandbox.config
 cabal-dev
 /TAGS
 /tags
+/cabal.project.local
