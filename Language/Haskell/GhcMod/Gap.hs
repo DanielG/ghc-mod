@@ -48,6 +48,10 @@ module Language.Haskell.GhcMod.Gap (
   , mkErrStyle'
   , everythingStagedWithContext
   , withCleanupSession
+  , ghcQualify
+  , ghcIdeclHiding
+  , ghc_sl_fs
+  , ghc_ms_textual_imps
   ) where
 
 import Control.Applicative hiding (empty)
@@ -116,6 +120,10 @@ import qualified Data.IntSet as I (IntSet, empty)
 #if __GLASGOW_HASKELL__ < 706
 import Control.DeepSeq (NFData(rnf))
 import Data.ByteString.Lazy.Internal (ByteString(..))
+#endif
+
+#if __GLASGOW_HASKELL__ >= 800
+import BasicTypes (sl_fs, StringLiteral)
 #endif
 
 import Bag
@@ -686,4 +694,46 @@ withCleanupSession ghc = ghc `gfinally` cleanup
 withCleanupSession action = do
   df <- getSessionDynFlags
   GHC.defaultCleanupHandler df action
+#endif
+
+-- | Things for Language.Haskell.GhcMod.ImportedFrom
+
+#if __GLASGOW_HASKELL__ >= 710
+ghcQualify :: PrintUnqualified
+ghcQualify = reallyAlwaysQualify
+#else
+ghcQualify :: PrintUnqualified
+ghcQualify = alwaysQualify
+#endif
+
+#if __GLASGOW_HASKELL__ >= 710
+ghcIdeclHiding :: GHC.ImportDecl GHC.RdrName -> Maybe (Bool, SrcLoc.Located [GHC.LIE GHC.RdrName])
+ghcIdeclHiding = GHC.ideclHiding
+#else
+-- Here, we have
+--
+--     ideclHiding :: Maybe (Bool, [LIE name])
+--
+-- so we have to use noLoc to get a SrcLoc.Located type in the second part of the tuple.
+ghcIdeclHiding :: GHC.ImportDecl GHC.RdrName -> Maybe (Bool, SrcLoc.Located [GHC.LIE GHC.RdrName])
+ghcIdeclHiding x = case GHC.ideclHiding x of
+                    Just (b, lie)   -> Just (b, GHC.noLoc lie)
+                    Nothing         -> Nothing
+
+#endif
+
+#if __GLASGOW_HASKELL__ >= 800
+ghc_sl_fs :: StringLiteral -> FastString
+ghc_sl_fs = sl_fs
+#else
+ghc_sl_fs = id
+#endif
+
+
+ghc_ms_textual_imps :: GHC.ModSummary -> [Located (ImportDecl RdrName)]
+#if __GLASGOW_HASKELL__ >= 800
+-- What does GHC8 give in the first part of the tuple?
+ghc_ms_textual_imps ms = map (fmap simpleImportDecl . snd) (ms_textual_imps ms)
+#else
+ghc_ms_textual_imps = ms_textual_imps
 #endif
