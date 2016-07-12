@@ -183,7 +183,6 @@ Library
                       , ghc               < 8.2 && >= 7.6
                       , ghc-paths         < 0.2
                       , ghc-syb-utils     < 0.3
-                      , haddock-api
                       , hlint             < 1.10 && >= 1.9.27
                       , monad-journal     < 0.8 && >= 0.4
                       , old-time          < 1.2
@@ -214,6 +213,12 @@ Library
     Build-Depends:      convertible
   if impl(ghc >= 8.0)
     Build-Depends:      ghc-boot
+
+  if impl(ghc >= 8.0)
+    Build-Depends:      haddock-api >= 2.17.2
+
+  if impl(ghc >=7.10 && < 7.12)
+    Build-Depends:      haddock-api <= 2.16.1
 
 Executable ghc-mod
   Default-Language:     Haskell2010
