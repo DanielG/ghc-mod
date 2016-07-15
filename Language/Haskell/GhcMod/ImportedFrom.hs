@@ -290,11 +290,13 @@ ghcPkgFindModule
     :: forall m. (GhcMonad m, MonadIO m, GmOut m, GmLog m)
     => String
     -> m (Maybe String)
-ghcPkgFindModule mod
-    = shortcut [ stackGhcPkgFindModule mod
-               , hcPkgFindModule       mod
-               , _ghcPkgFindModule     mod
-               ]
+ghcPkgFindModule mod = do
+    rp <- gmReadProcess
+
+    shortcut [ stackGhcPkgFindModule rp mod
+             , hcPkgFindModule       rp mod
+             , _ghcPkgFindModule     rp mod
+             ]
   where
     shortcut :: [m (Maybe a)] -> m (Maybe a)
     shortcut []     = return Nothing
@@ -304,14 +306,6 @@ ghcPkgFindModule mod
         case a' of
             a''@(Just _)    -> return a''
             Nothing         -> shortcut as
-
-    readProc :: String -> [String] -> IO (Maybe (String, String))
-    readProc cmd args = do
-        (exitcode, stdout, stderr) <- readProcessWithExitCode cmd args ""
-
-        return $ case exitcode of
-            ExitSuccess     -> Just (stdout, stderr)
-            ExitFailure e   -> Nothing
 
     optsForGhcPkg :: [String] -> [String]
     optsForGhcPkg [] = []
@@ -324,43 +318,37 @@ ghcPkgFindModule mod
     -- | Call @ghc-pkg find-module@ to determine that package that provides a module, e.g. @Prelude@ is defined
     -- in @base-4.6.0.1@.
     -- _ghcPkgFindModule :: String -> IO (Maybe String)
-    _ghcPkgFindModule m = do
+    _ghcPkgFindModule rp m = do
         let opts = ["find-module", m, "--simple-output"] ++ ["--global", "--user"] ++ optsForGhcPkg []
         gmLog GmDebug "" $ strDoc $ "ghc-pkg " ++ show opts
 
-        x <- liftIO $ readProc "ghc-pkg" opts
+        x <- liftIO $ rp "ghc-pkg" opts ""
 
-        case x of
-            Nothing             -> return Nothing
-            Just (output, err)  -> do gmLog GmDebug "" $ strDoc $ "_ghcPkgFindModule stdout: " ++ show output
-                                      gmLog GmDebug "" $ strDoc $ "_ghcPkgFindModule stderr: " ++ show err
-                                      return $ join $ (Safe.lastMay . words) <$> (Safe.lastMay . lines) output
+        -- gmLog GmDebug "" $ strDoc $ "_ghcPkgFindModule stdout: " ++ show output
+        -- gmLog GmDebug "" $ strDoc $ "_ghcPkgFindModule stderr: " ++ show err
+        return $ join $ (Safe.lastMay . words) <$> (Safe.lastMay . lines) x
 
     -- | Call @cabal sandbox hc-pkg@ to find the package the provides a module.
     -- hcPkgFindModule :: String -> IO (Maybe String)
-    hcPkgFindModule m = do
+    hcPkgFindModule rp m = do
         let opts = ["sandbox", "hc-pkg", "find-module", m, "--", "--simple-output"]
 
-        x <- liftIO $ readProc "cabal" opts
+        x <- liftIO $ rp "cabal" opts ""
 
-        case x of
-            Nothing             -> return Nothing
-            Just (output, err)  -> do gmLog GmDebug "" $ strDoc $ "hcPkgFindModule stdout: " ++ show output
-                                      gmLog GmDebug "" $ strDoc $ "hcPkgFindModule stderr: " ++ show err
-                                      return $ join $ (Safe.lastMay . words) <$> (Safe.lastMay . lines) output
+        -- gmLog GmDebug "" $ strDoc $ "hcPkgFindModule stdout: " ++ show output
+        -- gmLog GmDebug "" $ strDoc $ "hcPkgFindModule stderr: " ++ show err
+        return $ join $ (Safe.lastMay . words) <$> (Safe.lastMay . lines) x
 
     -- | Call @stack exec ghc-pkg@ to find the package the provides a module.
     -- stackGhcPkgFindModule :: String -> IO (Maybe String)
-    stackGhcPkgFindModule m = do
+    stackGhcPkgFindModule rp m = do
         let opts = ["exec", "ghc-pkg", "find-module", m, "--", "--simple-output"]
 
-        x <- liftIO $ readProc "stack" opts
+        x <- liftIO $ rp "stack" opts ""
 
-        case x of
-            Nothing             -> return Nothing
-            Just (output, err)  -> do gmLog GmDebug "" $ strDoc $ "stackGhcPkgFindModule stdout: " ++ show output
-                                      gmLog GmDebug "" $ strDoc $ "stackGhcPkgFindModule stderr: " ++ show err
-                                      return $ join $ (Safe.lastMay . words) <$> (Safe.lastMay . lines) output
+        -- gmLog GmDebug "" $ strDoc $ "stackGhcPkgFindModule stdout: " ++ show output
+        -- gmLog GmDebug "" $ strDoc $ "stackGhcPkgFindModule stderr: " ++ show err
+        return $ join $ (Safe.lastMay . words) <$> (Safe.lastMay . lines) x
 
 ghcPkgHaddockUrl
     :: forall m. (GmLog m, GmOut m, MonadIO m)
