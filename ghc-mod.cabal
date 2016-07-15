@@ -135,6 +135,7 @@ Library
                         Language.Haskell.GhcMod.Gap
                         Language.Haskell.GhcMod.GhcPkg
                         Language.Haskell.GhcMod.HomeModuleGraph
+                        Language.Haskell.GhcMod.ImportedFrom
                         Language.Haskell.GhcMod.Info
                         Language.Haskell.GhcMod.Lang
                         Language.Haskell.GhcMod.Lint
