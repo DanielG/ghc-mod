@@ -52,8 +52,6 @@ import System.Process
 import System.Process.Streaming
 import TcRnTypes()
 
-import qualified Data.ByteString as B.X
-
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Lazy as BL
 import qualified Data.Map as M
