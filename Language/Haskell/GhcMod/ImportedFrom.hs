@@ -20,8 +20,6 @@ module Language.Haskell.GhcMod.ImportedFrom (importedFrom) where
 import Control.Applicative()
 import Control.Exception
 import Control.Monad
-import Control.Monad.Catch
-import Data.ByteString.Internal (w2c)
 import Data.Char (isAlpha)
 import Data.Functor.Identity
 import Data.IORef
@@ -46,14 +44,12 @@ import Language.Haskell.GhcMod.Output
 import Language.Haskell.GhcMod.SrcUtils (listifySpans)
 import Outputable
 import System.Directory
-import System.Environment()
-import System.FilePath
 import System.Process
-import System.Process.Streaming
+import System.Environment()
+import System.Exit
+import System.FilePath
 import TcRnTypes()
 
-import qualified Data.ByteString as B
-import qualified Data.ByteString.Lazy as BL
 import qualified Data.Map as M
 import qualified Documentation.Haddock as Haddock
 import qualified DynFlags()
@@ -309,17 +305,13 @@ ghcPkgFindModule mod
             a''@(Just _)    -> return a''
             Nothing         -> shortcut as
 
-    executeFallibly' :: String -> [String] -> IO (Maybe (String, String))
-    executeFallibly' cmd args = do
-        x <- executeFallibly (piped (proc cmd args)) ((,) <$> foldOut intoLazyBytes <*> foldErr intoLazyBytes)
-             `catchIOError`
-             (return . Left . show)
+    readProc :: String -> [String] -> IO (Maybe (String, String))
+    readProc cmd args = do
+        (exitcode, stdout, stderr) <- readProcessWithExitCode cmd args ""
 
-        return $ case x of
-            Left e       -> Nothing
-            Right (a, b) -> Just (b2s a, b2s b)
-      where
-        b2s = map w2c . B.unpack . BL.toStrict
+        return $ case exitcode of
+            ExitSuccess     -> Just (stdout, stderr)
+            ExitFailure e   -> Nothing
 
     optsForGhcPkg :: [String] -> [String]
     optsForGhcPkg [] = []
@@ -336,7 +328,7 @@ ghcPkgFindModule mod
         let opts = ["find-module", m, "--simple-output"] ++ ["--global", "--user"] ++ optsForGhcPkg []
         gmLog GmDebug "" $ strDoc $ "ghc-pkg " ++ show opts
 
-        x <- liftIO $ executeFallibly' "ghc-pkg" opts
+        x <- liftIO $ readProc "ghc-pkg" opts
 
         case x of
             Nothing             -> return Nothing
@@ -349,7 +341,7 @@ ghcPkgFindModule mod
     hcPkgFindModule m = do
         let opts = ["sandbox", "hc-pkg", "find-module", m, "--", "--simple-output"]
 
-        x <- liftIO $ executeFallibly' "cabal" opts
+        x <- liftIO $ readProc "cabal" opts
 
         case x of
             Nothing             -> return Nothing
@@ -362,7 +354,7 @@ ghcPkgFindModule mod
     stackGhcPkgFindModule m = do
         let opts = ["exec", "ghc-pkg", "find-module", m, "--", "--simple-output"]
 
-        x <- liftIO $ executeFallibly' "stack" opts
+        x <- liftIO $ readProc "stack" opts
 
         case x of
             Nothing             -> return Nothing
@@ -415,7 +407,7 @@ getVisibleExports getHaddockInterfaces p = do
     let p' = case splitOn "@" p of
                 [p0, _] -> p0
                 _       -> p
-    
+
     haddockInterfaceFile <- getHaddockInterfaces p'
     join <$> traverse getVisibleExports' haddockInterfaceFile
 

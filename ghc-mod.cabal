@@ -87,6 +87,7 @@ Extra-Source-Files:     ChangeLog
                         test/data/file-mapping/*.hs
                         test/data/file-mapping/preprocessor/*.hs
                         test/data/file-mapping/lhs/*.lhs
+                        test/data/imported-from/*.hs
                         test/data/nice-qualification/*.hs
                         test/data/stack-project/stack.yaml
                         test/data/stack-project/new-template.cabal
@@ -182,9 +183,11 @@ Library
                       , ghc               < 8.2 && >= 7.6
                       , ghc-paths         < 0.2
                       , ghc-syb-utils     < 0.3
+                      , haddock-api       < 2.17
                       , hlint             < 1.10 && >= 1.9.27
                       , monad-journal     < 0.8 && >= 0.4
                       , old-time          < 1.2
+                      , parsec            < 3.2
                       , pretty            < 1.2
                       , process           < 1.5
                       , syb               < 0.7
