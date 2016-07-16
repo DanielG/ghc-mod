@@ -397,7 +397,10 @@ getVisibleExports getHaddockInterfaces p = do
                 _       -> p
 
     haddockInterfaceFile <- getHaddockInterfaces p'
-    join <$> traverse getVisibleExports' haddockInterfaceFile
+
+    case haddockInterfaceFile of
+        Just hi -> getVisibleExports' hi
+        Nothing -> return Nothing
 
   where
 
@@ -554,7 +557,9 @@ refineVisibleExports getHaddockInterfaces exports = mapM f exports
 
         let thisModVisibleExports = fromMaybe
                                         (error $ "Could not get visible exports of " ++ pname)
-                                        (join $ traverse (M.lookup thisModuleName) visibleExportsMap)
+                                        (case visibleExportsMap of
+                                            Just ve -> M.lookup thisModuleName ve
+                                            Nothing -> Nothing)
 
         let qexports' = filter (hasPostfixMatch thisModVisibleExports) qexports
 
