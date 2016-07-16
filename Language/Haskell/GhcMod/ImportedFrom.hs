@@ -48,6 +48,7 @@ import System.Process
 import System.Environment()
 import System.Exit
 import System.FilePath
+import System.IO.Error
 import TcRnTypes()
 
 import qualified Data.Map as M
@@ -63,10 +64,25 @@ import qualified Text.Parsec as TP
 import DynFlags ( unsafeGlobalDynFlags )
 tdflags :: DynFlags
 tdflags = unsafeGlobalDynFlags
+
+ghcQualify = reallyAlwaysQualify
+
+ghcIdeclHiding :: GHC.ImportDecl GHC.RdrName -> Maybe (Bool, SrcLoc.Located [GHC.LIE GHC.RdrName])
+ghcIdeclHiding = GHC.ideclHiding
 #else
 import DynFlags ( tracingDynFlags )
 tdflags :: DynFlags
 tdflags = tracingDynFlags
+
+ghcQualify = alwaysQualify
+
+-- In ghc-7.6.3, we have
+--     ideclHiding :: Maybe (Bool, [LIE name])
+-- so we have to use noLoc to get a SrcLoc.Located type in the second part of the tuple.
+ghcIdeclHiding :: GHC.ImportDecl GHC.RdrName -> Maybe (Bool, SrcLoc.Located [GHC.LIE GHC.RdrName])
+ghcIdeclHiding x = case GHC.ideclHiding x of
+                    Just (b, lie)   -> Just (b, GHC.noLoc lie)
+                    Nothing         -> Nothing
 #endif
 
 type QualifiedName = String -- ^ A qualified name, e.g. @Foo.bar@.
@@ -187,9 +203,9 @@ toImportDecl idecl = NiceImportDecl
     name         = showSDoc tdflags (ppr $ GHC.ideclName idecl')
     isImplicit   = GHC.ideclImplicit idecl'
     qualifier    = unpackFS <$> GHC.ideclPkgQual idecl'
-    hiding       = (catMaybes . parseHiding . GHC.ideclHiding) idecl'
+    hiding       = (catMaybes . parseHiding . ghcIdeclHiding) idecl'
     importedAs   = (showSDoc tdflags . ppr) <$> ideclAs idecl'
-    specifically = (parseSpecifically . GHC.ideclHiding) idecl'
+    specifically = (parseSpecifically . ghcIdeclHiding) idecl'
 
     grabNames :: GHC.Located [GHC.LIE GHC.RdrName] -> [String]
     grabNames loc = map (showSDoc tdflags . ppr) names
@@ -278,9 +294,9 @@ qualifiedName targetModuleName lineNr colNr symbol importList = do
             es = listifySpans tcs (lineNr, colNr) :: [LHsExpr Id]
             ps = listifySpans tcs (lineNr, colNr) :: [LPat Id]
 
-        let bs' = map (showSDocForUser tdflags reallyAlwaysQualify . ppr) bs
-            es' = map (showSDocForUser tdflags reallyAlwaysQualify . ppr) es
-            ps' = map (showSDocForUser tdflags reallyAlwaysQualify . ppr) ps
+        let bs' = map (showSDocForUser tdflags ghcQualify . ppr) bs
+            es' = map (showSDocForUser tdflags ghcQualify . ppr) es
+            ps' = map (showSDocForUser tdflags ghcQualify . ppr) ps
 
         return $ filter (postfixMatch symbol) $ concatMap words $ bs' ++ es' ++ ps'
 
@@ -315,6 +331,8 @@ ghcPkgFindModule mod = do
     optsForGhcPkg ("-no-user-package-conf":rest) = "--no-user-package-conf"        : optsForGhcPkg rest
     optsForGhcPkg (_:rest) = optsForGhcPkg rest
 
+    runCmd rp cmd opts = liftIO ((Just <$> (rp cmd opts "")) `catch` (\(_::IOError) -> return Nothing))
+
     -- | Call @ghc-pkg find-module@ to determine that package that provides a module, e.g. @Prelude@ is defined
     -- in @base-4.6.0.1@.
     -- _ghcPkgFindModule :: String -> IO (Maybe String)
@@ -322,33 +340,39 @@ ghcPkgFindModule mod = do
         let opts = ["find-module", m, "--simple-output"] ++ ["--global", "--user"] ++ optsForGhcPkg []
         gmLog GmDebug "" $ strDoc $ "ghc-pkg " ++ show opts
 
-        x <- liftIO $ rp "ghc-pkg" opts ""
+        x <- runCmd rp "ghc-pkg" opts
 
         -- gmLog GmDebug "" $ strDoc $ "_ghcPkgFindModule stdout: " ++ show output
         -- gmLog GmDebug "" $ strDoc $ "_ghcPkgFindModule stderr: " ++ show err
-        return $ join $ (Safe.lastMay . words) <$> (Safe.lastMay . lines) x
+        return $ case x of
+                    Just x' -> join $ (Safe.lastMay . words) <$> (Safe.lastMay . lines) x'
+                    Nothing -> Nothing
 
     -- | Call @cabal sandbox hc-pkg@ to find the package the provides a module.
     -- hcPkgFindModule :: String -> IO (Maybe String)
     hcPkgFindModule rp m = do
         let opts = ["sandbox", "hc-pkg", "find-module", m, "--", "--simple-output"]
 
-        x <- liftIO $ rp "cabal" opts ""
+        x <- runCmd rp "cabal" opts
 
         -- gmLog GmDebug "" $ strDoc $ "hcPkgFindModule stdout: " ++ show output
         -- gmLog GmDebug "" $ strDoc $ "hcPkgFindModule stderr: " ++ show err
-        return $ join $ (Safe.lastMay . words) <$> (Safe.lastMay . lines) x
+        return $ case x of
+                    Just x' -> join $ (Safe.lastMay . words) <$> (Safe.lastMay . lines) x'
+                    Nothing -> Nothing
 
     -- | Call @stack exec ghc-pkg@ to find the package the provides a module.
     -- stackGhcPkgFindModule :: String -> IO (Maybe String)
     stackGhcPkgFindModule rp m = do
         let opts = ["exec", "ghc-pkg", "find-module", m, "--", "--simple-output"]
 
-        x <- liftIO $ rp "stack" opts ""
+        x <- runCmd rp "stack" opts
 
         -- gmLog GmDebug "" $ strDoc $ "stackGhcPkgFindModule stdout: " ++ show output
         -- gmLog GmDebug "" $ strDoc $ "stackGhcPkgFindModule stderr: " ++ show err
-        return $ join $ (Safe.lastMay . words) <$> (Safe.lastMay . lines) x
+        return $ case x of
+                    Just x' -> join $ (Safe.lastMay . words) <$> (Safe.lastMay . lines) x'
+                    Nothing -> Nothing
 
 ghcPkgHaddockUrl
     :: forall m. (GmLog m, GmOut m, MonadIO m)
@@ -460,7 +484,7 @@ getModuleExports ghcPkg readProc pkgDbStack m = do
     case (minfo, p) of
         (Nothing, _)            -> return Nothing
         (_, Nothing)            -> return Nothing
-        (Just minfo', Just p')  -> return $ Just (map (showSDocForUser tdflags reallyAlwaysQualify . ppr) $ modInfoExports minfo', p')
+        (Just minfo', Just p')  -> return $ Just (map (showSDocForUser tdflags ghcQualify . ppr) $ modInfoExports minfo', p')
 
 type FullyQualifiedName = String    -- ^ e.g. e.g. "base-4.8.2.0:Data.Foldable.length"
 type StrModuleName      = String    -- ^ e.g. "Data.List"
@@ -552,14 +576,27 @@ refineVisibleExports getHaddockInterfaces exports = mapM f exports
         let pname          = mPackageName     mexports -- e.g. "base-4.8.2.0"
             thisModuleName = mName            mexports -- e.g. "Prelude"
             qexports       = qualifiedExports mexports -- e.g. ["base-4.8.2.0:GHC.Base.Just", ...]
-        visibleExportsMap <- getVisibleExports getHaddockInterfaces pname
+        mVisibleExportsMap <- getVisibleExports getHaddockInterfaces pname
+
+        --let thisModVisibleExports = fromMaybe
+        --                                (error $ "Could not get visible exports of <" ++ thisModuleName ++ "> in " ++ pname)
+        --                                (case visibleExportsMap of
+        --                                    Just ve -> M.lookup thisModuleName ve
+        --                                    Nothing -> Nothing)
+        let visibleExportsMap = fromMaybe (error $ "visible exports map is Nothing") mVisibleExportsMap
         gmLog GmDebug "" $ strDoc $ "visibleExportsMap: " ++ show visibleExportsMap
 
-        let thisModVisibleExports = fromMaybe
-                                        (error $ "Could not get visible exports of " ++ pname)
-                                        (case visibleExportsMap of
-                                            Just ve -> M.lookup thisModuleName ve
-                                            Nothing -> Nothing)
+        let thisModVisibleExports0 = M.lookup thisModuleName visibleExportsMap
+
+        -- On earlier versions of GHC, our qexports list will not be fully qualified, so it will
+        -- look like ["base:GHC.Base.Just", ...] instead of ["base-4.8.2.0:GHC.Base.Just", ...].
+        -- So if thisModVisibleExports0 is Nothing, fall back to searching on a shorter pname.
+        let thisModVisibleExports = case thisModVisibleExports0 of
+                                        Just ve -> ve
+                                        Nothing -> let pname' = ((head $ separateBy '-' pname) ++ ":" ++ thisModuleName) in
+                                                        fromMaybe
+                                                            (error $ "Failed to find visible exports map in fall-back case: " ++ show (pname', thisModuleName))
+                                                            (M.lookup pname' visibleExportsMap)
 
         let qexports' = filter (hasPostfixMatch thisModVisibleExports) qexports
 
