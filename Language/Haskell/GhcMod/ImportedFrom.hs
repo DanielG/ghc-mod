@@ -60,31 +60,6 @@ import qualified Safe
 import qualified SrcLoc
 import qualified Text.Parsec as TP
 
-#if __GLASGOW_HASKELL__ >= 708
-import DynFlags ( unsafeGlobalDynFlags )
-tdflags :: DynFlags
-tdflags = unsafeGlobalDynFlags
-
-ghcQualify = reallyAlwaysQualify
-
-ghcIdeclHiding :: GHC.ImportDecl GHC.RdrName -> Maybe (Bool, SrcLoc.Located [GHC.LIE GHC.RdrName])
-ghcIdeclHiding = GHC.ideclHiding
-#else
-import DynFlags ( tracingDynFlags )
-tdflags :: DynFlags
-tdflags = tracingDynFlags
-
-ghcQualify = alwaysQualify
-
--- In ghc-7.6.3, we have
---     ideclHiding :: Maybe (Bool, [LIE name])
--- so we have to use noLoc to get a SrcLoc.Located type in the second part of the tuple.
-ghcIdeclHiding :: GHC.ImportDecl GHC.RdrName -> Maybe (Bool, SrcLoc.Located [GHC.LIE GHC.RdrName])
-ghcIdeclHiding x = case GHC.ideclHiding x of
-                    Just (b, lie)   -> Just (b, GHC.noLoc lie)
-                    Nothing         -> Nothing
-#endif
-
 type QualifiedName = String -- ^ A qualified name, e.g. @Foo.bar@.
 
 data NiceImportDecl

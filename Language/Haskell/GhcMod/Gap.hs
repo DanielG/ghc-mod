@@ -47,6 +47,9 @@ module Language.Haskell.GhcMod.Gap (
   , parseModuleHeader
   , mkErrStyle'
   , everythingStagedWithContext
+  , tdflags
+  , ghcQualify
+  , ghcIdeclHiding
   ) where
 
 import Control.Applicative hiding (empty)
@@ -665,3 +668,30 @@ everythingStagedWithContext stage s0 f z q x
 #endif
         fixity     = const (stage<Renamer)                     :: GHC.Fixity -> Bool
         (r, s') = q x s0
+
+-- | Things for Language.Haskell.GhcMod.ImportedFrom
+#if __GLASGOW_HASKELL__ >= 708
+
+tdflags :: DynFlags
+tdflags = unsafeGlobalDynFlags
+
+ghcQualify = reallyAlwaysQualify
+
+ghcIdeclHiding :: GHC.ImportDecl GHC.RdrName -> Maybe (Bool, SrcLoc.Located [GHC.LIE GHC.RdrName])
+ghcIdeclHiding = GHC.ideclHiding
+
+#else
+
+tdflags :: DynFlags
+tdflags = tracingDynFlags
+
+ghcQualify = alwaysQualify
+
+-- In ghc-7.6.3, we have
+--     ideclHiding :: Maybe (Bool, [LIE name])
+-- so we have to use noLoc to get a SrcLoc.Located type in the second part of the tuple.
+ghcIdeclHiding :: GHC.ImportDecl GHC.RdrName -> Maybe (Bool, SrcLoc.Located [GHC.LIE GHC.RdrName])
+ghcIdeclHiding x = case GHC.ideclHiding x of
+                    Just (b, lie)   -> Just (b, GHC.noLoc lie)
+                    Nothing         -> Nothing
+#endif
