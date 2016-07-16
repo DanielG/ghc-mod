@@ -17,7 +17,7 @@
 
 module Language.Haskell.GhcMod.ImportedFrom (importedFrom) where
 
-import Control.Applicative()
+import Control.Applicative
 import Control.Exception
 import Control.Monad
 import Data.Char (isAlpha)
