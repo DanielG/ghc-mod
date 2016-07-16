@@ -47,6 +47,7 @@ module Language.Haskell.GhcMod.Gap (
   , parseModuleHeader
   , mkErrStyle'
   , everythingStagedWithContext
+  , withCleanupSession
   ) where
 
 import Control.Applicative hiding (empty)
@@ -72,6 +73,8 @@ import StringBuffer
 import TcType
 import Var (varType)
 import System.Directory
+import SysTools
+import GHCi (stopIServ)
 
 import qualified Name
 import qualified InstEnv
@@ -665,3 +668,20 @@ everythingStagedWithContext stage s0 f z q x
 #endif
         fixity     = const (stage<Renamer)                     :: GHC.Fixity -> Bool
         (r, s') = q x s0
+
+withCleanupSession :: GhcMonad m => m a -> m a
+#if __GLASGOW_HASKELL__ >= 800
+withCleanupSession ghc = ghc `gfinally` cleanup
+  where
+   cleanup = do
+      hsc_env <- getSession
+      let dflags = hsc_dflags hsc_env
+      liftIO $ do
+          cleanTempFiles dflags
+          cleanTempDirs dflags
+          stopIServ hsc_env
+#else
+withCleanupSession action = do
+  df <- getSessionDynFlags
+  GHC.defaultCleanupHandler df action
+#endif

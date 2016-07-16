@@ -1,5 +1,6 @@
 module Language.Haskell.GhcMod.LightGhc where
 
+import Control.Monad
 import Control.Monad.Reader (runReaderT)
 import Data.IORef
 
@@ -14,35 +15,46 @@ import HscTypes
 import Language.Haskell.GhcMod.Types
 import Language.Haskell.GhcMod.Monad.Types
 import Language.Haskell.GhcMod.DynFlags
+import qualified Language.Haskell.GhcMod.Gap as Gap
 
-withLightHscEnv :: forall m a. IOish m
-    => [GHCOption] -> (HscEnv -> m a) -> m a
-withLightHscEnv opts action = gbracket initEnv teardownEnv action
- where
-   teardownEnv :: HscEnv -> m ()
-   teardownEnv env = liftIO $ do
-       let dflags = hsc_dflags env
-       cleanTempFiles dflags
-       cleanTempDirs dflags
-
-   initEnv :: m HscEnv
-   initEnv = liftIO $ do
+-- We have to be more careful about tearing down 'HscEnv's since GHC 8 added an
+-- out of process GHCI server which has to be shutdown.
+newLightEnv :: IOish m => (DynFlags -> LightGhc DynFlags) -> m HscEnv
+newLightEnv mdf = do
+  df <- liftIO $ do
      initStaticOpts
      settings <- initSysTools (Just libdir)
-     dflags  <- initDynFlags (defaultDynFlags settings)
-     env <- newHscEnv dflags
-     dflags' <- runLightGhc env $ do
+     initDynFlags $ defaultDynFlags settings
+
+  hsc_env <- liftIO $ newHscEnv df
+  df' <- runLightGhc hsc_env $ mdf df
+  return $ hsc_env {
+      hsc_dflags = df',
+      hsc_IC = (hsc_IC hsc_env) { ic_dflags = df' }
+    }
+
+teardownLightEnv :: MonadIO m => HscEnv -> m ()
+teardownLightEnv env = runLightGhc env $ do
+  Gap.withCleanupSession $ return ()
+
+withLightHscEnv'
+    :: IOish m => (DynFlags -> LightGhc DynFlags) -> (HscEnv -> m a) -> m a
+withLightHscEnv' mdf action = gbracket (newLightEnv mdf) teardownLightEnv action
+
+withLightHscEnv :: IOish m => [GHCOption] -> (HscEnv -> m a) -> m a
+withLightHscEnv opts = withLightHscEnv' (f <=< liftIO . newHscEnv)
+ where
+   f env = runLightGhc env $ do
          -- HomeModuleGraph and probably all other clients get into all sorts of
          -- trouble if the package state isn't initialized here
          _ <- setSessionDynFlags =<< addCmdOpts opts =<< getSessionDynFlags
          getSessionDynFlags
-     newHscEnv dflags'
 
-runLightGhc :: HscEnv -> LightGhc a -> IO a
-runLightGhc env action = do
+runLightGhc :: MonadIO m => HscEnv -> LightGhc a -> m a
+runLightGhc env action = liftIO $ do
   renv <- newIORef env
   flip runReaderT renv $ unLightGhc action
 
-runLightGhc' :: IORef HscEnv -> LightGhc a -> IO a
-runLightGhc' renv action = do
+runLightGhc' :: MonadIO m => IORef HscEnv -> LightGhc a -> m a
+runLightGhc' renv action = liftIO $ do
   flip runReaderT renv $ unLightGhc action
