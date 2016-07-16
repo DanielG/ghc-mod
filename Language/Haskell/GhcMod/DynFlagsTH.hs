@@ -17,6 +17,7 @@
 {-# LANGUAGE CPP, TemplateHaskell #-}
 module Language.Haskell.GhcMod.DynFlagsTH where
 
+import Language.Haskell.TH
 import Language.Haskell.TH.Syntax
 import Control.Applicative
 import Data.Maybe
@@ -46,19 +47,22 @@ deriveEqDynFlags qds = do
 
  where
    eq :: Name -> Name -> (Name, Strict, Type) -> Maybe (Q Exp)
-   eq a b (fn@(Name (OccName fon) _), _, ft)
+   eq a b (fun@(Name (OccName fon) _), _, ft)
        | not (isUneqable || isIgnored) = Just expr
        | otherwise = Nothing
     where
        isUneqable = everything (||) (mkQ False hasUnEqable) ft
 
-       hasUnEqable ArrowT = True
+       hasUnEqable (AppT (ConT (Name (OccName on) _)) _)
+           | any (==on) ignoredConstructorNames = True
        hasUnEqable (ConT (Name (OccName on) _))
            | any (==on) ignoredTypeNames = True
            | any (==on) ignoredTypeOccNames = True
        hasUnEqable _ = False
 
        isIgnored = fon `elem` ignoredNames
+
+       ignoredConstructorNames = [ "IORef" ]
 
        ignoredNames = [ "pkgDatabase" -- 7.8
 #if __GLASGOW_HASKELL__ <= 706
@@ -75,52 +79,66 @@ deriveEqDynFlags qds = do
            ]
        ignoredTypeOccNames = [ "OnOff" ]
 
-       fa = AppE (VarE fn) (VarE a)
-       fb = AppE (VarE fn) (VarE b)
+       fa = AppE (VarE fun) (VarE a)
+       fb = AppE (VarE fun) (VarE b)
        expr =
          case fon of
            "rtsOptsEnabled" -> do
-               eqfn <- [| let eqfn RtsOptsNone RtsOptsNone = True
-                              eqfn RtsOptsSafeOnly RtsOptsSafeOnly = True
-                              eqfn RtsOptsAll RtsOptsAll = True
-                              eqfn _ _ = False
-                          in eqfn
-                       |]
-               return $ AppE (AppE eqfn fa) fb
+               let eqfn = [| let fn RtsOptsNone RtsOptsNone = True
+                                 fn RtsOptsSafeOnly RtsOptsSafeOnly = True
+                                 fn RtsOptsAll RtsOptsAll = True
+                                 fn _ _ = False
+                             in fn
+                          |]
+               [e| $(eqfn) $(return fa) $(return fb) |]
+
+           "extraPkgConfs" -> do
+               let eqfn = [| let fn a' b' = and (zipWith eqpr (a' []) (b' []))
+                                        && length (a' []) == length (b' [])
+                                 eqpr GlobalPkgConf GlobalPkgConf = True
+                                 eqpr UserPkgConf UserPkgConf = True
+                                 eqpr (PkgConfFile pa) (PkgConfFile pb) = pa == pb
+                                 eqpr _ _ = False
+                             in fn
+                          |]
+               [e| $(eqfn) $(return fa) $(return fb) |]
 
 #if __GLASGOW_HASKELL__ >= 710 && __GLASGOW_HASKELL__ < 800
            "sigOf" -> do
-               eqfn <- [| let eqfn NotSigOf NotSigOf = True
-                              eqfn (SigOf a') (SigOf b') = a' == b'
-                              eqfn (SigOfMap a') (SigOfMap b') = a' == b'
-                              eqfn _ _ = False
-                          in eqfn
-                       |]
-               return $ AppE (AppE eqfn fa) fb
+               let eqfn = [| let fn NotSigOf NotSigOf = True
+                                 fn (SigOf a') (SigOf b') = a' == b'
+                                 fn (SigOfMap a') (SigOfMap b') = a' == b'
+                                 fn _ _ = False
+                             in fn
+                          |]
+               [e| $(eqfn) $(return fa) $(return fb) |]
 #endif
 
 #if __GLASGOW_HASKELL <= 706
            "profAuto" -> do
-               eqfn <- [| let eqfn NoProfAuto NoProfAuto = True
-                              eqfn ProfAutoAll ProfAutoAll = True
-                              eqfn ProfAutoTop ProfAutoTop = True
-                              eqfn ProfAutoExports ProfAutoExports = True
-                              eqfn ProfAutoCalls ProfAutoCalls = True
-                              eqfn _ _ = False
-                          in eqfn
-                       |]
-               return $ AppE (AppE eqfn fa) fb
+               let eqfn = [| let fn NoProfAuto NoProfAuto = True
+                                 fn ProfAutoAll ProfAutoAll = True
+                                 fn ProfAutoTop ProfAutoTop = True
+                                 fn ProfAutoExports ProfAutoExports = True
+                                 fn ProfAutoCalls ProfAutoCalls = True
+                                 fn _ _ = False
+                             in fn
+                          |]
+               [e| $(eqfn) $(return fa) $(return fb) |]
 #endif
 
 #if __GLASGOW_HASKELL__ >= 706
            "language" -> do
-               eqfn <- [| let eqfn (Just Haskell98) (Just Haskell98) = True
-                              eqfn (Just Haskell2010) (Just Haskell2010) = True
-                              eqfn _ _ = False
-                          in eqfn
-                       |]
-               return $ AppE (AppE eqfn fa) fb
+               let eqfn = [| let fn (Just Haskell98) (Just Haskell98) = True
+                                 fn (Just Haskell2010) (Just Haskell2010) = True
+                                 fn Nothing Nothing = True
+                                 fn _ _ = False
+                             in fn
+                          |]
+               [e| $(eqfn) $(return fa) $(return fb) |]
 #endif
 
            _ ->
-               return $ InfixE (Just fa) (VarE '(==)) (Just fb)
+               [e| $(return fa) == $(return fb)  |]
+
+--       expr' = [e| trace (if $(expr) == True then "" else show ($(litE $ StringL fon), $(expr))) $(expr) |]
