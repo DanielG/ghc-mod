@@ -675,6 +675,7 @@ everythingStagedWithContext stage s0 f z q x
 tdflags :: DynFlags
 tdflags = unsafeGlobalDynFlags
 
+ghcQualify :: PrintUnqualified
 ghcQualify = reallyAlwaysQualify
 
 ghcIdeclHiding :: GHC.ImportDecl GHC.RdrName -> Maybe (Bool, SrcLoc.Located [GHC.LIE GHC.RdrName])
@@ -685,6 +686,7 @@ ghcIdeclHiding = GHC.ideclHiding
 tdflags :: DynFlags
 tdflags = tracingDynFlags
 
+ghcQualify :: PrintUnqualified
 ghcQualify = alwaysQualify
 
 -- In ghc-7.6.3, we have
