@@ -691,19 +691,19 @@ withCleanupSession action = do
 #endif
 
 -- | Things for Language.Haskell.GhcMod.ImportedFrom
-#if __GLASGOW_HASKELL__ >= 708
 
+#if __GLASGOW_HASKELL__ >= 710
 ghcQualify :: PrintUnqualified
 ghcQualify = reallyAlwaysQualify
-
-ghcIdeclHiding :: GHC.ImportDecl GHC.RdrName -> Maybe (Bool, SrcLoc.Located [GHC.LIE GHC.RdrName])
-ghcIdeclHiding = GHC.ideclHiding
-
 #else
-
 ghcQualify :: PrintUnqualified
 ghcQualify = alwaysQualify
+#endif
 
+#if __GLASGOW_HASKELL__ >= 708
+ghcIdeclHiding :: GHC.ImportDecl GHC.RdrName -> Maybe (Bool, SrcLoc.Located [GHC.LIE GHC.RdrName])
+ghcIdeclHiding = GHC.ideclHiding
+#else
 -- In ghc-7.6.3, we have
 --     ideclHiding :: Maybe (Bool, [LIE name])
 -- so we have to use noLoc to get a SrcLoc.Located type in the second part of the tuple.
