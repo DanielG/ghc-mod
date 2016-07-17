@@ -85,7 +85,7 @@ initSession opts mdf = do
          df <- liftIO $ hsc_dflags <$> readIORef hsc_env_ref
          changed <-
              withLightHscEnv' (initDF crdl) $ \hsc_env ->
-               return $ not $ (hsc_dflags hsc_env) `eqDynFlags` df
+               return $ not $ hsc_dflags hsc_env `eqDynFlags` df
 
          if changed
             then do
