@@ -427,7 +427,7 @@ getVisibleExports getHaddockInterfaces p = do
     -- Copied from http://hackage.haskell.org/package/haddock-api-2.16.1/docs/src/Haddock-InterfaceFile.html#nameCacheFromGhc
     -- but for a general monad m instead of the specific monad Ghc.
     ------------------------------------------------------------------------------------------------------------------------
-    nameCacheFromGhc :: forall m. (GhcMonad m, MonadIO m, GmOut m, GmLog m) => Haddock.NameCacheAccessor m
+    nameCacheFromGhc :: forall m. (GhcMonad m, MonadIO m) => Haddock.NameCacheAccessor m
     nameCacheFromGhc = ( read_from_session , write_to_session )
       where
         read_from_session = do
