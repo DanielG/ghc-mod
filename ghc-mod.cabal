@@ -94,6 +94,8 @@ Extra-Source-Files:     ChangeLog
                         test/data/stack-project/app/*.hs
                         test/data/stack-project/src/*.hs
                         test/data/stack-project/test/*.hs
+                        bench/data/simple-cabal/simple-cabal.cabal
+                        bench/data/simple-cabal/*.hs
 
 Custom-Setup
   Setup-Depends:         base
@@ -293,6 +295,33 @@ Test-Suite spec
 
   Build-Depends:        hspec >= 2.0.0
   X-Build-Depends-Like: CLibName
+
+Benchmark criterion
+  Type:                 exitcode-stdio-1.0
+  Default-Language:     Haskell2010
+  Default-Extensions:   ScopedTypeVariables, RecordWildCards, NamedFieldPuns,
+                        ConstraintKinds, FlexibleContexts,
+                        DataKinds, KindSignatures, TypeOperators, ViewPatterns
+  HS-Source-Dirs:       bench, test
+  Main-Is:              Bench.hs
+  Build-Depends:        base
+                      , directory < 1.3
+                      , filepath  < 1.5
+                      , pretty    < 1.2
+                      , process   < 1.5
+                      , split     < 0.3
+                      , mtl       < 2.3 && >= 2.0
+                      , ghc       < 8.1
+
+                      , monad-journal     < 0.8 && >= 0.4
+                      , fclabels          == 2.0.*
+                      , temporary         < 1.3
+
+                      , hspec >= 2.0.0
+
+                      , criterion
+
+                      , ghc-mod
 
 Source-Repository head
   Type:                 git
