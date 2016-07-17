@@ -244,11 +244,11 @@ qualifiedName targetModuleName lineNr colNr symbol importList = do
         dflags <- GHC.getSessionDynFlags
 
         setContext (map (IIDecl . simpleImportDecl . mkModuleName) (targetModuleName:importList))
-           `gcatch` (\(s  :: SourceError)    -> do gmLog GmDebug "" $ strDoc $ "qualifiedName: setContext failed with a SourceError, trying to continue anyway..." ++ show s
+           `gcatch` (\(s  :: SourceError)    -> do gmLog GmDebug "qualifiedName" $ strDoc $ "qualifiedName: setContext failed with a SourceError, trying to continue anyway..." ++ show s
                                                    setContext $ map (IIDecl . simpleImportDecl . mkModuleName) importList)
-           `gcatch` (\(g  :: GhcApiError)    -> do gmLog GmDebug "" $ strDoc $ "qualifiedName: setContext failed with a GhcApiError, trying to continue anyway..." ++ show g
+           `gcatch` (\(g  :: GhcApiError)    -> do gmLog GmDebug "qualifiedName" $ strDoc $ "qualifiedName: setContext failed with a GhcApiError, trying to continue anyway..." ++ show g
                                                    setContext $ map (IIDecl . simpleImportDecl . mkModuleName) importList)
-           `gcatch` (\(se :: SomeException)  -> do gmLog GmDebug "" $ strDoc $ "qualifiedName: setContext failed with a SomeException, trying to continue anyway..." ++ show se
+           `gcatch` (\(se :: SomeException)  -> do gmLog GmDebug "qualifiedName" $ strDoc $ "qualifiedName: setContext failed with a SomeException, trying to continue anyway..." ++ show se
                                                    setContext $ map (IIDecl . simpleImportDecl . mkModuleName) importList)
 
         modSummary <- getModSummary $ mkModuleName targetModuleName :: m ModSummary
@@ -304,7 +304,7 @@ ghcPkgFindModule mod = do
     -- _ghcPkgFindModule :: String -> IO (Maybe String)
     _ghcPkgFindModule rp m = do
         let opts = ["find-module", m, "--simple-output"] ++ ["--global", "--user"] ++ optsForGhcPkg []
-        gmLog GmDebug "" $ strDoc $ "ghc-pkg " ++ show opts
+        gmLog GmDebug "_ghcPkgFindModule" $ strDoc $ "ghc-pkg " ++ show opts
 
         x <- runCmd rp "ghc-pkg" opts
 
@@ -348,7 +348,7 @@ ghcPkgHaddockUrl
     -> String
     -> m (Maybe String)
 ghcPkgHaddockUrl ghcPkg readProc pkgDbStack p = do
-    gmLog GmDebug "" $ strDoc $ "ghcPkgHaddockUrl: " ++ p
+    gmLog GmDebug "ghcPkgHaddockUrl" $ strDoc p
 
     let p' = case splitOn "@" p of
                 [p0, _] -> p0
@@ -380,7 +380,7 @@ getVisibleExports
     -> String
     -> m (Maybe (M.Map String [String]))
 getVisibleExports getHaddockInterfaces p = do
-    gmLog GmDebug "" $ strDoc $ "getVisibleExports: " ++ p
+    gmLog GmDebug "getVisibleExports" $ strDoc p
 
     let p' = case splitOn "@" p of
                 [p0, _] -> p0
@@ -544,7 +544,7 @@ refineVisibleExports getHaddockInterfaces exports = mapM f exports
         --                                    Just ve -> M.lookup thisModuleName ve
         --                                    Nothing -> Nothing)
         let visibleExportsMap = fromMaybe (error $ "visible exports map is Nothing") mVisibleExportsMap
-        gmLog GmDebug "" $ strDoc $ "visibleExportsMap: " ++ show visibleExportsMap
+        gmLog GmDebug "visibleExportsMap" $ strDoc $ show visibleExportsMap
 
         let thisModVisibleExports0 = M.lookup thisModuleName visibleExportsMap
 
@@ -560,7 +560,7 @@ refineVisibleExports getHaddockInterfaces exports = mapM f exports
 
         let qexports' = filter (hasPostfixMatch thisModVisibleExports) qexports
 
-        gmLog GmDebug "" $ strDoc $ show (qexports, qexports')
+        gmLog GmDebug "visibleExportsMap" $ strDoc $ show (qexports, qexports')
 
         return $ mexports { qualifiedExports = qexports' }
 
@@ -589,18 +589,18 @@ guessHaddockUrl
     -> [GhcPkgDb]
     -> m (Either String String)
 guessHaddockUrl modSum targetFile targetModule symbol lineNr colNr ghcPkg readProc pkgDbStack = do
-    gmLog GmDebug "" $ strDoc $ "guessHaddockUrl: targetFile: "   ++ targetFile
-    gmLog GmDebug "" $ strDoc $ "guessHaddockUrl: targetModule: " ++ targetModule
-    gmLog GmDebug "" $ strDoc $ "guessHaddockUrl: symbol: "       ++ show symbol
-    gmLog GmDebug "" $ strDoc $ "guessHaddockUrl: line nr: "      ++ show lineNr
-    gmLog GmDebug "" $ strDoc $ "guessHaddockUrl: col nr: "       ++ show colNr
+    gmLog GmDebug "guessHaddockUrl" $ strDoc $ "targetFile: "   ++ targetFile
+    gmLog GmDebug "guessHaddockUrl" $ strDoc $ "targetModule: " ++ targetModule
+    gmLog GmDebug "guessHaddockUrl" $ strDoc $ "symbol: "       ++ show symbol
+    gmLog GmDebug "guessHaddockUrl" $ strDoc $ "line nr: "      ++ show lineNr
+    gmLog GmDebug "guessHaddockUrl" $ strDoc $ "col nr: "       ++ show colNr
 
     dflags <- GHC.getSessionDynFlags
 
     let textualImports  = ms_textual_imps modSum
         importDecls0 = map (toImportDecl dflags) textualImports
 
-    gmLog GmDebug "" $ strDoc $ "guessHaddockUrl: haskellModuleNames0: " ++ show importDecls0
+    gmLog GmDebug "guessHaddockUrl" $ strDoc $ "haskellModuleNames0: " ++ show importDecls0
 
     -- If symbol is something like DM.lookup, then restrict importDecls0 to the
     -- one that has modImportedAs == Just "DM".
@@ -612,14 +612,14 @@ guessHaddockUrl modSum targetFile targetModule symbol lineNr colNr ghcPkg readPr
                                 else importDecls1
 
     qnames <- filter (not . (' ' `elem`)) <$> qualifiedName targetModule lineNr colNr symbol (map modName importDecls2) :: m [String]
-    gmLog GmDebug "" $ strDoc $ "guessHaddockUrl: qnames: " ++ show qnames
+    gmLog GmDebug "guessHaddockUrl" $ strDoc $ "qnames: " ++ show qnames
 
     let symbolToUse :: String
         symbolToUse = case qnames of
                         (qq:_) -> qq -- We got a qualified name, with qualified printing. Qualified!
                         []     -> error "qnames is empty."
 
-    gmLog GmDebug "" $ strDoc $ "guessHaddockUrl: symbolToUse: " ++ symbolToUse
+    gmLog GmDebug "guessHaddockUrl" $ strDoc $ "symbolToUse: " ++ symbolToUse
 
     -- Sometimes we have to load an extra module (using setContext) otherwise
     -- we can't look up the global reader environment without causing a GHC panic.
@@ -644,8 +644,8 @@ guessHaddockUrl modSum targetFile targetModule symbol lineNr colNr ghcPkg readPr
 
         importDecls3 = importDecls2 ++ extraImportDecls
 
-    gmLog GmDebug "" $ strDoc $ "guessHaddockUrl: parsedPackagesAndQualNames: " ++ show parsedPackagesAndQualNames
-    gmLog GmDebug "" $ strDoc $ "guessHaddockUrl: extraImportDecls: " ++ show extraImportDecls
+    gmLog GmDebug "guessHaddockUrl" $ strDoc $ "parsedPackagesAndQualNames: " ++ show parsedPackagesAndQualNames
+    gmLog GmDebug "guessHaddockUrl" $ strDoc $ "extraImportDecls: " ++ show extraImportDecls
 
     exports0 <- mapM (getModuleExports ghcPkg readProc pkgDbStack) importDecls3 :: m [Maybe ([String], String)]
 
@@ -678,12 +678,12 @@ guessHaddockUrl modSum targetFile targetModule symbol lineNr colNr ghcPkg readPr
                                         then MySymbolUserQualified symbol
                                         else MySymbolSysQualified symbolToUse
 
-    gmLog GmDebug "" $ strDoc $ "guessHaddockUrl: mySymbol: " ++ show mySymbol
+    gmLog GmDebug "guessHaddockUrl" $ strDoc $ "mySymbol: " ++ show mySymbol
 
     let pprModuleExports :: ModuleExports -> String
         pprModuleExports me = "(" ++ mName me ++ ", " ++ show (mInfo me) ++ ", " ++ unwords (map show $ qualifiedExports me) ++ ")"
 
-        showDebugStage stageNr stage = forM_ stage $ \x -> gmLog GmDebug "" $ strDoc $ "guessHaddockUrl: " ++ stageNr ++ " " ++ pprModuleExports x
+        showDebugStage stageNr stage = forM_ stage $ \x -> gmLog GmDebug "guessHaddockUrl" $ strDoc $ stageNr ++ " " ++ pprModuleExports x
 
     showDebugStage "stage0" stage0
 
@@ -704,7 +704,7 @@ guessHaddockUrl modSum targetFile targetModule symbol lineNr colNr ghcPkg readPr
 
     let lastMatch  = Safe.headMay $ catMaybes [getLastMatch stage5, getLastMatch stage4]
 
-    gmLog GmDebug "" $ strDoc $ show $ "guessHaddockUrl: lastMatch: " ++ show lastMatch
+    gmLog GmDebug "guessHaddockUrl" $ strDoc $ show $ "lastMatch: " ++ show lastMatch
 
     let lastMatchModule :: String
         lastMatchModule = case mName <$> lastMatch of
@@ -720,9 +720,9 @@ guessHaddockUrl modSum targetFile targetModule symbol lineNr colNr ghcPkg readPr
 
     haddock <- (maybe (return Nothing) getHaddockUrl . Just) lastMatchPackageName
 
-    gmLog GmDebug "" $ strDoc $ "guessHaddockUrl: lastMatchModule:      " ++ lastMatchModule
-    gmLog GmDebug "" $ strDoc $ "guessHaddockUrl: lastMatchPackageName: " ++ lastMatchPackageName
-    gmLog GmDebug "" $ strDoc $ "guessHaddockUrl: haddock:              " ++ show haddock
+    gmLog GmDebug "guessHaddockUrl" $ strDoc $ "lastMatchModule:      " ++ lastMatchModule
+    gmLog GmDebug "guessHaddockUrl" $ strDoc $ "lastMatchPackageName: " ++ lastMatchPackageName
+    gmLog GmDebug "guessHaddockUrl" $ strDoc $ "haddock:              " ++ show haddock
 
     haddock <- return $ fromMaybe (error "haddock is Nothing :(") haddock
 
