@@ -630,17 +630,17 @@ guessHaddockUrl modSum targetFile targetModule symbol lineNr colNr ghcPkg readPr
 
         extraImportDecls :: [NiceImportDecl]
         extraImportDecls = case Safe.headMay parsedPackagesAndQualNames of
-                        Just (Right (_, x)) -> case moduleOfQualifiedName x of Just x' -> [ NiceImportDecl
-                                                                                                { modName         = x'
-                                                                                                , modQualifier    = Nothing
-                                                                                                , modIsImplicit   = False
-                                                                                                , modHiding       = []
-                                                                                                , modImportedAs   = Nothing
-                                                                                                , modSpecifically = []
-                                                                                                }
-                                                                                          ]
-                                                                               Nothing -> []
-                        _                   -> []
+            Just (Right (_, x)) -> case moduleOfQualifiedName x of
+                                      Just x' -> [NiceImportDecl
+                                                   { modName         = x'
+                                                   , modQualifier    = Nothing
+                                                   , modIsImplicit   = False
+                                                   , modHiding       = []
+                                                   , modImportedAs   = Nothing
+                                                   , modSpecifically = []
+                                                   }]
+                                      Nothing -> []
+            _                   -> []
 
         importDecls3 = importDecls2 ++ extraImportDecls
 
@@ -654,7 +654,8 @@ guessHaddockUrl modSum targetFile targetModule symbol lineNr colNr ghcPkg readPr
     let successes :: [(NiceImportDecl, Maybe ([String], String))]
         successes = filter (isJust . snd) (zip importDecls3 exports0)
 
-        toMaybe :: (NiceImportDecl, Maybe ([FullyQualifiedName], String)) -> Maybe (NiceImportDecl, ([FullyQualifiedName], String))
+        toMaybe :: (NiceImportDecl, Maybe ([FullyQualifiedName], String))
+                -> Maybe (NiceImportDecl, ([FullyQualifiedName], String))
         toMaybe (h, Just x)  = Just (h, x)
         toMaybe (_, Nothing) = Nothing
 
