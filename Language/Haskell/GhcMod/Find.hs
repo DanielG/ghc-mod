@@ -135,7 +135,7 @@ loadSymbolDb = do
 dumpSymbol :: IOish m => GhcModT m ()
 dumpSymbol = do
   ts <- liftIO getCurrentModTime
-  st <- runGmPkgGhc $ (liftIO . getGlobalSymbolTable) =<< G.getSession
+  st <- runGmPkgGhc $ getGlobalSymbolTable
   liftIO . LBS.putStr $ encode SymbolDb {
       sdTable = st
     , sdTimestamp = ts
@@ -148,19 +148,20 @@ isOlderThan tCache files =
   any (tCache <=) $ map tfTime files -- including equal just in case
 
 -- | Browsing all functions in all system modules.
-getGlobalSymbolTable :: HscEnv -> IO (Map Symbol (Set ModuleNameBS))
-getGlobalSymbolTable hsc_env =
-  foldM (extend hsc_env) M.empty $ listVisibleModules $ hsc_dflags hsc_env
+getGlobalSymbolTable :: (G.GhcMonad m, MonadIO m)
+                     => m (Map Symbol (Set ModuleNameBS))
+getGlobalSymbolTable =
+  foldM extend M.empty =<< (listVisibleModules <$> G.getSessionDynFlags)
 
-extend :: HscEnv
-       -> Map Symbol (Set ModuleNameBS)
+extend :: (G.GhcMonad m, MonadIO m)
+       => Map Symbol (Set ModuleNameBS)
        -> Module
-       -> IO (Map Symbol (Set ModuleNameBS))
-extend hsc_env mm mdl = do
-  eps <- readIORef $ hsc_EPS hsc_env
-  modinfo <- unsafeInterleaveIO $ runLightGhc hsc_env $ do
+       -> m (Map Symbol (Set ModuleNameBS))
+extend mm mdl = do
+  hsc_env <- G.getSession
+  eps <- liftIO $ readIORef $ hsc_EPS hsc_env
+  modinfo <- liftIO $ unsafeInterleaveIO $ runLightGhc hsc_env $ do
     G.getModuleInfo mdl <* liftIO (writeIORef (hsc_EPS hsc_env) eps)
-
   return $ M.unionWith S.union mm $ extractBindings modinfo mdl
 
 extractBindings :: Maybe G.ModuleInfo

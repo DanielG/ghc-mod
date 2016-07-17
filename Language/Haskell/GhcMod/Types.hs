@@ -188,7 +188,6 @@ instance Monoid GhcModLog where
         GhcModLog (ml' `mplus` ml) (vd `mappend` vd') (ls `mappend` ls')
 
 data GmGhcSession = GmGhcSession {
-      gmgsOptions :: ![GHCOption],
       gmgsSession :: !(IORef HscEnv)
     }
 

@@ -27,6 +27,7 @@ import GHC.LanguageExtensions
 import GHC.Paths (libdir)
 import SysTools
 import DynFlags
+import HscTypes
 
 import Language.Haskell.GhcMod.DynFlags
 import Language.Haskell.GhcMod.Monad.Types
@@ -69,39 +70,44 @@ runGmPkgGhc action = do
     withLightHscEnv pkgOpts $ \env -> liftIO $ runLightGhc env action
 
 initSession :: IOish m
-            => [GHCOption] -> (forall gm. GhcMonad gm => DynFlags -> gm DynFlags) -> GhcModT m ()
+            => [GHCOption]
+            -> (forall gm. GhcMonad gm => DynFlags -> gm DynFlags)
+            -> GhcModT m ()
 initSession opts mdf = do
    s <- gmsGet
    case gmGhcSession s of
      Nothing -> do
          gmLog GmDebug "initSession" $ text "Session not initialized, creating new one"
          putNewSession s
-     Just GmGhcSession {..} -> do
-         gmLog GmDebug "initSession" $ text "Flags changed, creating new session"
+     Just (GmGhcSession hsc_env_ref) -> do
          crdl <- cradle
-         changed <- liftIO $ runLightGhc' gmgsSession $ do
-           df <- getSessionDynFlags
-           ndf <- initDF crdl
-           return $ ndf `eqDynFlags` df
+
+         df <- liftIO $ hsc_dflags <$> readIORef hsc_env_ref
+         changed <-
+             withLightHscEnv' (initDF crdl) $ \hsc_env ->
+               return $ not $ (hsc_dflags hsc_env) `eqDynFlags` df
 
          if changed
-            then putNewSession s
-            else return ()
+            then do
+              gmLog GmDebug "initSession" $ text "Flags changed, creating new session"
+              teardownSession hsc_env_ref
+              putNewSession s
+            else
+              gmLog GmDebug "initSession" $ text "Session already initialized"
  where
-   initDF Cradle { cradleTempDir } = do
-       let setDf df = setTmpDir cradleTempDir <$> (mdf =<< addCmdOpts opts df)
-       _ <- setSessionDynFlags =<< setDf =<< getSessionDynFlags
-       getSessionDynFlags
+   initDF Cradle { cradleTempDir } df =
+       setTmpDir cradleTempDir <$> (mdf =<< addCmdOpts opts df)
 
+   teardownSession hsc_env_ref = do
+     hsc_env <- liftIO $ readIORef hsc_env_ref
+     teardownLightEnv hsc_env
+
+   putNewSession :: IOish m => GhcModState -> GhcModT m ()
    putNewSession s = do
-     rghc <- (liftIO . newIORef =<< newSession)
-     gmsPut s { gmGhcSession = Just $ GmGhcSession opts rghc }
-
-   newSession = do
      crdl <- cradle
-     liftIO $ runGhc (Just libdir) $ do
-       _ <- initDF crdl
-       getSession
+     nhsc_env_ref <- liftIO . newIORef =<< newLightEnv (initDF crdl)
+     runLightGhc' nhsc_env_ref $ setSessionDynFlags =<< getSessionDynFlags
+     gmsPut s { gmGhcSession = Just $ GmGhcSession nhsc_env_ref }
 
 
 -- | Drop the currently active GHC session, the next that requires a GHC session
@@ -110,7 +116,7 @@ dropSession :: IOish m => GhcModT m ()
 dropSession = do
   s <- gmsGet
   case gmGhcSession s of
-    Just (GmGhcSession _opts ref) -> do
+    Just (GmGhcSession ref) -> do
       -- TODO: This is still not enough, there seem to still be references to
       -- GHC's state around afterwards.
       liftIO $ writeIORef ref (error "HscEnv: session was dropped")

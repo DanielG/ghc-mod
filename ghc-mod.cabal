@@ -305,4 +305,4 @@ Test-Suite spec
 
 Source-Repository head
   Type:                 git
-  Location:             https://github.com/kazu-yamamoto/ghc-mod.git
+  Location:             https://github.com/DanielG/ghc-mod.git

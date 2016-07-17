@@ -48,12 +48,12 @@ type GhcModT m = GmT (GmOutT m)
 newtype GmOutT m a = GmOutT {
       unGmOutT :: ReaderT GhcModOut m a
     } deriving ( Functor
-             , Applicative
-             , Alternative
-             , Monad
-             , MonadPlus
-             , MonadTrans
-             )
+               , Applicative
+               , Alternative
+               , Monad
+               , MonadPlus
+               , MonadTrans
+               )
 
 newtype GmT m a = GmT {
       unGmT :: StateT GhcModState

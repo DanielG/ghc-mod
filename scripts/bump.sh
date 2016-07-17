@@ -33,7 +33,7 @@ then
 fi
 
 git checkout release
-#git merge master
+#git merge release-VER branch into 'release'
 git merge -s recursive -X theirs release-$VERSION
 
 ( tac ChangeLog; echo "\n$(date '+%Y-%m-%d') v$VERSION" ) | tac \
