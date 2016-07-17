@@ -426,11 +426,6 @@ getVisibleExports getHaddockInterfaces p = do
            ref <- GhcMonad.withSession (return . hsc_NC)
            liftIO $ writeIORef ref nc'
 
-filterMatchingQualifiedImport :: String -> [NiceImportDecl] -> [NiceImportDecl]
-filterMatchingQualifiedImport symbol hmodules =
-    case moduleOfQualifiedName symbol of Nothing    -> []
-                                         asBit@(Just _) -> filter (\z -> asBit == modImportedAs z) hmodules
-
 getModuleExports
     :: forall m. (GhcMonad m, MonadIO m, GmOut m, GmLog m)
     => FilePath
@@ -742,10 +737,17 @@ guessHaddockUrl modSum targetFile targetModule symbol lineNr colNr ghcPkg readPr
   where
     -- Convert a module name string, e.g. @Data.List@ to @Data-List.html@.
     moduleNameToHtmlFile :: String -> String
-    moduleNameToHtmlFile m =  map f m ++ ".html"
-        where f :: Char -> Char
-              f '.' = '-'
-              f c   = c
+    moduleNameToHtmlFile m = map f m ++ ".html"
+      where
+        f :: Char -> Char
+        f '.' = '-'
+        f c   = c
+
+    filterMatchingQualifiedImport :: String -> [NiceImportDecl] -> [NiceImportDecl]
+    filterMatchingQualifiedImport symbol hmodules
+        = case moduleOfQualifiedName symbol of
+            Nothing        -> []
+            asBit@(Just _) -> filter (\z -> asBit == modImportedAs z) hmodules
 
 -- | Look up Haddock docs for a symbol.
 importedFrom
