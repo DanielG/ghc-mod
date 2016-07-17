@@ -164,8 +164,8 @@ parsePackageAndQualNameWithHash = do
 --                  , modSpecifically = []
 --                  }
 -- ]
-toImportDecl :: SrcLoc.Located (GHC.ImportDecl GHC.RdrName) -> NiceImportDecl
-toImportDecl idecl = NiceImportDecl
+toImportDecl :: GHC.DynFlags -> SrcLoc.Located (GHC.ImportDecl GHC.RdrName) -> NiceImportDecl
+toImportDecl dflags idecl = NiceImportDecl
                             { modName           = name
                             , modQualifier      = qualifier
                             , modIsImplicit     = isImplicit
@@ -175,15 +175,15 @@ toImportDecl idecl = NiceImportDecl
                             }
   where
     idecl'       = SrcLoc.unLoc idecl
-    name         = showSDoc tdflags (ppr $ GHC.ideclName idecl')
+    name         = showSDoc dflags (ppr $ GHC.ideclName idecl')
     isImplicit   = GHC.ideclImplicit idecl'
     qualifier    = unpackFS <$> GHC.ideclPkgQual idecl'
     hiding       = (catMaybes . parseHiding . ghcIdeclHiding) idecl'
-    importedAs   = (showSDoc tdflags . ppr) <$> ideclAs idecl'
+    importedAs   = (showSDoc dflags . ppr) <$> ideclAs idecl'
     specifically = (parseSpecifically . ghcIdeclHiding) idecl'
 
     grabNames :: GHC.Located [GHC.LIE GHC.RdrName] -> [String]
-    grabNames loc = map (showSDoc tdflags . ppr) names
+    grabNames loc = map (showSDoc dflags . ppr) names
       where names :: [RdrName]
             names = map (ieName . SrcLoc.unLoc) $ SrcLoc.unLoc loc
             -- FIXME We are throwing away location info by using unLoc each time?
@@ -252,6 +252,8 @@ qualifiedName
     :: forall m. (GhcMonad m, MonadIO m, GmOut m, GmLog m)
     => String -> Int -> Int -> String -> [String] -> m [String]
 qualifiedName targetModuleName lineNr colNr symbol importList = do
+        dflags <- GHC.getSessionDynFlags
+
         setContext (map (IIDecl . simpleImportDecl . mkModuleName) (targetModuleName:importList))
            `gcatch` (\(s  :: SourceError)    -> do gmLog GmDebug "" $ strDoc $ "qualifiedName: setContext failed with a SourceError, trying to continue anyway..." ++ show s
                                                    setContext $ map (IIDecl . simpleImportDecl . mkModuleName) importList)
@@ -269,9 +271,9 @@ qualifiedName targetModuleName lineNr colNr symbol importList = do
             es = listifySpans tcs (lineNr, colNr) :: [LHsExpr Id]
             ps = listifySpans tcs (lineNr, colNr) :: [LPat Id]
 
-        let bs' = map (showSDocForUser tdflags ghcQualify . ppr) bs
-            es' = map (showSDocForUser tdflags ghcQualify . ppr) es
-            ps' = map (showSDocForUser tdflags ghcQualify . ppr) ps
+        let bs' = map (showSDocForUser dflags ghcQualify . ppr) bs
+            es' = map (showSDocForUser dflags ghcQualify . ppr) es
+            ps' = map (showSDocForUser dflags ghcQualify . ppr) ps
 
         return $ filter (postfixMatch symbol) $ concatMap words $ bs' ++ es' ++ ps'
 
@@ -403,9 +405,13 @@ getVisibleExports getHaddockInterfaces p = do
 
   where
 
-    getVisibleExports' :: forall m. (GhcMonad m, MonadIO m, GmOut m, GmLog m) => FilePath -> m (Maybe (M.Map String [String]))
+    getVisibleExports' :: forall m. (GhcMonad m, MonadIO m, GmOut m, GmLog m)
+                       => FilePath
+                       -> m (Maybe (M.Map String [String]))
     getVisibleExports' ifile = do
         iface <- Haddock.readInterfaceFile nameCacheFromGhc ifile
+
+        dflags <- GHC.getSessionDynFlags
 
         case iface of
             Left _          -> do gmErrStrLn $ "Failed to read the Haddock interface file: " ++ ifile
@@ -414,7 +420,7 @@ getVisibleExports getHaddockInterfaces p = do
                                             ++ "Try something like:\n\n\tcabal install --enable-documentation p"
                                   error "No haddock interfaces file, giving up."
             Right iface'    -> do let m  = map (\ii -> (Haddock.instMod ii, Haddock.instVisibleExports ii)) $ Haddock.ifInstalledIfaces iface' :: [(Module, [Name])]
-                                      m' = map (\(mname, names) -> (showSDoc tdflags $ ppr mname, map (showSDoc tdflags . ppr) names)) m       :: [(String, [String])]
+                                      m' = map (\(mname, names) -> (showSDoc dflags $ ppr mname, map (showSDoc dflags . ppr) names)) m       :: [(String, [String])]
                                   return $ Just $ M.fromList m'
 
     ------------------------------------------------------------------------------------------------------------------------
@@ -456,10 +462,12 @@ getModuleExports ghcPkg readProc pkgDbStack m = do
 
     p <- ghcPkgFindModule $ modName m
 
+    dflags <- GHC.getSessionDynFlags
+
     case (minfo, p) of
         (Nothing, _)            -> return Nothing
         (_, Nothing)            -> return Nothing
-        (Just minfo', Just p')  -> return $ Just (map (showSDocForUser tdflags ghcQualify . ppr) $ modInfoExports minfo', p')
+        (Just minfo', Just p')  -> return $ Just (map (showSDocForUser dflags ghcQualify . ppr) $ modInfoExports minfo', p')
 
 type FullyQualifiedName = String    -- ^ e.g. e.g. "base-4.8.2.0:Data.Foldable.length"
 type StrModuleName      = String    -- ^ e.g. "Data.List"
@@ -610,8 +618,10 @@ guessHaddockUrl modSum targetFile targetModule symbol lineNr colNr ghcPkg readPr
     gmLog GmDebug "" $ strDoc $ "guessHaddockUrl: line nr: "      ++ show lineNr
     gmLog GmDebug "" $ strDoc $ "guessHaddockUrl: col nr: "       ++ show colNr
 
+    dflags <- GHC.getSessionDynFlags
+
     let textualImports  = ms_textual_imps modSum
-        importDecls0 = map toImportDecl textualImports
+        importDecls0 = map (toImportDecl dflags) textualImports
 
     gmLog GmDebug "" $ strDoc $ "guessHaddockUrl: haskellModuleNames0: " ++ show importDecls0
 

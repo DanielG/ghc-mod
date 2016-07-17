@@ -47,7 +47,6 @@ module Language.Haskell.GhcMod.Gap (
   , parseModuleHeader
   , mkErrStyle'
   , everythingStagedWithContext
-  , tdflags
   , ghcQualify
   , ghcIdeclHiding
   ) where
@@ -672,9 +671,6 @@ everythingStagedWithContext stage s0 f z q x
 -- | Things for Language.Haskell.GhcMod.ImportedFrom
 #if __GLASGOW_HASKELL__ >= 708
 
-tdflags :: DynFlags
-tdflags = unsafeGlobalDynFlags
-
 ghcQualify :: PrintUnqualified
 ghcQualify = reallyAlwaysQualify
 
@@ -682,9 +678,6 @@ ghcIdeclHiding :: GHC.ImportDecl GHC.RdrName -> Maybe (Bool, SrcLoc.Located [GHC
 ghcIdeclHiding = GHC.ideclHiding
 
 #else
-
-tdflags :: DynFlags
-tdflags = tracingDynFlags
 
 ghcQualify :: PrintUnqualified
 ghcQualify = alwaysQualify
