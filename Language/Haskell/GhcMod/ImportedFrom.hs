@@ -17,7 +17,6 @@
 
 module Language.Haskell.GhcMod.ImportedFrom (importedFrom) where
 
-import Control.Applicative
 import Control.Exception
 import Control.Monad
 import Data.Char (isAlpha)
@@ -26,12 +25,9 @@ import Data.IORef
 import Data.List
 import Data.List.Split
 import Data.Maybe
-import Data.Typeable()
-import Desugar()
 import Exception (ghandle)
 import FastString
 import GHC
-import GHC.SYB.Utils()
 import HscTypes
 import Language.Haskell.GhcMod
 import Language.Haskell.GhcMod.DynFlags
@@ -44,18 +40,11 @@ import Language.Haskell.GhcMod.Output
 import Language.Haskell.GhcMod.SrcUtils (listifySpans)
 import Outputable
 import System.Directory
-import System.Process
-import System.Environment()
-import System.Exit
 import System.FilePath
-import System.IO.Error
-import TcRnTypes()
 
 import qualified Data.Map as M
 import qualified Documentation.Haddock as Haddock
-import qualified DynFlags()
 import qualified GhcMonad
-import qualified MonadUtils()
 import qualified Safe
 import qualified SrcLoc
 import qualified Text.Parsec as TP
@@ -437,13 +426,6 @@ getVisibleExports getHaddockInterfaces p = do
            ref <- GhcMonad.withSession (return . hsc_NC)
            liftIO $ writeIORef ref nc'
 
--- | Convert a module name string, e.g. @Data.List@ to @Data-List.html@.
-moduleNameToHtmlFile :: String -> String
-moduleNameToHtmlFile m =  map f m ++ ".html"
-    where f :: Char -> Char
-          f '.' = '-'
-          f c   = c
-
 filterMatchingQualifiedImport :: String -> [NiceImportDecl] -> [NiceImportDecl]
 filterMatchingQualifiedImport symbol hmodules =
     case moduleOfQualifiedName symbol of Nothing    -> []
@@ -756,6 +738,14 @@ guessHaddockUrl modSum targetFile targetModule symbol lineNr colNr ghcPkg readPr
     if e then return $ Right $ "file://" ++ f
          else do gmErrStrLn "Please reinstall packages using the flag '--enable-documentation' for 'cabal install.\n"
                  return $ Left $ "Could not find " ++ f
+
+  where
+    -- Convert a module name string, e.g. @Data.List@ to @Data-List.html@.
+    moduleNameToHtmlFile :: String -> String
+    moduleNameToHtmlFile m =  map f m ++ ".html"
+        where f :: Char -> Char
+              f '.' = '-'
+              f c   = c
 
 -- | Look up Haddock docs for a symbol.
 importedFrom
