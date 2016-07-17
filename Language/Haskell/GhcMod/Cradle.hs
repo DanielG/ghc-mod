@@ -101,7 +101,7 @@ cabalCradle cabalProg wdir = do
 stackCradle ::
     (IOish m, GmLog m, GmOut m) => FilePath -> FilePath -> MaybeT m Cradle
 stackCradle stackProg wdir = do
-#if !MIN_VERSION_ghc(7,8,0)
+#if __GLASGOW_HASKELL__ < 708
     -- GHC < 7.8 is not supported by stack
     mzero
 #endif
