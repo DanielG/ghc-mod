@@ -406,13 +406,9 @@ getVisibleExports getHaddockInterfaces p = do
         dflags <- GHC.getSessionDynFlags
 
         case iface of
-            Left _          -> do gmErrStrLn $ "Failed to read the Haddock interface file: " ++ ifile
-                                            ++ "You probably installed packages without using the '--enable-documentation' flag."
-                                            ++ ""
-                                            ++ "Try something like:\n\n\tcabal install --enable-documentation p"
-                                  error "No haddock interfaces file, giving up."
+            Left _          -> throw $ GMEMissingHaddockInterface ifile
             Right iface'    -> do let m  = map (\ii -> (Haddock.instMod ii, Haddock.instVisibleExports ii)) $ Haddock.ifInstalledIfaces iface' :: [(Module, [Name])]
-                                      m' = map (\(mname, names) -> (showSDoc dflags $ ppr mname, map (showSDoc dflags . ppr) names)) m       :: [(String, [String])]
+                                      m' = map (\(mname, names) -> (showSDoc dflags $ ppr mname, map (showSDoc dflags . ppr) names)) m         :: [(String, [String])]
                                   return $ Just $ M.fromList m'
 
     ------------------------------------------------------------------------------------------------------------------------
@@ -479,7 +475,7 @@ refineAs (MySymbolUserQualified userQualSym) exports = filter f exports
        where modas = modImportedAs $ mInfo export :: Maybe String
 
              -- e.g. "DL"
-             userQualAs = fromMaybe (error $ "Expected a qualified name like 'DL.length' but got: " ++ userQualSym)
+             userQualAs = fromMaybe (throw $ GMEString $ "ImportedFrom: expected a qualified name like 'DL.length' but got: " ++ userQualSym)
                                     (moduleOfQualifiedName userQualSym)
 
 -- User didn't qualify the symbol, so we have the full system qualified thing, so do nothing here.
@@ -498,7 +494,7 @@ refineRemoveHiding exports = map (\e -> e { qualifiedExports = f e }) exports
         -- = case filter (postfixMatch name) qualifiedNames of
         = case nub (filter (name `f`) qualifiedNames) of
             [match]     -> match
-            m           -> error $ "Could not qualify " ++ name ++ " from these exports: " ++ show qualifiedNames ++ "\n    matches: " ++ show m
+            m           -> throw $ GMEString $ "ImportedFrom: could not qualify " ++ name ++ " from these exports: " ++ show qualifiedNames ++ "\n    matches: " ++ show m
 
         -- Time for some stringly typed rubbish. The previous test used
         -- postfixMatch but this failed on an import that had "hiding (lines, unlines)" since
@@ -507,7 +503,7 @@ refineRemoveHiding exports = map (\e -> e { qualifiedExports = f e }) exports
         -- and then an alpha character, which hopefully is the end of a module name. Such a mess.
         where f n qn = if length qn - length n - 2 >= 0
                             then n `isSuffixOf` qn && isAlpha (qn !! (length qn - length n - 2)) && (qn !! (length qn - length n - 1)) == '.'
-                            else error $ "Internal error: trying to check if \"" ++ n ++ "\" is a match for \"" ++ qn ++ "\""
+                            else throw $ GMEString $ "ImportedFrom internal error: trying to check if \"" ++ n ++ "\" is a match for \"" ++ qn ++ "\""
 
 refineExportsIt :: String -> [ModuleExports] -> [ModuleExports]
 refineExportsIt symbol exports = map (\e -> e { qualifiedExports = f symbol e }) exports
@@ -541,12 +537,7 @@ refineVisibleExports getHaddockInterfaces exports = mapM f exports
             qexports       = qualifiedExports mexports -- e.g. ["base-4.8.2.0:GHC.Base.Just", ...]
         mVisibleExportsMap <- getVisibleExports getHaddockInterfaces pname
 
-        --let thisModVisibleExports = fromMaybe
-        --                                (error $ "Could not get visible exports of <" ++ thisModuleName ++ "> in " ++ pname)
-        --                                (case visibleExportsMap of
-        --                                    Just ve -> M.lookup thisModuleName ve
-        --                                    Nothing -> Nothing)
-        let visibleExportsMap = fromMaybe (error $ "visible exports map is Nothing") mVisibleExportsMap
+        let visibleExportsMap = fromMaybe (throw $ GMEString $ "ImportedFrom: visible exports map is Nothing") mVisibleExportsMap
         gmLog GmDebug "visibleExportsMap" $ strDoc $ show visibleExportsMap
 
         let thisModVisibleExports0 = M.lookup thisModuleName visibleExportsMap
@@ -558,7 +549,7 @@ refineVisibleExports getHaddockInterfaces exports = mapM f exports
                                         Just ve -> ve
                                         Nothing -> let pname' = ((head $ separateBy '-' pname) ++ ":" ++ thisModuleName) in
                                                         fromMaybe
-                                                            (error $ "Failed to find visible exports map in fall-back case: " ++ show (pname', thisModuleName))
+                                                            (throw $ GMENoVisibleExports thisModuleName pname')
                                                             (M.lookup pname' visibleExportsMap)
 
         let qexports' = filter (hasPostfixMatch thisModVisibleExports) qexports
@@ -620,7 +611,7 @@ guessHaddockUrl modSum targetFile targetModule symbol lineNr colNr ghcPkg readPr
     let symbolToUse :: String
         symbolToUse = case qnames of
                         (qq:_) -> qq -- We got a qualified name, with qualified printing. Qualified!
-                        []     -> error "qnames is empty."
+                        []     -> throw $ GMEString "ImportedFrom: qnames is empty."
 
     gmLog GmDebug "guessHaddockUrl" $ strDoc $ "symbolToUse: " ++ symbolToUse
 
@@ -713,30 +704,29 @@ guessHaddockUrl modSum targetFile targetModule symbol lineNr colNr ghcPkg readPr
     let lastMatchModule :: String
         lastMatchModule = case mName <$> lastMatch of
                             Just modn   -> modn
-                            _           -> error $ "No nice match in lastMatch for module: " ++ show lastMatch
+                            _           -> throw $ GMEString $ "ImportedFrom: no nice match in lastMatch for module: " ++ show lastMatch
 
         lastMatchPackageName :: String
         lastMatchPackageName = case mPackageName <$> lastMatch of
                                 Just p -> p
-                                _      -> error $ "No nice match in lastMatch for package name: " ++ show lastMatch
+                                _      -> throw $ GMEString $ "ImportedFrom: no nice match in lastMatch for package name: " ++ show lastMatch
 
-    let getHaddockUrl = ghcPkgHaddockUrl ghcPkg readProc pkgDbStack :: String -> m (Maybe String)
-
-    haddock <- (maybe (return Nothing) getHaddockUrl . Just) lastMatchPackageName
+    mhaddock <- ghcPkgHaddockUrl ghcPkg readProc pkgDbStack lastMatchPackageName
 
     gmLog GmDebug "guessHaddockUrl" $ strDoc $ "lastMatchModule:      " ++ lastMatchModule
     gmLog GmDebug "guessHaddockUrl" $ strDoc $ "lastMatchPackageName: " ++ lastMatchPackageName
-    gmLog GmDebug "guessHaddockUrl" $ strDoc $ "haddock:              " ++ show haddock
+    gmLog GmDebug "guessHaddockUrl" $ strDoc $ "mhaddock:             " ++ show mhaddock
 
-    haddock <- return $ fromMaybe (error "haddock is Nothing :(") haddock
+    let haddock = fromMaybe
+                    (throw $ GMEString $ "ImportedFrom: ghcPkgHaddockUrl failed to find path to HTML file.")
+                    mhaddock
 
     let f = haddock </> (moduleNameToHtmlFile lastMatchModule)
 
     e <- liftIO $ doesFileExist f
 
     if e then return $ "file://" ++ f
-         else do gmErrStrLn "Please reinstall packages using the flag '--enable-documentation' for 'cabal install.\n"
-                 throw $ GMEMissingHaddock f
+         else throw $ GMEMissingHaddockHTML f
 
   where
     -- Convert a module name string, e.g. @Data.List@ to @Data-List.html@.

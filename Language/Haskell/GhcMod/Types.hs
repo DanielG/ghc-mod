@@ -350,8 +350,14 @@ data GhcModError
   | GMETooManyCabalFiles [FilePath]
   -- ^ Too many cabal files found.
 
-  | GMEMissingHaddock FilePath
+  | GMEMissingHaddockHTML FilePath
   -- ^ Haddock HTML file missing.
+
+  | GMEMissingHaddockInterface FilePath
+  -- ^ Haddock interface file missing.
+
+  | GMENoVisibleExports String String
+  -- ^ Failed to find visible exports of module in given package.
 
     deriving (Eq,Show,Typeable)
 
