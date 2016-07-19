@@ -42,6 +42,7 @@ import Language.Haskell.GhcMod.Output
 import Language.Haskell.GhcMod.SrcUtils (listifySpans)
 import Outputable
 import System.Directory
+import System.Exit
 import System.FilePath
 
 import qualified Data.Map as M
@@ -774,8 +775,9 @@ importedFrom file lineNr colNr (Expression symbol) = do
 
           res <- guessHaddockUrl modSum file modstr symbol lineNr colNr ghcPkg readProc pkgDbStack
 
-          case res of Right x  -> return $ "SUCCESS: " ++ x ++ "\n"
-                      Left err -> return $ "FAIL: " ++ show err ++ "\n"
+          case res of Right x  -> return $ x ++ "\n"
+                      Left err -> do gmErrStrLn $ show err ++ "\n"
+                                     liftIO exitFailure
   where
     handler (SomeException ex) = do
       gmLog GmException "imported-from" $ showDoc ex
