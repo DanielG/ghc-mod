@@ -590,7 +590,7 @@ guessHaddockUrl
     -> FilePath
     -> (FilePath -> [String] -> String -> IO String)
     -> [GhcPkgDb]
-    -> m (Either String String)
+    -> m String
 guessHaddockUrl modSum targetFile targetModule symbol lineNr colNr ghcPkg readProc pkgDbStack = do
     gmLog GmDebug "guessHaddockUrl" $ strDoc $ "targetFile: "   ++ targetFile
     gmLog GmDebug "guessHaddockUrl" $ strDoc $ "targetModule: " ++ targetModule
@@ -734,9 +734,9 @@ guessHaddockUrl modSum targetFile targetModule symbol lineNr colNr ghcPkg readPr
 
     e <- liftIO $ doesFileExist f
 
-    if e then return $ Right $ "file://" ++ f
+    if e then return $ "file://" ++ f
          else do gmErrStrLn "Please reinstall packages using the flag '--enable-documentation' for 'cabal install.\n"
-                 return $ Left $ "Could not find " ++ f
+                 throw $ GMEMissingHaddock f
 
   where
     -- Convert a module name string, e.g. @Data.List@ to @Data-List.html@.
@@ -774,10 +774,7 @@ importedFrom file lineNr colNr (Expression symbol) = do
           let modstr = moduleNameString $ ms_mod_name modSum :: String
 
           res <- guessHaddockUrl modSum file modstr symbol lineNr colNr ghcPkg readProc pkgDbStack
-
-          case res of Right x  -> return $ x ++ "\n"
-                      Left err -> do gmErrStrLn $ show err ++ "\n"
-                                     liftIO exitFailure
+          return $ res ++ "\n"
   where
     handler (SomeException ex) = do
       gmLog GmException "imported-from" $ showDoc ex
