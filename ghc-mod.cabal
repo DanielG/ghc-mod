@@ -292,6 +292,7 @@ Test-Suite spec
                         CustomPackageDbSpec
                         CheckSpec
                         FlagSpec
+                        ImportedFromSpec
                         InfoSpec
                         LangSpec
                         LintSpec
