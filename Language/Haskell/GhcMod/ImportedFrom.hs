@@ -17,6 +17,7 @@
 
 module Language.Haskell.GhcMod.ImportedFrom (importedFrom) where
 
+import BasicTypes
 import Control.Applicative
 import Control.Exception
 import Control.Monad
@@ -167,7 +168,7 @@ toImportDecl dflags idecl = NiceImportDecl
     idecl'       = SrcLoc.unLoc idecl
     name         = showSDoc dflags (ppr $ GHC.ideclName idecl')
     isImplicit   = GHC.ideclImplicit idecl'
-    qualifier    = unpackFS <$> GHC.ideclPkgQual idecl'
+    qualifier    = unpackFS <$> ghc_sl_fs <$> GHC.ideclPkgQual idecl'
     hiding       = (catMaybes . parseHiding . ghcIdeclHiding) idecl'
     importedAs   = (showSDoc dflags . ppr) <$> ideclAs idecl'
     specifically = (parseSpecifically . ghcIdeclHiding) idecl'
@@ -598,7 +599,7 @@ guessHaddockUrl modSum targetFile targetModule symbol lineNr colNr ghcPkg readPr
 
     dflags <- GHC.getSessionDynFlags
 
-    let textualImports  = ms_textual_imps modSum
+    let textualImports = ghc_ms_textual_imps modSum
         importDecls0 = map (toImportDecl dflags) textualImports
 
     gmLog GmDebug "guessHaddockUrl" $ strDoc $ "haskellModuleNames0: " ++ show importDecls0

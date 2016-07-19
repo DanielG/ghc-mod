@@ -50,6 +50,8 @@ module Language.Haskell.GhcMod.Gap (
   , withCleanupSession
   , ghcQualify
   , ghcIdeclHiding
+  , ghc_sl_fs
+  , ghc_ms_textual_imps
   ) where
 
 import Control.Applicative hiding (empty)
@@ -118,6 +120,10 @@ import qualified Data.IntSet as I (IntSet, empty)
 #if __GLASGOW_HASKELL__ < 706
 import Control.DeepSeq (NFData(rnf))
 import Data.ByteString.Lazy.Internal (ByteString(..))
+#endif
+
+#if __GLASGOW_HASKELL__ >= 800
+import BasicTypes (sl_fs)
 #endif
 
 import Bag
@@ -713,4 +719,19 @@ ghcIdeclHiding :: GHC.ImportDecl GHC.RdrName -> Maybe (Bool, SrcLoc.Located [GHC
 ghcIdeclHiding x = case GHC.ideclHiding x of
                     Just (b, lie)   -> Just (b, GHC.noLoc lie)
                     Nothing         -> Nothing
+#endif
+
+#if __GLASGOW_HASKELL__ >= 800
+ghc_sl_fs = sl_fs
+#else
+ghc_sl_fs = id
+#endif
+
+
+ghc_ms_textual_imps :: GHC.ModSummary -> [Located (ImportDecl RdrName)]
+#if __GLASGOW_HASKELL__ >= 800
+-- What does GHC8 give in the first part of the tuple?
+ghc_ms_textual_imps ms = map (fmap simpleImportDecl . snd) (ms_textual_imps ms)
+#else
+ghc_ms_textual_imps = ms_textual_imps
 #endif
