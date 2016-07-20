@@ -247,11 +247,11 @@ qualifiedName targetModuleName lineNr colNr symbol importList = do
         dflags <- GHC.getSessionDynFlags
 
         setContext (map (IIDecl . simpleImportDecl . mkModuleName) (targetModuleName:importList))
-           `gcatch` (\(s  :: SourceError)    -> do gmLog GmDebug "qualifiedName" $ strDoc $ "qualifiedName: setContext failed with a SourceError, trying to continue anyway..." ++ show s
+           `gcatch` (\(s  :: SourceError)    -> do gmLog GmDebug "qualifiedName" $ strDoc $ "setContext failed with a SourceError, trying to continue anyway..." ++ show s
                                                    setContext $ map (IIDecl . simpleImportDecl . mkModuleName) importList)
-           `gcatch` (\(g  :: GhcApiError)    -> do gmLog GmDebug "qualifiedName" $ strDoc $ "qualifiedName: setContext failed with a GhcApiError, trying to continue anyway..." ++ show g
+           `gcatch` (\(g  :: GhcApiError)    -> do gmLog GmDebug "qualifiedName" $ strDoc $ "setContext failed with a GhcApiError, trying to continue anyway..." ++ show g
                                                    setContext $ map (IIDecl . simpleImportDecl . mkModuleName) importList)
-           `gcatch` (\(se :: SomeException)  -> do gmLog GmDebug "qualifiedName" $ strDoc $ "qualifiedName: setContext failed with a SomeException, trying to continue anyway..." ++ show se
+           `gcatch` (\(se :: SomeException)  -> do gmLog GmDebug "qualifiedName" $ strDoc $ "setContext failed with a SomeException, trying to continue anyway..." ++ show se
                                                    setContext $ map (IIDecl . simpleImportDecl . mkModuleName) importList)
 
         modSummary <- getModSummary $ mkModuleName targetModuleName :: m ModSummary
@@ -434,7 +434,8 @@ getModuleExports
     -> m (Maybe ([String], String))
 getModuleExports ghcPkg readProc pkgDbStack m = do
     minfo     <- (findModule (mkModuleName $ modName m) Nothing >>= getModuleInfo)
-                   `gcatch` (\(_  :: SourceError)   -> return Nothing)
+                   `gcatch` (\(e :: SourceError) -> do gmLog GmDebug "getModuleExports" $ strDoc $ "Failed to find module \"" ++ modName m ++ "\": " ++ show e
+                                                       return Nothing)
 
     p <- ghcPkgFindModule $ modName m
 
