@@ -13,3 +13,6 @@ import Control.Monad.Trans.Writer.Lazy
 
 main = do
     when True $ do print "hah"
+
+
+data Hello = Hello deriving Show

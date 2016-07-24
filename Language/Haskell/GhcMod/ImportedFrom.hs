@@ -506,12 +506,39 @@ refineRemoveHiding exports = map (\e -> e { qualifiedExports = f e }) exports
                             then n `isSuffixOf` qn && isAlpha (qn !! (length qn - length n - 2)) && (qn !! (length qn - length n - 1)) == '.'
                             else throw $ GMEString $ "ImportedFrom internal error: trying to check if \"" ++ n ++ "\" is a match for \"" ++ qn ++ "\""
 
-refineExportsIt :: String -> [ModuleExports] -> [ModuleExports]
-refineExportsIt symbol exports = map (\e -> e { qualifiedExports = f symbol e }) exports
+refineExportsIt :: MySymbol -> [ModuleExports] -> [ModuleExports]
+refineExportsIt mysymbol exports = map (\e -> e { qualifiedExports = f symbol e }) exports
   where
-    -- f symbol export = filter (symbol ==) thisExports
+    -- Deal with these?
+    symbol = case mysymbol of
+                MySymbolSysQualified  s -> s
+                MySymbolUserQualified s -> s
+
     f sym export = filter (postfixMatch sym) thisExports
        where thisExports = qualifiedExports export         -- Things that this module exports.
+
+-- On an internal symbol (e.g. Show), refineExportsIt erronously filters out everything.
+-- For example mnsymbol = "base-4.9.0.0:GHC.Show.C:Show" and the matching
+-- name "base-4.9.0.0:GHC.Show.Show" from the Prelude. The problem seems to be the
+-- module name GHC.Show.C, probably referring to an internal C library.
+--
+-- To get around this, refineExportsItFallbackInternal uses a less strict matching
+-- rule. If the 'stage3' results are empty we fall back to this refiner.
+refineExportsItFallbackInternal :: MySymbol -> [ModuleExports] -> [ModuleExports]
+refineExportsItFallbackInternal mysymbol exports
+    = case separateBy ':' symbol of
+        [p, _, x]   -> map (\e -> e { qualifiedExports = f p x e }) exports
+        _           -> exports
+  where
+    -- Deal with these?
+    symbol = case mysymbol of
+                MySymbolSysQualified  s -> s
+                MySymbolUserQualified s -> s
+
+    -- Check if package name matches and postfix symbol matches (roughly).
+    f p sym export = filter
+                        (\z -> p `isPrefixOf` z && postfixMatch sym z)
+                        (qualifiedExports export)
 
 refineLeadingDot :: MySymbol -> [ModuleExports] -> [ModuleExports]
 refineLeadingDot (MySymbolUserQualified _)           exports = exports
@@ -689,10 +716,12 @@ guessHaddockUrl modSum targetFile targetModule symbol lineNr colNr ghcPkg readPr
     let stage2 = refineRemoveHiding stage1
     showDebugStage "stage2" stage2
 
-    let stage3 = refineExportsIt symbolToUse stage2
+    let stage3 = refineExportsIt mySymbol stage2
     showDebugStage "stage3" stage3
 
-    let stage4 = refineLeadingDot mySymbol stage3
+    let stage4 = if all (null . qualifiedExports) stage3
+                    then refineExportsItFallbackInternal mySymbol stage2
+                    else refineLeadingDot mySymbol stage3
     showDebugStage "stage4" stage4
 
     stage5 <- refineVisibleExports (ghcPkgHaddockInterface ghcPkg readProc pkgDbStack) stage4
