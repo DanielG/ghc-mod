@@ -122,7 +122,7 @@ gmeDoc e = case e of
             nest 4 (backticks $ text "cabal install --enable-documentation --haddock-hyperlink-source --dependencies-only") $$
         text "" $$
         text "- or set" $$
-            nest 4 (backticks $ text "documentation: True")
+            nest 4 (backticks $ text "documentation: True") $$
         text "in ~/.cabal/config" $$
         text "" $$
         text "- or with Stack:" $$
