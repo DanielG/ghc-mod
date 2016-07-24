@@ -121,6 +121,10 @@ gmeDoc e = case e of
         text "- To generate Haddock docs for dependencies, try:" $$
             nest 4 (backticks $ text "cabal install --enable-documentation --haddock-hyperlink-source --dependencies-only") $$
         text "" $$
+        text "- or set" $$
+            nest 4 (backticks $ text "documentation: True")
+        text "in ~/.cabal/config" $$
+        text "" $$
         text "- or with Stack:" $$
             nest 4 (backticks $ text "stack haddock")
 
