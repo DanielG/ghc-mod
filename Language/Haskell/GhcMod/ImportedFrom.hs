@@ -267,9 +267,12 @@ qualifiedName targetModuleName lineNr colNr symbol importList = do
             es' = map (showSDocForUser dflags ghcQualify . ppr) es
             ps' = map (showSDocForUser dflags ghcQualify . ppr) ps
 
-        return $ filter (postfixMatch symbol) $ concatMap words $ bs' ++ es' ++ ps'
+        return $ filter (postfixMatch symbol) $ map dropParens $ concatMap words $ bs' ++ es' ++ ps'
 
-
+  where
+    -- GHC8 starts showing things inside parens? Why? e.g. "(base-4.9.0.0:GHC.Num.+)"
+    dropParens :: String -> String
+    dropParens = dropWhileEnd (== ')') . dropWhile (== '(')
 
 ghcPkgFindModule
     :: forall m. (GhcMonad m, MonadIO m, GmOut m, GmLog m)
