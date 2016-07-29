@@ -1,4 +1,4 @@
-2016-07-10 v5.6.0.0
+2016-07-29 v5.6.0.0
 	* Bump cabal-helper to 0.7, adds support for Cabal-1.24
 	* Merge #737, `map-file` caching issues
 	* Merge #767, Add `browse` option to show symbol "parents"
