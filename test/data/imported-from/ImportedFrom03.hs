@@ -16,3 +16,24 @@ main = do
 
 
 data Hello = Hello deriving Show
+
+foo = do
+    print "hello"
+    putStrLn "hello"
+
+  where
+    _ = (+)
+    _ = (-)
+    _ = (*)
+    _ = (/)
+    _ = True
+    _ = False
+    _ = (&&)
+    _ = (||)
+    _ = min :: Int -> Int -> Int
+    _ = max :: Int -> Int -> Int
+    _ = succ :: Int -> Int
+    _ = (++)
+    _ = (>)
+    _ = (=)
+    _ = (==)
