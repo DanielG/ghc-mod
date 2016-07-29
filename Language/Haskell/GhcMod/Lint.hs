@@ -25,7 +25,7 @@ lint opt file = ghandle handler $
     liftIO $ hSetEncoding hSrc (encoding flags)
     res <- liftIO $ parseModuleEx flags file =<< Just `fmap` hGetContents hSrc
     case res of
-      Right m -> pack . map show $ applyHints classify hint [m]
+      Right m -> pack . map show $ filter ((/=Ignore) . ideaSeverity) $ applyHints classify hint [m]
       Left ParseError{parseErrorLocation=loc, parseErrorMessage=err} ->
         return $ showSrcLoc loc ++ ":Error:" ++ err ++ "\n"
   where
