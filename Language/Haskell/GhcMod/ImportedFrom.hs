@@ -17,12 +17,9 @@
 
 module Language.Haskell.GhcMod.ImportedFrom (importedFrom) where
 
-import BasicTypes
-import Control.Applicative
 import Control.Exception
 import Control.Monad
 import Data.Char (isAlpha)
-import Data.Functor.Identity
 import Data.IORef
 import Data.List
 import Data.List.Split
@@ -42,7 +39,6 @@ import Language.Haskell.GhcMod.Output
 import Language.Haskell.GhcMod.SrcUtils (listifySpans)
 import Outputable
 import System.Directory
-import System.Exit
 import System.FilePath
 
 import qualified Data.Map as M
@@ -73,6 +69,7 @@ data NiceImportDecl
 -- trace'' :: Outputable x => String -> x -> b -> b
 -- trace'' m x = trace (m ++ ">>> " ++ showSDoc tdflags (ppr x))
 
+parsePackageAndQualName :: RP.ReadP (String, String)
 parsePackageAndQualName = RP.choice [parsePackageAndQualNameWithHash, parsePackageAndQualNameNoHash]
 
   where
@@ -90,6 +87,7 @@ parsePackageAndQualName = RP.choice [parsePackageAndQualNameWithHash, parsePacka
 
 -- Parse the package name "containers-0.5.6.2" from a string like
 -- "containers-0.5.6.2@conta_2C3ZI8RgPO2LBMidXKTvIU:Data.Map.Base.fromList"
+parsePackageAndQualNameWithHash :: RP.ReadP (String, String)
 parsePackageAndQualNameWithHash = do
     packageName <- parsePackageName
     _           <- parsePackageHash
@@ -103,6 +101,7 @@ parsePackageAndQualNameWithHash = do
     parsePackageHash = RP.get `RP.manyTill` RP.char ':'
     parsePackageFinalQualName = RP.many1 RP.get
 
+runRP :: Show t => RP.ReadP t -> String -> Either String t
 runRP rp s = case RP.readP_to_S rp s of
                 [(m, "")]   -> Right m
                 err         -> Left $ "runRP: no unique match: " ++ show err
@@ -393,7 +392,7 @@ getVisibleExports getHaddockInterfaces p = do
 
   where
 
-    getVisibleExports' :: forall m. (GhcMonad m, MonadIO m, GmOut m, GmLog m)
+    getVisibleExports' :: forall m. (GhcMonad m, MonadIO m)
                        => FilePath
                        -> m (Maybe (M.Map String [String]))
     getVisibleExports' ifile = do
@@ -425,10 +424,9 @@ getModuleExports
     :: forall m. (GhcMonad m, MonadIO m, GmOut m, GmLog m)
     => FilePath
     -> (FilePath -> [String] -> String -> IO String)
-    -> [GhcPkgDb]
     -> NiceImportDecl
     -> m (Maybe ([String], String))
-getModuleExports ghcPkg readProc pkgDbStack m = do
+getModuleExports ghcPkg readProc m = do
     minfo     <- (findModule (mkModuleName $ modName m) Nothing >>= getModuleInfo)
                    `gcatch` (\(e :: SourceError) -> do gmLog GmDebug "getModuleExports" $ strDoc $ "Failed to find module \"" ++ modName m ++ "\": " ++ show e
                                                        return Nothing)
@@ -664,7 +662,7 @@ guessHaddockUrl modSum targetFile targetModule symbol lineNr colNr ghcPkg readPr
     gmLog GmDebug "guessHaddockUrl" $ strDoc $ "parsedPackagesAndQualNames: " ++ show parsedPackagesAndQualNames
     gmLog GmDebug "guessHaddockUrl" $ strDoc $ "extraImportDecls: " ++ show extraImportDecls
 
-    exports0 <- mapM (getModuleExports ghcPkg readProc pkgDbStack) importDecls3 :: m [Maybe ([String], String)]
+    exports0 <- mapM (getModuleExports ghcPkg readProc) importDecls3 :: m [Maybe ([String], String)]
 
     -- Sometimes the modules in extraImportDecls might be hidden or weird ones like GHC.Base that we can't
     -- load, so filter out the successfully loaded ones.

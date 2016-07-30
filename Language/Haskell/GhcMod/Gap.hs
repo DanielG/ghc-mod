@@ -123,7 +123,7 @@ import Data.ByteString.Lazy.Internal (ByteString(..))
 #endif
 
 #if __GLASGOW_HASKELL__ >= 800
-import BasicTypes (sl_fs)
+import BasicTypes (sl_fs, StringLiteral)
 #endif
 
 import Bag
@@ -722,6 +722,7 @@ ghcIdeclHiding x = case GHC.ideclHiding x of
 #endif
 
 #if __GLASGOW_HASKELL__ >= 800
+ghc_sl_fs :: StringLiteral -> FastString
 ghc_sl_fs = sl_fs
 #else
 ghc_sl_fs = id
