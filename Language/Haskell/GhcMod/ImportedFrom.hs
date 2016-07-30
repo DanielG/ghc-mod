@@ -50,7 +50,7 @@ import qualified Documentation.Haddock as Haddock
 import qualified GhcMonad
 import qualified Safe
 import qualified SrcLoc
-import qualified Text.Parsec as TP
+import qualified Text.ParserCombinators.ReadP as RP
 
 type QualifiedName = String -- ^ A qualified name, e.g. @Foo.bar@.
 
@@ -73,29 +73,23 @@ data NiceImportDecl
 -- trace'' :: Outputable x => String -> x -> b -> b
 -- trace'' m x = trace (m ++ ">>> " ++ showSDoc tdflags (ppr x))
 
-parsePackageAndQualName :: forall u. TP.ParsecT String u Identity (String, String)
-parsePackageAndQualName = TP.choice [TP.try parsePackageAndQualNameWithHash, parsePackageAndQualNameNoHash]
+parsePackageAndQualName = RP.choice [parsePackageAndQualNameWithHash, parsePackageAndQualNameNoHash]
 
   where
 
     -- Package with no hash (seems to be for internal packages?)
     -- base-4.8.2.0:Data.Foldable.length
-    parsePackageAndQualNameNoHash :: TP.ParsecT String u Data.Functor.Identity.Identity (String, String)
     parsePackageAndQualNameNoHash = do
         packageName <- parsePackageName
         qName       <- parsePackageFinalQualName
 
         return (packageName, qName)
 
-    parsePackageName :: TP.ParsecT String u Data.Functor.Identity.Identity String
-    parsePackageName = TP.anyChar `TP.manyTill` TP.char ':'
-
-    parsePackageFinalQualName :: TP.ParsecT String u Data.Functor.Identity.Identity String
-    parsePackageFinalQualName = TP.many1 TP.anyChar
+    parsePackageName = RP.get `RP.manyTill` RP.char ':'
+    parsePackageFinalQualName = RP.many1 RP.get
 
 -- Parse the package name "containers-0.5.6.2" from a string like
 -- "containers-0.5.6.2@conta_2C3ZI8RgPO2LBMidXKTvIU:Data.Map.Base.fromList"
-parsePackageAndQualNameWithHash :: TP.ParsecT String u Data.Functor.Identity.Identity (String, String)
 parsePackageAndQualNameWithHash = do
     packageName <- parsePackageName
     _           <- parsePackageHash
@@ -105,14 +99,13 @@ parsePackageAndQualNameWithHash = do
 
   where
 
-    parsePackageName :: TP.ParsecT String u Data.Functor.Identity.Identity String
-    parsePackageName = TP.anyChar `TP.manyTill` TP.char '@'
+    parsePackageName = RP.get `RP.manyTill` RP.char '@'
+    parsePackageHash = RP.get `RP.manyTill` RP.char ':'
+    parsePackageFinalQualName = RP.many1 RP.get
 
-    parsePackageHash :: TP.ParsecT String u Data.Functor.Identity.Identity String
-    parsePackageHash = TP.anyChar `TP.manyTill` TP.char ':'
-
-    parsePackageFinalQualName :: TP.ParsecT String u Data.Functor.Identity.Identity String
-    parsePackageFinalQualName = TP.many1 TP.anyChar
+runRP rp s = case RP.readP_to_S rp s of
+                [(m, "")]   -> Right m
+                err         -> Left $ "runRP: no unique match: " ++ show err
 
 -- | Convenience function for converting an 'GHC.ImportDecl' to a 'NiceImportDecl'.
 --
@@ -650,8 +643,7 @@ guessHaddockUrl modSum targetFile targetModule symbol lineNr colNr ghcPkg readPr
     -- we can't look up the global reader environment without causing a GHC panic.
     -- For example 'Int' comes from GHC.Types, which is picked up here via the
     -- full qualified name.
-    let parsedPackagesAndQualNames :: [Either TP.ParseError (String, String)]
-        parsedPackagesAndQualNames = map (TP.parse parsePackageAndQualName "") qnames
+    let parsedPackagesAndQualNames = map (runRP parsePackageAndQualName) qnames
 
         extraImportDecls :: [NiceImportDecl]
         extraImportDecls = case Safe.headMay parsedPackagesAndQualNames of
