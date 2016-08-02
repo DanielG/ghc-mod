@@ -27,7 +27,7 @@ import qualified HsBinds as Ty
 import qualified Class as Ty
 import qualified Var as Ty
 import qualified HsPat as Ty
-import qualified Language.Haskell.Exts.Annotated as HE
+import qualified Language.Haskell.Exts as HE
 import Djinn.GHC
 
 import qualified Language.Haskell.GhcMod.Gap as Gap
@@ -191,7 +191,7 @@ getSignatureFromHE file lineNo colNo = do
                  HE.TypeSig (HE.SrcSpanInfo s _) names ty ->
                      return $ HESignature s names ty
 
-                 HE.TypeFamDecl (HE.SrcSpanInfo s _) declHead _ ->
+                 HE.TypeFamDecl (HE.SrcSpanInfo s _) declHead _ _ ->
                    let (name, tys) = dHeadTyVars declHead in
                    return $ HEFamSignature s Open name (map cleanTyVarBind tys)
 
