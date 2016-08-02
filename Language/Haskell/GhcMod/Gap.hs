@@ -73,7 +73,6 @@ import StringBuffer
 import TcType
 import Var (varType)
 import System.Directory
-import SysTools
 #if __GLASGOW_HASKELL__ >= 800
 import GHCi (stopIServ)
 #endif

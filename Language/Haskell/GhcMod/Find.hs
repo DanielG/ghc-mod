@@ -28,7 +28,6 @@ import Exception
 import Language.Haskell.GhcMod.Convert
 import Language.Haskell.GhcMod.Gap
 import Language.Haskell.GhcMod.Monad
-import Language.Haskell.GhcMod.Output
 import Language.Haskell.GhcMod.Types
 import Language.Haskell.GhcMod.Utils
 import Language.Haskell.GhcMod.World
@@ -120,13 +119,14 @@ loadSymbolDb' = do
         return db
   doLoad =<< liftIO (doesFileExist cache)
 
--- | Loading a file and creates 'SymbolDb'.
 loadSymbolDb :: IOish m => GhcModT m SymbolDb
 loadSymbolDb = do
-  ghcMod <- liftIO ghcModExecutable
-  readProc <- gmReadProcess'
-  out <- liftIO $ readProc ghcMod ["--verbose", "error", "dumpsym"] ""
-  return $!! decode out
+  ts <- liftIO getCurrentModTime
+  st <- runGmPkgGhc getGlobalSymbolTable
+  return SymbolDb {
+      sdTable = st
+    , sdTimestamp = ts
+    }
 
 ----------------------------------------------------------------
 -- used 'ghc-mod dumpsym'
@@ -134,12 +134,8 @@ loadSymbolDb = do
 -- | Dumps a 'Binary' representation of 'SymbolDb' to stdout
 dumpSymbol :: IOish m => GhcModT m ()
 dumpSymbol = do
-  ts <- liftIO getCurrentModTime
-  st <- runGmPkgGhc $ getGlobalSymbolTable
-  liftIO . LBS.putStr $ encode SymbolDb {
-      sdTable = st
-    , sdTimestamp = ts
-    }
+  symbolDb <- loadSymbolDb
+  liftIO . LBS.putStr $ encode symbolDb
 
 -- | Check whether given file is older than any file from the given set.
 -- Returns True if given file does not exist.

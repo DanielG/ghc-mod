@@ -24,7 +24,6 @@ import GHC
 #if __GLASGOW_HASKELL__ >= 800
 import GHC.LanguageExtensions
 #endif
-import GHC.Paths (libdir)
 import SysTools
 import DynFlags
 import HscTypes
@@ -106,7 +105,7 @@ initSession opts mdf = do
    putNewSession s = do
      crdl <- cradle
      nhsc_env_ref <- liftIO . newIORef =<< newLightEnv (initDF crdl)
-     runLightGhc' nhsc_env_ref $ setSessionDynFlags =<< getSessionDynFlags
+     void $ runLightGhc' nhsc_env_ref $ setSessionDynFlags =<< getSessionDynFlags
      gmsPut s { gmGhcSession = Just $ GmGhcSession nhsc_env_ref }
 
 
@@ -188,11 +187,21 @@ targetGhcOptions crdl sefnmn = do
     when (Set.null sefnmn) $ error "targetGhcOptions: no targets given"
 
     case cradleProject crdl of
-      proj
-          | isCabalHelperProject proj -> cabalOpts crdl
-          | otherwise -> sandboxOpts crdl
+      proj | isCabalHelperProject proj -> cabalOpts crdl
+      ExplicitProject -> do
+        opts <- explicitOpts crdl
+        dbStack <- maybe [] id <$> getCustomPkgDbStack
+        return $ opts ++ ghcDbStackOpts dbStack
+      _  -> sandboxOpts crdl
  where
    zipMap f l = l `zip` (f `map` l)
+
+   explicitOpts :: Cradle -> GhcModT m [String]
+   explicitOpts Cradle {..} = case cradleCabalFile of
+       Nothing -> return []
+       Just optionsFile -> do
+           contents <- liftIO $ readFile optionsFile
+           return $ lines contents
 
    cabalOpts :: Cradle -> GhcModT m [String]
    cabalOpts Cradle{..} = do
