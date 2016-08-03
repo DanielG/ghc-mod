@@ -44,6 +44,16 @@ script:
   - cabal check
   - stack --no-terminal build --test --no-run-tests
   - stack --no-terminal test ghc-mod:spec
+  - |
+    if [ -r "$TRAVIS_BUILD_DIR/ChangeLog" ]; then
+      sdistdir="$TRAVIS_BUILD_DIR/../sdist-test"
+      mkdir -p "$sdistdir"
+      tar zvxf $(stack sdist 2>&1 | tail -n1 | sed 's/.* //') --strip-components=1 -C "$sdistdir"
+      cp "ghc-$GHCVER.yaml" stack.yaml "$sdistdir"
+      cd "$sdistdir"
+      stack --no-terminal build --test --no-run-tests
+      stack --no-terminal test ghc-mod:spec
+    fi
 
 matrix:
   matrix:
