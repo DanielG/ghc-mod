@@ -1,59 +1,46 @@
-language: haskell
-ghc:
-  - 7.6
-  - 7.8
-
+language: c
 sudo: false
-
-addons:
-  apt:
-    packages:
-    - zlib1g-dev
 
 cache:
   apt: true
   directories:
-  - ~/.cabal
-  - ~/.ghc
-  - ~/.stack
+  - $HOME/.stack
+  - $HOME/.ghc-mod
+  - $TRAVIS_BUILD_DIR/.stack-work/install
 
-before_cache:
-  - rm -f $HOME/.cabal/logs $HOME/.cabal/packages/*/build-reports.log
+addons:
+  apt:
+    packages:
+      - libfcgi-dev
+      - libgmp-dev
 
 before_install:
-  - wget https://github.com/commercialhaskell/stack/releases/download/v0.1.3.1/stack-0.1.3.1-x86_64-linux.gz
-  - mkdir stack-bin
-  - gunzip stack-0.1.3.1-x86_64-linux.gz
-  - mv stack-0.1.3.1-x86_64-linux stack-bin/stack
-  - chmod +x stack-bin/stack
-  - export PATH=$(pwd)/stack-bin:$PATH
+  - unset CC
+  - mkdir -p ~/.local/bin
+  - export PATH=$HOME/.local/bin:$PATH
+  - travis_retry curl -L https://www.stackage.org/stack/linux-x86_64 | tar xz --wildcards --strip-components=1 -C ~/.local/bin '*/stack'
   - stack --version
 
 install:
-  - export CABAL_VER="$(ghc-pkg describe ghc | sed -n '/^depends:/,/^[a-z]/p' | head -n-1 | sed '1{s/^depends://}' | grep " *Cabal" | tr -d "[:space:]" | sed 's/^Cabal-\([0-9.]*\)-.*/\1/g')"
-  - echo $CABAL_VER
+  #- git clone --depth=1 https://github.com/DanielG/cabal-helper.git
+  - stack setup --resolver=ghc-$GHCVER
+  - stack install cabal-install --resolver=$RES
   - cabal update
-  - cabal install happy
-  - happy --version
-  - git clone --depth=1 https://github.com/DanielG/cabal-helper.git
-  - cabal install cabal-helper/ --constraint "Cabal == ${CABAL_VER}"
-  - cabal install -j --only-dependencies --enable-tests
-
+  - stack install happy --resolver=$RES
+  #- stack init --ignore-subdirs --resolver=ghc-$GHCVER ./ cabal-helper/
+  - stack init --ignore-subdirs --resolver=ghc-$GHCVER ./
 
 script:
-  - touch ChangeLog # Create ChangeLog if we're not on the release branch
   - cabal check
-  - cabal sdist
-  - export SRC_TGZ="$PWD/dist/$(cabal info . | awk '{print $2 ".tar.gz";exit}')"
-  - rm -rf /tmp/test && mkdir -p /tmp/test
-  - cd /tmp/test
-  - tar -xf $SRC_TGZ && cd ghc-mod*/
-#  - if [ -n "$(ghc --version | awk '{ print $8 }' | sed -n '/^7.8/p')" ]; then export WERROR="--ghc-option=-Werror"; fi
-  - cabal configure --enable-tests
-  - cabal build
-  - export ghc_mod_datadir=$PWD
-  - cabal test
+  - stack build
+  - stack test ghc-mod:spec
 
 matrix:
-  allow_failures:
-    - env: GHCVER=head
+  matrix:
+  include:
+  - env: GHCVER=7.8.4 RES=lts-2.22
+    compiler: ': #GHC 7.8.4'
+  - env: GHCVER=7.10.3 RES=lts-6.9
+    compiler: ': #GHC 7.10.3'
+  - env: GHCVER=8.0.1 RES=nightly-2016-08-01
+    compiler: ': #GHC 8.0.1'
