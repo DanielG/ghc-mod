@@ -24,7 +24,7 @@ install:
   # - git clone --depth=1 https://github.com/DanielG/cabal-helper.git
   - stack --no-terminal setup --resolver=ghc-$GHCVER
   - stack --no-terminal install cabal-install --resolver=$RES
-  - cabal update
+  - travis_retry cabal update
   - stack --no-terminal install happy --resolver=$RES
   # - stack init --ignore-subdirs --resolver=ghc-$GHCVER ./ cabal-helper/
   # - stack init --ignore-subdirs --resolver=ghc-$GHCVER ./
