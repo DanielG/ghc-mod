@@ -13,7 +13,9 @@ import TestUtils
 
 main :: IO ()
 main = do
+#if __GLASGOW_HASKELL__ >= 708
   unsetEnv "GHC_PACKAGE_PATH"
+#endif
   let sandboxes = [ "test/data/cabal-project"
                   , "test/data/check-packageid"
                   , "test/data/duplicate-pkgver/"
