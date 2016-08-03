@@ -7,11 +7,13 @@ import Control.Monad (void)
 import Data.List
 import Language.Haskell.GhcMod (debugInfo)
 import System.Process
+import System.Environment
 import Test.Hspec
 import TestUtils
 
 main :: IO ()
 main = do
+  unsetEnv "GHC_PACKAGE_PATH"
   let sandboxes = [ "test/data/cabal-project"
                   , "test/data/check-packageid"
                   , "test/data/duplicate-pkgver/"

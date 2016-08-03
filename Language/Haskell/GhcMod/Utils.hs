@@ -40,7 +40,7 @@ import System.IO.Temp (createTempDirectory)
 import System.Process (readProcess)
 import Text.Printf
 
-import Paths_ghc_mod (getLibexecDir)
+import Paths_ghc_mod (getLibexecDir, getBinDir)
 import Utils
 import Prelude
 
@@ -84,7 +84,11 @@ ghcModExecutable = do
     dir <- takeDirectory <$> getExecutablePath'
     return $ (if dir == "." then "" else dir) </> "ghc-mod"
 #else
-ghcModExecutable = fmap (</> "dist/build/ghc-mod/ghc-mod") getCurrentDirectory
+ghcModExecutable = do
+  gpp <- lookupEnv "STACK_EXE"
+  case gpp of
+    Just _ -> fmap (</> "ghc-mod") getBinDir
+    _      -> fmap (</> "dist/build/ghc-mod/ghc-mod") getCurrentDirectory
 #endif
 
 getExecutablePath' :: IO FilePath
