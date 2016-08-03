@@ -6,7 +6,6 @@ cache:
   directories:
   - $HOME/.stack
   - $HOME/.ghc-mod
-  - $TRAVIS_BUILD_DIR/.stack-work/install
 
 addons:
   apt:
@@ -22,13 +21,24 @@ before_install:
   - stack --version
 
 install:
-  #- git clone --depth=1 https://github.com/DanielG/cabal-helper.git
+  # - git clone --depth=1 https://github.com/DanielG/cabal-helper.git
   - stack setup --resolver=ghc-$GHCVER
   - stack install cabal-install --resolver=$RES
   - cabal update
   - stack install happy --resolver=$RES
-  #- stack init --ignore-subdirs --resolver=ghc-$GHCVER ./ cabal-helper/
-  - stack init --ignore-subdirs --resolver=ghc-$GHCVER ./
+  # - stack init --ignore-subdirs --resolver=ghc-$GHCVER ./ cabal-helper/
+  # - stack init --ignore-subdirs --resolver=ghc-$GHCVER ./
+  - |
+    resf="ghc-$GHCVER.yaml"
+    echo "resolver: ghc-$GHCVER" > "$resf"
+    stack solver --update-config --stack-yaml="$resf"
+    sed -i 's/^resolver:/compiler:/;s/^extra-deps:/packages:/' "$resf"
+    echo "resolver: { name: 'ghc-$GHCVER', location: './$resf' }" > stack.yaml
+    ir=$( stack path --snapshot-install-root )
+    ls -d ${ir%/custom-ghc-*}/custom-ghc-* | grep -v "${ir%/*}" | while read i; do
+      rm -rfv "$i"
+    done
+
 
 script:
   - cabal check
