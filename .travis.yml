@@ -43,7 +43,7 @@ install:
 script:
   - cabal check
   - |
-    case "$TRAVIS_BRANCH" of
+    case "$TRAVIS_BRANCH" in
     "release"*)
       touch ChangeLog
       sdistdir="$TRAVIS_BUILD_DIR/../sdist-test"
