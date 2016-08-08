@@ -260,7 +260,13 @@ qualifiedName targetModuleName lineNr colNr symbol importList = do
             es' = map (showSDocForUser dflags ghcQualify . ppr) es
             ps' = map (showSDocForUser dflags ghcQualify . ppr) ps
 
-        return $ filter (postfixMatch symbol) $ map dropParens $ concatMap words $ bs' ++ es' ++ ps'
+        gmLog GmDebug "qualifiedName" $ strDoc $ "symbol: " ++ symbol
+        gmLog GmDebug "qualifiedName" $ strDoc $ "line, col: " ++ show (lineNr, colNr)
+
+        let stuff = map dropParens $ concatMap words $ bs' ++ es' ++ ps'
+        gmLog GmDebug "qualifiedName" $ strDoc $ "stuff: " ++ show stuff
+
+        return $ filter (postfixMatch symbol) stuff
 
   where
     -- GHC8 starts showing things inside parens? Why? e.g. "(base-4.9.0.0:GHC.Num.+)"
@@ -747,10 +753,12 @@ guessHaddockUrl modSum targetFile targetModule symbol lineNr colNr ghcPkg readPr
 
     let f = haddock </> (moduleNameToHtmlFile lastMatchModule)
 
-    e <- liftIO $ doesFileExist f
+    let mySymbol' = case mySymbol of
+                            MySymbolSysQualified  s -> s
+                            MySymbolUserQualified s -> s
 
-    if e then return $ "file://" ++ f
-         else throw $ GMEMissingHaddockHTML f
+    return $ mySymbol' ++ " " ++ lastMatchModule ++ " file://" ++ f
+            ++ " " ++ toHackageUrl f lastMatchPackageName lastMatchModule
 
   where
     -- Convert a module name string, e.g. @Data.List@ to @Data-List.html@.
@@ -760,6 +768,23 @@ guessHaddockUrl modSum targetFile targetModule symbol lineNr colNr ghcPkg readPr
         f :: Char -> Char
         f '.' = '-'
         f c   = c
+
+    toHackageUrl :: FilePath -> String -> String -> String
+    toHackageUrl filepath package modulename = "https://hackage.haskell.org/package/" ++ package ++ "/" ++ "docs/" ++ modulename''
+        where filepath'    = map repl filepath
+              modulename'  = head $ separateBy '.' $ head $ separateBy '-' modulename
+              modulename'' = drop (fromJust $ substringP modulename' filepath') filepath'
+
+              -- On Windows we get backslashes in the file path; convert
+              -- to forward slashes for the URL.
+              repl :: Char -> Char
+              repl '\\' = '/'
+              repl c    = c
+
+              -- Adapted from http://www.haskell.org/pipermail/haskell-cafe/2010-June/078702.html
+              substringP :: String -> String -> Maybe Int
+              substringP _ []  = Nothing
+              substringP sub str = if sub `isPrefixOf` str then Just 0 else fmap (+1) $ substringP sub (tail str)
 
     filterMatchingQualifiedImport :: String -> [NiceImportDecl] -> [NiceImportDecl]
     filterMatchingQualifiedImport symbol hmodules
@@ -782,14 +807,20 @@ importedFrom file lineNr colNr (Expression symbol) = do
 
     ghandle handler $
       runGmlT' [Left file] deferErrors $
-        withInteractiveContext $ do
-          crdl   <- cradle
-          modSum <- fileModSummaryWithMapping (cradleCurrentDir crdl </> file)
-          let modstr = moduleNameString $ ms_mod_name modSum :: String
-
-          res <- guessHaddockUrl modSum file modstr symbol lineNr colNr ghcPkg readProc pkgDbStack
-          return $ res ++ "\n"
+            withInteractiveContext $ importedFrom' ghcPkg readProc pkgDbStack
   where
     handler (SomeException ex) = do
       gmLog GmException "imported-from" $ showDoc ex
-      return []
+      return $ "imported-from exception: " ++ show ex
+
+    importedFrom'
+        :: FilePath
+        -> (FilePath -> [String] -> String -> IO String)
+        -> [GhcPkgDb]
+        -> GmlT m String
+    importedFrom' ghcPkg readProc pkgDbStack = do
+        crdl   <- cradle
+        modSum <- fileModSummaryWithMapping (cradleCurrentDir crdl </> file)
+        let modstr = moduleNameString $ ms_mod_name modSum :: String
+
+        guessHaddockUrl modSum file modstr symbol lineNr colNr ghcPkg readProc pkgDbStack

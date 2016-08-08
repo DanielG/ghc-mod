@@ -103,9 +103,6 @@ gmeDoc e = case e of
     GMETooManyCabalFiles cfs ->
         text $ "Multiple cabal files found. Possible cabal files: \""
                ++ intercalate "\", \"" cfs ++"\"."
-    GMEMissingHaddockHTML f ->
-        text ("Haddock HTML file missing: " ++ f) $$
-        haddockSuggestion
     GMEMissingHaddockInterface f ->
         text ("Haddock interface file missing: " ++ f) $$
         text "" $$

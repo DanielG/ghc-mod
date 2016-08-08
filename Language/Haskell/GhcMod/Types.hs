@@ -350,9 +350,6 @@ data GhcModError
   | GMETooManyCabalFiles [FilePath]
   -- ^ Too many cabal files found.
 
-  | GMEMissingHaddockHTML FilePath
-  -- ^ Haddock HTML file missing.
-
   | GMEMissingHaddockInterface FilePath
   -- ^ Haddock interface file missing.
 
