@@ -3,9 +3,9 @@
 module ImportedFrom03 where
 
 import Control.Monad ( forM_, liftM, filterM, when, unless )
-import Control.Monad.Identity
-import Control.Monad.Reader
-import Control.Monad.Trans.Writer.Lazy
+-- import Control.Monad.Identity
+-- import Control.Monad.Reader
+-- import Control.Monad.Trans.Writer.Lazy
 
 
 
@@ -35,5 +35,4 @@ foo = do
     _ = succ :: Int -> Int
     _ = (++)
     _ = (>)
-    _ = (=)
     _ = (==)

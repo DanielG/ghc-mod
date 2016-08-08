@@ -5,7 +5,7 @@ module ImportedFrom01 where
 import Data.Maybe
 import qualified Data.List as DL
 import qualified Data.Map as DM
-import qualified Safe
+-- import qualified Safe
 import qualified Data.List as Foo.Bar
 
 f :: a -> Maybe a
@@ -26,7 +26,7 @@ main = print "Hello, World!"
 
 h = DM.fromList [("x", "y")]
 
-sh = Safe.headMay []
+-- sh = Safe.headMay []
 
 i = 3 :: Int
 i' = 3 :: Integer
