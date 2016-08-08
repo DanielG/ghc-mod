@@ -211,7 +211,7 @@
 		      default-directory))) ;; ghc-mod root
 	(with-temp-buffer
 	  (let ((default-directory cdir))
-	    (apply 'ghc-call-process target nil t nil
+	    (apply 'ghc-call-process target nil '(t nil) nil
 		   (append (ghc-make-ghc-options) cmds))
 	    (buffer-substring (point-min) (1- (point-max)))))))))
 
