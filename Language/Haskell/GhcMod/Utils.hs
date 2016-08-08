@@ -40,7 +40,7 @@ import System.IO.Temp (createTempDirectory)
 import System.Process (readProcess)
 import Text.Printf
 
-import Paths_ghc_mod (getLibexecDir)
+import Paths_ghc_mod (getLibexecDir, getBinDir)
 import Utils
 import Prelude
 
@@ -84,68 +84,12 @@ ghcModExecutable = do
     dir <- takeDirectory <$> getExecutablePath'
     return $ (if dir == "." then "" else dir) </> "ghc-mod"
 #else
-ghcModExecutable = fmap (</> "dist/build/ghc-mod/ghc-mod") getCurrentDirectory
+ghcModExecutable = do
+  gpp <- lookupEnv "STACK_EXE"
+  case gpp of
+    Just _ -> fmap (</> "ghc-mod") getBinDir
+    _      -> fmap (</> "dist/build/ghc-mod/ghc-mod") getCurrentDirectory
 #endif
-
-findLibexecExe :: String -> IO FilePath
-findLibexecExe "cabal-helper-wrapper" = do
-  libexecdir <- getLibexecDir
-  let exeName = "cabal-helper-wrapper"
-      exe = libexecdir </> exeName
-
-  exists <- doesFileExist exe
-
-  if exists
-  then return exe
-  else do
-    mdir <- tryFindGhcModTreeDataDir
-    case mdir of
-      Nothing ->
-        error $ libexecNotExitsError exeName libexecdir
-      Just dir ->
-        return $ dir </> "dist" </> "build" </> exeName </> exeName
-findLibexecExe exe = error $ "findLibexecExe: Unknown executable: " ++ exe
-
-libexecNotExitsError :: String -> FilePath -> String
-libexecNotExitsError exe dir = printf
- ( "Could not find $libexecdir/%s\n"
- ++"\n"
- ++"If you are a developer set the environment variable `ghc_mod_libexecdir'\n"
- ++"to override $libexecdir[1] the following will work in the ghc-mod tree:\n"
- ++"\n"
- ++"    $ export ghc_mod_libexecdir=$PWD/dist/build/%s\n"
- ++"\n"
- ++"[1]: %s\n"
- ++"\n"
- ++"If you don't know what I'm talking about something went wrong with your\n"
- ++"installation. Please report this problem here:\n"
- ++"\n"
- ++"    https://github.com/kazu-yamamoto/ghc-mod/issues") exe exe dir
-
-tryFindGhcModTreeLibexecDir :: IO (Maybe FilePath)
-tryFindGhcModTreeLibexecDir  = do
-  exe <- getExecutablePath'
-  dir <- case takeFileName exe of
-    "ghc" -> getCurrentDirectory -- we're probably in ghci; try CWD
-    _     -> return $ (!!4) $ iterate takeDirectory exe
-  exists <- doesFileExist $ dir </> "ghc-mod.cabal"
-  return $ if exists
-           then Just dir
-           else Nothing
-
-tryFindGhcModTreeDataDir :: IO (Maybe FilePath)
-tryFindGhcModTreeDataDir  = do
-  dir <- (!!4) . iterate takeDirectory <$> getExecutablePath'
-  exists <- doesFileExist $ dir </> "ghc-mod.cabal"
-  return $ if exists
-           then Just dir
-           else Nothing
-
-readLibExecProcess' :: (MonadIO m, ExceptionMonad m)
-                    => String -> [String] -> m String
-readLibExecProcess' cmd args = do
-  exe <- liftIO $ findLibexecExe cmd
-  liftIO $ readProcess exe args ""
 
 getExecutablePath' :: IO FilePath
 #if __GLASGOW_HASKELL__ >= 706
