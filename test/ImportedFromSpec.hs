@@ -32,37 +32,37 @@ spec = do
         -- before???
         it "can look up Maybe" $ do
             res <- runD' tdir $ importedFrom "ImportedFrom01.hs" 22 17 (Expression "Maybe")
-            res `shouldSatisfy` (isInfixOf "base-")
+            res `shouldSatisfy` (\x -> "base-" `isInfixOf` x || "haskell98-" `isInfixOf` x || "haskell2010-" `isInfixOf` x)
             res `shouldSatisfy` (isInfixOf "Data-Maybe.html")
 
         it "can look up Just" $ do
             res <- runD' tdir $ importedFrom "ImportedFrom01.hs" 12 7  (Expression "Just")
-            res `shouldSatisfy` (isInfixOf "base-")
+            res `shouldSatisfy` (\x -> "base-" `isInfixOf` x || "haskell98-" `isInfixOf` x || "haskell2010-" `isInfixOf` x)
             res `shouldSatisfy` (isInfixOf "Data-Maybe.html")
 
         it "can look up Just" $ do
             res <- runD' tdir $ importedFrom "ImportedFrom01.hs" 16 10 (Expression "Just")
-            res `shouldSatisfy` (isInfixOf "base-")
+            res `shouldSatisfy` (\x -> "base-" `isInfixOf` x || "haskell98-" `isInfixOf` x || "haskell2010-" `isInfixOf` x)
             res `shouldSatisfy` (isInfixOf "Data-Maybe.html")
 
         it "can look up String" $ do
             res <- runD' tdir $ importedFrom "ImportedFrom01.hs" 20 14 (Expression "String")
-            res `shouldSatisfy` (isInfixOf "base-")
+            res `shouldSatisfy` (\x -> "base-" `isInfixOf` x || "haskell98-" `isInfixOf` x || "haskell2010-" `isInfixOf` x)
             res `shouldSatisfy` (isInfixOf "Prelude.html")
 
         it "can look up Int" $ do
             res <- runD' tdir $ importedFrom "ImportedFrom01.hs" 22 23 (Expression "Int")
-            res `shouldSatisfy` (isInfixOf "base-")
+            res `shouldSatisfy` (\x -> "base-" `isInfixOf` x || "haskell98-" `isInfixOf` x || "haskell2010-" `isInfixOf` x)
             res `shouldSatisfy` (isInfixOf "Prelude.html")
 
         it "can look up DL.length" $ do
             res <- runD' tdir $ importedFrom "ImportedFrom01.hs" 23 5  (Expression "DL.length")
-            res `shouldSatisfy` (isInfixOf "base-")
+            res `shouldSatisfy` (\x -> "base-" `isInfixOf` x || "haskell98-" `isInfixOf` x || "haskell2010-" `isInfixOf` x)
             res `shouldSatisfy` (isInfixOf "Data-List.html")
 
         it "can look up print" $ do
             res <- runD' tdir $ importedFrom "ImportedFrom01.hs" 25 8  (Expression "print")
-            res `shouldSatisfy` (isInfixOf "base-")
+            res `shouldSatisfy` (\x -> "base-" `isInfixOf` x || "haskell98-" `isInfixOf` x || "haskell2010-" `isInfixOf` x)
             res `shouldSatisfy` (isInfixOf "Prelude.html")
 
         it "can look up DM.fromList" $ do
@@ -81,7 +81,7 @@ spec = do
 
         it "can look up Foo.Bar.length" $ do
             res <- runD' tdir $ importedFrom "ImportedFrom01.hs" 34 17 (Expression "Foo.Bar.length")
-            res `shouldSatisfy` (isInfixOf "base-")
+            res `shouldSatisfy` (\x -> "base-" `isInfixOf` x || "haskell98-" `isInfixOf` x || "haskell2010-" `isInfixOf` x)
             res `shouldSatisfy` (isInfixOf "Data-List.html")
 
         -- These from Safe also fail. Why?
@@ -97,5 +97,5 @@ spec = do
 
         it "can look up when" $ do
             res <- runD' tdir $ importedFrom "ImportedFrom03.hs"   15 5  (Expression "when")
-            res `shouldSatisfy` (isInfixOf "base-")
+            res `shouldSatisfy` (\x -> "base-" `isInfixOf` x || "haskell98-" `isInfixOf` x || "haskell2010-" `isInfixOf` x)
             res `shouldSatisfy` (isInfixOf "Control-Monad.html")

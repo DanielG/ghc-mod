@@ -564,14 +564,17 @@ refineVisibleExports getHaddockInterfaces exports = mapM f exports
                                 (GMEString "ImportedFrom: visible exports map is Nothing")
                                 (getVisibleExports getHaddockInterfaces pname)
 
-        gmLog GmDebug "visibleExportsMap" $ strDoc $ show visibleExportsMap
+        gmLog GmDebug "refineVisibleExports" $ strDoc $ "visibleExportsMap: " ++ show visibleExportsMap
+        gmLog GmDebug "refineVisibleExports" $ strDoc $ "pname: " ++ show pname
+        gmLog GmDebug "refineVisibleExports" $ strDoc $ "thisModuleName: " ++ show thisModuleName
 
-        let thisModVisibleExports0 = M.lookup thisModuleName visibleExportsMap
+        let thisModVisibleExports0 = M.lookup thisModuleName                   visibleExportsMap
+            thisModVisibleExports1 = M.lookup (pname ++ ":" ++ thisModuleName) visibleExportsMap
 
         -- On earlier versions of GHC, our qexports list will not be fully qualified, so it will
         -- look like ["base:GHC.Base.Just", ...] instead of ["base-4.8.2.0:GHC.Base.Just", ...].
         -- So if thisModVisibleExports0 is Nothing, fall back to searching on a shorter pname.
-        thisModVisibleExports <- case thisModVisibleExports0 of
+        thisModVisibleExports <- case thisModVisibleExports0 `mplus` thisModVisibleExports1 of
                                         Just ve -> return ve
                                         Nothing -> let pname' = ((head $ splitOn "-" pname) ++ ":" ++ thisModuleName) in
                                                         liftMaybe
