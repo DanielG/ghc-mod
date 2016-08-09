@@ -215,7 +215,9 @@ Library
 
   if impl(ghc >= 8.0)
     Build-Depends:      haddock-api       < 2.18
-  if impl(ghc >= 7.8 && < 8.0)
+  if impl(ghc >= 7.10 && < 8.0)
+    Build-Depends:      haddock-api       < 2.17
+  if impl(ghc >= 7.8 && < 7.10)
     Build-Depends:      haddock-api       < 2.16
   if impl(ghc < 7.8)
     Build-Depends:      haddock           < 2.15.0
