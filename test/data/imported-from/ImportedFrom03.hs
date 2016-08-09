@@ -21,6 +21,7 @@ foo = do
     print "hello"
     putStrLn "hello"
 
+{-
   where
     _ = (+)
     _ = (-)
@@ -36,3 +37,4 @@ foo = do
     _ = (++)
     _ = (>)
     _ = (==)
+-}
