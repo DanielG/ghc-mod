@@ -535,6 +535,9 @@ refineLeadingDot :: MySymbol -> [ModuleExports] -> [ModuleExports]
 refineLeadingDot (MySymbolUserQualified _)           exports = exports
 refineLeadingDot (MySymbolSysQualified symb)         exports = map (\e -> e { qualifiedExports = f leadingDot e }) exports
   where
+    -- We use leadingDot only when we have an 'MySymbolSysQualified symb' so
+    -- the 'last' will be ok. Sample value of 'symb' in this case is
+    -- "base-4.8.2.0:Data.Foldable.length".
     leadingDot :: String
     leadingDot = '.' : last (splitOn "." symb)
 
