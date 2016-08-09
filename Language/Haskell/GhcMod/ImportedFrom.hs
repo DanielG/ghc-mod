@@ -552,7 +552,10 @@ refineVisibleExports getHaddockInterfaces exports = mapM f exports
             qexports       = qualifiedExports mexports -- e.g. ["base-4.8.2.0:GHC.Base.Just", ...]
         mVisibleExportsMap <- getVisibleExports getHaddockInterfaces pname
 
-        let visibleExportsMap = fromMaybe (throw $ GMEString $ "ImportedFrom: visible exports map is Nothing") mVisibleExportsMap
+        visibleExportsMap <- case mVisibleExportsMap of
+                                Nothing -> throw $ GMEString $ "ImportedFrom: visible exports map is Nothing"
+                                Just x  -> return x
+
         gmLog GmDebug "visibleExportsMap" $ strDoc $ show visibleExportsMap
 
         let thisModVisibleExports0 = M.lookup thisModuleName visibleExportsMap
@@ -563,9 +566,9 @@ refineVisibleExports getHaddockInterfaces exports = mapM f exports
         let thisModVisibleExports = case thisModVisibleExports0 of
                                         Just ve -> ve
                                         Nothing -> let pname' = ((head $ splitOn "-" pname) ++ ":" ++ thisModuleName) in
-                                                        fromMaybe
-                                                            (throw $ GMENoVisibleExports thisModuleName pname')
-                                                            (M.lookup pname' visibleExportsMap)
+                                                        case M.lookup pname' visibleExportsMap of
+                                                            Nothing -> throw $ GMENoVisibleExports thisModuleName pname'
+                                                            Just ve -> ve
 
         let qexports' = filter (hasPostfixMatch thisModVisibleExports) qexports
 
@@ -733,18 +736,16 @@ guessHaddockUrl modSum targetFile targetModule symbol lineNr colNr ghcPkg readPr
     gmLog GmDebug "guessHaddockUrl" $ strDoc $ "lastMatchPackageName: " ++ lastMatchPackageName
     gmLog GmDebug "guessHaddockUrl" $ strDoc $ "mhaddock:             " ++ show mhaddock
 
-    let haddock = fromMaybe
-                    (throw $ GMEString $ "ImportedFrom: ghcPkgHaddockUrl failed to find path to HTML file.")
-                    mhaddock
+    case mhaddock of
+        Nothing -> throw $ GMEString $ "ImportedFrom: ghcPkgHaddockUrl failed to find path to HTML file."
+        Just haddock -> do let f = haddock </> (moduleNameToHtmlFile lastMatchModule)
 
-    let f = haddock </> (moduleNameToHtmlFile lastMatchModule)
+                           let mySymbol' = case mySymbol of
+                                                   MySymbolSysQualified  s -> s
+                                                   MySymbolUserQualified s -> s
 
-    let mySymbol' = case mySymbol of
-                            MySymbolSysQualified  s -> s
-                            MySymbolUserQualified s -> s
-
-    return $ mySymbol' ++ " " ++ lastMatchModule ++ " file://" ++ f
-            ++ " " ++ toHackageUrl f lastMatchPackageName lastMatchModule
+                           return $ mySymbol' ++ " " ++ lastMatchModule ++ " file://" ++ f
+                                   ++ " " ++ toHackageUrl f lastMatchPackageName lastMatchModule
 
   where
     -- Convert a module name string, e.g. @Data.List@ to @Data-List.html@.
