@@ -20,6 +20,7 @@ module Language.Haskell.GhcMod.ImportedFrom (importedFrom) where
 import Control.Applicative
 import Control.Exception
 import Control.Monad
+import Control.Monad.Trans.Maybe
 import Data.Char (isAlpha)
 import Data.IORef
 import Data.List
@@ -280,19 +281,12 @@ ghcPkgFindModule
 ghcPkgFindModule mod = do
     rp <- gmReadProcess
 
-    shortcut [ stackGhcPkgFindModule rp mod
-             , hcPkgFindModule       rp mod
-             , ghcPkgFindModule'     rp mod
-             ]
+    (runMaybeT . msum . map MaybeT)
+        [ stackGhcPkgFindModule rp mod
+        , hcPkgFindModule       rp mod
+        , ghcPkgFindModule'     rp mod
+        ]
   where
-    shortcut :: [m (Maybe a)] -> m (Maybe a)
-    shortcut []     = return Nothing
-    shortcut (a:as) = do
-        a' <- a
-
-        case a' of
-            a''@(Just _)    -> return a''
-            Nothing         -> shortcut as
 
     runCmd rp cmd opts = liftIO ((Just <$> (rp cmd opts "")) `catch` (\(_::IOError) -> return Nothing))
 
