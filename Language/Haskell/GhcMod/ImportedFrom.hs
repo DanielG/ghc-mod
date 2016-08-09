@@ -460,7 +460,7 @@ refineAs (MySymbolUserQualified userQualSym) exports = filterM f exports
     f export = do
         -- e.g. "DL"
         case moduleOfQualifiedName userQualSym of
-            Nothing -> throw $ GMEString $ "ImportedFrom: expected a qualified name like 'DL.length' but got Nothing."
+            Nothing -> fail "ImportedFrom: expected a qualified name like 'DL.length' but got Nothing."
             Just userQualAs -> return $ case modImportedAs $ mInfo export of
                                   Nothing     -> False
                                   Just modas' -> modas' == userQualAs
@@ -553,7 +553,7 @@ refineVisibleExports getHaddockInterfaces exports = mapM f exports
         mVisibleExportsMap <- getVisibleExports getHaddockInterfaces pname
 
         visibleExportsMap <- case mVisibleExportsMap of
-                                Nothing -> throw $ GMEString $ "ImportedFrom: visible exports map is Nothing"
+                                Nothing -> fail $ "ImportedFrom: visible exports map is Nothing"
                                 Just x  -> return x
 
         gmLog GmDebug "visibleExportsMap" $ strDoc $ show visibleExportsMap
@@ -563,12 +563,14 @@ refineVisibleExports getHaddockInterfaces exports = mapM f exports
         -- On earlier versions of GHC, our qexports list will not be fully qualified, so it will
         -- look like ["base:GHC.Base.Just", ...] instead of ["base-4.8.2.0:GHC.Base.Just", ...].
         -- So if thisModVisibleExports0 is Nothing, fall back to searching on a shorter pname.
-        let thisModVisibleExports = case thisModVisibleExports0 of
-                                        Just ve -> ve
-                                        Nothing -> let pname' = ((head $ splitOn "-" pname) ++ ":" ++ thisModuleName) in
-                                                        case M.lookup pname' visibleExportsMap of
-                                                            Nothing -> throw $ GMENoVisibleExports thisModuleName pname'
-                                                            Just ve -> ve
+        let pname' = (head $ splitOn "-" pname) ++ ":" ++ thisModuleName
+            mThisModVisibleExports = thisModVisibleExports0
+                                     `mplus`
+                                     (M.lookup pname' visibleExportsMap)
+
+        thisModVisibleExports <- case mThisModVisibleExports of
+                                    Nothing -> throw $ GMENoVisibleExports thisModuleName pname'
+                                    Just x  -> return x
 
         let qexports' = filter (hasPostfixMatch thisModVisibleExports) qexports
 
@@ -629,7 +631,7 @@ guessHaddockUrl modSum targetFile targetModule symbol lineNr colNr ghcPkg readPr
     let symbolToUse :: String
         symbolToUse = case qnames of
                         (qq:_) -> qq -- We got a qualified name, with qualified printing. Qualified!
-                        []     -> throw $ GMEString "ImportedFrom: qnames is empty."
+                        []     -> fail "ImportedFrom: qnames is empty."
 
     gmLog GmDebug "guessHaddockUrl" $ strDoc $ "symbolToUse: " ++ symbolToUse
 
@@ -639,17 +641,20 @@ guessHaddockUrl modSum targetFile targetModule symbol lineNr colNr ghcPkg readPr
     -- full qualified name.
     let parsedPackagesAndQualNames = map (runRP parsePackageAndQualName) qnames
 
+        mkNiceDecl x = [ NiceImportDecl
+                          { modName         = x
+                          , modQualifier    = Nothing
+                          , modIsImplicit   = False
+                          , modHiding       = []
+                          , modImportedAs   = Nothing
+                          , modSpecifically = []
+                          }
+                       ]
+
         extraImportDecls :: [NiceImportDecl]
         extraImportDecls = case Safe.headMay parsedPackagesAndQualNames of
             Just (Right (_, x)) -> case moduleOfQualifiedName x of
-                                      Just x' -> [NiceImportDecl
-                                                   { modName         = x'
-                                                   , modQualifier    = Nothing
-                                                   , modIsImplicit   = False
-                                                   , modHiding       = []
-                                                   , modImportedAs   = Nothing
-                                                   , modSpecifically = []
-                                                   }]
+                                      Just x' -> mkNiceDecl x'
                                       Nothing -> []
             _                   -> []
 
@@ -723,12 +728,12 @@ guessHaddockUrl modSum targetFile targetModule symbol lineNr colNr ghcPkg readPr
     let lastMatchModule :: String
         lastMatchModule = case mName <$> lastMatch of
                             Just modn   -> modn
-                            _           -> throw $ GMEString $ "ImportedFrom: no nice match in lastMatch for module: " ++ show lastMatch
+                            _           -> fail $ "ImportedFrom: no nice match in lastMatch for module: " ++ show lastMatch
 
         lastMatchPackageName :: String
         lastMatchPackageName = case mPackageName <$> lastMatch of
                                 Just p -> p
-                                _      -> throw $ GMEString $ "ImportedFrom: no nice match in lastMatch for package name: " ++ show lastMatch
+                                _      -> fail $ "ImportedFrom: no nice match in lastMatch for package name: " ++ show lastMatch
 
     mhaddock <- ghcPkgHaddockUrl ghcPkg readProc pkgDbStack lastMatchPackageName
 
@@ -737,7 +742,7 @@ guessHaddockUrl modSum targetFile targetModule symbol lineNr colNr ghcPkg readPr
     gmLog GmDebug "guessHaddockUrl" $ strDoc $ "mhaddock:             " ++ show mhaddock
 
     case mhaddock of
-        Nothing -> throw $ GMEString $ "ImportedFrom: ghcPkgHaddockUrl failed to find path to HTML file."
+        Nothing -> fail $ "ImportedFrom: ghcPkgHaddockUrl failed to find path to HTML file."
         Just haddock -> do let f = haddock </> (moduleNameToHtmlFile lastMatchModule)
 
                            let mySymbol' = case mySymbol of
