@@ -194,13 +194,6 @@ toImportDecl dflags idecl = NiceImportDecl
     parseSpecifically (Just (False, h)) = grabNames h
     parseSpecifically _                 = []
 
--- This definition of separateBy is taken
--- from: http://stackoverflow.com/a/4978733
-separateBy :: Eq a => a -> [a] -> [[a]]
-separateBy chr = unfoldr sep' where
-  sep' [] = Nothing
-  sep' l  = Just . fmap (drop 1) . break (==chr) $ l
-
 -- | Returns True if the 'Symbol' matches the end of the 'QualifiedName'.
 --
 -- Example:
@@ -214,7 +207,7 @@ separateBy chr = unfoldr sep' where
 
 postfixMatch :: String -> QualifiedName -> Bool
 postfixMatch originalSymbol qName = endTerm `isSuffixOf` qName
-  where endTerm = last $ separateBy '.' originalSymbol
+  where endTerm = last $ splitOn "." originalSymbol
 
 -- | Get the module part of a qualified name.
 --
@@ -228,7 +221,7 @@ moduleOfQualifiedName :: QualifiedName -> Maybe String
 moduleOfQualifiedName qn = if null bits
                                 then Nothing
                                 else Just $ intercalate "." bits
-  where bits = reverse $ drop 1 $ reverse $ separateBy '.' qn
+  where bits = reverse $ drop 1 $ reverse $ splitOn "." qn
 
 -- | Find the possible qualified names for the symbol at line/col in the given Haskell file and module.
 -- Returns a fully qualified name thatincludes the package, hash, and name, e.g.
@@ -346,7 +339,7 @@ ghcPkgHaddockUrl ghcPkg readProc pkgDbStack p = do
                 _       -> p
 
     hout <- liftIO $ readProc ghcPkg (toDocDirOpts p' pkgDbStack) ""
-    return $ Safe.lastMay $ words $ reverse . dropWhile (== '\n') . reverse $ hout
+    return $ Safe.lastMay $ words $ reverse $ dropWhile (== '\n') $ reverse hout
   where
     -- This fails unless we have --global and --user, unlike
     -- pkgDoc elsewhere in ghc-mod.
@@ -380,8 +373,10 @@ getVisibleExports getHaddockInterfaces p = do
     haddockInterfaceFile <- getHaddockInterfaces p'
 
     case haddockInterfaceFile of
-        Just hi -> getVisibleExports' hi
-        Nothing -> return Nothing
+            Just hi -> getVisibleExports' hi
+            Nothing -> return Nothing
+
+    -- FIXME getVisibleExports' <$> (getHaddockInterfaces p')
 
   where
 
@@ -395,9 +390,14 @@ getVisibleExports getHaddockInterfaces p = do
 
         case iface of
             Left _          -> throw $ GMEMissingHaddockInterface ifile
-            Right iface'    -> do let m  = map (\ii -> (Haddock.instMod ii, Haddock.instVisibleExports ii)) $ Haddock.ifInstalledIfaces iface' :: [(Module, [Name])]
-                                      m' = map (\(mname, names) -> (showSDoc dflags $ ppr mname, map (showSDoc dflags . ppr) names)) m         :: [(String, [String])]
-                                  return $ Just $ M.fromList m'
+            Right iface'    -> return $ Just $ M.fromList
+                                    [ (mname,  names)
+                                    | ii <- Haddock.ifInstalledIfaces iface'
+                                    , let mname = showSDoc dflags $ ppr $ Haddock.instMod ii
+                                          names = map (showSDoc dflags . ppr) $ Haddock.instVisibleExports ii
+                                    ]
+
+
 
     ------------------------------------------------------------------------------------------------------------------------
     -- Copied from http://hackage.haskell.org/package/haddock-api-2.16.1/docs/src/Haddock-InterfaceFile.html#nameCacheFromGhc
@@ -452,22 +452,22 @@ data ModuleExports = ModuleExports
     }
     deriving Show
 
-refineAs :: MySymbol -> [ModuleExports] -> [ModuleExports]
+-- refineAs :: MySymbol -> [ModuleExports] -> [ModuleExports]
 
 -- User qualified the symbol, so we can filter out anything that doesn't have a matching 'modImportedAs'.
-refineAs (MySymbolUserQualified userQualSym) exports = filter f exports
+refineAs (MySymbolUserQualified userQualSym) exports = filterM f exports
   where
-    f export = case modas of
-                Nothing     -> False
-                Just modas' -> modas' == userQualAs
-       where modas = modImportedAs $ mInfo export :: Maybe String
+    f export = do
+        -- e.g. "DL"
+        case moduleOfQualifiedName userQualSym of
+            Nothing -> throw $ GMEString $ "ImportedFrom: expected a qualified name like 'DL.length' but got Nothing."
+            Just userQualAs -> return $ case modImportedAs $ mInfo export of
+                                  Nothing     -> False
+                                  Just modas' -> modas' == userQualAs
 
-             -- e.g. "DL"
-             userQualAs = fromMaybe (throw $ GMEString $ "ImportedFrom: expected a qualified name like 'DL.length' but got: " ++ userQualSym)
-                                    (moduleOfQualifiedName userQualSym)
 
 -- User didn't qualify the symbol, so we have the full system qualified thing, so do nothing here.
-refineAs (MySymbolSysQualified _) exports = exports
+refineAs (MySymbolSysQualified _) exports = return exports
 
 refineRemoveHiding :: [ModuleExports] -> [ModuleExports]
 refineRemoveHiding exports = map (\e -> e { qualifiedExports = f e }) exports
@@ -513,7 +513,7 @@ refineExportsIt mysymbol exports = map (\e -> e { qualifiedExports = f symbol e 
 -- rule. If the 'stage3' results are empty we fall back to this refiner.
 refineExportsItFallbackInternal :: MySymbol -> [ModuleExports] -> [ModuleExports]
 refineExportsItFallbackInternal mysymbol exports
-    = case separateBy ':' symbol of
+    = case splitOn ":" symbol of
         [p, _, x]   -> map (\e -> e { qualifiedExports = f p x e }) exports
         _           -> exports
   where
@@ -532,7 +532,7 @@ refineLeadingDot (MySymbolUserQualified _)           exports = exports
 refineLeadingDot (MySymbolSysQualified symb)         exports = map (\e -> e { qualifiedExports = f leadingDot e }) exports
   where
     leadingDot :: String
-    leadingDot = '.' : last (separateBy '.' symb)
+    leadingDot = '.' : last (splitOn "." symb)
 
     -- f symbol export = filter (symbol ==) thisExports
     f symbol export = filter (symbol `isSuffixOf`) thisExports
@@ -562,7 +562,7 @@ refineVisibleExports getHaddockInterfaces exports = mapM f exports
         -- So if thisModVisibleExports0 is Nothing, fall back to searching on a shorter pname.
         let thisModVisibleExports = case thisModVisibleExports0 of
                                         Just ve -> ve
-                                        Nothing -> let pname' = ((head $ separateBy '-' pname) ++ ":" ++ thisModuleName) in
+                                        Nothing -> let pname' = ((head $ splitOn "-" pname) ++ ":" ++ thisModuleName) in
                                                         fromMaybe
                                                             (throw $ GMENoVisibleExports thisModuleName pname')
                                                             (M.lookup pname' visibleExportsMap)
@@ -575,7 +575,7 @@ refineVisibleExports getHaddockInterfaces exports = mapM f exports
 
     -- hasPostfixMatch "base-4.8.2.0:GHC.Base.Just" ["Just", "True", ...] -> True
     hasPostfixMatch :: [String] -> String -> Bool
-    hasPostfixMatch xs s = last (separateBy '.' s) `elem` xs
+    hasPostfixMatch xs s = last (splitOn "." s) `elem` xs
 
 -- | The last thing with a single export must be the match? Iffy.
 getLastMatch :: [ModuleExports] -> Maybe ModuleExports
@@ -696,7 +696,7 @@ guessHaddockUrl modSum targetFile targetModule symbol lineNr colNr ghcPkg readPr
 
     showDebugStage "stage0" stage0
 
-    let stage1 = refineAs mySymbol stage0
+    stage1 <- refineAs mySymbol stage0
     showDebugStage "stage1" stage1
 
     let stage2 = refineRemoveHiding stage1
@@ -758,7 +758,7 @@ guessHaddockUrl modSum targetFile targetModule symbol lineNr colNr ghcPkg readPr
     toHackageUrl :: FilePath -> String -> String -> String
     toHackageUrl filepath package modulename = "https://hackage.haskell.org/package/" ++ package ++ "/" ++ "docs/" ++ modulename''
         where filepath'    = map repl filepath
-              modulename'  = head $ separateBy '.' $ head $ separateBy '-' modulename
+              modulename'  = head $ splitOn "." $ head $ splitOn "-" modulename
               modulename'' = drop (fromJust $ substringP modulename' filepath') filepath'
 
               -- On Windows we get backslashes in the file path; convert
