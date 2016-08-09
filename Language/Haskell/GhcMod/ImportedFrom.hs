@@ -282,7 +282,7 @@ ghcPkgFindModule mod = do
 
     shortcut [ stackGhcPkgFindModule rp mod
              , hcPkgFindModule       rp mod
-             , _ghcPkgFindModule     rp mod
+             , ghcPkgFindModule'     rp mod
              ]
   where
     shortcut :: [m (Maybe a)] -> m (Maybe a)
@@ -306,15 +306,15 @@ ghcPkgFindModule mod = do
 
     -- | Call @ghc-pkg find-module@ to determine that package that provides a module, e.g. @Prelude@ is defined
     -- in @base-4.6.0.1@.
-    -- _ghcPkgFindModule :: String -> IO (Maybe String)
-    _ghcPkgFindModule rp m = do
+    -- ghcPkgFindModule' :: String -> IO (Maybe String)
+    ghcPkgFindModule' rp m = do
         let opts = ["find-module", m, "--simple-output"] ++ ["--global", "--user"] ++ optsForGhcPkg []
-        gmLog GmDebug "_ghcPkgFindModule" $ strDoc $ "ghc-pkg " ++ show opts
+        gmLog GmDebug "ghcPkgFindModule'" $ strDoc $ "ghc-pkg " ++ show opts
 
         x <- runCmd rp "ghc-pkg" opts
 
-        -- gmLog GmDebug "" $ strDoc $ "_ghcPkgFindModule stdout: " ++ show output
-        -- gmLog GmDebug "" $ strDoc $ "_ghcPkgFindModule stderr: " ++ show err
+        -- gmLog GmDebug "" $ strDoc $ "ghcPkgFindModule' stdout: " ++ show output
+        -- gmLog GmDebug "" $ strDoc $ "ghcPkgFindModule' stderr: " ++ show err
         return $ case x of
                     Just x' -> join $ (Safe.lastMay . words) <$> (Safe.lastMay . lines) x'
                     Nothing -> Nothing
