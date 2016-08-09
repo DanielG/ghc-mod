@@ -13,7 +13,7 @@
 -- You should have received a copy of the GNU Affero General Public License
 -- along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-{-# LANGUAGE CPP, FlexibleContexts, Rank2Types, ScopedTypeVariables #-}
+{-# LANGUAGE CPP, FlexibleContexts, Rank2Types, ScopedTypeVariables, ViewPatterns #-}
 
 module Language.Haskell.GhcMod.ImportedFrom (importedFrom) where
 
@@ -653,10 +653,8 @@ guessHaddockUrl modSum targetFile targetModule symbol lineNr colNr ghcPkg readPr
 
         extraImportDecls :: [NiceImportDecl]
         extraImportDecls = case Safe.headMay parsedPackagesAndQualNames of
-            Just (Right (_, x)) -> case moduleOfQualifiedName x of
-                                      Just x' -> mkNiceDecl x'
-                                      Nothing -> []
-            _                   -> []
+            Just (Right (_, moduleOfQualifiedName -> Just x)) -> mkNiceDecl x
+            _                                                 -> []
 
         importDecls3 = importDecls2 ++ extraImportDecls
 
