@@ -324,6 +324,12 @@ ghcPkgFindModule mod = do
                     Just x' -> join $ (Safe.lastMay . words) <$> (Safe.lastMay . lines) x'
                     Nothing -> Nothing
 
+splitPackageName :: String -> String
+splitPackageName p
+    = case splitOn "@" p of
+            [p0, _] -> p0
+            _       -> p
+
 ghcPkgHaddockUrl
     :: forall m. (GmLog m, GmOut m, MonadIO m)
     => FilePath
@@ -334,9 +340,7 @@ ghcPkgHaddockUrl
 ghcPkgHaddockUrl ghcPkg readProc pkgDbStack p = do
     gmLog GmDebug "ghcPkgHaddockUrl" $ strDoc p
 
-    let p' = case splitOn "@" p of
-                [p0, _] -> p0
-                _       -> p
+    let p' = splitPackageName p
 
     hout <- liftIO $ readProc ghcPkg (toDocDirOpts p' pkgDbStack) ""
     return $ Safe.lastMay $ words $ reverse $ dropWhile (== '\n') $ reverse hout
@@ -366,9 +370,7 @@ getVisibleExports
 getVisibleExports getHaddockInterfaces p = do
     gmLog GmDebug "getVisibleExports" $ strDoc p
 
-    let p' = case splitOn "@" p of
-                [p0, _] -> p0
-                _       -> p
+    let p' = splitPackageName p
 
     haddockInterfaceFile <- getHaddockInterfaces p'
 
@@ -676,12 +678,14 @@ guessHaddockUrl modSum targetFile targetModule symbol lineNr colNr ghcPkg readPr
         successes' :: [(NiceImportDecl, ([String], String))]
         successes' = mapMaybe toMaybe successes
 
-        stage0 = map (\(m, (e, p)) -> ModuleExports
-                                            { mName             = modName m
-                                            , mPackageName      = p
-                                            , mInfo             = m
-                                            , qualifiedExports  = e
-                                            }) successes'
+        mkExports (m, (e, p)) = ModuleExports
+                                  { mName             = modName m
+                                  , mPackageName      = p
+                                  , mInfo             = m
+                                  , qualifiedExports  = e
+                                  }
+
+        stage0 = map mkExports successes'
 
     -- Get all "as" imports.
     let asImports :: [String]
