@@ -44,6 +44,7 @@ import System.Directory
 import System.FilePath
 
 import qualified Data.Map as M
+import qualified Data.Set as Set
 import qualified Documentation.Haddock as Haddock
 import qualified GhcMonad
 import qualified Safe
@@ -467,7 +468,6 @@ refineAs (MySymbolUserQualified userQualSym) exports = filterM f exports
                                   Nothing     -> False
                                   Just modas' -> modas' == userQualAs
 
-
 -- User didn't qualify the symbol, so we have the full system qualified thing, so do nothing here.
 refineAs (MySymbolSysQualified _) exports = return exports
 
@@ -479,10 +479,12 @@ refineRemoveHiding exports = map (\e -> e { qualifiedExports = f e }) exports
              hiding' = map (qualifyName thisExports) hiding  :: [String]    -- Qualified version of hiding.
              thisExports = qualifiedExports export         -- Things that this module exports.
 
+    nub' = Set.toList . Set.fromList
+
     qualifyName :: [QualifiedName] -> String -> QualifiedName
     qualifyName qualifiedNames name
         -- = case filter (postfixMatch name) qualifiedNames of
-        = case nub (filter (name `f`) qualifiedNames) of
+        = case nub' (filter (name `f`) qualifiedNames) of
             [match]     -> match
             m           -> throw $ GMEString $ "ImportedFrom: could not qualify " ++ name ++ " from these exports: " ++ show qualifiedNames ++ "\n    matches: " ++ show m
 
