@@ -54,7 +54,8 @@ script:
       ;;
     esac
   - stack --no-terminal build --test --no-run-tests
-  - stack --no-terminal test ghc-mod:spec
+  - export DOCTEST_DIST_DIR="$(stack path --dist-dir)"
+  - stack --no-terminal test
 
 matrix:
   matrix:
