@@ -294,21 +294,13 @@ ghcPkgFindModule mod = do
             a''@(Just _)    -> return a''
             Nothing         -> shortcut as
 
-    optsForGhcPkg :: [String] -> [String]
-    optsForGhcPkg [] = []
-    optsForGhcPkg ("-no-user-package-db":rest)   = "--no-user-package-db"          : optsForGhcPkg rest
-    optsForGhcPkg ("-package-db":pd:rest)        = ("--package-db" ++ "=" ++ pd)   : optsForGhcPkg rest
-    optsForGhcPkg ("-package-conf":pc:rest)      = ("--package-conf" ++ "=" ++ pc) : optsForGhcPkg rest
-    optsForGhcPkg ("-no-user-package-conf":rest) = "--no-user-package-conf"        : optsForGhcPkg rest
-    optsForGhcPkg (_:rest) = optsForGhcPkg rest
-
     runCmd rp cmd opts = liftIO ((Just <$> (rp cmd opts "")) `catch` (\(_::IOError) -> return Nothing))
 
     -- | Call @ghc-pkg find-module@ to determine that package that provides a module, e.g. @Prelude@ is defined
     -- in @base-4.6.0.1@.
     -- ghcPkgFindModule' :: String -> IO (Maybe String)
     ghcPkgFindModule' rp m = do
-        let opts = ["find-module", m, "--simple-output"] ++ ["--global", "--user"] ++ optsForGhcPkg []
+        let opts = ["find-module", m, "--simple-output"] ++ ["--global", "--user"]
         gmLog GmDebug "ghcPkgFindModule'" $ strDoc $ "ghc-pkg " ++ show opts
 
         x <- runCmd rp "ghc-pkg" opts
