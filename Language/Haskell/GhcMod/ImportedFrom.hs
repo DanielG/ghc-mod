@@ -209,7 +209,9 @@ toImportDecl dflags idecl = NiceImportDecl
 
 postfixMatch :: String -> QualifiedName -> Bool
 postfixMatch originalSymbol qName = endTerm `isSuffixOf` qName
-  where endTerm = last $ splitOn "." originalSymbol
+  where endTerm = Safe.lastNote
+                    ("postfixMatch: got: " ++ originalSymbol)
+                    (splitOn "." originalSymbol)
 
 -- | Get the module part of a qualified name.
 --
@@ -542,7 +544,7 @@ refineLeadingDot (MySymbolSysQualified symb)         exports = map (\e -> e { qu
     -- the 'last' will be ok. Sample value of 'symb' in this case is
     -- "base-4.8.2.0:Data.Foldable.length".
     leadingDot :: String
-    leadingDot = '.' : last (splitOn "." symb)
+    leadingDot = '.' : Safe.lastNote ("leadingDot: got: " ++ symb) (splitOn "." symb)
 
     -- f symbol export = filter (symbol ==) thisExports
     f symbol export = filter (symbol `isSuffixOf`) thisExports
@@ -576,7 +578,7 @@ refineVisibleExports getHaddockInterfaces exports = mapM f exports
         -- So if thisModVisibleExports0 is Nothing, fall back to searching on a shorter pname.
         thisModVisibleExports <- case thisModVisibleExports0 `mplus` thisModVisibleExports1 of
                                         Just ve -> return ve
-                                        Nothing -> let pname' = ((head $ splitOn "-" pname) ++ ":" ++ thisModuleName) in
+                                        Nothing -> let pname' = ((Safe.headNote ("pname: " ++ pname) $ splitOn "-" pname) ++ ":" ++ thisModuleName) in
                                                         liftMaybe
                                                             (GMENoVisibleExports thisModuleName pname')
                                                             (return $ M.lookup pname' visibleExportsMap)
@@ -589,7 +591,7 @@ refineVisibleExports getHaddockInterfaces exports = mapM f exports
 
     -- hasPostfixMatch "base-4.8.2.0:GHC.Base.Just" ["Just", "True", ...] -> True
     hasPostfixMatch :: [String] -> String -> Bool
-    hasPostfixMatch xs s = last (splitOn "." s) `elem` xs
+    hasPostfixMatch xs s = Safe.lastNote ("hasPostfixMatch: got: " ++ s) (splitOn "." s) `elem` xs
 
 -- | The last thing with a single export must be the match? Iffy.
 getLastMatch :: [ModuleExports] -> Maybe ModuleExports
@@ -774,7 +776,7 @@ guessHaddockUrl modSum targetFile targetModule symbol lineNr colNr ghcPkg readPr
     toHackageUrl :: FilePath -> String -> String -> String
     toHackageUrl filepath package modulename = "https://hackage.haskell.org/package/" ++ package ++ "/" ++ "docs/" ++ modulename''
         where filepath'    = map repl filepath
-              modulename'  = head $ splitOn "." $ head $ splitOn "-" modulename
+              modulename'  = Safe.headNote "modulename1" $ splitOn "." $ Safe.headNote "modulename2" $ splitOn "-" modulename
               modulename'' = drop (fromJust $ substringP modulename' filepath') filepath'
 
               -- On Windows we get backslashes in the file path; convert
@@ -786,7 +788,9 @@ guessHaddockUrl modSum targetFile targetModule symbol lineNr colNr ghcPkg readPr
               -- Adapted from http://www.haskell.org/pipermail/haskell-cafe/2010-June/078702.html
               substringP :: String -> String -> Maybe Int
               substringP _ []  = Nothing
-              substringP sub str = if sub `isPrefixOf` str then Just 0 else fmap (+1) $ substringP sub (tail str)
+              substringP sub str = if sub `isPrefixOf` str
+                                    then Just 0
+                                    else fmap (+1) $ substringP sub (Safe.tailNote ("substringP: " ++ str) str)
 
     filterMatchingQualifiedImport :: String -> [NiceImportDecl] -> [NiceImportDecl]
     filterMatchingQualifiedImport symbol hmodules
