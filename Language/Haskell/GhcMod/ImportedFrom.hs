@@ -330,8 +330,9 @@ getVisibleExports getHaddockInterfaces p = do
     let p' = splitPackageName p
 
     haddockInterfaceFile <- getHaddockInterfaces p'
-
-    getVisibleExports' <$> getHaddockInterfaces p'
+    case haddockInterfaceFile of
+            Just hi -> getVisibleExports' hi
+            Nothing -> return Nothing
 
   where
 
@@ -351,8 +352,6 @@ getVisibleExports getHaddockInterfaces p = do
                                     , let mname = showSDoc dflags $ ppr $ Haddock.instMod ii
                                           names = map (showSDoc dflags . ppr) $ Haddock.instVisibleExports ii
                                     ]
-
-
 
     ------------------------------------------------------------------------------------------------------------------------
     -- Copied from http://hackage.haskell.org/package/haddock-api-2.16.1/docs/src/Haddock-InterfaceFile.html#nameCacheFromGhc
@@ -455,7 +454,7 @@ refineRemoveHiding exports = map (\e -> e { qualifiedExports = f e }) exports
         -- and then an alpha character, which hopefully is the end of a module name. Such a mess.
         where f n qn = if length qn - length n - 2 >= 0
                             then n `isSuffixOf` qn && isAlpha (qn !! (length qn - length n - 2)) && (qn !! (length qn - length n - 1)) == '.'
-                            else fail $ "ImportedFrom internal error: trying to check if \"" ++ n ++ "\" is a match for \"" ++ qn ++ "\""
+                            else throw $ GMEString $ "ImportedFrom internal error: trying to check if \"" ++ n ++ "\" is a match for \"" ++ qn ++ "\""
 
 refineExportsIt :: MySymbol -> [ModuleExports] -> [ModuleExports]
 refineExportsIt mysymbol exports = map (\e -> e { qualifiedExports = f symbol e }) exports
