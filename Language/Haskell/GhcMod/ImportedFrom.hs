@@ -39,6 +39,7 @@ import Language.Haskell.GhcMod.GhcPkg
 import Language.Haskell.GhcMod.Logging
 import Language.Haskell.GhcMod.Monad
 import Language.Haskell.GhcMod.Output
+import Language.Haskell.GhcMod.PkgDoc
 import Language.Haskell.GhcMod.SrcUtils (listifySpans)
 import Outputable
 import System.Directory
@@ -238,11 +239,20 @@ qualifiedName targetModuleName lineNr colNr symbol importList = do
         dflags <- GHC.getSessionDynFlags
 
         setContext (map (IIDecl . simpleImportDecl . mkModuleName) (targetModuleName:importList))
-           `gcatch` (\(s  :: SourceError)    -> do gmLog GmDebug "qualifiedName" $ strDoc $ "setContext failed with a SourceError, trying to continue anyway..." ++ show s
+           `gcatch` (\(s  :: SourceError)    -> do gmLog GmDebug "qualifiedName"
+                                                    $ strDoc
+                                                    $ "setContext failed with a SourceError, trying to continue anyway..."
+                                                    ++ show s
                                                    setContext $ map (IIDecl . simpleImportDecl . mkModuleName) importList)
-           `gcatch` (\(g  :: GhcApiError)    -> do gmLog GmDebug "qualifiedName" $ strDoc $ "setContext failed with a GhcApiError, trying to continue anyway..." ++ show g
+           `gcatch` (\(g  :: GhcApiError)    -> do gmLog GmDebug "qualifiedName"
+                                                    $ strDoc
+                                                    $ "setContext failed with a GhcApiError, trying to continue anyway..."
+                                                    ++ show g
                                                    setContext $ map (IIDecl . simpleImportDecl . mkModuleName) importList)
-           `gcatch` (\(se :: SomeException)  -> do gmLog GmDebug "qualifiedName" $ strDoc $ "setContext failed with a SomeException, trying to continue anyway..." ++ show se
+           `gcatch` (\(se :: SomeException)  -> do gmLog GmDebug "qualifiedName"
+                                                    $ strDoc
+                                                    $ "setContext failed with a SomeException, trying to continue anyway..."
+                                                    ++ show se
                                                    setContext $ map (IIDecl . simpleImportDecl . mkModuleName) importList)
 
         modSummary <- getModSummary $ mkModuleName targetModuleName :: m ModSummary
@@ -270,63 +280,6 @@ qualifiedName targetModuleName lineNr colNr symbol importList = do
     -- GHC8 starts showing things inside parens? Why? e.g. "(base-4.9.0.0:GHC.Num.+)"
     dropParens :: String -> String
     dropParens = dropWhileEnd (== ')') . dropWhile (== '(')
-
-ghcPkgFindModule
-    :: forall m. (GhcMonad m, MonadIO m, GmOut m, GmLog m)
-    => String
-    -> m (Maybe String)
-ghcPkgFindModule mod = do
-    rp <- gmReadProcess
-
-    (runMaybeT . msum . map MaybeT)
-        [ stackGhcPkgFindModule rp mod
-        , hcPkgFindModule       rp mod
-        , ghcPkgFindModule'     rp mod
-        ]
-  where
-
-    runCmd rp cmd opts = liftIO ((Just <$> (rp cmd opts "")) `catch` (\(_::IOError) -> return Nothing))
-
-    -- | Call @ghc-pkg find-module@ to determine that package that provides a module, e.g. @Prelude@ is defined
-    -- in @base-4.6.0.1@.
-    -- ghcPkgFindModule' :: String -> IO (Maybe String)
-    ghcPkgFindModule' rp m = do
-        let opts = ["find-module", m, "--simple-output"] ++ ["--global", "--user"]
-        gmLog GmDebug "ghcPkgFindModule'" $ strDoc $ "ghc-pkg " ++ show opts
-
-        x <- runCmd rp "ghc-pkg" opts
-
-        -- gmLog GmDebug "" $ strDoc $ "ghcPkgFindModule' stdout: " ++ show output
-        -- gmLog GmDebug "" $ strDoc $ "ghcPkgFindModule' stderr: " ++ show err
-        return $ case x of
-                    Just x' -> join $ (Safe.lastMay . words) <$> (Safe.lastMay . lines) x'
-                    Nothing -> Nothing
-
-    -- | Call @cabal sandbox hc-pkg@ to find the package the provides a module.
-    -- hcPkgFindModule :: String -> IO (Maybe String)
-    hcPkgFindModule rp m = do
-        let opts = ["sandbox", "hc-pkg", "find-module", m, "--", "--simple-output"]
-
-        x <- runCmd rp "cabal" opts
-
-        -- gmLog GmDebug "" $ strDoc $ "hcPkgFindModule stdout: " ++ show output
-        -- gmLog GmDebug "" $ strDoc $ "hcPkgFindModule stderr: " ++ show err
-        return $ case x of
-                    Just x' -> join $ (Safe.lastMay . words) <$> (Safe.lastMay . lines) x'
-                    Nothing -> Nothing
-
-    -- | Call @stack exec ghc-pkg@ to find the package the provides a module.
-    -- stackGhcPkgFindModule :: String -> IO (Maybe String)
-    stackGhcPkgFindModule rp m = do
-        let opts = ["exec", "ghc-pkg", "find-module", m, "--", "--simple-output"]
-
-        x <- runCmd rp "stack" opts
-
-        -- gmLog GmDebug "" $ strDoc $ "stackGhcPkgFindModule stdout: " ++ show output
-        -- gmLog GmDebug "" $ strDoc $ "stackGhcPkgFindModule stderr: " ++ show err
-        return $ case x of
-                    Just x' -> join $ (Safe.lastMay . words) <$> (Safe.lastMay . lines) x'
-                    Nothing -> Nothing
 
 splitPackageName :: String -> String
 splitPackageName p
@@ -378,11 +331,7 @@ getVisibleExports getHaddockInterfaces p = do
 
     haddockInterfaceFile <- getHaddockInterfaces p'
 
-    case haddockInterfaceFile of
-            Just hi -> getVisibleExports' hi
-            Nothing -> return Nothing
-
-    -- FIXME getVisibleExports' <$> (getHaddockInterfaces p')
+    getVisibleExports' <$> getHaddockInterfaces p'
 
   where
 
@@ -420,24 +369,27 @@ getVisibleExports getHaddockInterfaces p = do
            liftIO $ writeIORef ref nc'
 
 getModuleExports
-    :: forall m. (GhcMonad m, MonadIO m, GmOut m, GmLog m)
+    :: forall m. (GhcMonad m, MonadIO m, GmOut m, GmLog m, IOish m)
     => FilePath
     -> (FilePath -> [String] -> String -> IO String)
+    -> [GhcPkgDb]
     -> NiceImportDecl
     -> m (Maybe ([String], String))
-getModuleExports ghcPkg readProc m = do
+getModuleExports ghcPkg readProc pkgDbStack m = do
     minfo     <- (findModule (mkModuleName $ modName m) Nothing >>= getModuleInfo)
-                   `gcatch` (\(e :: SourceError) -> do gmLog GmDebug "getModuleExports" $ strDoc $ "Failed to find module \"" ++ modName m ++ "\": " ++ show e
+                   `gcatch` (\(e :: SourceError) -> do gmLog GmDebug "getModuleExports" $ strDoc
+                                                        $ "Failed to find module \"" ++ modName m
+                                                        ++ "\": " ++ show e
                                                        return Nothing)
 
-    p <- ghcPkgFindModule $ modName m
+    p <- pkgFindModule ghcPkg readProc pkgDbStack (modName m)
 
     dflags <- GHC.getSessionDynFlags
 
     case (minfo, p) of
-        (Nothing, _)            -> return Nothing
-        (_, Nothing)            -> return Nothing
-        (Just minfo', Just p')  -> return $ Just (map (showSDocForUser dflags ghcQualify . ppr) $ modInfoExports minfo', p')
+        (Nothing,      _) -> return Nothing
+        (_,           "") -> return Nothing
+        (Just minfo',  _) -> return $ Just (map (showSDocForUser dflags ghcQualify . ppr) $ modInfoExports minfo', p)
 
 type FullyQualifiedName = String    -- ^ e.g. e.g. "base-4.8.2.0:Data.Foldable.length"
 type StrModuleName      = String    -- ^ e.g. "Data.List"
@@ -491,7 +443,10 @@ refineRemoveHiding exports = map (\e -> e { qualifiedExports = f e }) exports
         -- = case filter (postfixMatch name) qualifiedNames of
         = case nub' (filter (name `f`) qualifiedNames) of
             [match]     -> match
-            m           -> throw $ GMEString $ "ImportedFrom: could not qualify " ++ name ++ " from these exports: " ++ show qualifiedNames ++ "\n    matches: " ++ show m
+            m           -> fail $ "ImportedFrom: could not qualify "
+                                  ++ name ++ " from these exports: "
+                                  ++ show qualifiedNames ++ "\n    matches: "
+                                  ++ show m
 
         -- Time for some stringly typed rubbish. The previous test used
         -- postfixMatch but this failed on an import that had "hiding (lines, unlines)" since
@@ -500,7 +455,7 @@ refineRemoveHiding exports = map (\e -> e { qualifiedExports = f e }) exports
         -- and then an alpha character, which hopefully is the end of a module name. Such a mess.
         where f n qn = if length qn - length n - 2 >= 0
                             then n `isSuffixOf` qn && isAlpha (qn !! (length qn - length n - 2)) && (qn !! (length qn - length n - 1)) == '.'
-                            else throw $ GMEString $ "ImportedFrom internal error: trying to check if \"" ++ n ++ "\" is a match for \"" ++ qn ++ "\""
+                            else fail $ "ImportedFrom internal error: trying to check if \"" ++ n ++ "\" is a match for \"" ++ qn ++ "\""
 
 refineExportsIt :: MySymbol -> [ModuleExports] -> [ModuleExports]
 refineExportsIt mysymbol exports = map (\e -> e { qualifiedExports = f symbol e }) exports
@@ -602,7 +557,7 @@ getLastMatch exports = Safe.lastMay $ filter f exports
 -- | Try to look up the Haddock URL for a symbol.
 guessHaddockUrl
     :: forall m.
-       (GhcMonad m, MonadError GhcModError m, MonadIO m, GmOut m, GmLog m)
+       (GhcMonad m, MonadError GhcModError m, MonadIO m, GmOut m, GmLog m, IOish m)
     => ModSummary
     -> FilePath
     -> String
@@ -642,7 +597,7 @@ guessHaddockUrl modSum targetFile targetModule symbol lineNr colNr ghcPkg readPr
     let symbolToUse :: String
         symbolToUse = case qnames of
                         (qq:_) -> qq -- We got a qualified name, with qualified printing. Qualified!
-                        []     -> throw $ GMEString "ImportedFrom: qnames is empty."
+                        []     -> fail $ "ImportedFrom: qnames is empty."
 
     gmLog GmDebug "guessHaddockUrl" $ strDoc $ "symbolToUse: " ++ symbolToUse
 
@@ -672,7 +627,7 @@ guessHaddockUrl modSum targetFile targetModule symbol lineNr colNr ghcPkg readPr
     gmLog GmDebug "guessHaddockUrl" $ strDoc $ "parsedPackagesAndQualNames: " ++ show parsedPackagesAndQualNames
     gmLog GmDebug "guessHaddockUrl" $ strDoc $ "extraImportDecls: " ++ show extraImportDecls
 
-    exports0 <- mapM (getModuleExports ghcPkg readProc) importDecls3 :: m [Maybe ([String], String)]
+    exports0 <- mapM (getModuleExports ghcPkg readProc pkgDbStack) importDecls3 :: m [Maybe ([String], String)]
 
     -- Sometimes the modules in extraImportDecls might be hidden or weird ones like GHC.Base that we can't
     -- load, so filter out the successfully loaded ones.
@@ -739,12 +694,12 @@ guessHaddockUrl modSum targetFile targetModule symbol lineNr colNr ghcPkg readPr
     let lastMatchModule :: String
         lastMatchModule = case mName <$> lastMatch of
                             Just modn   -> modn
-                            _           -> throw $ GMEString $ "ImportedFrom: no nice match in lastMatch for module: " ++ show lastMatch
+                            _           -> fail $ "ImportedFrom: no nice match in lastMatch for module: " ++ show lastMatch
 
         lastMatchPackageName :: String
         lastMatchPackageName = case mPackageName <$> lastMatch of
                                 Just p -> p
-                                _      -> throw $ GMEString $ "ImportedFrom: no nice match in lastMatch for package name: " ++ show lastMatch
+                                _      -> fail $ "ImportedFrom: no nice match in lastMatch for package name: " ++ show lastMatch
 
     gmLog GmDebug "guessHaddockUrl" $ strDoc $ "lastMatchModule:      " ++ lastMatchModule
     gmLog GmDebug "guessHaddockUrl" $ strDoc $ "lastMatchPackageName: " ++ lastMatchPackageName
