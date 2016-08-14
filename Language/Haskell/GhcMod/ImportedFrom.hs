@@ -368,7 +368,7 @@ getVisibleExports getHaddockInterfaces p = do
            liftIO $ writeIORef ref nc'
 
 getModuleExports
-    :: forall m. (GhcMonad m, MonadIO m, GmOut m, GmLog m, IOish m)
+    :: forall m. (GhcMonad m, GmOut m, GmLog m, IOish m)
     => FilePath
     -> (FilePath -> [String] -> String -> IO String)
     -> [GhcPkgDb]
@@ -409,7 +409,7 @@ data ModuleExports = ModuleExports
     }
     deriving Show
 
--- refineAs :: MySymbol -> [ModuleExports] -> [ModuleExports]
+refineAs :: forall m. MonadError GhcModError m => MySymbol -> [ModuleExports] -> m [ModuleExports]
 
 -- User qualified the symbol, so we can filter out anything that doesn't have a matching 'modImportedAs'.
 refineAs (MySymbolUserQualified userQualSym) exports = filterM f exports
@@ -556,7 +556,7 @@ getLastMatch exports = Safe.lastMay $ filter f exports
 -- | Try to look up the Haddock URL for a symbol.
 guessHaddockUrl
     :: forall m.
-       (GhcMonad m, MonadError GhcModError m, MonadIO m, GmOut m, GmLog m, IOish m)
+       (GhcMonad m, MonadError GhcModError m, GmOut m, GmLog m, IOish m)
     => ModSummary
     -> FilePath
     -> String
