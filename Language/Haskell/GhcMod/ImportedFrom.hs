@@ -731,14 +731,17 @@ guessHaddockUrl modSum targetFile targetModule symbol lineNr colNr ghcPkg readPr
 
     gmLog GmDebug "guessHaddockUrl" $ strDoc $ "haddock:             " ++ show haddock
 
-    let f = haddock </> (moduleNameToHtmlFile lastMatchModule)
-
     let mySymbol' = case mySymbol of
                             MySymbolSysQualified  s -> s
                             MySymbolUserQualified s -> s
 
-    return $ mySymbol' ++ " " ++ lastMatchModule ++ " file://" ++ f
-            ++ " " ++ toHackageUrl f lastMatchPackageName lastMatchModule
+    let f = haddock </> (moduleNameToHtmlFile lastMatchModule)
+
+    e <- liftIO $ doesFileExist f
+
+    return $
+        if e then mySymbol' ++ " " ++ lastMatchModule ++ " file://" ++ f
+             else mySymbol' ++ " " ++ lastMatchModule ++ " " ++ toHackageUrl f lastMatchPackageName lastMatchModule
 
   where
     -- Convert a module name string, e.g. @Data.List@ to @Data-List.html@.
@@ -805,4 +808,5 @@ importedFrom file lineNr colNr (Expression symbol) = do
         modSum <- fileModSummaryWithMapping (cradleCurrentDir crdl </> file)
         let modstr = moduleNameString $ ms_mod_name modSum :: String
 
-        guessHaddockUrl modSum file modstr symbol lineNr colNr ghcPkg readProc pkgDbStack
+        x <- guessHaddockUrl modSum file modstr symbol lineNr colNr ghcPkg readProc pkgDbStack
+        return $ x ++ "\n"
