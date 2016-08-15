@@ -23,11 +23,8 @@ pkgDoc mdl = do
         let ret = pkg ++ " " ++ drop 14 htmlpath
         return ret
   where
-    toModuleOpts dbs = ["find-module", mdl, "--simple-output"]
-                   ++ ghcPkgDbStackOpts dbs
     toDocDirOpts pkg dbs = ["field", pkg, "haddock-html"]
                        ++ ghcPkgDbStackOpts dbs
-    trim = takeWhile (`notElem` " \n")
 
 pkgFindModule
     :: IOish m
