@@ -21,7 +21,7 @@ import Control.Applicative
 import Control.Exception
 import Control.Monad
 import Control.Monad.Trans.Maybe
-import Data.Char (isAlpha)
+import Data.Char (isAlpha, isDigit)
 import Data.IORef
 import Data.List
 import Data.List.Split
@@ -44,6 +44,7 @@ import Language.Haskell.GhcMod.SrcUtils (listifySpans)
 import Outputable
 import System.Directory
 import System.FilePath
+import Text.ParserCombinators.ReadP ((+++))
 
 import qualified Data.Map as M
 import qualified Data.Set as Set
@@ -207,7 +208,6 @@ toImportDecl dflags idecl = NiceImportDecl
 -- False
 -- >>> postfixMatch "bar" "bar"
 -- True
-
 postfixMatch :: String -> QualifiedName -> Bool
 postfixMatch originalSymbol qName = endTerm `isSuffixOf` qName
   where endTerm = Safe.lastNote
@@ -439,22 +439,44 @@ refineRemoveHiding exports = map (\e -> e { qualifiedExports = f e }) exports
 
     qualifyName :: [QualifiedName] -> String -> QualifiedName
     qualifyName qualifiedNames name
-        -- = case filter (postfixMatch name) qualifiedNames of
-        = case nub' (filter (name `f`) qualifiedNames) of
+        = case nub' (filter (postfixMatch' name) qualifiedNames) of
             [match]     -> match
             m           -> fail $ "ImportedFrom: could not qualify "
                                   ++ name ++ " from these exports: "
                                   ++ show qualifiedNames ++ "\n    matches: "
                                   ++ show m
 
-        -- Time for some stringly typed rubbish. The previous test used
-        -- postfixMatch but this failed on an import that had "hiding (lines, unlines)" since
-        -- both lines and unlines matched. Prepending a dot doesn't work due to things like ".=" from
-        -- Control.Lens. So we manually check that the suffix matches, that the next symbol is a dot,
-        -- and then an alpha character, which hopefully is the end of a module name. Such a mess.
-        where f n qn = if length qn - length n - 2 >= 0
-                            then n `isSuffixOf` qn && isAlpha (qn !! (length qn - length n - 2)) && (qn !! (length qn - length n - 1)) == '.'
-                            else throw $ GMEString $ "ImportedFrom internal error: trying to check if \"" ++ n ++ "\" is a match for \"" ++ qn ++ "\""
+    postfixMatch' n qn
+        | n == qn   = True
+        | otherwise = case runRP (f $ reverse n) (reverse qn) of
+                         Left _   -> False
+                         Right () -> True
+      where
+        f n = do
+            _ <- RP.string n
+            _ <- RP.char '.'
+            _ <- RP.manyTill nameThenDot (nameThenEnd +++ nameThenEnd')
+            return ()
+
+        -- Valid chars in a haskell module name:
+        -- https://www.haskell.org/onlinereport/syntax-iso.html
+        modChar c = isAlpha c || isDigit c || (c == '\'')
+
+        nameThenEnd = do
+            RP.many1 $ RP.satisfy modChar
+            RP.eof
+
+        nameThenEnd' = do
+            RP.many1 $ RP.satisfy modChar
+            RP.char ':'
+            RP.manyTill RP.get RP.eof
+            RP.eof
+
+        nameThenDot = do
+            RP.many1 $ RP.satisfy modChar
+            RP.char '.'
+            return ()
+
 
 refineExportsIt :: MySymbol -> [ModuleExports] -> [ModuleExports]
 refineExportsIt mysymbol exports = map (\e -> e { qualifiedExports = f symbol e }) exports
