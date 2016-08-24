@@ -146,6 +146,10 @@ globalArgSpec = Options
           <=> value "UTF-8"
           <=> showDefault
           <=> help "I/O encoding"
+      <*> switch
+          $$  long "stack-build-deps"
+          <=> showDefault
+          <=> help "Build dependencies if needed when using stack"
   where
     fileMappingSpec =
       getFileMapping . splitOn '=' <$> strOption

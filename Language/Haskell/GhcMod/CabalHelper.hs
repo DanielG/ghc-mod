@@ -208,7 +208,7 @@ withCabal action = do
                 -- "--flag PACKAGE:[-]FLAG Override flags set in stack.yaml
                 -- (applies to local packages and extra-deps)"
 
-                stackReconfigure crdl (optPrograms opts)
+                stackReconfigure (optStackBuildDeps opts) crdl (optPrograms opts)
             _ ->
                 error $ "withCabal: unsupported project type: " ++ show proj
 
@@ -234,12 +234,13 @@ withCabal action = do
             flagOpt = ["--flags", unwords $ map toFlag flgs]
 
         liftIO $ void $ readProc (T.cabalProgram progs) ("configure":progOpts) ""
-   stackReconfigure crdl progs = do
+   stackReconfigure deps crdl progs = do
      withDirectory_ (cradleRootDir crdl) $ do
        supported <- haveStackSupport
        if supported
           then do
-            spawn [T.stackProgram progs, "build", "--only-dependencies", "."]
+            when deps $
+              spawn [T.stackProgram progs, "build", "--only-dependencies", "."]
             spawn [T.stackProgram progs, "build", "--only-configure", "."]
           else
             gmLog GmWarning "" $ strDoc $ "Stack project configuration is out of date, please reconfigure manually using 'stack build' as your stack version is too old (need at least 0.1.4.0)"

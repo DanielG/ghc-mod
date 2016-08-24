@@ -106,6 +106,7 @@ data Options = Options {
   , optGhcUserOptions :: [GHCOption]
   , optFileMappings   :: [(FilePath, Maybe FilePath)]
   , optEncoding       :: String
+  , optStackBuildDeps :: Bool
   } deriving (Show)
 
 -- | A default 'Options'.
@@ -126,6 +127,7 @@ defaultOptions = Options {
   , optGhcUserOptions = []
   , optFileMappings   = []
   , optEncoding       = "UTF-8"
+  , optStackBuildDeps = False
   }
 
 ----------------------------------------------------------------
