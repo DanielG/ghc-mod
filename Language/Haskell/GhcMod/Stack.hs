@@ -48,9 +48,10 @@ patchStackPrograms Cradle { cradleProject = (StackProject senv) } progs = do
     }
 patchStackPrograms _crdl progs = return progs
 
-getStackEnv :: (IOish m, GmOut m, GmLog m) => FilePath -> m (Maybe StackEnv)
-getStackEnv projdir = U.withDirectory_ projdir $ runMaybeT $ do
-    env <- map (liToTup . splitOn ": ") . lines <$> readStack ["path"]
+getStackEnv :: (IOish m, GmOut m, GmLog m)
+            => FilePath -> FilePath -> m (Maybe StackEnv)
+getStackEnv projdir stackProg = U.withDirectory_ projdir $ runMaybeT $ do
+    env <- map (liToTup . splitOn ": ") . lines <$> readStack stackProg ["path"]
     let look k = fromJustNote "getStackEnv" $ lookup k env
     return StackEnv {
         seDistDir       = look "dist-dir"
@@ -82,9 +83,10 @@ findExecutablesInDirectories' path binary =
 
          exeExtension' = if isWindows then "exe" else ""
 
-readStack :: (IOish m, GmOut m, GmLog m) => [String] -> MaybeT m String
-readStack args = do
-  stack <- MaybeT $ liftIO $ findExecutable "stack"
+readStack :: (IOish m, GmOut m, GmLog m)
+          => FilePath -> [String] -> MaybeT m String
+readStack exe args = do
+  stack <- MaybeT $ liftIO $ findExecutable exe
   readProc <- lift gmReadProcess
   flip gcatch handler $ do
     liftIO $ evaluate =<< readProc stack args ""

@@ -134,7 +134,7 @@ stackCradle stackProg wdir = do
 
       (True, False) -> return ()
 
-    senv <- MaybeT $ getStackEnv cabalDir
+    senv <- MaybeT $ getStackEnv cabalDir stackProg
 
     gmLog GmInfo "" $ text "Using Stack project at" <+>: text cabalDir
     return Cradle {
