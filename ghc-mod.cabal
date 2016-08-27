@@ -118,7 +118,7 @@ Custom-Setup
 
 Library
   Default-Language:     Haskell2010
-  GHC-Options:          -Wall -fno-warn-deprecations
+  GHC-Options:          -Wall
   Default-Extensions:   ScopedTypeVariables, RecordWildCards, NamedFieldPuns,
                         ConstraintKinds, FlexibleContexts,
                         DataKinds, KindSignatures, TypeOperators, ViewPatterns
@@ -240,7 +240,7 @@ Executable ghc-mod
                       , GHCMod.Options.Commands
                       , GHCMod.Version
                       , GHCMod.Options.ShellParse
-  GHC-Options:          -Wall -fno-warn-deprecations -threaded
+  GHC-Options:          -Wall -threaded
   Default-Extensions:   ConstraintKinds, FlexibleContexts
   HS-Source-Dirs:       src
   Build-Depends:        base      < 5 && >= 4.0

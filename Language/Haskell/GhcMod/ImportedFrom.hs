@@ -1,4 +1,5 @@
--- Copyright (C) 2013-2016 Carlo Hamalainen <carlo ÄT carlo-hamalainen DOT net>
+-- Copyright (C) 2013-2016  Carlo Hamalainen <carlo ÄT carlo-hamalainen DOT net>
+-- Copyright (C) 2016  Daniel Gröber <dxld ÄT darkboxed DOT org>
 --
 -- This program is free software: you can redistribute it and/or modify
 -- it under the terms of the GNU Affero General Public License as published by
@@ -14,8 +15,8 @@
 -- along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 {-# LANGUAGE CPP, FlexibleContexts, Rank2Types, ScopedTypeVariables, ViewPatterns #-}
-
-module Language.Haskell.GhcMod.ImportedFrom (importedFrom) where
+-- {-# OPTIONS_GHC -fwarn-typed-holes -fdefer-type-errors #-}
+module Language.Haskell.GhcMod.ImportedFrom {-# WARNING "TODO: remove use of strDoc" #-} (importedFrom) where
 
 import Control.Applicative
 import Control.Exception
@@ -26,10 +27,19 @@ import Data.IORef
 import Data.List
 import Data.List.Split
 import Data.Maybe
+import System.Directory
+import System.FilePath
+import Text.ParserCombinators.ReadP ((+++))
+import Text.Show.Pretty
+
 import Exception (ghandle)
 import FastString
 import GHC
 import HscTypes
+import OccName
+import Module
+import Outputable (showSDoc, showSDocForUser, ppr)
+
 import Language.Haskell.GhcMod
 import Language.Haskell.GhcMod.DynFlags
 import Language.Haskell.GhcMod.Error
@@ -41,11 +51,7 @@ import Language.Haskell.GhcMod.Monad
 import Language.Haskell.GhcMod.Output
 import Language.Haskell.GhcMod.PkgDoc
 import Language.Haskell.GhcMod.SrcUtils (listifySpans)
-import Outputable (showSDoc, showSDocForUser, ppr)
-import System.Directory
-import System.FilePath
-import Text.ParserCombinators.ReadP ((+++))
-import Text.Show.Pretty
+
 
 import qualified Data.Map as M
 import qualified Data.Set as Set
@@ -68,7 +74,6 @@ data NiceImportDecl
         , modImportedAs     :: Maybe String
         , modSpecifically   :: [String]
         } deriving (Show, Eq)
-
 
 -- trace' :: Show x => String -> x -> b -> b
 -- trace' m x = trace (m ++ ">>> " ++ show x)
@@ -116,7 +121,8 @@ runRP rp s =
 --
 -- then:
 --
--- >>> map toImportDecl <$> getTextualImports "tests/data/data/Hiding.hs" "Hiding" >>= print
+-- >>> map toImportDecl
+-- >>>   <$> getTextualImports "tests/data/data/Hiding.hs" "Hiding" >>= print
 -- [ NiceImportDecl { modName = "Prelude"
 --                  , modQualifier = Nothing
 --                  , modIsImplicit = True
@@ -171,8 +177,8 @@ toImportDecl dflags idecl =
     grabNames loc = map (showSDoc dflags . ppr) names
       where names :: [RdrName]
             names = map (ieName . SrcLoc.unLoc) $ SrcLoc.unLoc loc
-            -- FIXME We are throwing away location info by using unLoc each time?
-            -- Trace these things to see what we are losing.
+            -- FIXME We are throwing away location info by using unLoc each
+            -- time?  Trace these things to see what we are losing.
 
     parseHiding :: Maybe (Bool, Located [LIE RdrName]) -> [Maybe String]
     parseHiding Nothing = [Nothing]
@@ -204,7 +210,7 @@ toImportDecl dflags idecl =
 -- >>> postfixMatch "bar" "bar"
 -- True
 postfixMatch :: String -> QualifiedName -> Bool
-postfixMatch originalSymbol qName = endTerm `isSuffixOf` qName
+postfixMatch originalSymbol qn = endTerm `isSuffixOf` qn
   where
     endTerm = Safe.lastNote ("postfixMatch: got: " ++ originalSymbol) $
       splitOn "." originalSymbol
@@ -224,8 +230,7 @@ moduleOfQualifiedName qn =
       else Just $ intercalate "." bits
   where
     bits = reverse $ drop 1 $ reverse $ splitOn "." qn
-{-# WARNING moduleOfQualifiedName "TODO: unsafe 'drop 1'" #-}
-
+{-# DEPRECATED moduleOfQualifiedName "TODO: mkQualifiedName should store the module instead of parsing here, also usafe 'drop 1'"  #-}
 
 -- | Find the possible qualified names for the symbol at line/col in the given
 -- Haskell file and module. Returns a fully qualified name thatincludes the
@@ -235,6 +240,8 @@ moduleOfQualifiedName qn =
 qualifiedNameAt
     :: forall m. (GhcMonad m, MonadIO m, GmOut m, GmLog m)
     => String -> Int -> Int -> String -> [String] -> m [String]
+{-# WARNING qualifiedNameAt
+  "TODO: don't abuse the pretty printer, deal directly with 'Name's and such" #-}
 qualifiedNameAt targetModuleName lineNr colNr symbol importList = do
         dflags <- GHC.getSessionDynFlags
 
@@ -245,15 +252,15 @@ qualifiedNameAt targetModuleName lineNr colNr symbol importList = do
             handler :: SomeException -> m ()
             handler err = do
                gmLog GmException "qualifiedNameAt" $
-                             text "setContext failed, trying to continue anyway." $+$
-                             text (show err)
+                     text "setContext failed, trying to continue anyway." $+$
+                     text (show err)
                setContext $ ctx imports_fallback
 
         setContext (ctx imports_with_target_module) `gcatch` handler
 
-        modSummary <- getModSummary $ mkModuleName targetModuleName :: m ModSummary
-        p <- parseModule modSummary                                 :: m ParsedModule
-        t <- typecheckModule p                                      :: m TypecheckedModule
+        modSummary <- getModSummary $ mkModuleName targetModuleName
+        p <- parseModule modSummary
+        t <- typecheckModule p
 
         let TypecheckedModule { tm_typechecked_source = tcs } = t
             bs = listifySpans tcs (lineNr, colNr) :: [LHsBind Id]
@@ -265,23 +272,24 @@ qualifiedNameAt targetModuleName lineNr colNr symbol importList = do
             ps' = map (showSDocForUser dflags ghcQualify . ppr) ps
 
         gmLog GmDebug "qualifiedNameAt" $ strDoc $ "symbol: " ++ symbol
-        gmLog GmDebug "qualifiedNameAt" $ strDoc $ "line, col: " ++ show (lineNr, colNr)
+        gmLog GmDebug "qualifiedNameAt" $ strDoc $
+                  "line, col: " ++ show (lineNr, colNr)
 
         let stuff = map dropParens $ concatMap words $ bs' ++ es' ++ ps'
         gmLog GmDebug "qualifiedNameAt" $ strDoc $ "stuff: " ++ show stuff
 
         return $ filter (postfixMatch symbol) stuff
-
   where
-    -- GHC8 starts showing things inside parens? Why? e.g. "(base-4.9.0.0:GHC.Num.+)"
+    -- GHC8 starts showing things inside parens? Why?
+    -- e.g. "(base-4.9.0.0:GHC.Num.+)"
     dropParens :: String -> String
     dropParens = dropWhileEnd (== ')') . dropWhile (== '(')
 
 splitPackageName :: String -> String
-splitPackageName p
-    = case splitOn "@" p of
-            [p0, _] -> p0
-            _       -> p
+splitPackageName p =
+    case splitOn "@" p of
+      [p0, _] -> p0
+      _       -> p
 
 ghcPkgHaddockUrl
     :: forall m. (GmLog m, GmOut m, MonadIO m)
@@ -300,7 +308,13 @@ ghcPkgHaddockUrl ghcPkg readProc pkgDbStack p = do
   where
     -- This fails unless we have --global and --user, unlike
     -- pkgDoc elsewhere in ghc-mod.
-    toDocDirOpts pkg dbs = ["field", pkg, "haddock-html", "--global", "--user"] ++ ghcPkgDbStackOpts dbs
+    toDocDirOpts pkg dbs =
+        [ "field"
+        , pkg
+        , "haddock-html"
+        , "--global"
+        , "--user"
+        ] ++ ghcPkgDbStackOpts dbs
 
 ghcPkgHaddockInterface
     :: forall (m :: * -> *).  MonadIO m
@@ -311,9 +325,15 @@ ghcPkgHaddockInterface
     -> m (Maybe String)
 ghcPkgHaddockInterface ghcPkg readProc pkgDbStack p = do
     hout <- liftIO $ readProc ghcPkg (toHaskellInterfaces p pkgDbStack) ""
-    return $ Safe.lastMay $ words $ reverse . dropWhile (== '\n') . reverse $ hout
+    return $ Safe.lastMay $ words $ reverse $ dropWhile (== '\n') $ reverse hout
   where
-    toHaskellInterfaces pkg dbs = ["field", pkg, "haddock-interfaces", "--global", "--user"] ++ ghcPkgDbStackOpts dbs
+    toHaskellInterfaces pkg dbs =
+        [ "field"
+        , pkg
+        , "haddock-interfaces"
+        , "--global"
+        , "--user"
+        ] ++ ghcPkgDbStackOpts dbs
 
 getVisibleExports
     :: forall m. (GhcMonad m, MonadIO m, GmOut m, GmLog m)
@@ -340,11 +360,12 @@ getVisibleExports getHaddockInterfaces p = do
         case iface of
             Left _          -> throw $ GMEMissingHaddockInterface ifile
             Right iface'    -> return $ Just $ M.fromList
-                                    [ (mname,  names)
-                                    | ii <- Haddock.ifInstalledIfaces iface'
-                                    , let mname = showSDoc dflags $ ppr $ Haddock.instMod ii
-                                          names = map (showSDoc dflags . ppr) $ Haddock.instVisibleExports ii
-                                    ]
+              [ (mname,  names)
+              | ii <- Haddock.ifInstalledIfaces iface'
+              , let mname = showSDoc dflags $ ppr $ Haddock.instMod ii
+                    names = map (showSDoc dflags . ppr) $
+                              Haddock.instVisibleExports ii
+              ]
 
     -- Derived from haddock-api, see COPYING.BSD3.haddock-api in the source
     -- distribution for it's license.
@@ -411,13 +432,15 @@ data ModuleExports = ModuleExports
     , qualifiedExports :: [FullyQualifiedName]
     -- ^ e.g.
     -- @
-    --        [ "base-4.8.2.0:GHC.Base.++"
-    --        , "base-4.8.2.0:GHC.List.filter"
-    --        , "base-4.8.2.0:GHC.List.zip"
-    --        , ...
-    --        ]
+    -- [ "base-4.8.2.0:GHC.Base.++"
+    -- , "base-4.8.2.0:GHC.List.filter"
+    -- , "base-4.8.2.0:GHC.List.zip"
+    -- , ...
+    -- ]
     -- @
     } deriving Show
+
+{-# WARNING refineAs "TODO: check if non qualified 'as' imports work correctly" #-}
 
 -- User qualified the symbol, so we can filter out anything that doesn't have a
 -- matching 'modImportedAs'.
@@ -549,41 +572,56 @@ refineVisibleExports getHaddockInterfaces exports = mapM f exports
   where
     f :: ModuleExports -> m ModuleExports
     f mexports = do
-        let pname          = mPackageName     mexports -- e.g. "base-4.8.2.0"
-            thisModuleName = mName            mexports -- e.g. "Prelude"
-            qexports       = qualifiedExports mexports -- e.g. ["base-4.8.2.0:GHC.Base.Just", ...]
-        visibleExportsMap <- liftMaybe
-                                (GMEString "ImportedFrom: visible exports map is Nothing")
-                                (getVisibleExports getHaddockInterfaces pname)
+        let pname          = mPackageName     mexports
+            -- ^ e.g. "base-4.8.2.0"
+            thisModuleName = mName            mexports
+            -- ^ e.g. "Prelude"
+            qexports       = qualifiedExports mexports
+            -- ^ e.g. ["base-4.8.2.0:GHC.Base.Just", ...]
 
-        gmLog GmDebug "refineVisibleExports" $ foldr (\d e -> (d <> comma) <+> e) mempty
+        let err = GMEString "ImportedFrom: visible exports map is Nothing"
+        visibleExportsMap <-
+            liftMaybe err (getVisibleExports getHaddockInterfaces pname)
+
+        let ppCommaList = foldr (\d e -> (d <> comma) <+> e) mempty
+        gmLog GmDebug "refineVisibleExports" $ ppCommaList
               [ text "Package name" <+>: text pname
               , text "Module" <+>: text thisModuleName
               ]
-        gmVomit "refine:visible-exports-map" (text "visibleExportsMap") (ppShow visibleExportsMap)
+        gmVomit "refine:visible-exports-map"
+          (text "visibleExportsMap") (ppShow visibleExportsMap)
 
-        let thisModVisibleExports0 = M.lookup thisModuleName                   visibleExportsMap
-            thisModVisibleExports1 = M.lookup (pname ++ ":" ++ thisModuleName) visibleExportsMap
+        let thisModVisibleExports0 =
+                M.lookup thisModuleName visibleExportsMap
+            thisModVisibleExports1 =
+                M.lookup (pname ++ ":" ++ thisModuleName) visibleExportsMap
 
-        -- On earlier versions of GHC, our qexports list will not be fully qualified, so it will
-        -- look like ["base:GHC.Base.Just", ...] instead of ["base-4.8.2.0:GHC.Base.Just", ...].
-        -- So if thisModVisibleExports0 is Nothing, fall back to searching on a shorter pname.
-        thisModVisibleExports <- case thisModVisibleExports0 `mplus` thisModVisibleExports1 of
-                                        Just ve -> return ve
-                                        Nothing -> let pname' = ((Safe.headNote ("pname: " ++ pname) $ splitOn "-" pname) ++ ":" ++ thisModuleName) in
-                                                        liftMaybe
-                                                            (GMENoVisibleExports thisModuleName pname')
-                                                            (return $ M.lookup pname' visibleExportsMap)
+        -- On earlier versions of GHC, our qexports list will not be fully
+        -- qualified, so it will look like ["base:GHC.Base.Just", ...] instead
+        -- of ["base-4.8.2.0:GHC.Base.Just", ...].  So if thisModVisibleExports0
+        -- is Nothing, fall back to searching on a shorter pname.
+
+        thisModVisibleExports <-
+            case thisModVisibleExports0 `mplus` thisModVisibleExports1 of
+              Just ve -> return ve
+              Nothing -> let
+                pname' = (Safe.headNote ("pname: " ++ pname) $ splitOn "-" pname)
+                         ++ ":" ++ thisModuleName
+                in
+                  liftMaybe (GMENoVisibleExports thisModuleName pname') $
+                    return $ M.lookup pname' visibleExportsMap
 
         let qexports' = filter (hasPostfixMatch thisModVisibleExports) qexports
 
-        gmVomit "visible-exports-map" mempty (ppShow (qexports \\ qexports', qexports'))
+        gmVomit "visible-exports-map" mempty $
+            ppShow (qexports \\ qexports', qexports')
 
         return $ mexports { qualifiedExports = qexports' }
 
     -- hasPostfixMatch "base-4.8.2.0:GHC.Base.Just" ["Just", "True", ...] -> True
     hasPostfixMatch :: [String] -> String -> Bool
-    hasPostfixMatch xs s = Safe.lastNote ("hasPostfixMatch: got: " ++ s) (splitOn "." s) `elem` xs
+    hasPostfixMatch xs s =
+        Safe.lastNote ("hasPostfixMatch: got: " ++ s) (splitOn "." s) `elem` xs
 
 -- | The last thing with a single export must be the match? Iffy.
 getLastMatch :: [ModuleExports] -> Maybe ModuleExports
@@ -605,7 +643,8 @@ guessHaddockUrl
     -> (FilePath -> [String] -> String -> IO String)
     -> [GhcPkgDb]
     -> m String
-guessHaddockUrl modSum targetFile targetModule symbol lineNr colNr ghcPkg readProc pkgDbStack = do
+guessHaddockUrl modSum targetFile targetModule symbol lineNr colNr ghcPkg
+                readProc pkgDbStack = do
     gmLog GmDebug "guessHaddockUrl" $ strDoc $ "targetFile: "   ++ targetFile
     gmLog GmDebug "guessHaddockUrl" $ strDoc $ "targetModule: " ++ targetModule
     gmLog GmDebug "guessHaddockUrl" $ strDoc $ "symbol: "       ++ show symbol
@@ -617,7 +656,8 @@ guessHaddockUrl modSum targetFile targetModule symbol lineNr colNr ghcPkg readPr
     let textualImports = ghc_ms_textual_imps modSum
         importDecls0 = map (toImportDecl dflags) textualImports
 
-    gmLog GmDebug "guessHaddockUrl" $ strDoc $ "haskellModuleNames0: " ++ show importDecls0
+    gmLog GmDebug "guessHaddockUrl" $
+        strDoc $ "haskellModuleNames0: " ++ show importDecls0
 
     -- If symbol is something like DM.lookup, then restrict importDecls0 to the
     -- one that has modImportedAs == Just "DM".
@@ -628,31 +668,36 @@ guessHaddockUrl modSum targetFile targetModule symbol lineNr colNr ghcPkg readPr
                                 then importDecls0
                                 else importDecls1
 
-    qnames <- filter (not . (' ' `elem`)) <$> qualifiedNameAt targetModule lineNr colNr symbol (map modName importDecls2) :: m [String]
+    qnames <- filter (not . (' ' `elem`))
+          <$> qualifiedNameAt targetModule lineNr colNr symbol
+                (map modName importDecls2) :: m [String]
     gmLog GmDebug "guessHaddockUrl" $ strDoc $ "qnames: " ++ show qnames
 
     let symbolToUse :: String
-        symbolToUse = case qnames of
-                        (qq:_) -> qq -- We got a qualified name, with qualified printing. Qualified!
-                        []     -> fail $ "ImportedFrom: qnames is empty."
+        symbolToUse =
+            case qnames of
+              (qq:_) -> qq -- We got a qualified name, with qualified
+                           -- printing. Qualified!
+              []     -> fail $ "ImportedFrom: qnames is empty."
 
     gmLog GmDebug "guessHaddockUrl" $ strDoc $ "symbolToUse: " ++ symbolToUse
 
-    -- Sometimes we have to load an extra module (using setContext) otherwise
-    -- we can't look up the global reader environment without causing a GHC panic.
+    -- Sometimes we have to load an extra module (using setContext) otherwise we
+    -- can't look up the global reader environment without causing a GHC panic.
     -- For example 'Int' comes from GHC.Types, which is picked up here via the
     -- full qualified name.
     let parsedPackagesAndQualNames = map (runRP parsePackageAndQualName) qnames
 
-        mkNiceDecl x = [ NiceImportDecl
-                          { modName         = x
-                          , modQualifier    = Nothing
-                          , modIsImplicit   = False
-                          , modHiding       = []
-                          , modImportedAs   = Nothing
-                          , modSpecifically = []
-                          }
-                       ]
+        mkNiceDecl x =
+            [ NiceImportDecl
+              { modName         = x
+              , modQualifier    = Nothing
+              , modIsImplicit   = False
+              , modHiding       = []
+              , modImportedAs   = Nothing
+              , modSpecifically = []
+              }
+            ]
 
         extraImportDecls :: [NiceImportDecl]
         extraImportDecls = case Safe.headMay parsedPackagesAndQualNames of
@@ -661,13 +706,18 @@ guessHaddockUrl modSum targetFile targetModule symbol lineNr colNr ghcPkg readPr
 
         importDecls3 = importDecls2 ++ extraImportDecls
 
-    gmLog GmDebug "guessHaddockUrl" $ strDoc $ "parsedPackagesAndQualNames: " ++ show parsedPackagesAndQualNames
-    gmLog GmDebug "guessHaddockUrl" $ strDoc $ "extraImportDecls: " ++ show extraImportDecls
+    gmLog GmDebug "guessHaddockUrl" $
+      strDoc $ "parsedPackagesAndQualNames: " ++ show parsedPackagesAndQualNames
 
-    exports0 <- mapM (getModuleExports ghcPkg readProc pkgDbStack) importDecls3 :: m [Maybe ([String], String)]
+    gmLog GmDebug "guessHaddockUrl" $
+      strDoc $ "extraImportDecls: " ++ show extraImportDecls
 
-    -- Sometimes the modules in extraImportDecls might be hidden or weird ones like GHC.Base that we can't
-    -- load, so filter out the successfully loaded ones.
+    exports0 <- mapM (getModuleExports ghcPkg readProc pkgDbStack) importDecls3
+             :: m [Maybe ([String], String)]
+
+    -- Sometimes the modules in extraImportDecls might be hidden or weird ones
+    -- like GHC.Base that we can't load, so filter out the successfully loaded
+    -- ones.
     let successes :: [(NiceImportDecl, Maybe ([String], String))]
         successes = filter (isJust . snd) (zip importDecls3 exports0)
 
@@ -679,12 +729,13 @@ guessHaddockUrl modSum targetFile targetModule symbol lineNr colNr ghcPkg readPr
         successes' :: [(NiceImportDecl, ([String], String))]
         successes' = mapMaybe toMaybe successes
 
-        mkExports (m, (e, p)) = ModuleExports
-                                  { mName             = modName m
-                                  , mPackageName      = p
-                                  , mInfo             = m
-                                  , qualifiedExports  = e
-                                  }
+        mkExports (m, (e, p)) =
+            ModuleExports
+            { mName             = modName m
+            , mPackageName      = p
+            , mInfo             = m
+            , qualifiedExports  = e
+            }
 
         stage0 = map mkExports successes'
 
@@ -692,18 +743,26 @@ guessHaddockUrl modSum targetFile targetModule symbol lineNr colNr ghcPkg readPr
     let asImports :: [String]
         asImports = mapMaybe (modImportedAs . mInfo) stage0
 
-        mySymbol = case moduleOfQualifiedName symbol of
-                    Nothing     -> MySymbolSysQualified symbolToUse
-                    Just x      -> if x `elem` asImports
-                                        then MySymbolUserQualified symbol
-                                        else MySymbolSysQualified symbolToUse
+        mySymbol =
+            case moduleOfQualifiedName symbol of
+              Nothing -> MySymbolSysQualified symbolToUse
+              Just x  ->
+                  if x `elem` asImports
+                    then MySymbolUserQualified symbol
+                    else MySymbolSysQualified symbolToUse
 
     gmLog GmDebug "guessHaddockUrl" $ strDoc $ "mySymbol: " ++ show mySymbol
 
     let pprModuleExports :: ModuleExports -> String
-        pprModuleExports me = "(" ++ mName me ++ ", " ++ show (mInfo me) ++ ", " ++ unwords (map show $ qualifiedExports me) ++ ")"
+        pprModuleExports me =
+            "(" ++ mName me ++ ", " ++ show (mInfo me)
+         ++ ", " ++ unwords (map show $ qualifiedExports me)
+         ++ ")"
 
-        showDebugStage stageNr stage = forM_ stage $ \x -> gmLog GmDebug "guessHaddockUrl" $ strDoc $ stageNr ++ " " ++ pprModuleExports x
+        showDebugStage stageNr stage =
+            forM_ stage $ \x ->
+                gmLog GmDebug "guessHaddockUrl" $
+                    strDoc $ stageNr ++ " " ++ pprModuleExports x
 
     showDebugStage "stage0" stage0
 
@@ -724,40 +783,50 @@ guessHaddockUrl modSum targetFile targetModule symbol lineNr colNr ghcPkg readPr
     stage5 <- refineVisibleExports (ghcPkgHaddockInterface ghcPkg readProc pkgDbStack) stage4
     showDebugStage "stage5" stage5
 
-    let lastMatch  = Safe.headMay $ catMaybes [getLastMatch stage5, getLastMatch stage4]
+    let lastMatch =
+            Safe.headMay $ catMaybes [getLastMatch stage5, getLastMatch stage4]
 
-    gmLog GmDebug "guessHaddockUrl" $ strDoc $ show $ "lastMatch: " ++ show lastMatch
+    gmLog GmDebug "guessHaddockUrl" $
+        strDoc $ show $ "lastMatch: " ++ show lastMatch
 
     let lastMatchModule :: String
-        lastMatchModule = case mName <$> lastMatch of
-                            Just modn   -> modn
-                            _           -> fail $ "ImportedFrom: no nice match in lastMatch for module: " ++ show lastMatch
+        lastMatchModule =
+            case mName <$> lastMatch of
+              Just modn -> modn
+              _         -> fail $ "ImportedFrom: no nice match in lastMatch for module: " ++ show lastMatch
 
         lastMatchPackageName :: String
-        lastMatchPackageName = case mPackageName <$> lastMatch of
-                                Just p -> p
-                                _      -> fail $ "ImportedFrom: no nice match in lastMatch for package name: " ++ show lastMatch
+        lastMatchPackageName =
+            case mPackageName <$> lastMatch of
+              Just p -> p
+              _      -> fail $ "ImportedFrom: no nice match in lastMatch for package name: " ++ show lastMatch
 
-    gmLog GmDebug "guessHaddockUrl" $ strDoc $ "lastMatchModule:      " ++ lastMatchModule
-    gmLog GmDebug "guessHaddockUrl" $ strDoc $ "lastMatchPackageName: " ++ lastMatchPackageName
+    gmLog GmDebug "guessHaddockUrl" $
+        strDoc $ "lastMatchModule:      " ++ lastMatchModule
+    gmLog GmDebug "guessHaddockUrl" $
+        strDoc $ "lastMatchPackageName: " ++ lastMatchPackageName
 
-    haddock <- liftMaybe
-                    (GMEString $ "ImportedFrom: ghcPkgHaddockUrl failed to find path to HTML file.")
-                    (ghcPkgHaddockUrl ghcPkg readProc pkgDbStack lastMatchPackageName)
+    let err = GMEString $ "ImportedFrom: ghcPkgHaddockUrl failed to find path to HTML file."
+    haddock <- liftMaybe err $
+        ghcPkgHaddockUrl ghcPkg readProc pkgDbStack lastMatchPackageName
 
-    gmLog GmDebug "guessHaddockUrl" $ strDoc $ "haddock:             " ++ show haddock
+    gmLog GmDebug "guessHaddockUrl" $
+        strDoc $ "haddock:             " ++ show haddock
 
-    let mySymbol' = case mySymbol of
-                            MySymbolSysQualified  s -> s
-                            MySymbolUserQualified s -> s
+    let mySymbol' =
+            case mySymbol of
+              MySymbolSysQualified  s -> s
+              MySymbolUserQualified s -> s
 
     let f = haddock </> (moduleNameToHtmlFile lastMatchModule)
 
     e <- liftIO $ doesFileExist f
 
     return $
-        if e then mySymbol' ++ " " ++ lastMatchModule ++ " file://" ++ f
-             else mySymbol' ++ " " ++ lastMatchModule ++ " " ++ toHackageUrl f lastMatchPackageName lastMatchModule
+        if e
+          then mySymbol' ++ " " ++ lastMatchModule ++ " file://" ++ f
+          else mySymbol' ++ " " ++ lastMatchModule ++ " "
+                         ++ toHackageUrl f lastMatchPackageName lastMatchModule
 
   where
     -- Convert a module name string, e.g. @Data.List@ to @Data-List.html@.
@@ -769,29 +838,38 @@ guessHaddockUrl modSum targetFile targetModule symbol lineNr colNr ghcPkg readPr
         f c   = c
 
     toHackageUrl :: FilePath -> String -> String -> String
-    toHackageUrl filepath package modulename = "https://hackage.haskell.org/package/" ++ package ++ "/" ++ "docs/" ++ modulename''
-        where filepath'    = map repl filepath
-              modulename'  = Safe.headNote "modulename1" $ splitOn "." $ Safe.headNote "modulename2" $ splitOn "-" modulename
-              modulename'' = drop (fromJust $ substringP modulename' filepath') filepath'
+    toHackageUrl filepath package modulename =
+        "https://hackage.haskell.org/package/" ++ package ++ "/"
+                                               ++ "docs/" ++ modulename''
+        where
+          filepath'    = map repl filepath
+          modulename'  = Safe.headNote "modulename1"
+                       $ splitOn "."
+                       $ Safe.headNote "modulename2" $ splitOn "-" modulename
+          modulename'' =
+              drop (fromJust $ substringP modulename' filepath') filepath'
 
-              -- On Windows we get backslashes in the file path; convert
-              -- to forward slashes for the URL.
-              repl :: Char -> Char
-              repl '\\' = '/'
-              repl c    = c
+          -- On Windows we get backslashes in the file path; convert
+          -- to forward slashes for the URL.
+          repl :: Char -> Char
+          repl '\\' = '/'
+          repl c    = c
 
-              -- Adapted from http://www.haskell.org/pipermail/haskell-cafe/2010-June/078702.html
-              substringP :: String -> String -> Maybe Int
-              substringP _ []  = Nothing
-              substringP sub str = if sub `isPrefixOf` str
-                                    then Just 0
-                                    else fmap (+1) $ substringP sub (Safe.tailNote ("substringP: " ++ str) str)
+          -- Adapted from
+          -- http://www.haskell.org/pipermail/haskell-cafe/2010-June/078702.html
+          substringP :: String -> String -> Maybe Int
+          substringP _ []  = Nothing
+          substringP sub str =
+              if sub `isPrefixOf` str
+                then Just 0
+                else fmap (+1) $ substringP sub (Safe.tailNote ("substringP: " ++ str) str)
 
-    filterMatchingQualifiedImport :: String -> [NiceImportDecl] -> [NiceImportDecl]
-    filterMatchingQualifiedImport symbol hmodules
-        = case moduleOfQualifiedName symbol of
-            Nothing        -> []
-            asBit@(Just _) -> filter (\z -> asBit == modImportedAs z) hmodules
+    filterMatchingQualifiedImport
+        :: String -> [NiceImportDecl] -> [NiceImportDecl]
+    filterMatchingQualifiedImport symbol hmodules =
+        case moduleOfQualifiedName symbol of
+          Nothing        -> []
+          asBit@(Just _) -> filter (\z -> asBit == modImportedAs z) hmodules
 
 -- | Look up Haddock docs for a symbol.
 importedFrom
@@ -824,5 +902,6 @@ importedFrom file lineNr colNr (Expression symbol) = do
         modSum <- fileModSummaryWithMapping (cradleCurrentDir crdl </> file)
         let modstr = moduleNameString $ ms_mod_name modSum :: String
 
-        x <- guessHaddockUrl modSum file modstr symbol lineNr colNr ghcPkg readProc pkgDbStack
+        x <- guessHaddockUrl
+               modSum file modstr symbol lineNr colNr ghcPkg readProc pkgDbStack
         return $ x ++ "\n"
