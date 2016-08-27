@@ -189,6 +189,7 @@ Library
                       , monad-journal     < 0.8 && >= 0.4
                       , old-time          < 1.2
                       , pretty            < 1.2
+                      , pretty-show       < 1.7 && >= 1.6.12
                       , process           < 1.5
                       , syb               < 0.7
                       , temporary         < 1.3
