@@ -4,3 +4,7 @@ under this license and can generally be identified by the lack of a GPL header.
 
 See the files COPYING.BSD3 and COPYING.AGPL3 in the source distribution for
 copies of the two licenses.
+
+We also incorporate some code from the Glasgow Haskell Compiler and related
+projects. See the remaining COPYING.* files in the source distribution for their
+respective licenses.

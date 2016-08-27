@@ -346,10 +346,8 @@ getVisibleExports getHaddockInterfaces p = do
                                           names = map (showSDoc dflags . ppr) $ Haddock.instVisibleExports ii
                                     ]
 
-    ------------------------------------------------------------------------------------------------------------------------
-    -- Copied from http://hackage.haskell.org/package/haddock-api-2.16.1/docs/src/Haddock-InterfaceFile.html#nameCacheFromGhc
-    -- but for a general monad m instead of the specific monad Ghc.
-    ------------------------------------------------------------------------------------------------------------------------
+    -- Derived from haddock-api, see COPYING.BSD3.haddock-api in the source
+    -- distribution for it's license.
     nameCacheFromGhc :: Haddock.NameCacheAccessor m
     nameCacheFromGhc = ( read_from_session , write_to_session )
       where

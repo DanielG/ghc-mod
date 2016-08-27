@@ -7,7 +7,11 @@ Author:                 Kazu Yamamoto <kazu@iij.ad.jp>,
 Maintainer:             Daniel Gröber <dxld@darkboxed.org>
 License:                AGPL-3
 License-File:           LICENSE
-License-Files:          COPYING.BSD3 COPYING.AGPL3
+License-Files:          COPYING.BSD3
+                        COPYING.BSD3.ghc
+                        COPYING.BSD3.base
+                        COPYING.BSD3.haddock-api
+                        COPYING.AGPL3
 Homepage:               http://www.mew.org/~kazu/proj/ghc-mod/
 Synopsis:               Happy Haskell Programming
 Description:
@@ -29,11 +33,16 @@ Cabal-Version:          >= 1.14
 Build-Type:             Custom
 Data-Files:             elisp/Makefile
                         elisp/*.el
-Data-Files:             LICENSE COPYING.BSD3 COPYING.AGPL3
+                        LICENSE
+                        COPYING.BSD3
+                        COPYING.BSD3.ghc
+                        COPYING.BSD3.base
+                        COPYING.BSD3.haddock-api
+                        COPYING.AGPL3
+                        NotCPP/COPYING
 Extra-Source-Files:     ChangeLog
                         SetupCompat.hs
                         NotCPP/*.hs
-                        NotCPP/COPYING
                         Language/Haskell/GhcMod/Monad/Compat.hs_h
                         test/data/annotations/*.hs
                         test/data/broken-cabal/*.cabal
