@@ -45,7 +45,7 @@ main = do
                                   "" -> "0"
                                   x  -> x
                  in major ++ "." ++ minor
-    void $ system $ "stack init --force --resolver=ghc-" ++ ghcver
+    void $ system $ "sed '$ a resolver: ghc-" ++ ghcver ++ "' stack.yaml.in > stack.yaml"
     void $ system "stack setup"
     void $ system "stack build"
 

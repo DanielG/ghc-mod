@@ -1,0 +1,4 @@
+flags: {}
+packages:
+- '.'
+extra-deps: []
