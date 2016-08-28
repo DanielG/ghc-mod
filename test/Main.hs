@@ -4,7 +4,6 @@ import Dir
 
 import Control.Exception as E
 import Control.Monad (void)
-import Data.List
 import Language.Haskell.GhcMod (debugInfo)
 import System.Process
 import System.Environment
@@ -29,30 +28,14 @@ main = do
         , "test/data/duplicate-pkgver/.cabal-sandbox/i386-osx-ghc-7.6.3-packages.conf.d"]
       genGhcPkgCache dir = system $ "ghc-pkg recache --force -f" ++ dir
 
-  genSandboxCfg `mapM_` sandboxes
-  genGhcPkgCache `mapM_` pkgDirs
-
-  let caches = [ "setup-config"
-               , "setup-config.ghc-mod.cabal-helper"
-               , "setup-config.ghc-mod.cabal-components"
-               , "setup-config.ghc-mod.resolved-components"
-               , "setup-config.ghc-mod.package-options"
-               , "setup-config.ghc-mod.package-db-stack"
-               , "ghc-mod.cache"
-               ]
-      findExp = unwords $ intersperse "-o " $ concat [
-                 stackWorkFindExp,
-                 cachesFindExp
-                ]
-      cachesFindExp = map ("-name "++) caches
-      stackWorkFindExp = ["-name .stack-work -type d"]
-
-      cleanCmd = "find test \\( "++ findExp ++" \\) -exec rm -r {} \\;"
-
+  let cleanCmd = "git clean -dxf test/data/"
   putStrLn $ "$ " ++ cleanCmd
   void $ system cleanCmd
   void $ system "cabal --version"
   void $ system "ghc --version"
+
+  genSandboxCfg `mapM_` sandboxes
+  genGhcPkgCache `mapM_` pkgDirs
 
   let stackDir = "test/data/stack-project"
   void $ withDirectory_ stackDir $ do
