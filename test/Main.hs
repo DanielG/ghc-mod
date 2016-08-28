@@ -56,7 +56,13 @@ main = do
 
   let stackDir = "test/data/stack-project"
   void $ withDirectory_ stackDir $ do
---    void $ system "stack init --force"
+    let ghcver = let gvn = show (__GLASGOW_HASKELL__ :: Int)
+                     (major, minor') = splitAt (length gvn - 2) gvn
+                     minor = case dropWhile (=='0') minor' of
+                                  "" -> "0"
+                                  x  -> x
+                 in major ++ "." ++ minor
+    void $ system $ "stack init --force --resolver=ghc-" ++ ghcver
     void $ system "stack setup"
     void $ system "stack build"
 
