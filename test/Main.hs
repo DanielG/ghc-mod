@@ -28,7 +28,7 @@ main = do
         , "test/data/duplicate-pkgver/.cabal-sandbox/i386-osx-ghc-7.6.3-packages.conf.d"]
       genGhcPkgCache dir = system $ "ghc-pkg recache --force -f" ++ dir
 
-  let cleanCmd = "git clean -dxf test/data/"
+  let cleanCmd = "git clean -dXf test/data/"
   putStrLn $ "$ " ++ cleanCmd
   void $ system cleanCmd
   void $ system "cabal --version"
