@@ -8,7 +8,7 @@ Maintainer:             Daniel Gröber <dxld@darkboxed.org>
 License:                AGPL-3
 License-File:           LICENSE
 License-Files:          COPYING.BSD3 COPYING.AGPL3
-Homepage:               http://www.mew.org/~kazu/proj/ghc-mod/
+Homepage:               https://github.com/DanielG/ghc-mod
 Synopsis:               Happy Haskell Programming
 Description:
   ghc-mod is a backend program to enrich Haskell programming in editors. It
