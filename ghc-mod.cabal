@@ -205,7 +205,6 @@ Library
                       , safe              < 0.4 && >= 0.3.9
                       , optparse-applicative >=0.11.0 && <0.13.0
                       , template-haskell
-                      , syb
   if impl(ghc < 7.8)
     Build-Depends:      convertible
   if impl(ghc >= 8.0)
