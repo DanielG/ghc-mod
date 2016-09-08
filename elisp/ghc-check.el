@@ -396,7 +396,7 @@ open this file and jump to the error inside it."
   (let* ((ovls0 (overlays-in (point-min) (point-max)))
          (ovls1
 	  (ghc-filter (lambda (ovl) (overlay-get ovl 'ghc-check)) ovls0))
-	 (ovls2 (sort ovls1 (ghc-on '<= (lambda (ovl) (overlay-get ovl 'ghc-index)))))
+	 (ovls2 (sort ovls1 (ghc-on '>= (lambda (ovl) (overlay-get ovl 'ghc-index)))))
 	 (ovls3 (ghc-sort-errors-before-warnings ovls2))
          (first_error (first ovls3)))
     (if first_error (ghc-check-jump-to-info (overlay-get first_error 'ghc-info)))))
