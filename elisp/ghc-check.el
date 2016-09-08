@@ -84,6 +84,7 @@ open this file and jump to the error inside it."
   ;; Only check syntax of visible buffers
   (when (and (buffer-file-name)
 	     (file-exists-p (buffer-file-name)))
+    (setq ghc-point@syntax-check (point))
     (ghc-with-process (ghc-check-send)
 		      'ghc-check-callback
 		      (lambda () (setq mode-line-process " -:-")))))
@@ -229,7 +230,7 @@ open this file and jump to the error inside it."
 	  (ghc-check-add-overlay i ofile info)
 	  (setq i (1+ i)) )))
 
-    (when ghc-check-jump-to-message
+    (when (and ghc-check-jump-to-message (equal (point) ghc-point@syntax-check))
       (ghc-goto-first-error))))
 
 (defun ghc-check-jump-to-info (info &optional ofile)
