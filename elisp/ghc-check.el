@@ -292,7 +292,7 @@ open this file and jump to the error inside it."
 	 (mapc (lambda (x) (insert x "\n\n")) (list msg)))))))
 
 
-(defun ghc-display-errors-to-buffer (info)
+(defun ghc-display-errors-to-buffer ()
   (interactive)
   (let ((file-msgs (ghc-get-errors-over-warnings)))
     (if (null file-msgs)
