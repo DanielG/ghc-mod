@@ -45,14 +45,6 @@ type DirPath = FilePath
 -- | Guaranteed to be the name of a file only (no slashes).
 type FileName = String
 
-newtype UnString = UnString { unString :: String }
-
-instance Show UnString where
-    show = unString
-
-instance Read UnString where
-    readsPrec _ = \str -> [(UnString str, "")]
-
 -- | @findCabalFiles dir@. Searches for a @.cabal@ files in @dir@'s parent
 -- directories. The first parent directory containing more than one cabal file
 -- is assumed to be the project directory. If only one cabal file exists in this
