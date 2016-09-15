@@ -130,10 +130,15 @@ findFileInParentsP p dir' = U.makeAbsolute' dir' >>= \dir ->
 
 -- | @getFilesP p dir@. Find all __files__ satisfying @p@ in @.cabal@ in @dir@.
 getFilesP :: (FilePath -> Bool) -> DirPath -> IO [FileName]
-getFilesP p dir = filterM p' =<< getDirectoryContents dir
+getFilesP p dir = filterM p' =<< getDirectoryContentsSafe
  where
    p' fn = do
      (p fn && ) <$> doesFileExist (dir </> fn)
+   getDirectoryContentsSafe = do
+     rdable <- readable <$> getPermissions dir
+     if rdable
+        then getDirectoryContents dir
+        else return []
 
 findCabalSandboxDir :: FilePath -> IO (Maybe FilePath)
 findCabalSandboxDir dir = do
