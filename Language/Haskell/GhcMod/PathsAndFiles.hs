@@ -142,7 +142,7 @@ findFileInParentsP p r dir = runMaybeT $
 findFilesInParentsP :: (FilePath -> Bool) -> FilePath
                    -> IO [IO [FilePath]]
 findFilesInParentsP p dir' = U.makeAbsolute' dir' >>= \dir -> return $
-    map (fmap (map (dir </>)) . getFilesP p) $ parents dir
+    map (\d -> (map (d </>)) <$> getFilesP p d) $ parents dir
 
 -- | @getFilesP p dir@. Find all __files__ satisfying @p@ in @.cabal@ in @dir@.
 getFilesP :: (FilePath -> Bool) -> DirPath -> IO [FileName]
