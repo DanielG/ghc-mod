@@ -1,11 +1,34 @@
-;;; ghc.el --- ghc-mod front-end for haskell-mode
+;;; ghc.el --- ghc-mod front-end for haskell-mode   -*- coding: utf-8-emacs; -*-
 
 ;; Copyright (C) 2009-2014  Kazu Yamamoto, Daniel Gröber
-;; Author:  Kazu Yamamoto <Kazu@Mew.org>, Daniel Gröber <dxld@darkboxed.org>
+
+;; Author:  Kazu Yamamoto <Kazu@Mew.org>
+;;          Daniel Gröber <dxld@darkboxed.org>
+;; URL: https://github.com/DanielG/ghc-mod
 ;; Created: Sep 25, 2009
 ;; Revised: Aug 13, 2014
+;; Package-Requires: ((emacs "24.3") (cl-lib "0.5"))
 
-;; Put the following code to your "~/.emacs".
+
+;;; Commentary:
+
+;; Installation:
+;;
+;; To install ghc-mod-mode put the elisp/ directory of the ghc-mod source
+;; distribution on your `load-path'. If you installed ghc-mod through
+;; ELPA/package.el or a distribution package this will have already been taken
+;; care of for you. Please note that installation through ELPA/package.el is
+;; discouraged since `ghc-mod-mode' depends on the "ghc-mod" executable which is
+;; not distributed as part of the ELPA package and installing it from another
+;; source could lead to incompatibilities between `ghc-mod-mode' and the
+;; executable.
+
+
+;; Initialization:
+;;
+;; To initialize `ghc-mod-mode' you should either call `global-ghc-mod-mode' to
+;; have `ghc-mod-mode' enabled in all `haskell-mode' buffers automatically or
+;; type `M-x ghc-mod-mode RET' whenever you want to enable it manually.
 ;;
 ;; (autoload 'ghc-mod-mode "ghc" nil t)
 ;; (autoload 'ghc-mod-debug "ghc" nil t)
@@ -241,3 +264,4 @@ the mode if ARG is omitted or nil, and toggle it if ARG is `toggle'."
     (ghc-insert-template)))
 
 (provide 'ghc)
+;;; ghc.el ends here
