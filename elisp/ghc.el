@@ -196,6 +196,7 @@ deprecated. Use `define-key' in `ghc-mode-hook' instead.")
 
 (defun ghc-mod-deinit ()
   (ad-disable-advice 'save-buffer 'after 'ghc-mod-check-syntax-on-save)
+  (ghc-check-deinit)
   (ghc-comp-deinit)
   (ghc-type-deinit)
   (ghc-abbrev-deinit)

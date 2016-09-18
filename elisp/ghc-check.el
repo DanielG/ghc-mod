@@ -92,6 +92,11 @@ open this file and jump to the error inside it."
 		      'ghc-check-callback
 		      (lambda () (setq mode-line-process " -:-")))))
 
+
+(defun ghc-check-deinit ()
+  (ghc-kill-process)
+  (remove-overlays (point-min) (point-max) 'ghc-check t))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (ghc-defstruct msg-info file line coln msg type)
@@ -127,7 +132,7 @@ open this file and jump to the error inside it."
       (ghc-with-current-buffer ghc-process-original-buffer
 	(let ((len (length infos)))
 	  (if (= len 0)
-	      (setq mode-line-process "")
+	      (setq mode-line-process nil)
 	    (let* ((errs (ghc-filter (lambda (info) (eq 'err (ghc-msg-info-get-type info))) infos))
 		   (elen (length errs))
 		   (wlen (- len elen)))

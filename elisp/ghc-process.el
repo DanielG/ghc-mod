@@ -238,6 +238,7 @@
       (if (not cpro)
 	  (message "No ghc-mod process")
 	(delete-process cpro)
-	(message "ghc-mod process was killed")))))
+	(message "ghc-mod process was killed")))
+    (setq mode-line-process nil)))
 
 (provide 'ghc-process)

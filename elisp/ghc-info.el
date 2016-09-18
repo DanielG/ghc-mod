@@ -57,6 +57,7 @@ expression who's type was just analyzed.")
 
 (defun ghc-type-init ()
   (setq ghc-type-overlay (make-overlay 0 0))
+  (overlay-put ghc-type-overlay 'ghc-type t)
   (overlay-put ghc-type-overlay 'face 'region)
   (ghc-type-clear-overlay)
   (setq after-change-functions
@@ -67,8 +68,8 @@ expression who's type was just analyzed.")
   (remove-hook 'post-command-hook 'ghc-type-post-command-hook)
   (setq after-change-functions
 	(delq 'ghc-type-clear-overlay after-change-functions))
-  ;; TODO: remember buffers where overlays were created and clear them on deinit
-  (ghc-type-clear-overlay) )
+  (ghc-type-clear-overlay)
+  (remove-overlays (point-min) (point-max) 'ghc-type t))
 
 (defun ghc-type-clear-overlay (&optional _beg _end _len)
   (when (overlayp ghc-type-overlay)
