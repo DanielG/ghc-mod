@@ -238,8 +238,11 @@
      (goto-char (point-max))
      ,@body))
 
-(defun ghc-call-process (cmd x y z &rest args)
-  (apply 'call-process cmd x y z args)
+(defun ghc-call-process (cmd infile destination display &rest args)
+  (let ((rv (apply 'call-process cmd infile destination display args)))
+    (when (/= 0 rv)
+      (error "Command failed (exit code %d): %s %s"
+	     rv cmd (mapconcat 'identity args " "))))
   (when ghc-debug
     (let ((cbuf (current-buffer)))
       (ghc-with-debug-buffer
