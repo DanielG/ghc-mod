@@ -215,7 +215,10 @@ deprecated. Use `define-key' in `ghc-mode-hook' instead.")
   "Toggle ghc-mod mode on or off.
 With a prefix argument ARG, enable ghc-mod mode if ARG is
 positive, and disable it otherwise.  If called from Lisp, enable
-the mode if ARG is omitted or nil, and toggle it if ARG is `toggle'."
+the mode if ARG is omitted or nil, and toggle it if ARG is `toggle'.
+
+\\{ghc-mod-mode-map}
+"
   :init-value nil
   :lighter ghc-mod-lighter
   :keymap ghc-mod-mode-map
