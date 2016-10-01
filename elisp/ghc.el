@@ -180,21 +180,21 @@ deprecated. Use `define-key' in `ghc-mode-hook' instead.")
     (define-key keymap (kbd "C-c ESC n")  'ghc-goto-next-hole)
     keymap))
 
-(defadvice save-buffer (after ghc-mod-check-syntax-on-save disable)
-    "Check syntax with GHC when a haskell-mode buffer is saved."
-    (when ghc-mod-mode
-      (ghc-check-syntax)))
+(defun ghc-mod-check-syntax-on-save ()  
+  "Check syntax with GHC when a haskell-mode buffer is saved."
+  (when ghc-mod-mode
+    (ghc-check-syntax)))
 
 (defun ghc-mod-init ()
   (ghc-abbrev-init)
   (ghc-type-init)
   (ghc-comp-init)
   (ghc-check-syntax)
-  (ad-enable-advice 'save-buffer 'after 'ghc-mod-check-syntax-on-save)
+  (add-hook 'after-save-hook 'ghc-mod-check-syntax-on-save)
   )
 
 (defun ghc-mod-deinit ()
-  (ad-disable-advice 'save-buffer 'after 'ghc-mod-check-syntax-on-save)
+  (remove-hook 'after-save-hook 'ghc-mod-check-syntax-on-save)
   (ghc-check-deinit)
   (ghc-comp-deinit)
   (ghc-type-deinit)
