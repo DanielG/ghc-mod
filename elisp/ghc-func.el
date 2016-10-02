@@ -240,14 +240,15 @@
 
 (defun ghc-call-process (cmd infile destination display &rest args)
   (let ((rv (apply 'call-process cmd infile destination display args)))
-    (when (/= 0 rv)
-      (error "Command failed (exit code %d): %s %s"
-	     rv cmd (mapconcat 'identity args " "))))
-  (when ghc-debug
-    (let ((cbuf (current-buffer)))
-      (ghc-with-debug-buffer
-       (insert (format "%% %s %s\n" cmd (mapconcat 'identity args " ")))
-       (insert-buffer-substring cbuf)))))
+    (unwind-protect
+	(when (/= 0 rv)
+	  (error "Command failed (exit code %d): %s %s"
+		 rv cmd (mapconcat 'identity args " ")))
+      (when ghc-debug
+	(let ((cbuf (current-buffer)))
+	  (ghc-with-debug-buffer
+	   (insert (format "%% %s %s -> exit code %d\n" cmd (mapconcat 'identity args " ") rv))
+	   (insert-buffer-substring cbuf)))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
