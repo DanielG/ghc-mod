@@ -22,7 +22,7 @@
     (t
      :inherit error))
   "Face used for error lines."
-  :group 'ghc)
+  :group 'ghc-mod)
 
 (defface ghc-face-warn
   '((((supports :underline (:style wave)))
@@ -30,7 +30,7 @@
     (t
      :inherit warning))
   "Face used for warning lines."
-  :group 'ghc)
+  :group 'ghc-mod)
 
 (defface ghc-face-hole
   '((((supports :underline (:style wave)))
@@ -38,7 +38,7 @@
     (t
      :inherit warning))
   "Face used for hole lines."
-  :group 'ghc)
+  :group 'ghc-mod)
 
 (defvar ghc-check-error-fringe
   (propertize "!" 'display '(left-fringe exclamation-mark)))
