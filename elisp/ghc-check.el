@@ -49,20 +49,18 @@
 (defvar ghc-check-hole-fringe
   (propertize "_" 'display '(left-fringe horizontal-bar)))
 
-(defvar ghc-display-error nil
-  "*How to display errors/warnings when using 'M-n' and 'M-p':
+(defcustom ghc-display-error nil
+  "*How to display errors/warnings when using 'M-n' and 'M-p'"
+  :type '(choice (const :tag "Do not display errors/warnings." nil)
+                 (const :tag "Display errors/warnings in the minibuffer." 'minibuffer)
+                 (const :tag "Display errors/warnings in a new buffer." 'other-buffer))
+  :group 'ghc-mod)
 
-nil            do not display errors/warnings.
-'minibuffer    display errors/warnings in the minibuffer.
-'other-buffer  display errors/warnings in a new buffer.
-")
-
-(defvar ghc-display-hole 'other-buffer
-  "*How to display hole information when using 'C-c C-j' and 'C-c C-h'
-
-'minibuffer    display errors/warnings in the minibuffer.
-'other-buffer  display errors/warnings in the a new buffer"
-)
+(defcustom ghc-display-hole 'other-buffer
+  "*How to display hole information when using 'C-c C-j' and 'C-c C-h'"
+  :type '(choice (const :tag "Display errors/warnings in the minibuffer." 'minibuffer)
+                 (const :tag "Display errors/warnings in a new buffer." 'other-buffer))
+  :group 'ghc-mod)
 
 (defcustom ghc-check-jump-to-message nil
   "After checking a buffer jump to the first hole/warning/error reported."
@@ -585,9 +583,16 @@ open this file and jump to the error inside it."
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defvar ghc-hlint-options nil "*Hlint options")
+(defcustom ghc-hlint-options nil
+  "*Hlint options"
+  :type '(string)
+  :group 'ghc-mod)
 
-(defvar ghc-check-command nil)
+(defcustom ghc-check-command nil
+  "*Check with hlint or GHC"
+  :type '(choice (const :tag "GHC" nil)
+                 (const :tag "hlint" t))
+  :group 'ghc-mod)
 
 (defun ghc-toggle-check-command ()
   (interactive)
