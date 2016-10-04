@@ -202,18 +202,12 @@ open this file and jump to the error inside it."
 
       (setq ovl (make-overlay beg end))
 
-      (overlay-put ovl 'ghc-check t)
+      ;; This is required so we can remove overlays later --- we need
+      ;; a property with a known value.
+      (overlay-put ovl 'ghc-check t)   
       (overlay-put ovl 'ghc-index i)
-
       (overlay-put ovl 'ghc-info info)
-
-      ; todo: remove
-      (overlay-put ovl 'ghc-file file)
-      (overlay-put ovl 'ghc-line line)
-      (overlay-put ovl 'ghc-coln coln)
-      (overlay-put ovl 'ghc-msg msg)
       (overlay-put ovl 'help-echo msg)
-
       (overlay-put ovl 'before-string
 		   (pcase type
 		     (`warn ghc-check-warning-fringe)
@@ -225,6 +219,22 @@ open this file and jump to the error inside it."
 		     (`warn 'ghc-face-warn)
 		     (`hole 'ghc-face-hole )
 		     (`err  'ghc-face-error))))))
+
+(defun ghc-check-overlay-file (ovl)
+  (let ((info (overlay-get ovl 'ghc-info)))
+    (ghc-msg-info-get-file info)))
+
+(defun ghc-check-overlay-line (ovl)
+  (let ((info (overlay-get ovl 'ghc-info)))
+    (ghc-msg-info-get-line info)))
+
+(defun ghc-check-overlay-coln (ovl)
+  (let ((info (overlay-get ovl 'ghc-info)))
+    (ghc-msg-info-get-coln info)))
+
+(defun ghc-check-overlay-msg (ovl)
+  (let ((info (overlay-get ovl 'ghc-info)))
+    (ghc-msg-info-get-msg info)))
 
 (defun ghc-check-highlight-original-buffer (ofile buf infos)
   (ghc-with-current-buffer buf
@@ -268,8 +278,8 @@ open this file and jump to the error inside it."
 (defun ghc-get-errors-over-warnings ()
   (let ((ovls (ghc-check-overlay-at (point))))
     (when ovls
-      (let ((msgs (mapcar (lambda (ovl) (overlay-get ovl 'ghc-msg)) ovls))
-	    (file (overlay-get (car ovls) 'ghc-file))
+      (let ((msgs (mapcar 'ghc-check-overlay-msg ovls))
+	    (file (ghc-check-overlay-file (car ovls)))
 	    errs wrns)
 	(dolist (msg msgs)
 	  (if (string-match "^Warning" msg)
@@ -327,8 +337,8 @@ open this file and jump to the error inside it."
 (defun ghc-get-only-holes ()
   (let ((ovls (ghc-check-overlay-at (point))))
     (when ovls
-      (let ((msgs (mapcar (lambda (ovl) (overlay-get ovl 'ghc-msg)) ovls))
-	    (file (overlay-get (car ovls) 'ghc-file))
+      (let ((msgs (mapcar 'ghc-check-overlay-msg ovls))
+	    (file (ghc-check-overlay-file (car ovls)))
 	    holes)
 	(dolist (msg msgs)
 	  (if (string-match "Found hole" msg)
@@ -401,8 +411,7 @@ open this file and jump to the error inside it."
 (defun ghc-goto-first-error ()
   (interactive)
   (let* ((ovls0 (overlays-in (point-min) (point-max)))
-         (ovls1
-	  (ghc-filter (lambda (ovl) (overlay-get ovl 'ghc-check)) ovls0))
+         (ovls1 (ghc-filter 'ghc-overlay-p ovls0))
 	 (ovls2 (sort ovls1 (ghc-on '>= (lambda (ovl) (overlay-get ovl 'ghc-index)))))
 	 (ovls3 (ghc-sort-errors-before-warnings ovls2))
          (first_error (first ovls3)))
@@ -414,7 +423,7 @@ open this file and jump to the error inside it."
          (ovls0 (ghc-check-overlay-at here))
          (end (if ovls0 (overlay-start (car ovls0)) here))
          (ovls1 (overlays-in (point-min) end))
-         (ovls2 (ghc-filter (lambda (ovl) (overlay-get ovl 'ghc-check)) ovls1))
+         (ovls2 (ghc-filter 'ghc-overlay-p ovls1))
          (pnts (mapcar 'overlay-start ovls2)))
     (if pnts (goto-char (apply 'max pnts))))
   (cond
@@ -427,7 +436,7 @@ open this file and jump to the error inside it."
          (ovls0 (ghc-check-overlay-at here))
          (beg (if ovls0 (overlay-end (car ovls0)) here))
          (ovls1 (overlays-in beg (point-max)))
-         (ovls2 (ghc-filter (lambda (ovl) (overlay-get ovl 'ghc-check)) ovls1))
+         (ovls2 (ghc-filter 'ghc-overlay-p ovls1))
          (pnts (mapcar 'overlay-start ovls2)))
     (if pnts (goto-char (apply 'min pnts))))
   (cond
@@ -440,7 +449,7 @@ open this file and jump to the error inside it."
          (ovls0 (ghc-check-overlay-at here))
          (end (if ovls0 (overlay-start (car ovls0)) here))
          (ovls1 (overlays-in (point-min) end))
-         (ovls2 (ghc-filter (lambda (ovl) (overlay-get ovl 'ghc-check)) ovls1))
+         (ovls2 (ghc-filter 'ghc-overlay-p ovls1))
          (ovls3 (ghc-filter (lambda (ovl) (overlay-get ovl 'ghc-hole)) ovls2))
          (pnts (mapcar 'overlay-start ovls3)))
     (if pnts (goto-char (apply 'max pnts))))
@@ -454,7 +463,7 @@ open this file and jump to the error inside it."
          (ovls0 (ghc-check-overlay-at here))
          (beg (if ovls0 (overlay-end (car ovls0)) here))
          (ovls1 (overlays-in beg (point-max)))
-         (ovls2 (ghc-filter (lambda (ovl) (overlay-get ovl 'ghc-check)) ovls1))
+         (ovls2 (ghc-filter 'ghc-overlay-p ovls1))
          (ovls3 (ghc-filter (lambda (ovl) (overlay-get ovl 'ghc-hole)) ovls2))
          (pnts (mapcar 'overlay-start ovls3)))
     (if pnts (goto-char (apply 'min pnts))))
@@ -467,7 +476,7 @@ open this file and jump to the error inside it."
 (defun ghc-check-insert-from-warning ()
   (interactive)
   (let ((ret t))
-    (dolist (data (delete-dups (mapcar (lambda (ovl) (overlay-get ovl 'ghc-msg)) (ghc-check-overlay-at (point)))) ret)
+    (dolist (data (delete-dups (mapcar 'ghc-check-overlay-msg (ghc-check-overlay-at (point)))) ret)
       (save-excursion
 	(cond
 	 ((string-match "Inferred type: \\|no type signature:" data)
@@ -578,7 +587,7 @@ open this file and jump to the error inside it."
 (defun ghc-jump-file ()
   (interactive)
   (let* ((ovl (car (ghc-check-overlay-at 1)))
-	 (file (if ovl (overlay-get ovl 'ghc-file))))
+	 (file (if ovl (ghc-check-overlay-file ovl))))
     (if file (find-file file))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
