@@ -597,11 +597,7 @@ open this file and jump to the error inside it."
   :type '(string)
   :group 'ghc-mod)
 
-(defcustom ghc-check-command nil
-  "*Check with hlint or GHC"
-  :type '(choice (const :tag "GHC" nil)
-                 (const :tag "hlint" t))
-  :group 'ghc-mod)
+(defvar ghc-check-command nil)
 
 (defun ghc-toggle-check-command ()
   (interactive)
