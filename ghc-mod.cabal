@@ -180,7 +180,7 @@ Library
                       , deepseq           < 1.5
                       , directory         < 1.3
                       , filepath          < 1.5
-                      , ghc               < 8.2 && >= 7.6
+                      , ghc               < 8.0.2 && >= 7.6
                       , ghc-paths         < 0.2
                       , ghc-syb-utils     < 0.3
                       , hlint             < 1.10 && >= 1.9.27
