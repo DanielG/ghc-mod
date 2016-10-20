@@ -96,7 +96,12 @@ import TcRnTypes
 #endif
 
 #if __GLASGOW_HASKELL__ >= 706
+#if defined(MIN_VERSION_GLASGOW_HASKELL) && MIN_VERSION_GLASGOW_HASKELL(8,0,2,0)
+import GHC hiding (ClsInst, withCleanupSession)
+import qualified GHC (withCleanupSession)
+#else
 import GHC hiding (ClsInst)
+#endif
 #else
 import GHC hiding (Instance)
 import Control.Arrow hiding ((<+>))
@@ -673,6 +678,9 @@ everythingStagedWithContext stage s0 f z q x
 
 withCleanupSession :: GhcMonad m => m a -> m a
 #if __GLASGOW_HASKELL__ >= 800
+#if MIN_VERSION_GLASGOW_HASKELL(8,0,2,0)
+withCleanupSession = GHC.withCleanupSession
+#else
 withCleanupSession ghc = ghc `gfinally` cleanup
   where
    cleanup = do
@@ -682,6 +690,7 @@ withCleanupSession ghc = ghc `gfinally` cleanup
           cleanTempFiles dflags
           cleanTempDirs dflags
           stopIServ hsc_env
+#endif
 #else
 withCleanupSession action = do
   df <- getSessionDynFlags
