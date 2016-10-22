@@ -95,13 +95,11 @@ import PatSyn
 import TcRnTypes
 #endif
 
-#if __GLASGOW_HASKELL__ >= 706
-#if defined(MIN_VERSION_GLASGOW_HASKELL) && MIN_VERSION_GLASGOW_HASKELL(8,0,2,0)
+#if __GLASGOW_HASKELL__ >= 802
 import GHC hiding (ClsInst, withCleanupSession)
 import qualified GHC (withCleanupSession)
-#else
+#elif __GLASGOW_HASKELL__ >= 706
 import GHC hiding (ClsInst)
-#endif
 #else
 import GHC hiding (Instance)
 import Control.Arrow hiding ((<+>))
