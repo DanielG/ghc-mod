@@ -67,14 +67,14 @@ importedFrom file lineNr colNr (Expression symbol) =
             where
               list = listifyStaged Renamer (const True) lie :: [Name.Name]
           getVisibleExports Nothing mi = modInfoExports mi
-        mods <- mapM ((\ImportDecl{..} -> flip (,) ideclHiding <$> findModule (unLoc ideclName) ideclPkgQual) . unLoc) imports
-        mis <- mapM (\(x, h) -> ((,) (moduleNameString $ moduleName x) . getVisibleExports h . fromJust) <$> getModuleInfo x) mods
+        mods <- mapM ((\ImportDecl{..} -> (,,) ideclHiding ideclAs <$> findModule (unLoc ideclName) ideclPkgQual) . unLoc) imports
+        mis <- mapM (\(h, a, x) -> ((,,) (moduleNameString $ moduleName x) (moduleNameString <$> a) . getVisibleExports h . fromJust) <$> getModuleInfo x) mods
         let
           outp = nub $ concatMap (mapMaybe f . snd) ids
           f :: Name.Name -> Maybe String
           f i
             | Just modul <- mmodul
-            , symbol == occn
+            , symbol `elem` concatMap (qnames occn) impmodul
             = let
                 unitid = modulePackageKey modul
                 modulname = moduleNameString $ moduleName modul
@@ -84,14 +84,18 @@ importedFrom file lineNr colNr (Expression symbol) =
                 pkgname = unpackFS pkgname'
                 pkgver = showVersion $ packageVersion pkg
               in Just . unwords $
-                [pkgname ++ "-" ++ pkgver ++ ":" ++ modulname ++ "." ++ occn, intercalate "," impmodul]
-                ++ concatMap (\x -> map (\y -> x ++ '/' : dotToDash y ++ ".html") impmodul) haddock
+                [pkgname ++ "-" ++ pkgver ++ ":" ++ modulname ++ "." ++ occn, intercalate "," (map fst impmodul)]
+                ++ concatMap (\x -> map ((\y -> x ++ '/' : dotToDash y ++ ".html") . fst) impmodul) haddock
             | otherwise = Nothing
             where
+              qnames occn' (fq, al) =
+                let al' | Just a <- al = [a++"."++occn']
+                        | otherwise = []
+                in [occn', fq++"."++occn'] ++ al'
               name = getName i
               mmodul = nameModule_maybe name
               occn = occNameString $ getOccName i
-              impmodul = map fst $ filter ((name `elem`) . snd) mis
+              impmodul = map (\(x,y,_) -> (x,y)) $ filter (\(_,_,x) -> name `elem` x) mis
               dotToDash =
                 let
                   dtd '.' = '-'
