@@ -42,6 +42,26 @@ instance HasType (LPat Id) where
 
 ----------------------------------------------------------------
 
+type SpanNameResult = [(SrcSpan, [G.Name])]
+type SpanNameQuery a = a -> SpanNameResult
+
+findSpanName :: G.HsGroup G.Name -> (Int, Int) -> SpanNameResult
+findSpanName tcm lc =
+  everythingStaged Renamer (++) []
+    ([]
+    `mkQ`  (locateName :: SpanNameQuery (G.LHsExpr G.Name))
+    `extQ` (locateName :: SpanNameQuery (G.LHsType G.Name))
+    `extQ` (locateName :: SpanNameQuery (Located G.Name))
+    )
+    tcm
+  where
+    locateName :: (Typeable a, Data a) => SpanNameQuery (Located a)
+    locateName (L spn x)
+      | G.isGoodSrcSpan spn && spn `G.spans` lc
+      = [(spn, listifyStaged Renamer (const True) x :: [G.Name])]
+      | otherwise
+      = []
+
 -- | Stores mapping from monomorphic to polymorphic types
 type CstGenQS = M.Map Var Type
 -- | Generic type to simplify SYB definition
