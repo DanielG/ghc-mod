@@ -95,7 +95,7 @@ import PatSyn
 import TcRnTypes
 #endif
 
-#if __GLASGOW_HASKELL__ >= 802
+#if defined(MIN_VERSION_GLASGOW_HASKELL) && MIN_VERSION_GLASGOW_HASKELL(8,0,2,0)
 import GHC hiding (ClsInst, withCleanupSession)
 import qualified GHC (withCleanupSession)
 #elif __GLASGOW_HASKELL__ >= 706
