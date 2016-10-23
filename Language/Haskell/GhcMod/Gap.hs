@@ -729,6 +729,8 @@ packageNameVesrion
 packageNameVesrion :: PackageConfig -> (String, Version)
 packageNameVesrion
   InstalledPackageInfo{sourcePackageId=PackageIdentifier{pkgName=pn, pkgVersion=pv}}
+  -- here, pkgName is `Distribution.Package.PackageName String` from Cabal
+  -- using gfindtype to avoid dependence on Cabal-1.18.1.5
   = (fromJustNote "Gap,packageNameVersion" (gfindtype pn), pv)
 #endif
 
