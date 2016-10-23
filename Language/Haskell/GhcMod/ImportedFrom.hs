@@ -39,7 +39,8 @@ import Language.Haskell.GhcMod.SrcUtils (listifyStaged, findSpanName, cmp)
 import GHC.SYB.Utils
 import Data.Function
 import Data.Version
-import Prelude
+import Data.Traversable
+import Prelude hiding (mapM)
 import Data.Data
 import Safe
 import Documentation.Haddock
@@ -64,13 +65,13 @@ data ModuleDesc = ModuleDesc
   }
 
 getPackageDescFromPackageConfig :: (GhcMonad m, MonadIO m) => PackageConfig -> m PackageDesc
-getPackageDescFromPackageConfig InstalledPackageInfo{..}
+getPackageDescFromPackageConfig p@InstalledPackageInfo{..}
   = do
-    let PackageName packageName' = packageName
+    let (pkgName, pkgVer) = packageNameVesrion p
     his <- catMaybes <$> mapM (fmap (either (const Nothing) Just) . readInterfaceFile') haddockInterfaces
     return PackageDesc
-      { pdName = unpackFS packageName'
-      , pdVersion = packageVersion
+      { pdName = pkgName
+      , pdVersion = pkgVer
       , pdHdHTMLs = haddockHTMLs
       , pdHdIfaces = concatMap ifInstalledIfaces his
       }
@@ -93,7 +94,7 @@ nameCacheFromGhc' = ( read_from_session , write_to_session )
 getModulePackage :: (GhcMonad m, MonadIO m) => Module -> m (Maybe PackageDesc)
 getModulePackage m = do
   dflag <- getSessionDynFlags
-  let pkg = lookupPackage dflag (moduleUnitId' m)
+  let pkg = lookupPackage' dflag (moduleUnitId' m)
   mapM getPackageDescFromPackageConfig pkg
 
 getModuleHaddockVisibleExports :: ModuleDesc -> PackageDesc -> [Name]

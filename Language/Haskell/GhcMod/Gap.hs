@@ -50,6 +50,8 @@ module Language.Haskell.GhcMod.Gap (
   , withCleanupSession
   , moduleUnitId'
   , sl_fs'
+  , packageNameVesrion
+  , lookupPackage'
   ) where
 
 import Control.Applicative hiding (empty)
@@ -109,6 +111,8 @@ import RdrName (rdrNameOcc)
 #if __GLASGOW_HASKELL__ < 710
 import UniqFM (eltsUFM)
 import Module
+import Data.Generics.Schemes (gfindtype)
+import Safe
 #endif
 
 #if __GLASGOW_HASKELL__ >= 704
@@ -702,6 +706,7 @@ moduleUnitId' = GHC.moduleUnitId
 #elif __GLASGOW_HASKELL__ >= 710
 moduleUnitId' = GHC.modulePackageKey
 #else
+moduleUnitId' :: Module -> PackageId
 moduleUnitId' = GHC.modulePackageId
 #endif
 
@@ -711,4 +716,25 @@ sl_fs' = sl_fs
 #else
 sl_fs' :: FastString -> FastString
 sl_fs' = id
+#endif
+
+
+#if __GLASGOW_HASKELL__ >= 710
+packageNameVesrion :: PackageConfig -> (String, Version)
+packageNameVesrion
+  InstalledPackageInfo{packageName=PackageName pn, packageVersion=pv}
+  = (unpackFS pn, pv)
+#else
+packageNameVesrion :: PackageConfig -> (String, Version)
+packageNameVesrion
+  InstalledPackageInfo{sourcePackageId=PackageIdentifier{pkgName=pn, pkgVersion=pv}}
+  = (fromJustNote "Gap,packageNameVersion" (gfindtype pn), pv)
+#endif
+
+#if __GLASGOW_HASKELL__ >= 710
+lookupPackage' :: DynFlags -> a -> Maybe PackageConfig
+lookupPackage' = lookupPackage
+#else
+lookupPackage' :: DynFlags -> PackageId -> Maybe PackageConfig
+lookupPackage' = lookupPackage . pkgIdMap . pkgState
 #endif
