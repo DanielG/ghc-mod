@@ -50,7 +50,7 @@ data GhcModCommands =
   | CmdDebugComponent [String]
   | CmdCheck [FilePath]
   | CmdExpand [FilePath]
-  | CmdImportedFrom FilePath Point Expr
+  | CmdImportedFrom FilePath Point (Maybe Expr)
   | CmdInfo FilePath Symbol
   | CmdType Bool FilePath Point
   | CmdSplit FilePath Point
@@ -272,7 +272,7 @@ browseArgSpec = CmdBrowse
 debugComponentArgSpec = filesArgsSpec (pure CmdDebugComponent)
 checkArgSpec = filesArgsSpec (pure CmdCheck)
 expandArgSpec = filesArgsSpec (pure CmdExpand)
-importedFromArgSpec = locArgSpec (pure CmdImportedFrom) <*> strArg "SYMBOL"
+importedFromArgSpec = locArgSpec (pure CmdImportedFrom) <*> optional (strArg "SYMBOL")
 infoArgSpec = CmdInfo
     <$> strArg "FILE"
     <*> strArg "SYMBOL"
