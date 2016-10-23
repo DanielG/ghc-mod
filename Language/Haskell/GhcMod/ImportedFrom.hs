@@ -93,7 +93,7 @@ nameCacheFromGhc' = ( read_from_session , write_to_session )
 getModulePackage :: (GhcMonad m, MonadIO m) => Module -> m (Maybe PackageDesc)
 getModulePackage m = do
   dflag <- getSessionDynFlags
-  let pkg = lookupPackage dflag (modulePackageKey m)
+  let pkg = lookupPackage dflag (moduleUnitId' m)
   mapM getPackageDescFromPackageConfig pkg
 
 getModuleHaddockVisibleExports :: ModuleDesc -> PackageDesc -> [Name]
@@ -101,10 +101,10 @@ getModuleHaddockVisibleExports ModuleDesc{..} pkgdesc =
   let modHdIfs = filter ((mdMod ==) . instMod) . pdHdIfaces $ pkgdesc
   in concatMap instVisibleExports modHdIfs
 
-getModuleDescFromImport :: (GhcMonad m, MonadIO m) => ImportDecl Name -> m ModuleDesc
+getModuleDescFromImport :: (GhcMonad m) => ImportDecl Name -> m ModuleDesc
 getModuleDescFromImport ImportDecl{..}
   = do
-    modul <- findModule (unLoc ideclName) ideclPkgQual
+    modul <- findModule (unLoc ideclName) (fmap sl_fs' ideclPkgQual)
     modInfo <- fromJustNote "imported-from,getModuleDescFromImport" <$> getModuleInfo modul
     let listNames :: Data a => a -> [Name]
         listNames = listifyStaged Renamer (const True)

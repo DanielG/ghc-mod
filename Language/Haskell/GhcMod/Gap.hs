@@ -48,10 +48,8 @@ module Language.Haskell.GhcMod.Gap (
   , mkErrStyle'
   , everythingStagedWithContext
   , withCleanupSession
-  , ghcQualify
-  , ghcIdeclHiding
-  , ghc_sl_fs
-  , ghc_ms_textual_imps
+  , moduleUnitId'
+  , sl_fs'
   ) where
 
 import Control.Applicative hiding (empty)
@@ -698,42 +696,19 @@ withCleanupSession action = do
 
 -- | Things for Language.Haskell.GhcMod.ImportedFrom
 
-#if __GLASGOW_HASKELL__ >= 710
-ghcQualify :: PrintUnqualified
-ghcQualify = reallyAlwaysQualify
+#if __GLASGOW_HASKELL__ >= 800
+moduleUnitId' :: Module -> UnitId
+moduleUnitId' = GHC.moduleUnitId
+#elif __GLASGOW_HASKELL__ >= 710
+moduleUnitId' = GHC.modulePackageKey
 #else
-ghcQualify :: PrintUnqualified
-ghcQualify = alwaysQualify
-#endif
-
-#if __GLASGOW_HASKELL__ >= 710
-ghcIdeclHiding :: GHC.ImportDecl GHC.RdrName -> Maybe (Bool, SrcLoc.Located [GHC.LIE GHC.RdrName])
-ghcIdeclHiding = GHC.ideclHiding
-#else
--- Here, we have
---
---     ideclHiding :: Maybe (Bool, [LIE name])
---
--- so we have to use noLoc to get a SrcLoc.Located type in the second part of the tuple.
-ghcIdeclHiding :: GHC.ImportDecl GHC.RdrName -> Maybe (Bool, SrcLoc.Located [GHC.LIE GHC.RdrName])
-ghcIdeclHiding x = case GHC.ideclHiding x of
-                    Just (b, lie)   -> Just (b, GHC.noLoc lie)
-                    Nothing         -> Nothing
-
+moduleUnitId' = GHC.modulePackageId
 #endif
 
 #if __GLASGOW_HASKELL__ >= 800
-ghc_sl_fs :: StringLiteral -> FastString
-ghc_sl_fs = sl_fs
+sl_fs' :: StringLiteral -> FastString
+sl_fs' = sl_fs
 #else
-ghc_sl_fs = id
-#endif
-
-
-ghc_ms_textual_imps :: GHC.ModSummary -> [Located (ImportDecl RdrName)]
-#if __GLASGOW_HASKELL__ >= 800
--- What does GHC8 give in the first part of the tuple?
-ghc_ms_textual_imps ms = map (fmap simpleImportDecl . snd) (ms_textual_imps ms)
-#else
-ghc_ms_textual_imps = ms_textual_imps
+sl_fs' :: FastString -> FastString
+sl_fs' = id
 #endif
