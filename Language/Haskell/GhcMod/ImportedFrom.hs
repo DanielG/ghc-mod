@@ -149,14 +149,17 @@ guessModule mqn n ms =
       | otherwise = qn == (mdName ++ '.' : occn)
   in (,) n <$> headMay msf3
 
-showOutput :: MonadIO m => Name -> (ModuleDesc, PackageDesc) -> m String
-showOutput n (ModuleDesc{..}, PackageDesc{..}) = do
+showOutput :: (GhcMonad m, MonadIO m) => Name -> (ModuleDesc, PackageDesc) -> m String
+showOutput n (ModuleDesc{..}, imppkg) = do
   let
     occn = occNameString $ occName n
-    mn = moduleNameString . moduleName $ nameModule n
-    package = pdName ++ "-" ++ showVersion pdVersion
+    nmod = nameModule n
+    mn = moduleNameString . moduleName $ nmod
+  modpkg <- fromMaybe imppkg <$> getModulePackage nmod
+  let
+    package = pdName modpkg ++ "-" ++ showVersion (pdVersion modpkg)
     fqn = package ++ ':' : mn ++ '.' : occn
-    hdRoot = headMay pdHdHTMLs
+    hdRoot = headMay $ pdHdHTMLs imppkg
     docFn = dotsToDashes mdName ++ ".html"
     hdPath = fmap (</> docFn) hdRoot
     dotsToDashes = map go
