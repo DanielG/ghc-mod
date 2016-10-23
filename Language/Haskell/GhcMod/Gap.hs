@@ -704,6 +704,7 @@ withCleanupSession action = do
 moduleUnitId' :: Module -> UnitId
 moduleUnitId' = GHC.moduleUnitId
 #elif __GLASGOW_HASKELL__ >= 710
+moduleUnitId' :: Module -> PackageKey
 moduleUnitId' = GHC.modulePackageKey
 #else
 moduleUnitId' :: Module -> PackageId
@@ -732,7 +733,11 @@ packageNameVesrion
 #endif
 
 #if __GLASGOW_HASKELL__ >= 710
-lookupPackage' :: DynFlags -> a -> Maybe PackageConfig
+#if __GLASGOW_HASKELL__ >= 800
+lookupPackage' :: DynFlags -> UnitId -> Maybe PackageConfig
+#else
+lookupPackage' :: DynFlags -> PackageKey -> Maybe PackageConfig
+#endif
 lookupPackage' = lookupPackage
 #else
 lookupPackage' :: DynFlags -> PackageId -> Maybe PackageConfig
