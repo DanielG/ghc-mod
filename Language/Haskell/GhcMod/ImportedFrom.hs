@@ -158,8 +158,16 @@ showOutput n (ModuleDesc{..}, imppkg) = do
     mn = moduleNameString . moduleName $ nmod
   modpkg <- fromMaybe imppkg <$> getModulePackage nmod
   let
-    package = pdName modpkg ++ "-" ++ showVersion (pdVersion modpkg)
-    fqn = package ++ ':' : mn ++ '.' : occn
+    modpackage
+      | null (versionBranch modpackagever) = pdName modpkg
+      | otherwise = pdName modpkg ++ '-' : showVersion modpackagever
+    modpackagever = pdVersion modpkg
+    package
+      | null (versionBranch packagever)
+      , Just r <- hdRoot = takeFileName r
+      | otherwise = pdName imppkg ++ '-' : showVersion packagever
+    packagever = pdVersion imppkg
+    fqn = modpackage ++ ':' : mn ++ '.' : occn
     hdRoot = headMay $ pdHdHTMLs imppkg
     docFn = dotsToDashes mdName ++ ".html"
     hdPath = fmap (</> docFn) hdRoot
