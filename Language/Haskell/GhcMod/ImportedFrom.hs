@@ -18,6 +18,7 @@ module Language.Haskell.GhcMod.ImportedFrom (importedFrom) where
 
 import Control.Applicative
 import Control.Exception
+import Control.Monad (zipWithM)
 import Data.List
 import Data.Maybe
 import System.FilePath
@@ -173,7 +174,7 @@ showOutput n (ModuleDesc{..}, imppkg) = do
     if exists
     then return hdp
     else MaybeT $ return Nothing
-  return $ unwords [fqn, mdName, fromMaybe hackageUrl hdPathReal] ++ "\n"
+  return $ unwords [fqn, mdName, fromMaybe hackageUrl hdPathReal]
 
 -- | Look up Haddock docs for a symbol.
 importedFrom :: forall m. IOish m
@@ -190,14 +191,14 @@ importedFrom file lineNr colNr symbol =
         modSum       <- fileModSummaryWithMapping (cradleCurrentDir crdl </> file)
         (decls,imports, _exports, _docs) <- fromJustNote "imported-from,importedFrom" . renamedSource <$> (parseModule modSum >>= typecheckModule)
         importDescs <- mapM (getModuleDescFromImport . unLoc) imports
-        let bestid = headMay $ concatMap snd $ sortBy (cmp `on` fst) $ findSpanName decls (lineNr, colNr)
-            idsMods = preferExplicit . (\x -> filter ((x `elem`) . mdVisibleExports) importDescs) <$> bestid
+        let bestids = fmap snd $ headMay $ sortBy (cmp `on` fst) $ findSpanName decls (lineNr, colNr)
+            idsMods = map (preferExplicit . (\x -> filter ((x `elem`) . mdVisibleExports) importDescs)) <$> bestids
             mbsym = getExpression <$> symbol
-        fmap (fromMaybe "Nothing found\n") $ runMaybeT $ do
-          imps <- lift . modulesWithPackages =<< MaybeT (return idsMods)
-          bi <- MaybeT $ return bestid
-          bg <- MaybeT . return $ guessModule mbsym bi imps
-          lift $ uncurry showOutput bg
+        fmap (maybe "Nothing found\n" unlines) $ runMaybeT $ do
+          imps <- lift . mapM modulesWithPackages =<< MaybeT (return idsMods)
+          bi <- MaybeT $ return bestids
+          bg <- MaybeT . return $ zipWithM (guessModule mbsym) bi imps
+          lift $ mapM (uncurry showOutput) bg
  where
    handler (SomeException ex) = do
      gmLog GmException "imported-from" $ showDoc ex
