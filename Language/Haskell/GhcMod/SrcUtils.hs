@@ -42,25 +42,28 @@ instance HasType (LPat Id) where
 
 ----------------------------------------------------------------
 
-type SpanNameResult = [(SrcSpan, [G.Name])]
-type SpanNameQuery a = a -> SpanNameResult
+-- | Like `mkQ`, but matches on 2-parameter polymorphic type instead of a
+--   monomorphic one.
+--
+--   Idea shamelessly stolen from SPJ's talk on generic function extension
+--   from Oxford's Workshop on Datatype-Generic programming (2004)
+--   http://www.cs.ox.ac.uk/research/pdt/ap/dgp/workshop2004/
+mkQ2 :: (Data a, Typeable t) => r -> (forall b c. (Data b, Data c) => t b c -> r) -> a -> r
+mkQ2 gen spec x = maybe gen (($ x) . unQ) $ dataCast2 (Q spec)
+newtype Q r a = Q { unQ :: a -> r }
 
-findSpanName :: G.HsGroup G.Name -> (Int, Int) -> SpanNameResult
+findSpanName :: G.HsGroup G.Name -> (Int, Int) -> [(SrcSpan, [G.Name])]
 findSpanName tcm lc =
-  everythingStaged Renamer (++) []
-    ([]
-    `mkQ`  (locateName :: SpanNameQuery (G.LHsExpr G.Name))
-    `extQ` (locateName :: SpanNameQuery (G.LHsType G.Name))
-    `extQ` (locateName :: SpanNameQuery (Located G.Name))
-    )
-    tcm
+  everythingStaged Renamer (++) [] ([] `mkQ2` locateName) tcm
   where
-    locateName :: (Typeable a, Data a) => SpanNameQuery (Located a)
-    locateName (L spn x)
-      | G.isGoodSrcSpan spn && spn `G.spans` lc
-      = [(spn, listifyStaged Renamer (const True) x :: [G.Name])]
-      | otherwise
-      = []
+    locateName :: (Data a, Data b) => GenLocated a b -> [(SrcSpan, [G.Name])]
+    locateName (L spn' x)
+      | Just spn <- cast spn'
+      , G.isGoodSrcSpan spn && spn `G.spans` lc
+      , names <- listifyStaged Renamer (const True) x
+      , not (null names)
+      = [(spn, names)]
+      | otherwise = []
 
 -- | Stores mapping from monomorphic to polymorphic types
 type CstGenQS = M.Map Var Type
