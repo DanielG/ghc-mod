@@ -45,7 +45,7 @@ spec = do
             res <- runD' tdir $ importedFrom "ImportedFrom01.hs" 22 23 (Just (Expression "Int"))
             res `shouldSatisfy` (\x -> "base-" `isInfixOf` x || "haskell98-" `isInfixOf` x || "haskell2010-" `isInfixOf` x)
             res `shouldSatisfy` (isInfixOf "Prelude.html")
-            res `shouldSatisfy` (isInfixOf "ghc-prim-")
+            res `shouldSatisfy` (isPrefixOf "ghc-prim")
 
         it "can look up DL.length" $ do
             res <- runD' tdir $ importedFrom "ImportedFrom01.hs" 23 5  (Just (Expression "DL.length"))
