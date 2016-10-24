@@ -24,7 +24,6 @@ import Data.Maybe
 import System.FilePath
 
 import Exception (ghandle)
-import FastString
 import GHC
 import OccName
 import Packages
