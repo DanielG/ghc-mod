@@ -64,7 +64,7 @@ data ModuleDesc = ModuleDesc
   , mdImplicit :: Bool
   }
 
-getPackageDescFromPackageConfig :: (GhcMonad m, MonadIO m) => PackageConfig -> m PackageDesc
+getPackageDescFromPackageConfig :: (GmOut m, GmLog m, GhcMonad m, MonadIO m) => PackageConfig -> m PackageDesc
 getPackageDescFromPackageConfig p@InstalledPackageInfo{..}
   = do
     let (pkgName, pkgVer) = packageNameVesrion p
@@ -76,12 +76,27 @@ getPackageDescFromPackageConfig p@InstalledPackageInfo{..}
       , pdHdIfaces = concatMap ifInstalledIfaces his
       }
 
-readInterfaceFile' :: (MonadIO m, GhcMonad m) => FilePath -> m (Either String InterfaceFile)
+readInterfaceFile' :: (GmOut m, GmLog m, MonadIO m, GhcMonad m) => FilePath -> m (Either String InterfaceFile)
 readInterfaceFile' f = do
   exists <- liftIO $ doesFileExist f
   if exists
   then readInterfaceFile nameCacheFromGhc' f
-  else return $ Left "No such file"
+  else do
+    gmLog GmWarning "imported-from" haddockSuggestion
+    return $ Left "No such file"
+  where
+    backticks d = char '`' <> d <> char '`'
+    haddockSuggestion =
+        text "Couldn't find haddock interface" <+> quotes (text f) $$
+        text "- To generate Haddock docs for dependencies, try:" $$
+            nest 4 (backticks $ text "cabal install --enable-documentation --haddock-hyperlink-source --only-dependencies") $$
+        text "" $$
+        text "- or set" $$
+            nest 4 (backticks $ text "documentation: True") $$
+        text "in ~/.cabal/config" $$
+        text "" $$
+        text "- or with Stack:" $$
+            nest 4 (backticks $ text "stack haddock")
 
 -- Derived from haddock-api, see COPYING.BSD3.haddock-api in the source
 -- distribution for it's license.
@@ -91,7 +106,7 @@ nameCacheFromGhc' = ( read_from_session , write_to_session )
     read_from_session = liftIO =<< readIORef . hsc_NC <$> getSession
     write_to_session nc' = liftIO =<< flip writeIORef nc' . hsc_NC <$> getSession
 
-getModulePackage :: (GhcMonad m, MonadIO m) => Module -> m (Maybe PackageDesc)
+getModulePackage :: (GmOut m, GmLog m, GhcMonad m, MonadIO m) => Module -> m (Maybe PackageDesc)
 getModulePackage m = do
   dflag <- getSessionDynFlags
   let pkg = lookupPackage' dflag (moduleUnitId' m)
@@ -123,7 +138,7 @@ getModuleDescFromImport ImportDecl{..}
       , mdImplicit = ideclImplicit
       }
 
-modulesWithPackages :: (GhcMonad m, MonadIO m) => [ModuleDesc] -> m [(ModuleDesc, PackageDesc)]
+modulesWithPackages :: (GmOut m, GmLog m, GhcMonad m, MonadIO m) => [ModuleDesc] -> m [(ModuleDesc, PackageDesc)]
 modulesWithPackages = (fmap catMaybes .) $ mapM $ \x@ModuleDesc{..} -> runMaybeT $ do
   pkg <- MaybeT $ getModulePackage mdMod
   return (x, pkg)
@@ -150,7 +165,7 @@ guessModule mqn n ms =
       | otherwise = qn == (mdName ++ '.' : occn)
   in (,) n <$> headMay msf3
 
-showOutput :: (GhcMonad m, MonadIO m) => Name -> (ModuleDesc, PackageDesc) -> m String
+showOutput :: (GmOut m, GmLog m, GhcMonad m, MonadIO m) => Name -> (ModuleDesc, PackageDesc) -> m String
 showOutput n (ModuleDesc{..}, imppkg) = do
   let
     occn = occNameString $ occName n
