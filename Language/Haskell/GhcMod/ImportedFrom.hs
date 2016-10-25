@@ -18,7 +18,6 @@ module Language.Haskell.GhcMod.ImportedFrom (importedFrom) where
 
 import Control.Applicative
 import Control.Exception
-import Control.Monad (zipWithM)
 import Data.List
 import Data.Maybe
 import System.FilePath
@@ -213,14 +212,19 @@ importedFrom file lineNr colNr symbol =
         modSum       <- fileModSummaryWithMapping (cradleCurrentDir crdl </> file)
         (decls,imports, _exports, _docs) <- fromJustNote "imported-from,importedFrom" . renamedSource <$> (parseModule modSum >>= typecheckModule)
         importDescs <- mapM (getModuleDescFromImport . unLoc) imports
-        let bestids = fmap snd $ headMay $ sortBy (cmp `on` fst) $ findSpanName decls (lineNr, colNr)
-            idsMods = map (preferExplicit . (\x -> filter ((x `elem`) . mdVisibleExports) importDescs)) <$> bestids
+        bestids <-
+          case fmap snd $ headMay $ sortBy (cmp `on` fst) $ findSpanName decls (lineNr, colNr) of
+            Just x -> return x
+            Nothing -> error $ "No names found at " ++ show (lineNr, colNr)
+        let idsMods = map (preferExplicit . (\x -> filter ((x `elem`) . mdVisibleExports) importDescs)) bestids
             mbsym = getExpression <$> symbol
-        fmap (maybe "Nothing found\n" unlines) $ runMaybeT $ do
-          imps <- lift . mapM modulesWithPackages =<< MaybeT (return idsMods)
-          bi <- MaybeT $ return bestids
-          bg <- MaybeT . return $ zipWithM (guessModule mbsym) bi imps
-          lift $ mapM (uncurry showOutput) bg
+        imps <- mapM modulesWithPackages idsMods
+        bg <-
+           case catMaybes $ zipWith (guessModule mbsym) bestids imps of
+             [] -> error $ "No modules exporting "
+                   ++ fromMaybe (intercalate "," (map (occNameString . getOccName) bestids)) mbsym
+             x -> return x
+        unlines <$> mapM (uncurry showOutput) bg
  where
    handler (SomeException ex) = do
      gmLog GmException "imported-from" $ showDoc ex
