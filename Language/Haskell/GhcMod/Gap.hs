@@ -95,7 +95,16 @@ import PatSyn
 import TcRnTypes
 #endif
 
-#if defined(MIN_VERSION_GLASGOW_HASKELL) && MIN_VERSION_GLASGOW_HASKELL(8,0,2,0)
+-- GHC 7.8 doesn't define this macro, nor does GHC 7.10.0
+-- It IS defined from 7.10.1 and up though.
+-- So we can only test for 7.10.1.0 and up with it.
+#if __GLASGOW_HASKELL__ < 710
+#ifndef MIN_VERSION_GLASGOW_HASKELL
+#define MIN_VERSION_GLASGOW_HASKELL(a,b,c,d) FALSE
+#endif
+#endif
+
+#if MIN_VERSION_GLASGOW_HASKELL(8,0,2,0)
 import GHC hiding (ClsInst, withCleanupSession)
 import qualified GHC (withCleanupSession)
 #elif __GLASGOW_HASKELL__ >= 706
