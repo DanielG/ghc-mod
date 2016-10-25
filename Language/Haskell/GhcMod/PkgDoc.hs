@@ -1,4 +1,4 @@
-module Language.Haskell.GhcMod.PkgDoc (pkgDoc, pkgFindModule) where
+module Language.Haskell.GhcMod.PkgDoc (pkgDoc) where
 
 import Language.Haskell.GhcMod.Types
 import Language.Haskell.GhcMod.GhcPkg
@@ -14,8 +14,7 @@ pkgDoc mdl = do
     ghcPkg <- getGhcPkgProgram
     readProc <- gmReadProcess
     pkgDbStack <- getPackageDbStack
-    pkg <- pkgFindModule ghcPkg readProc pkgDbStack mdl
-
+    pkg <- liftIO $ trim <$> readProc ghcPkg (toModuleOpts pkgDbStack) ""
     if pkg == "" then
         return "\n"
       else do
@@ -23,19 +22,8 @@ pkgDoc mdl = do
         let ret = pkg ++ " " ++ drop 14 htmlpath
         return ret
   where
-    toDocDirOpts pkg dbs = ["field", pkg, "haddock-html"]
-                       ++ ghcPkgDbStackOpts dbs
-
-pkgFindModule
-    :: IOish m
-    => FilePath
-    -> (FilePath -> [String] -> String -> IO String)
-    -> [GhcPkgDb]
-    -> String
-    -> m String
-pkgFindModule ghcPkg readProc pkgDbStack mdl =
-    liftIO $ trim <$> readProc ghcPkg (toModuleOpts pkgDbStack) ""
-  where
     toModuleOpts dbs = ["find-module", mdl, "--simple-output"]
                    ++ ghcPkgDbStackOpts dbs
+    toDocDirOpts pkg dbs = ["field", pkg, "haddock-html"]
+                       ++ ghcPkgDbStackOpts dbs
     trim = takeWhile (`notElem` " \n")
