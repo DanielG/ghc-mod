@@ -169,4 +169,5 @@ mapDoc kd ad m = vcat $
 rootInfo :: forall m. (IOish m, GmOut m, GmEnv m) => m String
 rootInfo = do
     crdl <- findCradleNoLog =<< (optPrograms <$> options)
+    liftIO $ cleanupCradle crdl
     return $ cradleRootDir crdl ++ "\n"

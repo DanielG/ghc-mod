@@ -24,6 +24,7 @@ import Control.Arrow (second)
 import Control.Applicative
 import Control.Exception as E
 import Control.Monad
+import Control.Monad.Trans.Maybe
 import Data.List
 import Data.Char
 import Data.Maybe
@@ -45,45 +46,41 @@ type DirPath = FilePath
 -- | Guaranteed to be the name of a file only (no slashes).
 type FileName = String
 
-newtype UnString = UnString { unString :: String }
-
-instance Show UnString where
-    show = unString
-
-instance Read UnString where
-    readsPrec _ = \str -> [(UnString str, "")]
-
 -- | @findCabalFiles dir@. Searches for a @.cabal@ files in @dir@'s parent
 -- directories. The first parent directory containing more than one cabal file
 -- is assumed to be the project directory. If only one cabal file exists in this
 -- directory it is returned otherwise @findCabalFiles@ throws 'GMENoCabalFile'
 -- or 'GMETooManyCabalFiles'
 findCabalFile :: FilePath -> IO (Maybe FilePath)
-findCabalFile dir = do
-    -- List of directories and all cabal file candidates
-    dcs <- findFileInParentsP  isCabalFile dir :: IO ([(DirPath, [FileName])])
-    let css = uncurry appendDir `map` dcs :: [[FilePath]]
-    case find (not . null) css of
-      Nothing -> return Nothing
-      Just cfs@(_:_:_) -> throw $ GMETooManyCabalFiles cfs
-      Just (a:_)       -> return (Just a)
-      Just []          -> error "findCabalFile"
- where
-   appendDir :: DirPath -> [FileName] -> [FilePath]
-   appendDir d fs = (d </>) `map` fs
+findCabalFile dir = findFileInParentsP isCabalFile pick dir
+  where
+    pick [] = Nothing
+    pick [cf] = Just cf
+    pick cfs  = throw $ GMETooManyCabalFiles cfs
 
 findStackConfigFile :: FilePath -> IO (Maybe FilePath)
-findStackConfigFile dir = do
-    fs <- map (second listToMaybe) <$> findFileInParentsP  (=="stack.yaml") dir
-    case find (isJust . snd) fs of
-      Nothing           -> return Nothing
-      Just (d, Just a)  -> return $ Just $ d </> a
-      Just (_, Nothing) -> error "findStackConfigFile"
+findStackConfigFile dir =
+    findFileInParentsP (=="stack.yaml") pick dir
+  where
+    pick []     = Nothing
+    pick (sf:_) = Just sf
+
+findCabalSandboxDir :: FilePath -> IO (Maybe FilePath)
+findCabalSandboxDir dir =
+  fmap takeDirectory <$> findFileInParentsP isSandboxConfig pick dir
+ where
+   isSandboxConfig = (==sandboxConfigFileName)
+   pick []     = Nothing
+   pick (sc:_) = Just sc
+
+findCustomPackageDbFile :: FilePath -> IO (Maybe FilePath)
+findCustomPackageDbFile dir =
+    mightExist $ dir </> "ghc-mod.package-db-stack"
 
 -- | Get path to sandbox config file
 getSandboxDb :: Cradle -> IO (Maybe GhcPkgDb)
 getSandboxDb crdl = do
-  mConf <-traverse readFile =<< mightExist (sandboxConfigFile crdl)
+  mConf <- traverse readFile =<< mightExist (sandboxConfigFile crdl)
   bp <- buildPlatform readProcess
   return $ PackageDb . fixPkgDbVer bp <$> (extractSandboxDbDir =<< mConf)
 
@@ -129,32 +126,35 @@ takeExtension' p =
       then "" -- just ".cabal" is not a valid cabal file
       else takeExtension p
 
--- | @findFileInParentsP p dir@ Look for files satisfying @p@ in @dir@ and all
+-- | @findFileInParentsP p r dir@ Look for files satisfying @p@ in @dir@ and all
+-- it's parent directories. Files found to satisfy @p@ in a given directory are
+-- passed to @r@ and if this yields a 'Just' value the search finishes early
+-- without examinig any more directories and this value is returned.
+findFileInParentsP :: (FilePath -> Bool)
+                   -> ([FilePath] -> Maybe a)
+                   -> FilePath
+                   -> IO (Maybe a)
+findFileInParentsP p r dir = runMaybeT $
+    join $ msum <$> map (MaybeT . fmap r) <$> liftIO (findFilesInParentsP p dir)
+
+-- | @findFilesInParentsP p dir@ Look for files satisfying @p@ in @dir@ and all
 -- it's parent directories.
-findFileInParentsP :: (FilePath -> Bool) -> FilePath
-                   -> IO [(DirPath, [FileName])]
-findFileInParentsP p dir' = U.makeAbsolute' dir' >>= \dir ->
-    getFilesP p `zipMapM` parents dir
+findFilesInParentsP :: (FilePath -> Bool) -> FilePath
+                   -> IO [IO [FilePath]]
+findFilesInParentsP p dir' = U.makeAbsolute' dir' >>= \dir -> return $
+    map (\d -> (map (d </>)) <$> getFilesP p d) $ parents dir
 
 -- | @getFilesP p dir@. Find all __files__ satisfying @p@ in @.cabal@ in @dir@.
 getFilesP :: (FilePath -> Bool) -> DirPath -> IO [FileName]
-getFilesP p dir = filterM p' =<< getDirectoryContents dir
+getFilesP p dir = filterM p' =<< getDirectoryContentsSafe
  where
    p' fn = do
      (p fn && ) <$> doesFileExist (dir </> fn)
-
-findCabalSandboxDir :: FilePath -> IO (Maybe FilePath)
-findCabalSandboxDir dir = do
-  dss <- findFileInParentsP isSandboxConfig dir
-  return $ case find (not . null . snd) $ dss of
-             Just (sbDir, _:_) -> Just sbDir
-             _ -> Nothing
-
- where
-   isSandboxConfig = (==sandboxConfigFileName)
-
-zipMapM :: Monad m => (a -> m c) -> [a] -> m [(a,c)]
-zipMapM f as = mapM (\a -> liftM ((,) a) $ f a) as
+   getDirectoryContentsSafe = do
+     rdable <- readable <$> getPermissions dir
+     if rdable
+        then getDirectoryContents dir
+        else return []
 
 -- | @parents dir@. Returns all parent directories of @dir@ including @dir@.
 --
@@ -240,11 +240,3 @@ mergedPkgOptsCacheFile dist =
 pkgDbStackCacheFile :: FilePath -> FilePath
 pkgDbStackCacheFile dist =
     setupConfigPath dist <.> "ghc-mod.package-db-stack"
-
--- | @findCustomPackageDbFile dir@. Searches for a @ghc-mod.package-db-stack@ file in @dir@.
--- If it exists in the given directory it is returned otherwise @findCradleFile@
--- returns @Nothing@
-findCustomPackageDbFile :: FilePath -> IO (Maybe FilePath)
-findCustomPackageDbFile directory = do
-    let path = directory </> "ghc-mod.package-db-stack"
-    mightExist path

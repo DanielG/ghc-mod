@@ -54,13 +54,10 @@ $(ifelsedefD "componentsConfigs" [d|
    fst3 (x,_,_) = x
 
    sameKind CLibName CLibName = True
-   sameKind CLibName _ = False
    sameKind (CExeName _) (CExeName _) = True
-   sameKind (CExeName _) _ = False
    sameKind (CTestName _) (CTestName _) = True
-   sameKind (CTestName _) _ = False
    sameKind (CBenchName _) (CBenchName _) = True
-   sameKind (CBenchName _) _ = False
+   sameKind _ _ = False
 
    setClbis [(CLibName, clbi, _)] =
        get >>= \lbi ->
