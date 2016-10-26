@@ -1,4 +1,4 @@
-# Happy Haskell Programming
+# Happy Haskell Hacking
 [![Build Status](https://travis-ci.org/DanielG/ghc-mod.svg?branch=master)](https://travis-ci.org/DanielG/ghc-mod)
 
 Please read: [http://www.mew.org/~kazu/proj/ghc-mod/](http://www.mew.org/~kazu/proj/ghc-mod/)
