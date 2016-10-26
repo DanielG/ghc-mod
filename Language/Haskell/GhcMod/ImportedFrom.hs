@@ -14,6 +14,7 @@
 --
 -- You should have received a copy of the GNU Affero General Public License
 -- along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
 module Language.Haskell.GhcMod.ImportedFrom (importedFrom) where
 
 import Control.Applicative
@@ -63,11 +64,12 @@ data ModuleDesc = ModuleDesc
   , mdImplicit :: Bool
   }
 
-getPackageDescFromPackageConfig :: (GmOut m, GmLog m, GhcMonad m, MonadIO m) => PackageConfig -> m PackageDesc
+getPackageDescFromPackageConfig :: (GmOut m, GmLog m, GhcMonad m, MonadIO m)
+                                => PackageConfig -> m PackageDesc
 getPackageDescFromPackageConfig p@InstalledPackageInfo{..}
   = do
     let (pkgName, pkgVer) = packageNameVesrion p
-    his <- catMaybes <$> mapM (fmap (either (const Nothing) Just) . readInterfaceFile') haddockInterfaces
+    his <- catMaybes <$> mapM readInterfaceFile' haddockInterfaces
     return PackageDesc
       { pdName = pkgName
       , pdVersion = pkgVer
@@ -75,20 +77,23 @@ getPackageDescFromPackageConfig p@InstalledPackageInfo{..}
       , pdHdIfaces = concatMap ifInstalledIfaces his
       }
 
-readInterfaceFile' :: (GmOut m, GmLog m, MonadIO m, GhcMonad m) => FilePath -> m (Either String InterfaceFile)
+readInterfaceFile' :: (GmOut m, GmLog m, MonadIO m, GhcMonad m)
+                   => FilePath -> m (Maybe InterfaceFile)
 readInterfaceFile' f = do
-  exists <- liftIO $ doesFileExist f
-  if exists
-  then readInterfaceFile nameCacheFromGhc' f
-  else do
-    gmLog GmWarning "imported-from" haddockSuggestion
-    return $ Left "No such file"
+    exists <- liftIO $ doesFileExist f
+    if exists
+      then either (const Nothing) Just <$> readInterfaceFile nameCacheFromGhc' f
+      else do
+        gmLog GmWarning "imported-from" haddockSuggestion
+        return Nothing
   where
     backticks d = char '`' <> d <> char '`'
     haddockSuggestion =
         text "Couldn't find haddock interface" <+> quotes (text f) $$
         text "- To generate Haddock docs for dependencies, try:" $$
-            nest 4 (backticks $ text "cabal install --enable-documentation --haddock-hyperlink-source --only-dependencies") $$
+            nest 4 (backticks $ text "cabal install --enable-documentation\
+                                                   \--haddock-hyperlink-source\
+                                                   \--only-dependencies") $$
         text "" $$
         text "- or set" $$
             nest 4 (backticks $ text "documentation: True") $$
@@ -105,7 +110,8 @@ nameCacheFromGhc' = ( read_from_session , write_to_session )
     read_from_session = liftIO =<< readIORef . hsc_NC <$> getSession
     write_to_session nc' = liftIO =<< flip writeIORef nc' . hsc_NC <$> getSession
 
-getModulePackage :: (GmOut m, GmLog m, GhcMonad m, MonadIO m) => Module -> m (Maybe PackageDesc)
+getModulePackage :: (GmOut m, GmLog m, GhcMonad m, MonadIO m)
+                 => Module -> m (Maybe PackageDesc)
 getModulePackage m = do
   dflag <- getSessionDynFlags
   let pkg = lookupPackage' dflag (moduleUnitId' m)
@@ -117,10 +123,9 @@ getModuleHaddockVisibleExports ModuleDesc{..} pkgdesc =
   in concatMap instVisibleExports modHdIfs
 
 getModuleDescFromImport :: (GhcMonad m) => ImportDecl Name -> m ModuleDesc
-getModuleDescFromImport ImportDecl{..}
-  = do
+getModuleDescFromImport ImportDecl{..} = do
     modul <- findModule (unLoc ideclName) (fmap sl_fs' ideclPkgQual)
-    modInfo <- fromJustNote "imported-from,getModuleDescFromImport" <$> getModuleInfo modul
+    modInfo <- fromJustNote "getModuleDescFromImport" <$> getModuleInfo modul
     let listNames :: Data a => a -> [Name]
         listNames = listifyStaged Renamer (const True)
         exprts = modInfoExports modInfo
@@ -137,19 +142,18 @@ getModuleDescFromImport ImportDecl{..}
       , mdImplicit = ideclImplicit
       }
 
-modulesWithPackages :: (GmOut m, GmLog m, GhcMonad m, MonadIO m) => [ModuleDesc] -> m [(ModuleDesc, PackageDesc)]
-modulesWithPackages = (fmap catMaybes .) $ mapM $ \x@ModuleDesc{..} -> runMaybeT $ do
-  pkg <- MaybeT $ getModulePackage mdMod
-  return (x, pkg)
+modulesWithPackages :: (GmOut m, GmLog m, GhcMonad m, MonadIO m)
+                    => [ModuleDesc] -> m [(ModuleDesc, PackageDesc)]
+modulesWithPackages =
+    (fmap catMaybes .) $ mapM $ \x@ModuleDesc{..} -> runMaybeT $ do
+        pkg <- MaybeT $ getModulePackage mdMod
+        return (x, pkg)
 
-preferExplicit :: [ModuleDesc] -> [ModuleDesc]
-preferExplicit ms =
-  let (impl, expl) = partition mdImplicit ms
-  in expl ++ impl
-
-guessModule :: Maybe String -> Name -> [(ModuleDesc, PackageDesc)] -> Maybe (Name, (ModuleDesc, PackageDesc))
-guessModule mqn n ms =
-  let
+guessModule :: Maybe String
+            -> Name
+            -> [(ModuleDesc, PackageDesc)]
+            -> Maybe (Name, (ModuleDesc, PackageDesc))
+guessModule mqn n ms = let
     occn = occNameString $ occName n
     msf = filter f ms
     f = (n `elem`) . uncurry getModuleHaddockVisibleExports
@@ -162,70 +166,75 @@ guessModule mqn n ms =
     f3 qn (ModuleDesc{..},_)
       | Just as <- mdAlias = qn `elem` map (++ '.' : occn) [as, mdName]
       | otherwise = qn == (mdName ++ '.' : occn)
-  in (,) n <$> headMay msf3
+  in
+    (,) n <$> headMay msf3
 
-showOutput :: (GmOut m, GmLog m, GhcMonad m, MonadIO m) => Name -> (ModuleDesc, PackageDesc) -> m String
+showOutput :: (GmOut m, GmLog m, GhcMonad m, MonadIO m)
+           => Name -> (ModuleDesc, PackageDesc) -> m String
 showOutput n (ModuleDesc{..}, imppkg) = do
-  let
-    occn = occNameString $ occName n
-    nmod = nameModule n
-    mn = moduleNameString . moduleName $ nmod
-  modpkg <- fromMaybe imppkg <$> getModulePackage nmod
-  let
-    modpackage
-      | null (versionBranch modpackagever) = pdName modpkg
-      | otherwise = pdName modpkg ++ '-' : showVersion modpackagever
-    modpackagever = pdVersion modpkg
-    package
-      | null (versionBranch packagever)
-      , Just r <- hdRoot = takeFileName r
-      | otherwise = pdName imppkg ++ '-' : showVersion packagever
-    packagever = pdVersion imppkg
-    fqn = modpackage ++ ':' : mn ++ '.' : occn
-    hdRoot = headMay $ pdHdHTMLs imppkg
-    docFn = dotsToDashes mdName ++ ".html"
-    hdPath = fmap (</> docFn) hdRoot
-    dotsToDashes = map go
-      where go '.' = '-'
-            go x = x
-    hackageUrl = "https://hackage.haskell.org/package/" ++ package ++ "/docs/" ++ docFn
-  hdPathReal <- liftIO $ runMaybeT $ do
-    hdp <- MaybeT $ return hdPath
-    exists <- lift $ doesFileExist hdp
-    if exists
-    then return hdp
-    else MaybeT $ return Nothing
-  return $ unwords [fqn, mdName, fromMaybe hackageUrl hdPathReal]
+    let occn = occNameString $ occName n
+        nmod = nameModule n
+        mn = moduleNameString . moduleName $ nmod
+    modpkg <- fromMaybe imppkg <$> getModulePackage nmod
+    let modpackage
+            | null (versionBranch modpackagever) = pdName modpkg
+            | otherwise = pdName modpkg ++ '-' : showVersion modpackagever
+        modpackagever = pdVersion modpkg
+        package
+            | null (versionBranch packagever)
+              , Just r <- hdRoot = takeFileName r
+            | otherwise = pdName imppkg ++ '-' : showVersion packagever
+        packagever = pdVersion imppkg
+        fqn = modpackage ++ ':' : mn ++ '.' : occn
+        hdRoot = headMay $ pdHdHTMLs imppkg
+        docFn = dotsToDashes mdName ++ ".html"
+        hdPath = fmap (</> docFn) hdRoot
+        dotsToDashes = map go
+            where go '.' = '-'
+                  go x = x
+        hackageUrl = "https://hackage.haskell.org/package/"
+                     ++ package ++ "/docs/" ++ docFn
+    hdPathReal <- liftIO $ runMaybeT $ do
+      hdp <- MaybeT $ return hdPath
+      exists <- lift $ doesFileExist hdp
+      if exists
+        then return hdp
+        else MaybeT $ return Nothing
+    return $ unwords [fqn, mdName, fromMaybe hackageUrl hdPathReal]
 
 -- | Look up Haddock docs for a symbol.
 importedFrom :: forall m. IOish m
-             => FilePath     -- ^ A target file.
-             -> Int          -- ^ Line number.
-             -> Int          -- ^ Column number.
-             -> Maybe Expression   -- ^ Expression (symbol)
+             => FilePath         -- ^ A target file.
+             -> Int              -- ^ Line number.
+             -> Int              -- ^ Column number.
+             -> Maybe Expression -- ^ Expression (symbol)
              -> GhcModT m String
 importedFrom file lineNr colNr symbol =
-  ghandle handler $
-    runGmlT' [Left file] deferErrors $
-      withInteractiveContext $ do
-        crdl         <- cradle
-        modSum       <- fileModSummaryWithMapping (cradleCurrentDir crdl </> file)
-        (decls,imports, _exports, _docs) <- fromJustNote "imported-from,importedFrom" . renamedSource <$> (parseModule modSum >>= typecheckModule)
-        importDescs <- mapM (getModuleDescFromImport . unLoc) imports
-        bestids <-
-          case fmap snd $ headMay $ sortBy (cmp `on` fst) $ findSpanName decls (lineNr, colNr) of
-            Just x -> return x
-            Nothing -> error $ "No names found at " ++ show (lineNr, colNr)
-        let idsMods = map (preferExplicit . (\x -> filter ((x `elem`) . mdVisibleExports) importDescs)) bestids
-            mbsym = getExpression <$> symbol
-        imps <- mapM modulesWithPackages idsMods
-        bg <-
-           case catMaybes $ zipWith (guessModule mbsym) bestids imps of
-             [] -> error $ "No modules exporting "
-                   ++ fromMaybe (intercalate "," (map (occNameString . getOccName) bestids)) mbsym
-             x -> return x
-        unlines <$> mapM (uncurry showOutput) bg
+    handler $ runGmlT' [Left file] deferErrors $ withInteractiveContext $ do
+      crdl         <- cradle
+      modSum       <- fileModSummaryWithMapping (cradleCurrentDir crdl </> file)
+      Just (decls,imports, _exports, _docs)
+          <- renamedSource <$> (parseModule modSum >>= typecheckModule)
+      importDescs :: [ModuleDesc]
+          <- mapM (getModuleDescFromImport . unLoc) imports
+      bestids <-
+          case sortBy (cmp `on` fst) $ findSpanName decls (lineNr, colNr) of
+            ((_, x):_) -> return x
+            [] -> error $ "No names found at " ++ show (lineNr, colNr)
+      let visExports xs n = filter ((elem n) . mdVisibleExports) xs
+          idsMods = map (preferExplicit . visExports importDescs) bestids
+          mbsym = getExpression <$> symbol
+      imps <- mapM modulesWithPackages idsMods
+      let bestids_str =
+            intercalate "," (map (occNameString . getOccName) bestids)
+      bg <- case catMaybes $ zipWith (guessModule mbsym) bestids imps of
+          [] -> error $ "No modules exporting " ++ fromMaybe bestids_str mbsym
+          x -> return x
+      unlines <$> mapM (uncurry showOutput) bg
  where
-   handler (SomeException ex) = do
-     gmLog GmException "imported-from" $ showDoc ex
-     return []
+   handler = ghandle $ \(SomeException ex) ->
+     gmLog GmException "imported-from" (showDoc ex) >> return []
+
+   preferExplicit :: [ModuleDesc] -> [ModuleDesc]
+   preferExplicit ms =
+       let (impl, expl) = partition mdImplicit ms in expl ++ impl
