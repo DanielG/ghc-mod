@@ -12,6 +12,7 @@ import Language.Haskell.GhcMod
 import Language.Haskell.GhcMod.Internal hiding (MonadIO,liftIO)
 import Language.Haskell.GhcMod.Types
 import Language.Haskell.GhcMod.Monad
+import Language.Haskell.GhcMod.Outputable
 import Language.Haskell.GhcMod.Find (AsyncSymbolDb, newAsyncSymbolDb, getAsyncSymbolDb)
 import System.FilePath ((</>))
 import System.Directory (setCurrentDirectory, getAppUserDataDirectory,
@@ -81,7 +82,7 @@ legacyInteractiveLoop asyncSymbolDb world = do
         CmdFind symbol ->
             lookupSymbol symbol =<< getAsyncSymbolDb asyncSymbolDb
         -- other commands are handled here
-        x              -> ghcCommands x
+        x              -> ghcCommands PlainFormat x
 
     gmPutStr res >> gmPutStrLn "OK" >> liftIO (hFlush stdout)
     legacyInteractiveLoop asyncSymbolDb world'
@@ -116,7 +117,7 @@ wrapGhcCommands opts cmd =
       forM_ (reverse $ optFileMappings opts) $
         uncurry loadMMappedFiles
 
-      gmPutStr =<< ghcCommands cmd
+      gmPutStr =<< ghcCommands PlainFormat cmd
  where
    handleGmError action = do
      (e, _l) <- liftIO . evaluate =<< action
@@ -132,39 +133,39 @@ wrapGhcCommands opts cmd =
        loadMappedFileSource from src
 
 
-ghcCommands :: IOish m => GhcModCommands -> GhcModT m String
--- ghcCommands cmd = action args
-ghcCommands (CmdLang) = languages
-ghcCommands (CmdFlag) = flags
-ghcCommands (CmdDebug) = debugInfo
-ghcCommands (CmdDebugComponent ts) = componentInfo ts
-ghcCommands (CmdBoot) = boot
--- ghcCommands (CmdNukeCaches) = nukeCaches >> return ""
-ghcCommands (CmdRoot) = rootInfo
-ghcCommands (CmdLegacyInteractive) = legacyInteractive >> return ""
-ghcCommands (CmdModules detail) = modules detail
-ghcCommands (CmdDumpSym) = dumpSymbol >> return ""
-ghcCommands (CmdFind symb) = findSymbol symb
-ghcCommands (CmdDoc m) = pkgDoc m
-ghcCommands (CmdLint opts file) = lint opts file
-ghcCommands (CmdBrowse opts ms) = concat <$> browse opts `mapM` ms
-ghcCommands (CmdCheck files) = checkSyntax files
-ghcCommands (CmdExpand files) = expandTemplate files
-ghcCommands (CmdInfo file symb) = info file $ Expression symb
-ghcCommands (CmdType wCon file (line, col)) = types wCon file line col
-ghcCommands (CmdSplit file (line, col)) = splits file line col
-ghcCommands (CmdSig file (line, col)) = sig file line col
-ghcCommands (CmdAuto file (line, col)) = auto file line col
-ghcCommands (CmdRefine file (line, col) expr) = refine file line col $ Expression expr
+ghcCommands :: IOish m => OutputFormat -> GhcModCommands -> GhcModT m String
+-- ghcCommands fmt cmd = action args
+ghcCommands fmt (CmdLang) = languages >>= showOutput fmt NoOutputConfig
+ghcCommands fmt (CmdFlag) = flags >>= showOutput fmt NoOutputConfig
+ghcCommands fmt (CmdDebug) = debugInfo >>= showOutput fmt NoOutputConfig
+ghcCommands fmt (CmdDebugComponent ts) = componentInfo ts >>= showOutput fmt NoOutputConfig
+ghcCommands fmt (CmdBoot) = boot >>= showOutput fmt NoOutputConfig
+-- ghcCommands fmt (CmdNukeCaches) = nukeCaches >> return ""
+ghcCommands fmt (CmdRoot) = rootInfo >>= showOutput fmt NoOutputConfig
+ghcCommands fmt (CmdLegacyInteractive) = legacyInteractive >> return ""
+ghcCommands fmt (CmdModules detail) = modules detail >>= showOutput fmt NoOutputConfig
+ghcCommands fmt (CmdDumpSym) = dumpSymbol >> return ""
+ghcCommands fmt (CmdFind symb) = findSymbol symb >>= showOutput fmt NoOutputConfig
+ghcCommands fmt (CmdDoc m) = pkgDoc m >>= showOutput fmt NoOutputConfig
+ghcCommands fmt (CmdLint opts file) = lint opts file >>= showOutput fmt NoOutputConfig
+ghcCommands fmt (CmdBrowse opts ms) = (concat <$> browse opts `mapM` ms) >>= showOutput fmt NoOutputConfig
+ghcCommands fmt (CmdCheck files) = checkSyntax files >>= showOutput fmt NoOutputConfig
+ghcCommands fmt (CmdExpand files) = expandTemplate files >>= showOutput fmt NoOutputConfig
+ghcCommands fmt (CmdInfo file symb) = info file (Expression symb) >>= showOutput fmt NoOutputConfig
+ghcCommands fmt (CmdType wCon file (line, col)) = types wCon file line col >>= showOutput fmt NoOutputConfig
+ghcCommands fmt (CmdSplit file (line, col)) = splits file line col >>= showOutput fmt NoOutputConfig
+ghcCommands fmt (CmdSig file (line, col)) = sig file line col >>= showOutput fmt NoOutputConfig
+ghcCommands fmt (CmdAuto file (line, col)) = auto file line col >>= showOutput fmt NoOutputConfig
+ghcCommands fmt (CmdRefine file (line, col) expr) = refine file line col (Expression expr) >>= showOutput fmt NoOutputConfig
 -- interactive-only commands
-ghcCommands (CmdMapFile f) =
+ghcCommands _ (CmdMapFile f) =
       liftIO getFileSourceFromStdin
   >>= loadMappedFileSource f
   >>  return ""
-ghcCommands (CmdUnmapFile f) = unloadMappedFile f >> return ""
-ghcCommands (CmdQuit) = liftIO exitSuccess
-ghcCommands (CmdTest file) = test file
-ghcCommands cmd = throw $ InvalidCommandLine $ Left $ show cmd
+ghcCommands _ (CmdUnmapFile f) = unloadMappedFile f >> return ""
+ghcCommands _ (CmdQuit) = liftIO exitSuccess
+ghcCommands fmt (CmdTest file) = test file >>= showOutput fmt NoOutputConfig
+ghcCommands _ cmd = throw $ InvalidCommandLine $ Left $ show cmd
 
 newtype InvalidCommandLine = InvalidCommandLine (Either String String)
     deriving (Show, Typeable)

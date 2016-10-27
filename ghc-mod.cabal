@@ -153,6 +153,7 @@ Library
                         Language.Haskell.GhcMod.Monad.State
                         Language.Haskell.GhcMod.Monad.Types
                         Language.Haskell.GhcMod.Output
+                        Language.Haskell.GhcMod.Outputable
                         Language.Haskell.GhcMod.PathsAndFiles
                         Language.Haskell.GhcMod.PkgDoc
                         Language.Haskell.GhcMod.Pretty
