@@ -99,7 +99,6 @@ Library
                         Language.Haskell.GhcMod.Utils
                         Language.Haskell.GhcMod.World
   Build-Depends:        base              < 5    && >= 4.0
-                      , async             < 2.1  && >= 2.0.1.6
                       , containers
                       , deepseq
                       , directory
@@ -141,13 +140,15 @@ Executable ghc-mod
   Default-Extensions:   ConstraintKinds, FlexibleContexts
   HS-Source-Dirs:       src
   Build-Depends:        base              < 5    && >= 4.0
+                      , async             < 2.1  && >= 2.0.1.6
                       , data-default      < 0.6  && >= 0.5.3
                       , directory
                       , filepath
                       , pretty
                       , process
-                      , mtl >= 2.0
-                      , ghc >= 7.4 && < 7.10
+                      , split             < 0.3  && >= 0.2.2
+                      , mtl               < 2.1  && >= 2.0
+                      , ghc               < 7.10 && >= 7.4
                       , ghc-mod
 
 Executable ghc-modi
