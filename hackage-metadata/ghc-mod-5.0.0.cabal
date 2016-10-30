@@ -89,34 +89,34 @@ Library
                         Language.Haskell.GhcMod.Target
                         Language.Haskell.GhcMod.Types
                         Language.Haskell.GhcMod.Utils
-  Build-Depends:        base >= 4.0 && < 5
+  Build-Depends:        base              < 5    && >= 4.0
                       , containers
                       , deepseq
                       , directory
                       , filepath
-                      , ghc >= 7.4 && < 7.10
-                      , ghc-paths
-                      , ghc-syb-utils
-                      , hlint >= 1.8.61
-                      , io-choice
-                      , monad-journal >= 0.2.2.0
+                      , ghc               < 7.10 && >= 7.4
+                      , ghc-paths         < 0.2  && >= 0.1.0.9
+                      , ghc-syb-utils     < 0.3  && >= 0.2.1.2
+                      , hlint             < 1.9  && >= 1.8.61
+                      , io-choice         < 0.1  && >= 0.0.5
+                      , monad-journal     < 0.3  && >= 0.2.2.0
                       , old-time
                       , process
-                      , syb
+                      , syb               < 0.5  && >= 0.4.2
                       , time
                       , transformers
-                      , transformers-base
-                      , mtl >= 2.0
-                      , monad-control
-                      , split
-                      , haskell-src-exts
-                      , text
-                      , djinn-ghc >= 0.0.2.2
+                      , transformers-base < 0.5  && >= 0.4.3
+                      , mtl               < 2.1  && >= 2.0
+                      , monad-control     < 0.4  && >= 0.3.3.0
+                      , split             < 0.3  && >= 0.2.2
+                      , haskell-src-exts  < 1.16 && >= 1.15.0.1
+                      , text              < 1.2  && >= 1.1.1.3
+                      , djinn-ghc         < 0.1  && >= 0.0.2.2
   if impl(ghc >= 7.8)
-    Build-Depends:      Cabal >= 1.18
+    Build-Depends:      Cabal             < 1.20 && >= 1.18
   else
-    Build-Depends:      convertible
-                      , Cabal >= 1.10 && < 1.17
+    Build-Depends:      convertible       < 1.2  && >= 1.1.0.0
+                      , Cabal             < 1.17 && >= 1.10
 
 Executable ghc-mod
   Default-Language:     Haskell2010
@@ -125,11 +125,11 @@ Executable ghc-mod
   GHC-Options:          -Wall
   Default-Extensions:   ConstraintKinds, FlexibleContexts
   HS-Source-Dirs:       src
-  Build-Depends:        base >= 4.0 && < 5
+  Build-Depends:        base              < 5    && >= 4.0
                       , directory
                       , filepath
-                      , mtl >= 2.0
-                      , ghc >= 7.4 && < 7.10
+                      , mtl               < 2.1  && >= 2.0
+                      , ghc               < 7.10 && >= 7.4
                       , ghc-mod
 
 Executable ghc-modi
@@ -140,12 +140,12 @@ Executable ghc-modi
   GHC-Options:          -Wall -threaded
   Default-Extensions:   ConstraintKinds, FlexibleContexts
   HS-Source-Dirs:       src
-  Build-Depends:        base >= 4.0 && < 5
+  Build-Depends:        base              < 5   && >= 4.0
                       , containers
                       , directory
                       , filepath
-                      , split
-                      , ghc >= 7.4 && < 7.10
+                      , split             < 0.3  && >= 0.2.2
+                      , ghc               < 7.10 && >= 7.4
                       , ghc-mod
 
 Test-Suite doctest
@@ -155,8 +155,8 @@ Test-Suite doctest
   Ghc-Options:          -Wall
   Default-Extensions:   ConstraintKinds, FlexibleContexts
   Main-Is:              doctests.hs
-  Build-Depends:        base
-                      , doctest >= 0.9.3
+  Build-Depends:        base              < 5    && >= 4.0
+                      , doctest           < 0.10 && >= 0.9.3
 
 Test-Suite spec
   Default-Language:     Haskell2010
@@ -178,37 +178,37 @@ Test-Suite spec
                         MonadSpec
                         GhcPkgSpec
                         TestUtils
-  Build-Depends:        base >= 4.0 && < 5
+  Build-Depends:        base              < 5    && >= 4.0
                       , containers
                       , deepseq
                       , directory
                       , filepath
-                      , ghc >= 7.4 && < 7.10
-                      , ghc-paths
-                      , ghc-syb-utils
-                      , hlint >= 1.7.1
-                      , io-choice
-                      , monad-journal >= 0.2.2.0
+                      , ghc               < 7.10 && >= 7.4
+                      , ghc-paths         < 0.2  && >= 0.1.0.9
+                      , ghc-syb-utils     < 0.3  && >= 0.2.1.2
+                      , hlint             < 1.9  && >= 1.8.61
+                      , io-choice         < 0.1  && >= 0.0.5
+                      , monad-journal     < 0.3  && >= 0.2.2.0
                       , old-time
                       , process
-                      , syb
+                      , syb               < 0.5  && >= 0.4.2
                       , time
                       , transformers
-                      , transformers-base
-                      , mtl >= 2.0
-                      , monad-control
+                      , transformers-base < 0.5  && >= 0.4.3
+                      , mtl               < 2.1  && >= 2.0
+                      , monad-control     < 0.4  && >= 0.3.3.0
                       , hspec >= 1.8.2
-                      , split
-                      , haskell-src-exts
-                      , text
-                      , djinn-ghc >= 0.0.2.2
+                      , split             < 0.3  && >= 0.2.2
+                      , haskell-src-exts  < 1.16 && >= 1.15.0.1
+                      , text              < 1.2  && >= 1.1.1.3
+                      , djinn-ghc         < 0.1  && >= 0.0.2.2
   if impl(ghc >= 7.8)
-    Build-Depends:      Cabal >= 1.18
+    Build-Depends:      Cabal             < 1.20 && >= 1.18
   else
-    Build-Depends:      convertible
-                      , Cabal >= 1.10 && < 1.17
+    Build-Depends:      convertible       < 1.2  && >= 1.1.0.0
+                      , Cabal             < 1.17 && >= 1.10
   if impl(ghc < 7.6)
-    Build-Depends:      executable-path
+    Build-Depends:      executable-path   < 0.1 && >= 0.0.3
   CPP-Options:        -DSPEC=1
 
 Source-Repository head

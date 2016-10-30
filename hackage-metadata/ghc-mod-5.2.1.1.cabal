@@ -1,3 +1,4 @@
+X-Revision: 1
 Name:                   ghc-mod
 Version:                5.2.1.1
 Author:                 Kazu Yamamoto <kazu@iij.ad.jp>
@@ -97,36 +98,37 @@ Library
                         Language.Haskell.GhcMod.Types
                         Language.Haskell.GhcMod.Utils
                         Language.Haskell.GhcMod.World
-  Build-Depends:        base >= 4.0 && < 5
+  Build-Depends:        base              < 5    && >= 4.0
+                      , async             < 2.1  && >= 2.0.1.6
                       , containers
                       , deepseq
                       , directory
                       , filepath
-                      , ghc >= 7.4 && < 7.10
-                      , ghc-paths
-                      , ghc-syb-utils
-                      , hlint >= 1.8.61
-                      , io-choice
-                      , monad-journal >= 0.4
+                      , ghc               < 7.10 && >= 7.4
+                      , ghc-paths         < 0.2  && >= 0.1.0.9
+                      , ghc-syb-utils     < 0.3  && >= 0.2.2
+                      , hlint             < 1.9  && >= 1.8.61
+                      , io-choice         < 0.1  && >= 0.0.5
+                      , monad-journal     < 0.5  && >= 0.4
                       , old-time
                       , pretty
                       , process
-                      , syb
-                      , temporary
+                      , syb               < 0.5  && >= 0.4.2
+                      , temporary         < 1.3  && >= 1.2.0.3
                       , time
                       , transformers
-                      , transformers-base
-                      , mtl >= 2.0
-                      , monad-control
-                      , split
-                      , haskell-src-exts
-                      , text
-                      , djinn-ghc >= 0.0.2.2
+                      , transformers-base < 0.5  && >= 0.4.3
+                      , mtl               < 2.1  && >= 2.0
+                      , monad-control     < 0.4  && >= 0.3.3.0
+                      , split             < 0.3  && >= 0.2.2
+                      , haskell-src-exts  < 1.17 && >= 1.16.0
+                      , text              < 1.3  && >= 1.2.0.0
+                      , djinn-ghc         < 0.1  && >= 0.0.2.2
   if impl(ghc >= 7.8)
-    Build-Depends:      Cabal >= 1.18
+    Build-Depends:      Cabal             < 1.20 && >= 1.18
   else
-    Build-Depends:      convertible
-                      , Cabal >= 1.10 && < 1.17
+    Build-Depends:      convertible       < 1.2  && >= 1.1.0.0
+                      , Cabal             < 1.17 && >= 1.10
   if impl(ghc <= 7.4.2)
     -- Only used to constrain random to a version that still works with GHC 7.4
     Build-Depends:      random <= 1.0.1.1
@@ -138,14 +140,12 @@ Executable ghc-mod
   GHC-Options:          -Wall
   Default-Extensions:   ConstraintKinds, FlexibleContexts
   HS-Source-Dirs:       src
-  Build-Depends:        base >= 4.0 && < 5
-                      , async
-                      , data-default
+  Build-Depends:        base              < 5    && >= 4.0
+                      , data-default      < 0.6  && >= 0.5.3
                       , directory
                       , filepath
                       , pretty
                       , process
-                      , split
                       , mtl >= 2.0
                       , ghc >= 7.4 && < 7.10
                       , ghc-mod
@@ -161,16 +161,16 @@ Executable ghc-modi
       Cpp-Options:      -DWINDOWS
   Default-Extensions:   ConstraintKinds, FlexibleContexts
   HS-Source-Dirs:       src
-  Build-Depends:        base >= 4.0 && < 5
-                      , async
+  Build-Depends:        base              < 5    && >= 4.0
+                      , async             < 2.1  && >= 2.0.1.6
                       , containers
                       , directory
                       , filepath
                       , old-time
                       , process
-                      , split
+                      , split             < 0.3  && >= 0.2.2
                       , time
-                      , ghc >= 7.4 && < 7.10
+                      , ghc               < 7.10 && >= 7.4
                       , ghc-mod
 
 Test-Suite doctest
@@ -180,8 +180,8 @@ Test-Suite doctest
   Ghc-Options:          -Wall
   Default-Extensions:   ConstraintKinds, FlexibleContexts
   Main-Is:              doctests.hs
-  Build-Depends:        base
-                      , doctest >= 0.9.3
+  Build-Depends:        base              < 5    && >= 4.0
+                      , doctest           < 0.10 && >= 0.9.3
 
 Test-Suite spec
   Default-Language:     Haskell2010
@@ -203,39 +203,39 @@ Test-Suite spec
                         PathsAndFilesSpec
                         Spec
                         TestUtils
-  Build-Depends:        base >= 4.0 && < 5
+  Build-Depends:        base              < 5    && >= 4.0
                       , containers
                       , deepseq
                       , directory
                       , filepath
-                      , ghc >= 7.4 && < 7.10
-                      , ghc-paths
-                      , ghc-syb-utils
-                      , hlint >= 1.7.1
-                      , io-choice
-                      , monad-journal >= 0.4
+                      , ghc               < 7.10 && >= 7.4
+                      , ghc-paths         < 0.2  && >= 0.1.0.9
+                      , ghc-syb-utils     < 0.3  && >= 0.2.2
+                      , hlint             < 1.9  && >= 1.8.61
+                      , io-choice         < 0.1  && >= 0.0.5
+                      , monad-journal     < 0.5  && >= 0.4
                       , old-time
                       , pretty
                       , process
-                      , syb
-                      , temporary
+                      , syb               < 0.5  && >= 0.4.2
+                      , temporary         < 1.3  && >= 1.2.0.3
                       , time
                       , transformers
-                      , transformers-base
-                      , mtl >= 2.0
-                      , monad-control
-                      , hspec >= 1.8.2
-                      , split
-                      , haskell-src-exts
-                      , text
-                      , djinn-ghc >= 0.0.2.2
+                      , transformers-base < 0.5  && >= 0.4.3
+                      , mtl               < 2.1  && >= 2.0
+                      , monad-control     < 0.4  && >= 0.3.3.0
+                      , hspec             < 1.9  && >= 1.8.2
+                      , split             < 0.3  && >= 0.2.2
+                      , haskell-src-exts  < 1.17 && >= 1.16.0
+                      , text              < 1.3  && >= 1.2.0.0
+                      , djinn-ghc         < 0.1  && >= 0.0.2.2
   if impl(ghc >= 7.8)
-    Build-Depends:      Cabal >= 1.18
+    Build-Depends:      Cabal             < 1.20 && >= 1.18
   else
-    Build-Depends:      convertible
-                      , Cabal >= 1.10 && < 1.17
+    Build-Depends:      convertible       < 1.2  && >= 1.1.0.0
+                      , Cabal             < 1.17 && >= 1.10
   if impl(ghc < 7.6)
-    Build-Depends:      executable-path
+    Build-Depends:      executable-path   < 0.1  && >= 0.0.3
   CPP-Options:        -DSPEC=1
 
 Source-Repository head
