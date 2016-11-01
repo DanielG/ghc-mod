@@ -25,17 +25,21 @@ set -e
 
 PACKAGE=$1
 OUTDIR=$2
+VERSIONS="$@"
 
 read -p "Username: " user
 hidden_prompt "Password" pw
 
-
-versions="$(curl https://hackage.haskell.org/package/"$PACKAGE"/preferred.json | jq '."normal-version"[]' -r)"
+if [ -z "$VERSIONS" ]; then
+    VERSIONS="$(curl https://hackage.haskell.org/package/"$PACKAGE"/preferred.json | jq '."normal-version"[]' -r)"
 #versions="$(curl https://hackage.haskell.org/package/"$PACKAGE"/preferred.json | jq '."deprecated-version"[]' -r)"
+fi
 
-echo "Versions: $versions"
 
-for v in $versions; do
+
+echo "Versions: $VERSIONS"
+
+for v in $VERSIONS; do
     rev=$(cat $OUTDIR/$PACKAGE-$v.cabal | grep -i "^x-revision:" | tr -s '[:blank:]*' '\t' | cut -f 2)
 
     if [ -z "$rev" ]; then
