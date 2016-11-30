@@ -104,7 +104,7 @@ import TcRnTypes
 #endif
 #endif
 
-#if MIN_VERSION_GLASGOW_HASKELL(8,0,2,0)
+#if MIN_VERSION_GLASGOW_HASKELL(8,0,1,20161117)
 import GHC hiding (ClsInst, withCleanupSession)
 import qualified GHC (withCleanupSession)
 #elif __GLASGOW_HASKELL__ >= 706
@@ -685,7 +685,7 @@ everythingStagedWithContext stage s0 f z q x
 
 withCleanupSession :: GhcMonad m => m a -> m a
 #if __GLASGOW_HASKELL__ >= 800
-#if MIN_VERSION_GLASGOW_HASKELL(8,0,2,0)
+#if MIN_VERSION_GLASGOW_HASKELL(8,0,1,20161117)
 withCleanupSession = GHC.withCleanupSession
 #else
 withCleanupSession ghc = ghc `gfinally` cleanup
