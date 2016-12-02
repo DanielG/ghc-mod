@@ -155,7 +155,7 @@ commands =
                   "f :: [a] -> a"
                   "f [] = _body"
                   "f (x:xs) = _body"
-                "(See https://github.com/kazu-yamamoto/ghc-mod/pull/274)"
+                "(See https://github.com/DanielG/ghc-mod/pull/274)"
     <> command "sig"
           $$  info sigArgSpec
           $$  progDesc "Generate initial code given a signature"
@@ -165,7 +165,7 @@ commands =
               code "func :: [a] -> Maybe b -> (a -> b) -> (a,b)"
               "ghc-mod would add the following on the next line:"
               code "func x y z f = _func_body"
-              "(See: https://github.com/kazu-yamamoto/ghc-mod/pull/274)"
+              "(See: https://github.com/DanielG/ghc-mod/pull/274)"
     <> command "auto"
           $$  info autoArgSpec
           $$  progDesc "Try to automatically fill the contents of a hole"
@@ -182,7 +182,7 @@ commands =
               "ghc-mod changes the code to get a value of type"
                 \\ " `[a]', which results in:"
               code "filterNothing xs = filter _body_1 _body_2"
-              "(See also: https://github.com/kazu-yamamoto/ghc-mod/issues/311)"
+              "(See also: https://github.com/DanielG/ghc-mod/issues/311)"
     <> command "test"
           $$  info (CmdTest <$> strArg "FILE")
           $$  progDesc ""
