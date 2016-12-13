@@ -20,15 +20,24 @@ import Control.Arrow hiding ((<+>))
 import Data.Char
 import Data.List
 import Distribution.Helper
-import Text.PrettyPrint
+import Pretty
+import GHC
+import Outputable (SDoc, withPprStyleDoc)
 
 import Language.Haskell.GhcMod.Types
+import Language.Haskell.GhcMod.Doc
 
 docStyle :: Style
 docStyle = style { ribbonsPerLine = 1.2 }
 
-gmRenderDoc :: Doc -> String
-gmRenderDoc = renderStyle docStyle
+render :: Doc -> String
+render = renderStyle docStyle
+
+renderSDoc :: GhcMonad m => SDoc -> m Doc
+renderSDoc sdoc = do
+  df <- getSessionDynFlags
+  ppsty <- getStyle
+  return $ withPprStyleDoc df ppsty sdoc
 
 gmComponentNameDoc :: ChComponentName -> Doc
 gmComponentNameDoc ChSetupHsName   = text $ "Setup.hs"

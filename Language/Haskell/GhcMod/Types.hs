@@ -37,7 +37,7 @@ import qualified MonadUtils as GHC (MonadIO(..))
 import GHC (ModuleName, moduleNameString, mkModuleName)
 import HscTypes (HscEnv)
 import GHC.Generics
-import Text.PrettyPrint (Doc)
+import Pretty (Doc)
 import Prelude
 
 import Language.Haskell.GhcMod.Caching.Types

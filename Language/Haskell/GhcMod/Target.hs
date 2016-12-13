@@ -28,6 +28,7 @@ import GHC.Paths (libdir)
 import SysTools
 import DynFlags
 import HscTypes
+import Pretty
 
 import Language.Haskell.GhcMod.DynFlags
 import Language.Haskell.GhcMod.Monad.Types
@@ -393,7 +394,7 @@ resolveModule env srcDirs (Left fn') = do
           case emn of
               Left errs -> do
                 gmLog GmWarning ("resolveModule " ++ show fn) $
-                  Monoid.mempty $+$ (vcat $ map text errs)
+                  Pretty.empty $+$ (vcat $ map text errs)
                 return Nothing -- TODO: should expose these errors otherwise
                                -- modules with preprocessor/parse errors are
                                -- going to be missing

@@ -9,7 +9,7 @@ import Data.Char
 import Data.Version
 import Data.List.Split
 import System.Directory
-import Text.PrettyPrint
+import Pretty
 import Language.Haskell.GhcMod.Monad
 import Language.Haskell.GhcMod.Types
 import Language.Haskell.GhcMod.Internal

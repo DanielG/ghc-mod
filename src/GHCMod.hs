@@ -18,7 +18,7 @@ import System.Directory (setCurrentDirectory, getAppUserDataDirectory,
                         removeDirectoryRecursive)
 import System.IO
 import System.Exit
-import Text.PrettyPrint hiding ((<>))
+import Pretty hiding ((<>))
 import GHCMod.Options
 import Prelude
 

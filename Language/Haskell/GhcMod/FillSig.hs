@@ -13,12 +13,12 @@ import Data.Functor
 import Data.List (find, nub, sortBy)
 import qualified Data.Map as M
 import Data.Maybe (catMaybes)
-import Text.PrettyPrint (($$), text, nest)
 import Prelude
 
 import Exception (ghandle, SomeException(..))
 import GHC (GhcMonad, Id, ParsedModule(..), TypecheckedModule(..), DynFlags,
             SrcSpan, Type, GenLocated(L))
+import Pretty (($$), text, nest)
 import qualified GHC as G
 import qualified Name as G
 import Outputable (PprStyle)

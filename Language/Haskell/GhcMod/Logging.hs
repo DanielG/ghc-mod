@@ -20,8 +20,8 @@ module Language.Haskell.GhcMod.Logging (
     module Language.Haskell.GhcMod.Logging
   , module Language.Haskell.GhcMod.Pretty
   , GmLogLevel(..)
-  , module Text.PrettyPrint
   , module Data.Monoid
+  , module Pretty
   ) where
 
 import Control.Applicative hiding (empty)
@@ -33,8 +33,9 @@ import Data.Monoid
 import Data.Maybe
 import System.IO
 import System.FilePath
-import Text.PrettyPrint hiding (style, (<>))
 import Prelude
+
+import Pretty hiding (style, (<>))
 
 import Language.Haskell.GhcMod.Monad.Types
 import Language.Haskell.GhcMod.Types
@@ -77,7 +78,7 @@ gmLog level loc' doc = do
   let loc | loc' == "" = empty
           | otherwise = text loc' <+>: empty
       msgDoc = sep [loc, doc]
-      msg = dropWhileEnd isSpace $ gmRenderDoc $ gmLogLevelDoc level <+>: msgDoc
+      msg = dropWhileEnd isSpace $ render $ gmLogLevelDoc level <+>: msgDoc
 
   when (level <= level') $ gmErrStrLn msg
   gmLogQuiet level loc' doc

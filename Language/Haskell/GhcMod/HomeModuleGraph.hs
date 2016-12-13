@@ -39,6 +39,7 @@ import Exception
 import Finder
 import GHC
 import HscTypes
+import Pretty
 
 import Control.Arrow ((&&&))
 import Control.Applicative
@@ -223,7 +224,7 @@ updateHomeModuleGraph' env smp0 = do
           Left errs -> do
             -- TODO: Remember these and present them as proper errors if this is
             -- the file the user is looking at.
-            gmLog GmWarning ("preprocess " ++ show fn) $ Monoid.mempty $+$ (vcat $ map text errs)
+            gmLog GmWarning ("preprocess " ++ show fn) $ Pretty.empty $+$ (vcat $ map text errs)
             return Nothing
 
 

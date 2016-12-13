@@ -17,7 +17,6 @@ import Data.Function
 import Control.Monad.Reader (Reader, ask, runReader)
 import Data.IORef (IORef, newIORef, readIORef, writeIORef, modifyIORef)
 import System.FilePath (normalise)
-import Text.PrettyPrint
 
 import ErrUtils
 import GHC
@@ -34,6 +33,7 @@ import Language.Haskell.GhcMod.DynFlags (withDynFlags)
 import Language.Haskell.GhcMod.Monad.Types
 import Language.Haskell.GhcMod.Error
 import Language.Haskell.GhcMod.Utils (mkRevRedirMapFunc)
+import Language.Haskell.GhcMod.Pretty
 import qualified Language.Haskell.GhcMod.Gap as Gap
 import Prelude
 

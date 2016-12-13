@@ -39,11 +39,11 @@ import qualified Data.Set as Set
 import Data.List
 import Data.Version
 import System.Process (showCommandForUser)
-import Text.PrettyPrint
 import Text.Printf
 
 import Exception
 import Panic
+import Pretty
 import Config (cProjectVersion, cHostPlatformString)
 import Paths_ghc_mod (version)
 
