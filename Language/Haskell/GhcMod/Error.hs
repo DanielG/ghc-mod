@@ -80,7 +80,6 @@ gmeDoc e = case e of
                \ Try enabling them:" $$
               nest 4 (backticks $ text "cabal configure --enable-tests [--enable-benchmarks]")
 
-        backticks d = char '`' <> d <> char '`'
         ctxDoc = moduleDoc *** compsDoc
                  >>> first (<> colon) >>> uncurry (flip hang 4)
 
@@ -104,6 +103,27 @@ gmeDoc e = case e of
     GMETooManyCabalFiles cfs ->
         text $ "Multiple cabal files found. Possible cabal files: \""
                ++ intercalate "\", \"" cfs ++"\"."
+    GMEMissingHaddockInterface f ->
+        text ("Haddock interface file missing: " ++ f) $$
+        text "" $$
+        haddockSuggestion
+    GMENoVisibleExports moduleName package ->
+        text $ "Failed to find visible exports of \"" ++ moduleName ++ "\" in \"" ++ package ++ "\""
+
+  where
+
+    backticks d = char '`' <> d <> char '`'
+
+    haddockSuggestion =
+        text "- To generate Haddock docs for dependencies, try:" $$
+            nest 4 (backticks $ text "cabal install --enable-documentation --haddock-hyperlink-source --only-dependencies") $$
+        text "" $$
+        text "- or set" $$
+            nest 4 (backticks $ text "documentation: True") $$
+        text "in ~/.cabal/config" $$
+        text "" $$
+        text "- or with Stack:" $$
+            nest 4 (backticks $ text "stack haddock")
 
 ghcExceptionDoc :: GhcException -> Doc
 ghcExceptionDoc e@(CmdLineError _) =

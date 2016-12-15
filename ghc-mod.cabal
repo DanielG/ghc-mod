@@ -87,6 +87,7 @@ Extra-Source-Files:     ChangeLog
                         test/data/file-mapping/*.hs
                         test/data/file-mapping/preprocessor/*.hs
                         test/data/file-mapping/lhs/*.lhs
+                        test/data/imported-from/*.hs
                         test/data/nice-qualification/*.hs
                         test/data/stack-project/stack.yaml
                         test/data/stack-project/new-template.cabal
@@ -137,6 +138,7 @@ Library
                         Language.Haskell.GhcMod.Gap
                         Language.Haskell.GhcMod.GhcPkg
                         Language.Haskell.GhcMod.HomeModuleGraph
+                        Language.Haskell.GhcMod.ImportedFrom
                         Language.Haskell.GhcMod.Info
                         Language.Haskell.GhcMod.Lang
                         Language.Haskell.GhcMod.Lint
@@ -207,6 +209,13 @@ Library
     Build-Depends:      convertible       < 1.2  && >= 1.1.0.0
   if impl(ghc >= 8.0)
     Build-Depends:      ghc-boot
+
+  if impl(ghc >= 8.0)
+    Build-Depends:      haddock-api       < 2.18
+  if impl(ghc >= 7.8 && < 8.0)
+    Build-Depends:      haddock-api       < 2.16
+  if impl(ghc < 7.8)
+    Build-Depends:      haddock           < 2.15.0
 
 Executable ghc-mod
   Default-Language:     Haskell2010
@@ -279,6 +288,7 @@ Test-Suite spec
                         CustomPackageDbSpec
                         CheckSpec
                         FlagSpec
+                        ImportedFromSpec
                         InfoSpec
                         LangSpec
                         LintSpec
