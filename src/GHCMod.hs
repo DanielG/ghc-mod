@@ -13,6 +13,7 @@ import Language.Haskell.GhcMod.Internal hiding (MonadIO,liftIO)
 import Language.Haskell.GhcMod.Types
 import Language.Haskell.GhcMod.Monad
 import Language.Haskell.GhcMod.Find (AsyncSymbolDb, newAsyncSymbolDb, getAsyncSymbolDb)
+import Language.Haskell.GhcMod.HaddockLookup (haddock)
 import System.FilePath ((</>))
 import System.Directory (setCurrentDirectory, getAppUserDataDirectory,
                         removeDirectoryRecursive)
@@ -150,6 +151,7 @@ ghcCommands (CmdLint opts file) = lint opts file
 ghcCommands (CmdBrowse opts ms) = concat <$> browse opts `mapM` ms
 ghcCommands (CmdCheck files) = checkSyntax files
 ghcCommands (CmdExpand files) = expandTemplate files
+ghcCommands (CmdHaddock file (line, col) symb) = haddock file line col $ Expression symb
 ghcCommands (CmdInfo file symb) = info file $ Expression symb
 ghcCommands (CmdType wCon file (line, col)) = types wCon file line col
 ghcCommands (CmdSplit file (line, col)) = splits file line col

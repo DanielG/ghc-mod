@@ -50,6 +50,7 @@ data GhcModCommands =
   | CmdDebugComponent [String]
   | CmdCheck [FilePath]
   | CmdExpand [FilePath]
+  | CmdHaddock FilePath Point Expr
   | CmdInfo FilePath Symbol
   | CmdType Bool FilePath Point
   | CmdSplit FilePath Point
@@ -133,6 +134,9 @@ commands =
     <> command "expand"
           $$  info expandArgSpec
           $$  progDesc "Like `check' but also pass `-ddump-splices' to GHC"
+    <> command "haddock"
+          $$  info haddockArgSpec
+          $$  progDesc "Get the Haddock URL of the expression under (LINE,COL)"
     <> command "info"
           $$  info infoArgSpec
           $$  progDesc' $$$ do
@@ -228,7 +232,7 @@ locArgSpec x = x
 
 modulesArgSpec, docArgSpec, findArgSpec,
   lintArgSpec, browseArgSpec, checkArgSpec, expandArgSpec,
-  infoArgSpec, typeArgSpec, autoArgSpec, splitArgSpec,
+  haddockArgSpec, infoArgSpec, typeArgSpec, autoArgSpec, splitArgSpec,
   sigArgSpec, refineArgSpec, debugComponentArgSpec,
   mapArgSpec, unmapArgSpec, legacyInteractiveArgSpec :: Parser GhcModCommands
 
@@ -268,6 +272,7 @@ browseArgSpec = CmdBrowse
 debugComponentArgSpec = filesArgsSpec (pure CmdDebugComponent)
 checkArgSpec = filesArgsSpec (pure CmdCheck)
 expandArgSpec = filesArgsSpec (pure CmdExpand)
+haddockArgSpec = locArgSpec (pure CmdHaddock) <*> strArg "SYMBOL"
 infoArgSpec = CmdInfo
     <$> strArg "FILE"
     <*> strArg "SYMBOL"
