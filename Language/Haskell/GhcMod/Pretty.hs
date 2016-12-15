@@ -14,7 +14,18 @@
 -- You should have received a copy of the GNU Affero General Public License
 -- along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-module Language.Haskell.GhcMod.Pretty where
+module Language.Haskell.GhcMod.Pretty
+  ( render
+  , renderSDoc
+  , gmComponentNameDoc
+  , gmLogLevelDoc
+  , (<+>:)
+  , fnDoc
+  , showToDoc
+  , warnDoc
+  , strLnDoc
+  , strDoc
+  ) where
 
 import Control.Arrow hiding ((<+>))
 import Data.Char
@@ -26,12 +37,7 @@ import Outputable (SDoc, withPprStyleDoc)
 
 import Language.Haskell.GhcMod.Types
 import Language.Haskell.GhcMod.Doc
-
-docStyle :: Style
-docStyle = style { ribbonsPerLine = 1.2 }
-
-render :: Doc -> String
-render = renderStyle docStyle
+import Language.Haskell.GhcMod.Gap (render)
 
 renderSDoc :: GhcMonad m => SDoc -> m Doc
 renderSDoc sdoc = do
@@ -64,8 +70,8 @@ a <+>: b = (a <> colon) <+> b
 fnDoc :: FilePath -> Doc
 fnDoc = doubleQuotes . text
 
-showDoc :: Show a => a -> Doc
-showDoc = strLnDoc . show
+showToDoc :: Show a => a -> Doc
+showToDoc = strLnDoc . show
 
 warnDoc :: Doc -> Doc
 warnDoc d = text "Warning" <+>: d

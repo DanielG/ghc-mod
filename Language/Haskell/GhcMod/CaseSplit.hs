@@ -70,7 +70,7 @@ splits file lineNo colNo =
  where
    handler (SomeException ex) = do
      gmLog GmException "splits" $
-           text "" $$ nest 4 (showDoc ex)
+           text "" $$ nest 4 (showToDoc ex)
      emptyResult =<< outputOpts
 
 ----------------------------------------------------------------

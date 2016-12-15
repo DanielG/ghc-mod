@@ -37,7 +37,7 @@ info file expr =
         convert' =<< body
   where
     handler (SomeException ex) = do
-      gmLog GmException "info" $ text "" $$ nest 4 (showDoc ex)
+      gmLog GmException "info" $ text "" $$ nest 4 (showToDoc ex)
       convert' "Cannot show info"
 
     body :: (GhcMonad m, GmState m, GmEnv m) => m String
@@ -69,7 +69,7 @@ types withConstraints file lineNo colNo =
         convert' $ map (toTup dflag st) $ sortBy (cmp `on` fst) srcSpanTypes
  where
    handler (SomeException ex) = do
-     gmLog GmException "types" $ showDoc ex
+     gmLog GmException "types" $ showToDoc ex
      return []
 
 getSrcSpanType :: (GhcMonad m) => Bool -> G.ModSummary -> Int -> Int -> m [(SrcSpan, G.Type)]

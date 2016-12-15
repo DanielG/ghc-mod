@@ -12,20 +12,15 @@ import Language.Haskell.GhcMod
 import Language.Haskell.GhcMod.Internal hiding (MonadIO,liftIO)
 import Language.Haskell.GhcMod.Types
 import Language.Haskell.GhcMod.Monad
-import Language.Haskell.GhcMod.Find (AsyncSymbolDb, newAsyncSymbolDb, getAsyncSymbolDb)
+import Language.Haskell.GhcMod.Find
+import Language.Haskell.GhcMod.Pretty
 import System.FilePath ((</>))
 import System.Directory (setCurrentDirectory, getAppUserDataDirectory,
                         removeDirectoryRecursive)
 import System.IO
 import System.Exit
-import Pretty hiding ((<>))
 import GHCMod.Options
 import Prelude
-
-ghcModStyle :: Style
-ghcModStyle = style { lineLength = 80, ribbonsPerLine = 1.2 }
-
-----------------------------------------------------------------
 
 handler :: IOish m => GhcModT m a -> GhcModT m a
 handler = flip gcatches
@@ -42,7 +37,7 @@ main =
       hSetEncoding stdin enc
       catches (progMain res) [
               Handler $ \(e :: GhcModError) ->
-                runGmOutT globalOptions $ exitError $ renderStyle ghcModStyle (gmeDoc e)
+                runGmOutT globalOptions $ exitError $ render (gmeDoc e)
             ]
 
 progMain :: (Options, GhcModCommands) -> IO ()
@@ -124,7 +119,7 @@ wrapGhcCommands opts cmd =
        Right _ ->
            return ()
        Left ed ->
-           exitError $ renderStyle ghcModStyle (gmeDoc ed)
+           exitError $ render (gmeDoc ed)
 
    loadMMappedFiles from (Just to) = loadMappedFile from to
    loadMMappedFiles from (Nothing) = do

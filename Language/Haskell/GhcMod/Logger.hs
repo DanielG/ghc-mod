@@ -32,8 +32,8 @@ import Language.Haskell.GhcMod.Doc (showPage)
 import Language.Haskell.GhcMod.DynFlags (withDynFlags)
 import Language.Haskell.GhcMod.Monad.Types
 import Language.Haskell.GhcMod.Error
-import Language.Haskell.GhcMod.Utils (mkRevRedirMapFunc)
 import Language.Haskell.GhcMod.Pretty
+import Language.Haskell.GhcMod.Utils (mkRevRedirMapFunc)
 import qualified Language.Haskell.GhcMod.Gap as Gap
 import Prelude
 

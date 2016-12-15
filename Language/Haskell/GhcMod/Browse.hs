@@ -46,7 +46,7 @@ browse opts pkgmdl = do
       goPkgModule `G.gcatch` (\(SomeException _) -> goHomeModule)
 
     logException ex =
-        gmLog GmException "browse" $ showDoc ex
+        gmLog GmException "browse" $ showToDoc ex
 
     goPkgModule = do
       runGmPkgGhc $

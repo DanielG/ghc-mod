@@ -36,7 +36,7 @@ import Language.Haskell.GhcMod.DynFlags
 import Language.Haskell.GhcMod.Monad
 import Language.Haskell.GhcMod.SrcUtils
 import Language.Haskell.GhcMod.Logging (gmLog)
-import Language.Haskell.GhcMod.Pretty (showDoc)
+import Language.Haskell.GhcMod.Pretty (showToDoc)
 import Language.Haskell.GhcMod.Doc
 import Language.Haskell.GhcMod.Types
 import Language.Haskell.GhcMod.FileMapping (fileModSummaryWithMapping)
@@ -378,7 +378,7 @@ refine file lineNo colNo (Expression expr) =
   where
    handler (SomeException ex) = do
      gmLog GmException "refining" $
-           text "" $$ nest 4 (showDoc ex)
+           text "" $$ nest 4 (showToDoc ex)
      emptyResult =<< outputOpts
 
 -- Look for the variable in the specified position
@@ -475,7 +475,7 @@ auto file lineNo colNo =
  where
    handler (SomeException ex) = do
      gmLog GmException "auto-refining" $
-           text "" $$ nest 4 (showDoc ex)
+           text "" $$ nest 4 (showToDoc ex)
      emptyResult =<< outputOpts
 
 -- Functions we do not want in completions
