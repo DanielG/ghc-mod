@@ -199,7 +199,7 @@ Library
                       , djinn-ghc         < 0.1  && >= 0.0.2.2
                       , fclabels          < 2.1  && >= 2.0
                       , extra             < 1.6  && >= 1.4
-                      , pipes             < 4.3  && >= 4.1
+                      , pipes             < 4.4  && >= 4.1
                       , safe              < 0.4  && >= 0.3.9
                       , optparse-applicative <0.13.0 && >=0.11.0
                       , template-haskell
