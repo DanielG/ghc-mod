@@ -58,7 +58,7 @@ import Data.List (intersperse)
 import Data.Maybe (catMaybes)
 import Data.Time.Clock (UTCTime)
 import Data.Traversable hiding (mapM)
-import DataCon (dataConRepType)
+import DataCon (dataConUserType)
 import Desugar (deSugarExpr)
 import DynFlags
 import ErrUtils
@@ -531,14 +531,14 @@ data GapThing = GtA Type
 fromTyThing :: TyThing -> GapThing
 fromTyThing (AnId i)                   = GtA $ varType i
 #if __GLASGOW_HASKELL__ >= 708
-fromTyThing (AConLike (RealDataCon d)) = GtA $ dataConRepType d
+fromTyThing (AConLike (RealDataCon d)) = GtA $ dataConUserType d
 #if __GLASGOW_HASKELL__ >= 800
 fromTyThing (AConLike (PatSynCon p))   = GtPatSyn p
 #else
 fromTyThing (AConLike (PatSynCon p))   = GtA $ patSynType p
 #endif
 #else
-fromTyThing (ADataCon d)               = GtA $ dataConRepType d
+fromTyThing (ADataCon d)               = GtA $ dataConUserType d
 #endif
 fromTyThing (ATyCon t)                 = GtT t
 fromTyThing _                          = GtN
