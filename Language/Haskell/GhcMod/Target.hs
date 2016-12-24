@@ -510,6 +510,13 @@ cabalResolvedComponents :: (IOish m) =>
    GhcModT m (Map ChComponentName (GmComponent 'GMCResolved (Set ModulePath)))
 cabalResolvedComponents = do
     crdl@(Cradle{..}) <- cradle
-    comps <- mapM (resolveEntrypoint crdl) =<< getComponents
-    withAutogen $
-      cached cradleRootDir (resolvedComponentsCache cradleDistDir) comps
+    case cradleCabalFile of
+      Just _ -> do
+        comps <- mapM (resolveEntrypoint crdl) =<< getComponents
+        withAutogen $
+          cached cradleRootDir (resolvedComponentsCache cradleDistDir) comps
+      Nothing -> do
+        gmVomit
+          "cabal-resolve-components"
+          (text "cabalResolveComponents:no cabal file in use") ""
+        return Map.empty
