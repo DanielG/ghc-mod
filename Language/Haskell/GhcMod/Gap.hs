@@ -292,13 +292,19 @@ withInteractiveContext action = gbracket setup teardown body
         topImports >>= setCtx
         action
     topImports = do
-        ms <- filterM moduleIsInterpreted =<< map ms_mod <$> getModuleGraph
+        ms <- map ms_mod <$> (filterM includeModule =<< getModuleGraph)
         let iis = map (IIModule . modName) ms
 #if __GLASGOW_HASKELL__ >= 704
         return iis
 #else
         return (iis,[])
 #endif
+
+    includeModule m = do
+      let boot = isHsBoot (ms_hsc_src m)
+      interp <- moduleIsInterpreted (ms_mod m)
+      return $ interp && not boot
+
 #if __GLASGOW_HASKELL__ >= 706
     modName = moduleName
     setCtx = setContext
