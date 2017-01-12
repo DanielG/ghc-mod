@@ -16,15 +16,13 @@
 
 {-# LANGUAGE CPP #-}
 module Language.Haskell.GhcMod.CabalHelper
-#ifndef SPEC
   ( getComponents
   , getGhcMergedPkgOptions
   , getCabalPackageDbStack
   , prepareCabalHelper
   , withAutogen
-  )
-#endif
-  where
+  , withCabal
+  ) where
 
 import Control.Applicative
 import Control.Monad

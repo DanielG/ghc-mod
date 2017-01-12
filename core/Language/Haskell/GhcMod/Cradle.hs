@@ -1,15 +1,14 @@
 {-# LANGUAGE CPP #-}
 module Language.Haskell.GhcMod.Cradle
-#ifndef SPEC
-  (
-    findCradle
+  ( findCradle
   , findCradle'
   , findCradleNoLog
   , findSpecCradle
   , cleanupCradle
-  )
-#endif
-  where
+
+  -- * for @spec@
+  , plainCradle
+  ) where
 
 import Language.Haskell.GhcMod.PathsAndFiles
 import Language.Haskell.GhcMod.Monad.Types

@@ -79,17 +79,18 @@ whenM mb ma = mb >>= flip when ma
 -- | Returns the path to the currently running ghc-mod executable. With ghc<7.6
 -- this is a guess but >=7.6 uses 'getExecutablePath'.
 ghcModExecutable :: IO FilePath
-#ifndef SPEC
 ghcModExecutable = do
-    dir <- takeDirectory <$> getExecutablePath'
-    return $ (if dir == "." then "" else dir) </> "ghc-mod"
-#else
-ghcModExecutable = do
-  gpp <- lookupEnv "STACK_EXE"
-  case gpp of
-    Just _ -> fmap (</> "ghc-mod") getBinDir
-    _      -> fmap (</> "dist/build/ghc-mod/ghc-mod") getCurrentDirectory
-#endif
+    exe <- getExecutablePath'
+    stack <- lookupEnv "STACK_EXE"
+    case takeBaseName exe of
+      "spec" | Just _ <- stack ->
+          (</> "ghc-mod") <$> getBinDir
+      "spec" ->
+          (</> "dist/build/ghc-mod/ghc-mod") <$> getCurrentDirectory
+      "ghc-mod" ->
+          return exe
+      _ ->
+          return $ takeDirectory exe </> "ghc-mod"
 
 getExecutablePath' :: IO FilePath
 #if __GLASGOW_HASKELL__ >= 706
