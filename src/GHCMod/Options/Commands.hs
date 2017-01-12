@@ -18,6 +18,7 @@
 
 module GHCMod.Options.Commands where
 
+import Data.Semigroup
 import Options.Applicative
 import Options.Applicative.Types
 import Options.Applicative.Builder.Internal
@@ -289,8 +290,8 @@ hsubparser' :: Mod CommandFields a -> Parser a
 hsubparser' m = mkParser d g rdr
   where
     Mod _ d g = m `mappend` metavar ""
-    (cmds, subs) = mkCommand m
-    rdr = CmdReader cmds (fmap add_helper . subs)
+    (ms,cmds, subs) = mkCommand m
+    rdr = CmdReader ms cmds (fmap add_helper . subs)
     add_helper pinfo = pinfo
       { infoParser = infoParser pinfo <**> helper }
 
