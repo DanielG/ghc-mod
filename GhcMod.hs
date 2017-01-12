@@ -1,6 +1,6 @@
 -- | The ghc-mod library.
 
-module Language.Haskell.GhcMod (
+module GhcMod (
   -- * Cradle
     Cradle(..)
   , Project(..)
@@ -69,24 +69,24 @@ module Language.Haskell.GhcMod (
   , unloadMappedFile
   ) where
 
-import Language.Haskell.GhcMod.Boot
-import Language.Haskell.GhcMod.Browse
-import Language.Haskell.GhcMod.CaseSplit
-import Language.Haskell.GhcMod.Check
+import GhcMod.Boot
+import GhcMod.Browse
+import GhcMod.CaseSplit
+import GhcMod.Check
+import GhcMod.Debug
+import GhcMod.FillSig
+import GhcMod.Find
+import GhcMod.Flag
+import GhcMod.Info
+import GhcMod.Lang
+import GhcMod.Lint
+import GhcMod.Modules
+import GhcMod.PkgDoc
+import GhcMod.Test
 import Language.Haskell.GhcMod.Cradle
-import Language.Haskell.GhcMod.Debug
-import Language.Haskell.GhcMod.FillSig
-import Language.Haskell.GhcMod.Find
-import Language.Haskell.GhcMod.Flag
-import Language.Haskell.GhcMod.Info
-import Language.Haskell.GhcMod.Lang
-import Language.Haskell.GhcMod.Lint
-import Language.Haskell.GhcMod.Logging
-import Language.Haskell.GhcMod.Modules
-import Language.Haskell.GhcMod.Monad
-import Language.Haskell.GhcMod.PkgDoc
-import Language.Haskell.GhcMod.Types
-import Language.Haskell.GhcMod.Target
-import Language.Haskell.GhcMod.Output
 import Language.Haskell.GhcMod.FileMapping
-import Language.Haskell.GhcMod.Test
+import Language.Haskell.GhcMod.Logging
+import Language.Haskell.GhcMod.Monad
+import Language.Haskell.GhcMod.Output
+import Language.Haskell.GhcMod.Target
+import Language.Haskell.GhcMod.Types

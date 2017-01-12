@@ -7,20 +7,22 @@ import Control.Monad
 import Data.Typeable (Typeable)
 import Data.List
 import Data.List.Split
-import Exception
-import Language.Haskell.GhcMod
-import Language.Haskell.GhcMod.Internal hiding (MonadIO,liftIO)
-import Language.Haskell.GhcMod.Types
-import Language.Haskell.GhcMod.Monad
-import Language.Haskell.GhcMod.Find
 import Language.Haskell.GhcMod.Pretty
 import System.FilePath ((</>))
 import System.Directory (setCurrentDirectory, getAppUserDataDirectory,
                         removeDirectoryRecursive)
 import System.IO
 import System.Exit
-import GHCMod.Options
 import Prelude
+
+import GHCMod.Options
+import GhcMod
+import GhcMod.Find
+import GhcMod.Internal hiding (MonadIO,liftIO)
+import Language.Haskell.GhcMod.Monad
+import Language.Haskell.GhcMod.Types
+
+import Exception
 
 handler :: IOish m => GhcModT m a -> GhcModT m a
 handler = flip gcatches

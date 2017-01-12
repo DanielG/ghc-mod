@@ -4,7 +4,7 @@ import Dir
 
 import Control.Exception as E
 import Control.Monad (void)
-import Language.Haskell.GhcMod (debugInfo)
+import GhcMod (debugInfo)
 import System.Process
 import System.Environment
 import Test.Hspec

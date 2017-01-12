@@ -1,6 +1,6 @@
 {-# LANGUAGE CPP, BangPatterns, TupleSections, DeriveGeneric #-}
 
-module Language.Haskell.GhcMod.Find
+module GhcMod.Find
 #ifndef SPEC
   ( Symbol
   , SymbolDb

@@ -1,5 +1,5 @@
 {-# LANGUAGE CPP #-}
-module Language.Haskell.GhcMod.Browse (
+module GhcMod.Browse (
     browse,
     BrowseOpts(..)
   ) where

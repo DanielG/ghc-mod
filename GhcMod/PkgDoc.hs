@@ -1,4 +1,4 @@
-module Language.Haskell.GhcMod.PkgDoc (pkgDoc) where
+module GhcMod.PkgDoc (pkgDoc) where
 
 import Language.Haskell.GhcMod.Types
 import Language.Haskell.GhcMod.GhcPkg

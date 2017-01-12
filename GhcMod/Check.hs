@@ -1,4 +1,4 @@
-module Language.Haskell.GhcMod.Check (
+module GhcMod.Check (
     checkSyntax
   , check
   , expandTemplate

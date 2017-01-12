@@ -1,7 +1,7 @@
 {-# LANGUAGE CPP #-}
 module CaseSplitSpec where
 
-import Language.Haskell.GhcMod
+import GhcMod
 import Test.Hspec
 import TestUtils
 import Dir

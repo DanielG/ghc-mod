@@ -1,4 +1,4 @@
-module Language.Haskell.GhcMod.Modules (modules) where
+module GhcMod.Modules (modules) where
 
 import Control.Arrow
 import Data.List

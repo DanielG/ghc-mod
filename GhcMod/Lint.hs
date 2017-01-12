@@ -1,4 +1,4 @@
-module Language.Haskell.GhcMod.Lint where
+module GhcMod.Lint where
 
 import Exception (ghandle)
 import Control.Exception (SomeException(..))

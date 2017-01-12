@@ -24,12 +24,13 @@ module GHCMod.Options (
 
 import Options.Applicative
 import Options.Applicative.Types
-import Language.Haskell.GhcMod.Types
+
 import GHCMod.Options.Commands
+import GHCMod.Options.ShellParse
 import GHCMod.Version
 import Language.Haskell.GhcMod.Options.DocUtils
 import Language.Haskell.GhcMod.Options.Options
-import GHCMod.Options.ShellParse
+import Language.Haskell.GhcMod.Types
 
 parseArgs :: IO (Options, GhcModCommands)
 parseArgs =
@@ -69,4 +70,3 @@ helpVersion =
 
 argAndCmdSpec :: Parser (Options, GhcModCommands)
 argAndCmdSpec = (,) <$> globalArgSpec <*> commandsSpec
-

@@ -1,4 +1,4 @@
-module Language.Haskell.GhcMod.Info (
+module GhcMod.Info (
     info
   , types
   ) where
@@ -10,8 +10,8 @@ import Exception (ghandle, SomeException(..))
 import GHC (GhcMonad, SrcSpan)
 import Prelude
 import qualified GHC as G
-import qualified Language.Haskell.GhcMod.Gap as Gap
 
+import qualified Language.Haskell.GhcMod.Gap as Gap
 import Language.Haskell.GhcMod.Convert
 import Language.Haskell.GhcMod.Doc
 import Language.Haskell.GhcMod.DynFlags

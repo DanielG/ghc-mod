@@ -1,4 +1,4 @@
-module Language.Haskell.GhcMod.Debug (debugInfo, rootInfo, componentInfo) where
+module GhcMod.Debug (debugInfo, rootInfo, componentInfo) where
 
 import Control.Arrow (first)
 import Control.Applicative
@@ -9,20 +9,21 @@ import Data.Char
 import Data.Version
 import Data.List.Split
 import System.Directory
-import Pretty
-import Language.Haskell.GhcMod.Monad
-import Language.Haskell.GhcMod.Types
-import Language.Haskell.GhcMod.Internal
-import Language.Haskell.GhcMod.Target
-import Language.Haskell.GhcMod.Pretty
-import Language.Haskell.GhcMod.Utils
+
+import GhcMod.Internal
 import Language.Haskell.GhcMod.Cradle
-import Language.Haskell.GhcMod.Stack
+import Language.Haskell.GhcMod.Monad
 import Language.Haskell.GhcMod.Output
+import Language.Haskell.GhcMod.Pretty
+import Language.Haskell.GhcMod.Stack
+import Language.Haskell.GhcMod.Target
+import Language.Haskell.GhcMod.Types
+import Language.Haskell.GhcMod.Utils
 
 import Paths_ghc_mod (version)
 
 import Config (cProjectVersion)
+import Pretty
 
 ----------------------------------------------------------------
 

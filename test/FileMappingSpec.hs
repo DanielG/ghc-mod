@@ -9,7 +9,7 @@ import Dir
 import System.IO.Temp
 import System.Directory
 
-import Language.Haskell.GhcMod
+import GhcMod
 
 spec :: Spec
 spec = do

@@ -15,7 +15,8 @@ main = do
      , "-package", "directory-" ++ VERSION_directory
      , "-XScopedTypeVariables", "-XRecordWildCards", "-XNamedFieldPuns", "-XConstraintKinds", "-XFlexibleContexts", "-XDataKinds", "-XKindSignatures", "-XTypeOperators", "-XViewPatterns"
      , "-i" ++ distdir ++ "/build/autogen/"
-     , "-optP-include"
-     , "-optP" ++ distdir ++ "/build/autogen/cabal_macros.h"
-     , "Language/Haskell/GhcMod.hs"
+     , "-icore/"
+--     , "-optP-include"
+--     , "-optP" ++ distdir ++ "/build/autogen/cabal_macros.h"
+     , "GhcMod.hs"
      ]

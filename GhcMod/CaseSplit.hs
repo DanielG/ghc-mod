@@ -1,6 +1,6 @@
 {-# LANGUAGE CPP #-}
 
-module Language.Haskell.GhcMod.CaseSplit (
+module GhcMod.CaseSplit (
     splits
   ) where
 

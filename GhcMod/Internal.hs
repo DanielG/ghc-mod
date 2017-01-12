@@ -1,6 +1,6 @@
 -- | Low level access to the ghc-mod library.
 
-module Language.Haskell.GhcMod.Internal (
+module GhcMod.Internal (
   -- * Types
     GHCOption
   , IncludeDir

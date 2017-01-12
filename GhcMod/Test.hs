@@ -1,4 +1,4 @@
-module Language.Haskell.GhcMod.Test where
+module GhcMod.Test where
 
 import Control.Applicative
 import Data.List

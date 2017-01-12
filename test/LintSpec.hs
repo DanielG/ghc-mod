@@ -1,6 +1,6 @@
 module LintSpec where
 
-import Language.Haskell.GhcMod
+import GhcMod
 import Test.Hspec
 import TestUtils
 

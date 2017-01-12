@@ -1,7 +1,7 @@
 module BrowseSpec where
 
 import Control.Applicative
-import Language.Haskell.GhcMod
+import GhcMod
 import Test.Hspec
 import Prelude
 

@@ -1,7 +1,7 @@
 {-# LANGUAGE CPP, MultiParamTypeClasses, FunctionalDependencies #-}
 {-# LANGUAGE FlexibleInstances #-}
 
-module Language.Haskell.GhcMod.FillSig (
+module GhcMod.FillSig (
     sig
   , refine
   , auto

@@ -1,12 +1,13 @@
-module Language.Haskell.GhcMod.Boot where
+module GhcMod.Boot where
 
 import Control.Applicative
 import Prelude
-import Language.Haskell.GhcMod.Browse
-import Language.Haskell.GhcMod.Flag
-import Language.Haskell.GhcMod.Lang
+
+import GhcMod.Browse
+import GhcMod.Flag
+import GhcMod.Lang
+import GhcMod.Modules
 import Language.Haskell.GhcMod.Monad
-import Language.Haskell.GhcMod.Modules
 import Language.Haskell.GhcMod.Types (defaultBrowseOpts)
 
 -- | Printing necessary information for front-end booting.

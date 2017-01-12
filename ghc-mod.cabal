@@ -34,7 +34,7 @@ Extra-Source-Files:     ChangeLog
                         SetupCompat.hs
                         NotCPP/*.hs
                         NotCPP/COPYING
-                        Language/Haskell/GhcMod/Monad/Compat.hs_h
+                        core/Language/Haskell/GhcMod/Monad/Compat.hs_h
                         test/data/annotations/*.hs
                         test/data/broken-cabal/*.cabal
                         test/data/broken-cabal/cabal.sandbox.config.in
@@ -112,38 +112,42 @@ Library
   Default-Extensions:   ScopedTypeVariables, RecordWildCards, NamedFieldPuns,
                         ConstraintKinds, FlexibleContexts,
                         DataKinds, KindSignatures, TypeOperators, ViewPatterns
-  Exposed-Modules:      Language.Haskell.GhcMod
-                        Language.Haskell.GhcMod.Internal
-                        Language.Haskell.GhcMod.Boot
-                        Language.Haskell.GhcMod.Browse
+  HS-Source-Dirs:       ., core
+  Exposed-Modules:
+                        GhcMod
+                        GhcMod.Boot
+                        GhcMod.Browse
+                        GhcMod.CaseSplit
+                        GhcMod.Check
+                        GhcMod.Debug
+                        GhcMod.FillSig
+                        GhcMod.Find
+                        GhcMod.Flag
+                        GhcMod.Info
+                        GhcMod.Internal
+                        GhcMod.Lang
+                        GhcMod.Lint
+                        GhcMod.Modules
+                        GhcMod.PkgDoc
+                        GhcMod.Test
                         Language.Haskell.GhcMod.CabalHelper
                         Language.Haskell.GhcMod.Caching
                         Language.Haskell.GhcMod.Caching.Types
-                        Language.Haskell.GhcMod.CaseSplit
-                        Language.Haskell.GhcMod.Check
                         Language.Haskell.GhcMod.Convert
                         Language.Haskell.GhcMod.Cradle
                         Language.Haskell.GhcMod.CustomPackageDb
-                        Language.Haskell.GhcMod.Debug
                         Language.Haskell.GhcMod.DebugLogger
                         Language.Haskell.GhcMod.Doc
                         Language.Haskell.GhcMod.DynFlags
                         Language.Haskell.GhcMod.DynFlagsTH
                         Language.Haskell.GhcMod.Error
                         Language.Haskell.GhcMod.FileMapping
-                        Language.Haskell.GhcMod.FillSig
-                        Language.Haskell.GhcMod.Find
-                        Language.Haskell.GhcMod.Flag
                         Language.Haskell.GhcMod.Gap
                         Language.Haskell.GhcMod.GhcPkg
                         Language.Haskell.GhcMod.HomeModuleGraph
-                        Language.Haskell.GhcMod.Info
-                        Language.Haskell.GhcMod.Lang
-                        Language.Haskell.GhcMod.Lint
                         Language.Haskell.GhcMod.LightGhc
                         Language.Haskell.GhcMod.Logger
                         Language.Haskell.GhcMod.Logging
-                        Language.Haskell.GhcMod.Modules
                         Language.Haskell.GhcMod.Monad
                         Language.Haskell.GhcMod.Monad.Env
                         Language.Haskell.GhcMod.Monad.Log
@@ -152,21 +156,19 @@ Library
                         Language.Haskell.GhcMod.Monad.Out
                         Language.Haskell.GhcMod.Monad.State
                         Language.Haskell.GhcMod.Monad.Types
+                        Language.Haskell.GhcMod.Options.DocUtils
+                        Language.Haskell.GhcMod.Options.Help
+                        Language.Haskell.GhcMod.Options.Options
                         Language.Haskell.GhcMod.Output
                         Language.Haskell.GhcMod.PathsAndFiles
-                        Language.Haskell.GhcMod.PkgDoc
                         Language.Haskell.GhcMod.Pretty
                         Language.Haskell.GhcMod.Read
                         Language.Haskell.GhcMod.SrcUtils
                         Language.Haskell.GhcMod.Stack
                         Language.Haskell.GhcMod.Target
-                        Language.Haskell.GhcMod.Test
                         Language.Haskell.GhcMod.Types
                         Language.Haskell.GhcMod.Utils
                         Language.Haskell.GhcMod.World
-                        Language.Haskell.GhcMod.Options.Options
-                        Language.Haskell.GhcMod.Options.DocUtils
-                        Language.Haskell.GhcMod.Options.Help
   Other-Modules:        Paths_ghc_mod
                         Utils
                         Data.Binary.Generic
