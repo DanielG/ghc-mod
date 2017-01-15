@@ -1,0 +1,46 @@
+stages:
+  - build
+
+before_script:
+  - cabal update
+  - mkdir -p ../ghc-mod.sdist
+  - ls -l ..
+  - touch ChangeLog
+  - cabal sdist --output-directory=../ghc-mod.sdist
+  - rm -f cabal.sandbox.config && cabal sandbox init
+  - cp cabal.sandbox.config ../ghc-mod.sdist
+  - cd ../ghc-mod.sdist
+
+after_script:
+  - rm -rf  "$CI_PROJECT_DIR"/../ghc-mod.sdist
+
+.job_template: &common_script
+  script:
+    - echo $PWD
+    - ghc-pkg list
+    - cabal install --user --only-dependencies -j2 --force-reinstalls --upgrade-dependencies --enable-tests --enable-documentation
+    - which cabal
+    - cabal --version
+    - cabal configure --enable-tests
+    - cabal build -j2
+    - ghc-pkg list
+    - which cabal
+    - cabal --version
+    - ./dist/build/spec/spec
+    - ./dist/build/doctest/doctest
+    - cabal haddock
+
+job-ghc801:
+  image: haskell:8.0.1
+  stage: build
+  <<: *common_script
+
+job-ghc710:
+  image: haskell:7.10.3
+  stage: build
+  <<: *common_script
+
+job-ghc708:
+  image: haskell:7.8.4
+  stage: build
+  <<: *common_script
