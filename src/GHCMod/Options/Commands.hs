@@ -13,12 +13,14 @@
 --
 -- You should have received a copy of the GNU Affero General Public License
 -- along with this program.  If not, see <http://www.gnu.org/licenses/>.
-{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE CPP, OverloadedStrings #-}
 {-# OPTIONS_GHC -fno-warn-unused-do-bind #-}
 
 module GHCMod.Options.Commands where
 
+#if MIN_VERSION_optparse_applicative(0,13,0)
 import Data.Semigroup
+#endif
 import Options.Applicative
 import Options.Applicative.Types
 import Options.Applicative.Builder.Internal
@@ -290,8 +292,13 @@ hsubparser' :: Mod CommandFields a -> Parser a
 hsubparser' m = mkParser d g rdr
   where
     Mod _ d g = m `mappend` metavar ""
+#if MIN_VERSION_optparse_applicative(0,13,0)
     (ms,cmds, subs) = mkCommand m
     rdr = CmdReader ms cmds (fmap add_helper . subs)
+#else
+    (cmds, subs) = mkCommand m
+    rdr = CmdReader cmds (fmap add_helper . subs)
+#endif
     add_helper pinfo = pinfo
       { infoParser = infoParser pinfo <**> helper }
 

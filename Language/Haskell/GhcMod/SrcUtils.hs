@@ -16,7 +16,11 @@ import qualified Var as G
 import qualified Type as G
 import GHC.SYB.Utils
 import GhcMonad
+#if MIN_VERSION_haskell_src_exts(1,18,0)
 import qualified Language.Haskell.Exts as HE
+#else
+import qualified Language.Haskell.Exts.Annotated as HE
+#endif
 import Language.Haskell.GhcMod.Doc
 import Language.Haskell.GhcMod.Gap
 import qualified Language.Haskell.GhcMod.Gap as Gap
@@ -175,7 +179,11 @@ fourIntsHE loc = ( HE.srcSpanStartLine loc, HE.srcSpanStartColumn loc
 typeSigInRangeHE :: Int -> Int -> HE.Decl HE.SrcSpanInfo -> Bool
 typeSigInRangeHE lineNo colNo (HE.TypeSig (HE.SrcSpanInfo s _) _ _) =
   HE.srcSpanStart s <= (lineNo, colNo) && HE.srcSpanEnd s >= (lineNo, colNo)
+#if MIN_VERSION_haskell_src_exts(1,18,0)
 typeSigInRangeHE lineNo colNo (HE.TypeFamDecl (HE.SrcSpanInfo s _) _ _ _) =
+#else
+typeSigInRangeHE lineNo colNo (HE.TypeFamDecl (HE.SrcSpanInfo s _) _ _) =
+#endif
   HE.srcSpanStart s <= (lineNo, colNo) && HE.srcSpanEnd s >= (lineNo, colNo)
 typeSigInRangeHE lineNo colNo (HE.DataFamDecl (HE.SrcSpanInfo s _) _ _ _) =
   HE.srcSpanStart s <= (lineNo, colNo) && HE.srcSpanEnd s >= (lineNo, colNo)
