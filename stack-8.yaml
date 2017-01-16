@@ -1,5 +1,6 @@
+resolver: nightly-2017-01-16
 flags: {}
 packages:
 - '.'
-extra-deps: []
-resolver: nightly-2016-06-04
+extra-deps:
+- cabal-helper-0.7.3.0
