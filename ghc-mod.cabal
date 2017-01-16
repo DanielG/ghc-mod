@@ -28,7 +28,7 @@ Category:               GHC, Development
 Cabal-Version:          >= 1.14
 Build-Type:             Custom
 Tested-With:           GHC == 7.6.3
-                     -- Note: GHC 7.8.4 not supported due to very old bundled transformers
+                       GHC == 7.8.4
                      , GHC == 7.10.3
                      , GHC == 8.0.1
                      , GHC == 8.0.2
