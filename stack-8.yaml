@@ -3,4 +3,4 @@ flags: {}
 packages:
 - '.'
 extra-deps:
-- cabal-helper-0.7.2.0
+- cabal-helper-0.7.3.0
