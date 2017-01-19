@@ -29,10 +29,7 @@ Cabal-Version:          >= 1.18
 Build-Type:             Custom
 Data-Files:             elisp/Makefile
                         elisp/*.el
-Data-Files:             LICENSE COPYING.BSD3 COPYING.AGPL3
 Extra-Source-Files:     ChangeLog
-                        NotCPP/*.hs
-                        NotCPP/COPYING
                         core/Language/Haskell/GhcMod/Monad/Compat.hs_h
                         test/data/annotations/*.hs
                         test/data/broken-cabal/*.cabal
