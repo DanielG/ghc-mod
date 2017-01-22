@@ -59,7 +59,7 @@ integration eventually you should definetly look into that. `haskell-ide-engine`
 uses `ghc-mod` at it's core so you'll want to be familliar with it either way.
 
 API "documentation" is here:
-[Hackage docs](http://hackage.haskell.org/package/ghc-mod/docs/Language-Haskell-GhcMod.html).
+[Hackage docs](https://hackage.haskell.org/package/ghc-mod#modules).
 
 ## IRC
 
