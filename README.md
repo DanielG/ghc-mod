@@ -47,22 +47,19 @@ almost 100 releases! We would like to make a cut during v6.0 or so and
 completely re-do the API but we need more input from downstream tool writers to
 do that properly, see [Library API Redesign](Library-API-Redesign.md).
 
-Right now tools like Alanz's
-[The Haskell Refactorer (HaRe)](https://github.com/alanz/HaRe) and
-[mote](https://github.com/imeckler/mote) use this environment handling so they
-can concentrate on their core functionality instead of worrying about
-environments.
+Right now tools like
+[The Haskell Refactorer (HaRe)](https://github.com/alanz/HaRe) use this
+environment handling so they can concentrate on their core functionality instead
+of worrying about environments.
 
 Most recently the
 [`haskell-ide-engine`](https://github.com/haskell/haskell-ide-engine) project
 has sprung up and if you're planning to write any kind of tool that needs editor
 integration eventually you should definetly look into that. `haskell-ide-engine`
-does uses `ghc-mod` at it's core so you'll want to be familliar with it either
-way.
+uses `ghc-mod` at it's core so you'll want to be familliar with it either way.
 
 API "documentation" is here:
-[Hackage docs](http://hackage.haskell.org/package/ghc-mod-5.4.0.0/docs/Language-Haskell-GhcMod.html).
-
+[Hackage docs](http://hackage.haskell.org/package/ghc-mod/docs/Language-Haskell-GhcMod.html).
 
 ## IRC
 
