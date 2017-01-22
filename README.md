@@ -1,62 +1,68 @@
-# Happy Haskell Hacking
-[![Build Status](https://travis-ci.org/DanielG/ghc-mod.svg?branch=master)](https://travis-ci.org/DanielG/ghc-mod)
+# ghc-mod: Happy Haskell Hacking
+[![build status](https://gitlab.com/dxld/ghc-mod/badges/master/build.svg)](https://gitlab.com/dxld/ghc-mod/commits/master)
 
-Please read: [http://www.mew.org/~kazu/proj/ghc-mod/](http://www.mew.org/~kazu/proj/ghc-mod/)
+ghc-mod is a couple of different things depending on what you want to do, you
+should read the corresponding section:
 
-## Using the stable version
+- for [all Haskell developers (Using ghc-mod in your development environment)](#using-ghc-mod-in-your-development-environment)
+- for [people developing Haskell IDEs (Using ghc-mod as an IDE backend program)](#using-ghc-mod-as-an-ide-backend-program)
+- for [developing Haskell tooling (Using ghc-mod as a library)](#using-ghc-mod-as-a-library)
 
-The Emacs front-end is available from
-[*stable* MELPA](https://stable.melpa.org/). This package should
-always be compatible with the latest version of ghc-mod from hackage.
+## Overview
 
-To use stable *stable* MELPA add this to your `.emacs`:
+### Using ghc-mod in your Development Environment<a name="haskell-dev"></a>
 
-```elisp
-(require 'package)
-(add-to-list 'package-archives
-	     '("melpa" . "https://stable.melpa.org/packages/"))
-(package-initialize)
-```
+To use `ghc-mod` in your development environment of choice you need two things:
 
-With this configuration you can install the Emacs front end from MELPA (the
-package is called `ghc` there, not `ghc-mod`) and install the
-`ghc-mod`/`ghc-modi` binaries from hackage by doing:
+  - The `ghc-mod` program included in the package of the same name, see [Installing](https://github.com/DanielG/ghc-mod/wiki/Installing)
+  - A ghc-mod frontend to integrate it into your development environment, see [Frontend](https://github.com/DanielG/ghc-mod/wiki/Frontend)
 
-```shell
-% cabal update && cabal install ghc-mod
-```
+### Using ghc-mod as an IDE Backend Program<a name="ide-dev"></a>
 
-### Nix & NixOS
+Directly using ghc-mod is while still supported for the time being
+discouraged. You should look into working with
+[`haskell-ide-engine`](https://github.com/haskell/haskell-ide-engine) instead.
 
-`ghc-mod` works fine for users of Nix who follow a recent version of the
-package database such as the `nixos-15.09` or `nixos-unstable` channel. Just
-include the package `ghc-mod` into your `ghcWithPackages` environment like any
-other library. The [Nixpkgs Haskell User's
-Guide](http://hydra.nixos.org/job/nixpkgs/trunk/manual/latest/download-by-type/doc/manual#users-guide-to-the-haskell-infrastructure)
-covers this subject in great detail.
+The `ghc-mod` backend program is somewhat crusty and carries a lot of legacy
+baggage so going forward we would like to see frontends use `haskell-ide-engine`
+instead. There we're trying to get the design right from the beginning and fix
+the fragmentation of the Haskell Tooling Ecosystem along the way.
 
-## Using the development version
+### Using ghc-mod as a Library<a name="tool-dev"></a>
 
-The easiest way to hack on ghc-mod is compile it, then add `dist/build/ghc-mod`
-and `dist/build/ghc-modi` to your `PATH` and add the `elisp/` directory to your
-Emacs `load-path`.
+Internally ghc-mod uses the Glasgow Haskell Compilers's API to implement most of
+it's functionality.
 
-Make sure you're not using the MELPA version of `ghc.el` otherwise you might get
-all sorts of nasty conflicts.
+In order to provide a hassle free experience to users ghc-mod tries hard to
+automatically, and correctly, detect and if needed tweak the environment GHC
+needs. It also handles some of the more cumbersome parts of getting a working
+compiler session up and running.
 
+This functionality can be very useful to all kinds of Haskell development tools
+therefore want to expose all the useful abstractions ghc-mod provides.
 
-## Custom ghc-mod cradle
+Right now the ghc-mod API is pretty messy a result major internal rewrites and
+reorganization coupled with too little time for cleanups over the course of
+almost 100 releases! We would like to make a cut during v6.0 or so and
+completely re-do the API but we need more input from downstream tool writers to
+do that properly, see [Library API Redesign](Library-API-Redesign.md).
 
-To customize the package databases used by `ghc-mod`, put a file called `ghc-mod.package-db-stack` beside the `.cabal` file with the following syntax:
+Right now tools like Alanz's
+[The Haskell Refactorer (HaRe)](https://github.com/alanz/HaRe) and
+[mote](https://github.com/imeckler/mote) use this environment handling so they
+can concentrate on their core functionality instead of worrying about
+environments.
 
-```
-temp directory root
-package db 1
-...
-package db n
-```
+Most recently the
+[`haskell-ide-engine`](https://github.com/haskell/haskell-ide-engine) project
+has sprung up and if you're planning to write any kind of tool that needs editor
+integration eventually you should definetly look into that. `haskell-ide-engine`
+does uses `ghc-mod` at it's core so you'll want to be familliar with it either
+way.
 
-each package database line is either a *path* to a package database, or `global` or `user`.
+API "documentation" is here:
+[Hackage docs](http://hackage.haskell.org/package/ghc-mod-5.4.0.0/docs/Language-Haskell-GhcMod.html).
+
 
 ## IRC
 
