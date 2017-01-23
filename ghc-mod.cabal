@@ -239,6 +239,7 @@ Executable ghc-modi
   Main-Is:              GHCModi.hs
   Other-Modules:        Paths_ghc_mod
                         Utils
+                        System.Directory.ModTime
   GHC-Options:          -Wall -threaded -fno-warn-deprecations
   if os(windows)
       Cpp-Options:      -DWINDOWS
