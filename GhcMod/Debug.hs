@@ -6,6 +6,7 @@ import Control.Monad
 import qualified Data.Map as Map
 import qualified Data.Set as Set
 import Data.Char
+import Data.Maybe
 import Data.Version
 import Data.List.Split
 import System.Directory
@@ -33,10 +34,17 @@ debugInfo = do
     Options {..} <- options
     Cradle {..} <- cradle
 
+    [ghcPath, ghcPkgPath] <- liftIO $
+        case cradleProject of
+          StackProject se ->
+              catMaybes <$> sequence [getStackGhcPath se, getStackGhcPkgPath se]
+          _ ->
+              return ["ghc", "ghc-pkg"]
+
     cabal <-
         case cradleProject of
-          CabalProject -> cabalDebug
-          StackProject {} -> (++) <$> stackPaths <*> cabalDebug
+          CabalProject -> cabalDebug ghcPkgPath
+          StackProject {} -> (++) <$> stackPaths <*> cabalDebug ghcPkgPath
           _ -> return []
 
     pkgOpts <- packageGhcOptions
@@ -44,7 +52,7 @@ debugInfo = do
     readProc <- gmReadProcess
 
     ghcVersion <- liftIO $
-        dropWhileEnd isSpace <$> readProc "ghc" ["--numeric-version"] ""
+        dropWhileEnd isSpace <$> readProc ghcPath ["--numeric-version"] ""
 
     return $ unlines $
       [ "Version:              ghc-mod-" ++ showVersion version
@@ -67,8 +75,8 @@ stackPaths = do
          , "Stack ghc-pkg executable:" ++ show ghcPkg
          ]
 
-cabalDebug :: IOish m => GhcModT m [String]
-cabalDebug = do
+cabalDebug :: IOish m => FilePath -> GhcModT m [String]
+cabalDebug ghcPkgPath = do
     Cradle {..} <- cradle
     mcs <- cabalResolvedComponents
     let entrypoints = Map.map gmcEntrypoints mcs
@@ -85,7 +93,7 @@ cabalDebug = do
             dropWhileEnd isSpace <$> readProc "cabal" ["--numeric-version"] ""
           else return ""
 
-    packages <- liftIO $ readProc "ghc-pkg" ["list", "--simple-output"] ""
+    packages <- liftIO $ readProc ghcPkgPath ["list", "--simple-output"] ""
     let cabalPackages = filter ((== ["Cabal"]) . take 1 . splitOn "-") $ splitWhen isSpace packages
 
     return $
