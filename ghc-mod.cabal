@@ -22,7 +22,6 @@ Description:
   significantly extend ghc-mod you should submit these changes upstream instead
   of implementing them on top of the library.
 
-  For more information, please see its home page.
 
 Category:               GHC, Development
 Cabal-Version:          >= 1.18
