@@ -29,6 +29,7 @@ Build-Type:             Custom
 Data-Files:             elisp/Makefile
                         elisp/*.el
 Extra-Source-Files:     ChangeLog
+                        README.md
                         core/Language/Haskell/GhcMod/Monad/Compat.hs_h
                         test/data/annotations/*.hs
                         test/data/broken-cabal/*.cabal
