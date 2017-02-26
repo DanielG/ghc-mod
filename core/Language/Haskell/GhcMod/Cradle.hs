@@ -126,7 +126,7 @@ stackCradle stackProg wdir = do
         mzero
 
       (True, True) -> do
-        gmLog GmWarning "" $ text "STACK_EXE set, preferring Stack project"
+        gmLog GmInfo "" $ text "STACK_EXE set, preferring Stack project"
 
       (True, False) | setupCfgExists -> do
         gmLog GmWarning "" $ text "'dist/setup-config' exists, ignoring Stack project"
