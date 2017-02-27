@@ -212,7 +212,7 @@ Library
 
 Executable ghc-mod
   Default-Language:     Haskell2010
-  Main-Is:              GHCMod.hs
+  Main-Is:              GHCModMain.hs
   Other-Modules:        Paths_ghc_mod
                       , GHCMod.Options
                       , GHCMod.Options.Commands
