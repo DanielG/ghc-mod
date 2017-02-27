@@ -1,7 +1,5 @@
 {-# LANGUAGE ScopedTypeVariables, DeriveDataTypeable #-}
 
--- A test comment for pull-request.
-
 module Main where
 
 import Control.Applicative
