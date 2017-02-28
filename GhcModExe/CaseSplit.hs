@@ -1,6 +1,6 @@
 {-# LANGUAGE CPP #-}
 
-module GhcMod.CaseSplit (
+module GhcModExe.CaseSplit (
     splits
   ) where
 

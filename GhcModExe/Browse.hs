@@ -1,5 +1,5 @@
 {-# LANGUAGE CPP #-}
-module GhcMod.Browse (
+module GhcModExe.Browse (
     browse,
     BrowseOpts(..)
   ) where

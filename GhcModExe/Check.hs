@@ -1,4 +1,4 @@
-module GhcMod.Check (
+module GhcModExe.Check (
     checkSyntax
   , check
   , expandTemplate

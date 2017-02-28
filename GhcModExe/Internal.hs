@@ -1,6 +1,6 @@
 -- | Low level access to the ghc-mod library.
 
-module GhcMod.Internal (
+module GhcModExe.Internal (
   -- * Types
     GHCOption
   , IncludeDir

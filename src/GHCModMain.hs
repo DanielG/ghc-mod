@@ -17,8 +17,8 @@ import Prelude
 
 import GHCMod.Options
 import GhcMod
-import GhcMod.Find
-import GhcMod.Internal hiding (MonadIO,liftIO)
+import GhcModExe.Find
+import GhcModExe.Internal hiding (MonadIO,liftIO)
 import Language.Haskell.GhcMod.Monad
 import Language.Haskell.GhcMod.Types
 

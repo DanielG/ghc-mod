@@ -1,4 +1,4 @@
-module GhcMod.Lint where
+module GhcModExe.Lint where
 
 import Exception (ghandle)
 import Control.Exception (SomeException(..))

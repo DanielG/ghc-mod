@@ -1,4 +1,4 @@
-module GhcMod.Flag where
+module GhcModExe.Flag where
 
 import qualified Language.Haskell.GhcMod.Gap as Gap
 import Language.Haskell.GhcMod.Convert

@@ -1,4 +1,4 @@
-module GhcMod.Lang where
+module GhcModExe.Lang where
 
 import DynFlags (supportedLanguagesAndExtensions)
 import Language.Haskell.GhcMod.Convert

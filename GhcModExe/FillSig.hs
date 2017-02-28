@@ -1,7 +1,7 @@
 {-# LANGUAGE CPP, MultiParamTypeClasses, FunctionalDependencies #-}
 {-# LANGUAGE FlexibleInstances #-}
 
-module GhcMod.FillSig (
+module GhcModExe.FillSig (
     sig
   , refine
   , auto
