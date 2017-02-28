@@ -1,4 +1,4 @@
-module GhcMod.Debug (debugInfo, rootInfo, componentInfo) where
+module GhcModExe.Debug (debugInfo, rootInfo, componentInfo) where
 
 import Control.Arrow (first)
 import Control.Applicative
@@ -11,7 +11,7 @@ import Data.Version
 import Data.List.Split
 import System.Directory
 
-import GhcMod.Internal
+import GhcModExe.Internal
 import Language.Haskell.GhcMod.Cradle
 import Language.Haskell.GhcMod.Monad
 import Language.Haskell.GhcMod.Output

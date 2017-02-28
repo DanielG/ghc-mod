@@ -1,4 +1,4 @@
-module GhcMod.Modules (modules) where
+module GhcModExe.Modules (modules) where
 
 import Control.Arrow
 import Data.List

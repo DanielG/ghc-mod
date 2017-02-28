@@ -115,21 +115,21 @@ Library
   HS-Source-Dirs:       ., core
   Exposed-Modules:
                         GhcMod
-                        GhcMod.Boot
-                        GhcMod.Browse
-                        GhcMod.CaseSplit
-                        GhcMod.Check
-                        GhcMod.Debug
-                        GhcMod.FillSig
-                        GhcMod.Find
-                        GhcMod.Flag
-                        GhcMod.Info
-                        GhcMod.Internal
-                        GhcMod.Lang
-                        GhcMod.Lint
-                        GhcMod.Modules
-                        GhcMod.PkgDoc
-                        GhcMod.Test
+                        GhcModExe.Boot
+                        GhcModExe.Browse
+                        GhcModExe.CaseSplit
+                        GhcModExe.Check
+                        GhcModExe.Debug
+                        GhcModExe.FillSig
+                        GhcModExe.Find
+                        GhcModExe.Flag
+                        GhcModExe.Info
+                        GhcModExe.Internal
+                        GhcModExe.Lang
+                        GhcModExe.Lint
+                        GhcModExe.Modules
+                        GhcModExe.PkgDoc
+                        GhcModExe.Test
                         Language.Haskell.GhcMod.CabalHelper
                         Language.Haskell.GhcMod.Caching
                         Language.Haskell.GhcMod.Caching.Types

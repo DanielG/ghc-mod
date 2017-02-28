@@ -1,4 +1,4 @@
-module GhcMod.Test where
+module GhcModExe.Test where
 
 import Control.Applicative
 import Data.List

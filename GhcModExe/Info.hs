@@ -1,4 +1,4 @@
-module GhcMod.Info (
+module GhcModExe.Info (
     info
   , types
   ) where

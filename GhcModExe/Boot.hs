@@ -1,12 +1,12 @@
-module GhcMod.Boot where
+module GhcModExe.Boot where
 
 import Control.Applicative
 import Prelude
 
-import GhcMod.Browse
-import GhcMod.Flag
-import GhcMod.Lang
-import GhcMod.Modules
+import GhcModExe.Browse
+import GhcModExe.Flag
+import GhcModExe.Lang
+import GhcModExe.Modules
 import Language.Haskell.GhcMod.Monad
 import Language.Haskell.GhcMod.Types (defaultBrowseOpts)
 
