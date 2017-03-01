@@ -37,23 +37,19 @@ Extra-Source-Files:     ChangeLog
                         core/Language/Haskell/GhcMod/Monad/Compat.hs_h
                         test/data/annotations/*.hs
                         test/data/broken-cabal/*.cabal
-                        test/data/broken-cabal/cabal.sandbox.config.in
                         test/data/broken-sandbox/cabal.sandbox.config
                         test/data/broken-sandbox/dummy.cabal
                         test/data/cabal-flags/cabal-flags.cabal
                         test/data/cabal-project/*.cabal
                         test/data/cabal-project/*.hs
                         test/data/cabal-project/.cabal-sandbox/i386-osx-ghc-7.6.3-packages.conf.d/Cabal-1.18.1.3-2b161c6bf77657aa17e1681d83cb051b.conf
-                        test/data/cabal-project/cabal.sandbox.config.in
                         test/data/cabal-project/subdir1/subdir2/dummy
                         test/data/case-split/*.hs
-                        test/data/check-packageid/cabal.sandbox.config.in
                         test/data/check-packageid/.cabal-sandbox/i386-osx-ghc-7.6.3-packages.conf.d/template-haskell-2.8.0.0-32d4f24abdbb6bf41272b183b2e23e9c.conf
                         test/data/check-test-subdir/*.cabal
                         test/data/check-test-subdir/src/Check/Test/*.hs
                         test/data/check-test-subdir/test/*.hs
                         test/data/check-test-subdir/test/Bar/*.hs
-                        test/data/duplicate-pkgver/cabal.sandbox.config.in
                         test/data/duplicate-pkgver/duplicate-pkgver.cabal
                         test/data/duplicate-pkgver/.cabal-sandbox/i386-osx-ghc-7.6.3-packages.conf.d/template-haskell-1.0-7c59d13f32294d1ef6dc6233c24df961.conf
                         test/data/duplicate-pkgver/.cabal-sandbox/i386-osx-ghc-7.6.3-packages.conf.d/template-haskell-2.8.0.0-14e543bdae2da4d2aeff5386892c9112.conf

@@ -62,7 +62,7 @@ main = do
                   , "test/data/broken-cabal/"
                   ]
       genSandboxCfg dir = withDirectory dir $ \cwdir -> do
-         system ("sed 's|@CWD@|" ++ cwdir ++ "|g' cabal.sandbox.config.in > cabal.sandbox.config")
+         system ("rm cabal.sandbox.config; cabal sandbox init")
       pkgDirs =
         [ "test/data/cabal-project/.cabal-sandbox/i386-osx-ghc-7.6.3-packages.conf.d"
         , "test/data/check-packageid/.cabal-sandbox/i386-osx-ghc-7.6.3-packages.conf.d"
