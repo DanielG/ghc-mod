@@ -277,21 +277,28 @@ Test-Suite spec
   Type:                 exitcode-stdio-1.0
   Other-Modules:        Paths_ghc_mod
                         Dir
-                        Spec
                         TestUtils
+
+-- $ ls test/*Spec.hs | sed 's_^.*/\(.*\)\.hs$_\1_' | sort
                         BrowseSpec
-                        CustomPackageDbSpec
+                        CabalHelperSpec
+                        CaseSplitSpec
                         CheckSpec
+                        CradleSpec
+                        CustomPackageDbSpec
+                        FileMappingSpec
+                        FindSpec
                         FlagSpec
+                        GhcPkgSpec
+                        HomeModuleGraphSpec
                         InfoSpec
                         LangSpec
                         LintSpec
                         ListSpec
                         MonadSpec
                         PathsAndFilesSpec
-                        HomeModuleGraphSpec
-                        FileMappingSpec
                         ShellParseSpec
+                        TargetSpec
 
   Build-Depends:        hspec             < 2.4  && >= 2.0.0
   X-Build-Depends-Like: CLibName

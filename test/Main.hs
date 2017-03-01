@@ -1,5 +1,4 @@
 {-# LANGUAGE CPP, ScopedTypeVariables #-}
-import Spec
 import Dir
 
 import Control.Exception as E
@@ -9,6 +8,48 @@ import System.Process
 import System.Environment
 import Test.Hspec
 import TestUtils
+
+import qualified BrowseSpec
+import qualified CabalHelperSpec
+import qualified CaseSplitSpec
+import qualified CheckSpec
+import qualified CradleSpec
+import qualified CustomPackageDbSpec
+import qualified FileMappingSpec
+import qualified FindSpec
+import qualified FlagSpec
+import qualified GhcPkgSpec
+import qualified HomeModuleGraphSpec
+import qualified InfoSpec
+import qualified LangSpec
+import qualified LintSpec
+import qualified ListSpec
+import qualified MonadSpec
+import qualified PathsAndFilesSpec
+import qualified ShellParseSpec
+import qualified TargetSpec
+
+spec :: Spec
+spec = do
+  describe "Browse"          BrowseSpec.spec
+  describe "CabalHelper"     CabalHelperSpec.spec
+  describe "CaseSplit"       CaseSplitSpec.spec
+  describe "Check"           CheckSpec.spec
+  describe "Cradle"          CradleSpec.spec
+  describe "CustomPackageDb" CustomPackageDbSpec.spec
+  describe "FileMapping"     FileMappingSpec.spec
+  describe "Find"            FindSpec.spec
+  describe "Flag"            FlagSpec.spec
+  describe "GhcPkg"          GhcPkgSpec.spec
+  describe "HomeModuleGraph" HomeModuleGraphSpec.spec
+  describe "Info"            InfoSpec.spec
+  describe "Lang"            LangSpec.spec
+  describe "Lint"            LintSpec.spec
+  describe "List"            ListSpec.spec
+  describe "Monad"           MonadSpec.spec
+  describe "PathsAndFiles"   PathsAndFilesSpec.spec
+  describe "ShellParse"      ShellParseSpec.spec
+  describe "Target"          TargetSpec.spec
 
 main :: IO ()
 main = do
