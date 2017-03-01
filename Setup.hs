@@ -3,6 +3,7 @@
 import Distribution.Simple
 import Distribution.Simple.Setup
 import Distribution.Simple.Install
+import Distribution.Simple.Program
 import Distribution.Simple.Register
 import Distribution.Simple.InstallDirs as ID
 import Distribution.Simple.LocalBuildInfo
@@ -25,6 +26,7 @@ main :: IO ()
 main = defaultMainWithHooks $ simpleUserHooks {
    confHook = \(gpd, hbi) cf ->
               xBuildDependsLike <$> (confHook simpleUserHooks) (gpd, hbi) cf
+ , hookedPrograms = [ simpleProgram "shelltest" ]
  }
 
 xBuildDependsLike :: LocalBuildInfo -> LocalBuildInfo

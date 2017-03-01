@@ -1,0 +1,62 @@
+
+cabal exec -- ghc-mod browse MyModule | sort
+>>>
+MyConstructor1
+MyConstructor2
+MyType
+some_char
+some_num
+some_string
+>>>= 0
+
+cabal exec -- ghc-mod browse -q MyModule | sort
+>>>
+MyModule.MyConstructor1
+MyModule.MyConstructor2
+MyModule.MyType
+MyModule.some_char
+MyModule.some_num
+MyModule.some_string
+>>>= 0
+
+cabal exec -- ghc-mod browse -d MyModule | sort
+>>>
+MyConstructor1 :: MyType
+MyConstructor2 :: MyType
+MyType :: data MyType
+some_char :: Char
+some_num :: Integer
+some_string :: [Char]
+>>>= 0
+
+cabal exec -- ghc-mod browse -o MyModule | sort
+>>>
+($?>>/)
+MyConstructor1
+MyConstructor2
+MyType
+some_char
+some_num
+some_string
+>>>= 0
+
+cabal exec -- ghc-mod browse -p MyModule | sort
+>>>
+MyConstructor1 -- from:MyType
+MyConstructor2 -- from:MyType
+MyType
+some_char
+some_num
+some_string
+>>>= 0
+
+cabal exec -- ghc-mod browse -odpq MyModule | sort
+>>>
+MyModule.($?>>/) :: Int -> Int -> Int
+MyModule.MyConstructor1 :: MyType -- from:MyType
+MyModule.MyConstructor2 :: MyType -- from:MyType
+MyModule.MyType :: data MyType
+MyModule.some_char :: Char
+MyModule.some_num :: Integer
+MyModule.some_string :: [Char]
+>>>= 0

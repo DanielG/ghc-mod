@@ -1,0 +1,11 @@
+cabal exec -- ghc-mod browse Data.Map
+>>> /differenceWithKey/
+>>>= 0
+
+cabal exec -- ghc-mod browse -d Data.Either
+>>> /^either :: \(a -> c\) -> \(b -> c\) -> Either a b -> c$/
+>>>= 0
+
+cabal exec -- ghc-mod browse -d Data.Either
+>>> /^Left :: a -> Either a b$/
+>>>= 0
