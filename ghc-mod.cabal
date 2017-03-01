@@ -93,6 +93,7 @@ Extra-Source-Files:     ChangeLog
                         bench/data/simple-cabal/simple-cabal.cabal
                         bench/data/simple-cabal/*.hs
 
+
 Custom-Setup
   Setup-Depends:         base
                        , Cabal < 1.25
@@ -101,6 +102,7 @@ Custom-Setup
                        , process
                        , template-haskell
                        , transformers
+
 
 Library
   Default-Language:     Haskell2010
@@ -230,6 +232,7 @@ Executable ghc-mod
                       , semigroups        < 0.19 && >= 0.10.0
                       , ghc-mod
 
+
 Executable ghc-modi
   Default-Language:     Haskell2010
   Main-Is:              GHCModi.hs
@@ -251,6 +254,7 @@ Executable ghc-modi
                       , time              < 1.7
                       , ghc-mod
 
+
 Test-Suite doctest
   Type:                 exitcode-stdio-1.0
   Default-Language:     Haskell2010
@@ -260,6 +264,7 @@ Test-Suite doctest
   Main-Is:              doctests.hs
   Build-Depends:        base
                       , doctest           < 0.12 && >= 0.9.3
+
 
 Test-Suite spec
   Default-Language:     Haskell2010
