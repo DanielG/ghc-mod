@@ -77,4 +77,7 @@ done <<EOF
 7.10.3 x86_64-deb8-linux         xz  1.22.8.0  debian:jessie
 7.8.4  x86_64-unknown-linux-deb7 xz  1.18.1.0  debian:jessie
 7.6.3  x86_64-unknown-linux      bz2 1.18.1.0  debian:squeeze 398dd5fa6ed479c075ef9f638ef4fc2cc0fbf994e1b59b54d77c26a8e1e73ca0 d6abb6fef8204780a41aff2e93dfa297883673507cec557348aebf6b37843ae4
+7.4.2  x86_64-unknown-linux      bz2 1.18.1.0  debian:squeeze da962575e2503dec250252d72a94b6bf69baef7a567b88e90fd6400ada527210 d6abb6fef8204780a41aff2e93dfa297883673507cec557348aebf6b37843ae4
+7.2.2  x86_64-unknown-linux      bz2 1.18.1.0  debian:squeeze 43dd8b0f9bf713d51d2b1f3a3f5184add39d2a1375f7d3bec496e8a7520297f1 d6abb6fef8204780a41aff2e93dfa297883673507cec557348aebf6b37843ae4
+7.0.4  x86_64-unknown-linux      bz2 1.18.1.0  debian:squeeze 29e122db0b7720a1604d9d3865fcc6d28b06acadcebd4f303f82fcce30cc8455 d6abb6fef8204780a41aff2e93dfa297883673507cec557348aebf6b37843ae4
 EOF
