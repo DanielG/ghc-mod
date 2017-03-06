@@ -1,4 +1,4 @@
--- ghc-mod: Making Haskell development *more* fun
+-- ghc-mod: Happy Haskell Hacking
 -- Copyright (C) 2015  Nikolay Yakimov <root@livid.pp.ru>
 --
 -- This program is free software: you can redistribute it and/or modify

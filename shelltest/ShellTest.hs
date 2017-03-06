@@ -1,5 +1,5 @@
 #!/usr/bin/env runhaskell
--- ghc-mod: Making Haskell development *more* fun
+-- ghc-mod: Happy Haskell Hacking
 -- Copyright (C) 2017  Daniel Gröber <dxld ÄT darkboxed DOT org>
 --
 -- This program is free software: you can redistribute it and/or modify
