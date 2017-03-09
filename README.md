@@ -63,7 +63,7 @@ almost 100 releases! We would like to make a cut during v6.0 or so and
 completely re-do the API but we need more input from downstream tool writers to
 do that properly, see [Library API Redesign](Library-API-Redesign.md).
 
-Right now [The Haskell Refactorer (HaRe)](https://github.com/alanz/HaRe) uses
+For example [The Haskell Refactorer (HaRe)](https://github.com/alanz/HaRe) uses
 the build environment abstraction ghc-mod provides so it can concentrate on it's
 core functionality instead of worrying about build environments and compiler
 session setup.
