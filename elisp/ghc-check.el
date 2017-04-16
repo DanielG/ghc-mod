@@ -139,7 +139,8 @@ nil            do not display errors/warnings.
 	       (line (string-to-number (match-string 2 err)))
                (coln (string-to-number (match-string 3 err)))
 	       (msg (match-string 4 err))
-	       (wrn (string-match "^Warning" msg))
+	       (wrn (and (not (string-match "Could not deduce" msg))
+                         (string-match "^Warning" msg)))
                (hole (save-match-data
                         (when (string-match "Found hole .\\(_[_[:alnum:]]*\\)." msg)
                               (match-string 1 msg))))
