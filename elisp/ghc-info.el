@@ -21,6 +21,28 @@
        nil
        (lambda () (insert info))))))
 
+(defun ghc-jump-to-def (&optional ask)
+  (interactive "P")
+  (let* ((expr0 (ghc-things-at-point))
+         (expr (if (or ask (not expr0)) (ghc-read-expression expr0) expr0))
+         (info (ghc-get-info expr)))
+    (when (and info
+               (not (string= info "Cannot show info")))
+      (let* ( (re "Defined at \\([^:]+\\):\\([[:digit:]]+\\):\\([[:digit:]]+\\)")
+              (filename (progn (string-match re info)
+                               (match-string 1 info)))
+
+              (row (progn (string-match re info)
+                          (match-string 2 info)))
+
+              (col (progn (string-match re info)
+                          (match-string 3 info))))
+
+        (find-file filename)
+        (goto-line (string-to-number row))
+        (beginning-of-line)
+        (forward-char (string-to-number col))))))
+
 (defun ghc-get-info (expr)
   (let* ((file (buffer-file-name))
 	 (cmd (format "info %s %s\n" file expr)))
