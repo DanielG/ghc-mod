@@ -189,16 +189,25 @@ nil            do not display errors/warnings.
 	    (setq beg (point))
 	    (forward-line)
 	    (setq end (point))))
-	  (setq ovl (make-overlay beg end))
-	  (overlay-put ovl 'ghc-check t)
-	  (overlay-put ovl 'ghc-file file)
-	  (overlay-put ovl 'ghc-msg msg)
-	  (overlay-put ovl 'help-echo msg)
-          (overlay-put ovl 'ghc-hole hole)
-	  (let ((fringe (if err ghc-check-error-fringe (if hole ghc-check-hole-fringe ghc-check-warning-fringe)))
-		(face (if err 'ghc-face-error (if hole 'ghc-face-hole 'ghc-face-warn))))
-	    (overlay-put ovl 'before-string fringe)
-	    (overlay-put ovl 'face face)))))))
+          (let ((old-ovls (ghc-check-overlay-at beg))
+                (old-err
+                 (apply
+                  'or (mapcar
+                       (lambda (ovl)
+                         (eq 'ghc-face-error (overlay-get ovl 'face)))
+                                 (if (boundp 'old-ovls) old-ovls nil)))))
+            (when err (dolist (ovl old-ovls) (delete-overlay ovl)))
+            (when (or err (not old-err))
+              (setq ovl (make-overlay beg end))
+              (overlay-put ovl 'ghc-check t)
+              (overlay-put ovl 'ghc-file file)
+              (overlay-put ovl 'ghc-msg msg)
+              (overlay-put ovl 'help-echo msg)
+              (overlay-put ovl 'ghc-hole hole)
+              (let ((fringe (if err ghc-check-error-fringe (if hole ghc-check-hole-fringe ghc-check-warning-fringe)))
+                    (face (if err 'ghc-face-error (if hole 'ghc-face-hole 'ghc-face-warn))))
+                (overlay-put ovl 'before-string fringe)
+                (overlay-put ovl 'face face)))))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
