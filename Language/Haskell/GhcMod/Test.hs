@@ -38,8 +38,8 @@ test f = runGmlT' [Left f] (fmap setHscInterpreted . deferErrors) $ do
 
 runTest :: GhcMonad m => String -> m (Maybe SomeException)
 runTest fn = do
-  res <- runStmt ("quickCheck " ++ fn) RunToCompletion
+  res <- execStmt ("quickCheck " ++ fn) execOptions
   return $ case res of
-    RunOk [] -> Nothing
-    RunException se -> Just se
+    ExecComplete {execResult = Right _ } -> Nothing
+    ExecComplete {execResult = Left se } -> Just se
     _ -> error "runTest"

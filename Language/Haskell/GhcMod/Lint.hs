@@ -22,7 +22,7 @@ lint opt file = ghandle handler $
   withMappedFile file $ \tempfile -> do
     (flags, classify, hint) <- liftIO $ argsSettings $ optLintHlintOpts opt
     hSrc <- liftIO $ openFile tempfile ReadMode
-    liftIO $ hSetEncoding hSrc (encoding flags)
+    -- liftIO $ hSetEncoding hSrc (encoding flags)
     res <- liftIO $ parseModuleEx flags file =<< Just `fmap` hGetContents hSrc
     case res of
       Right m -> pack . map show $ filter ((/=Ignore) . ideaSeverity) $ applyHints classify hint [m]

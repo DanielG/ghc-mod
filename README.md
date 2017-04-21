@@ -3,6 +3,16 @@
 
 Please read: [http://www.mew.org/~kazu/proj/ghc-mod/](http://www.mew.org/~kazu/proj/ghc-mod/)
 
+## Note on this commit
+
+This is a dirty-hack version meant to "make it compile" with forthcoming ghc-8.2.1 and cabal-2.0.
+I believe, somebody can also use it to estimate the changes required for a proper update.
+The recipe is:
+```
+cabal new-build --allow-newer --ghc-options="-XTypeSynonymInstances"
+```
+
+
 ## Using the stable version
 
 The Emacs front-end is available from
