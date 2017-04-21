@@ -1,0 +1,9 @@
+-- do not build sub-packages when using features from
+-- http://blog.ezyang.com/2016/05/announcing-cabal-new-build-nix-style-local-builds/
+--
+-- cabal new-build --allow-newer --ghc-options="-XTypeSynonymInstances"
+--
+packages:
+ ./
+ vendor/ghc-syb-utils-0.2.3/
+ vendor/cabal-helper-0.7.3.0/

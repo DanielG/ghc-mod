@@ -8,8 +8,10 @@ import Data.Maybe
 import Data.Functor
 import Data.Function
 import Distribution.Simple.LocalBuildInfo
+import Distribution.Types.LocalBuildInfo (componentsConfigs)
 import Distribution.PackageDescription
 
+import qualified Distribution.Compat.Graph as G
 import Distribution.Simple
 import Distribution.Simple.Setup
 import Distribution.Simple.Install
@@ -39,7 +41,10 @@ $(ifelsedefD "componentsConfigs" [d|
     :: LocalBuildInfo
     -> [(ComponentName, ComponentLocalBuildInfo, [ComponentName])]
     -> LocalBuildInfo
- setComponentsConfigs lbi cs = $(recUpdE' (nE "lbi") (mkName "componentsConfigs") (VarE $ mkName "cs"))
+ setComponentsConfigs lbi cs = $(recUpdE' (nE "lbi") (mkName "componentGraph") (VarE $ mkName "csg"))
+   where
+     csg = foldl (\g (_,x,_) -> G.insert x g) G.empty cs
+    -- $(recUpdE' (nE "lbi") (mkName "componentsConfigs") (VarE $ mkName "cs"))
 
  |] [d|
 

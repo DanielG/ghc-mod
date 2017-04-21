@@ -96,7 +96,7 @@ Extra-Source-Files:     ChangeLog
 
 Custom-Setup
   Setup-Depends:         base
-                       , Cabal < 1.25
+                       , Cabal
                        , containers
                        , filepath
                        , process
@@ -179,7 +179,7 @@ Library
                       , deepseq           < 1.5
                       , directory         < 1.4
                       , filepath          < 1.5
-                      , ghc               < 8.2  && >= 7.6
+                      , ghc               < 8.4  && >= 7.6
                       , ghc-paths         < 0.2  && >= 0.1.0.9
                       , ghc-syb-utils     < 0.3  && >= 0.2.3
                       , hlint             < 1.10 && >= 1.9.27
@@ -189,7 +189,7 @@ Library
                       , syb               < 0.7  && >= 0.5.1
                       , temporary         < 1.3  && >= 1.2.0.3
                       , transformers      < 0.6
-                      , time              < 1.7
+                      , time              < 1.9
                       , transformers-base < 0.5  && >= 0.4.4
                       , mtl               < 2.3  && >= 2.0
                       , monad-control     < 1.1  && >= 1
@@ -225,7 +225,7 @@ Executable ghc-mod
                       , process           < 1.5
                       , split             < 0.3  && >= 0.2.2
                       , mtl               < 2.3  && >= 2.0
-                      , ghc               < 8.2  && >= 7.6
+                      , ghc               < 8.4  && >= 7.6
                       , monad-control     < 1.1  && >= 1
                       , fclabels          == 2.0.*
                       , optparse-applicative >=0.13.0 && <0.14.0
@@ -251,7 +251,7 @@ Executable ghc-modi
                       , filepath          < 1.5
                       , process           < 1.5
                       , old-time          < 1.2
-                      , time              < 1.7
+                      , time              < 1.9
                       , ghc-mod
 
 
@@ -332,7 +332,7 @@ Benchmark criterion
                       , process           < 1.5
                       , split             < 0.3
                       , mtl               < 2.3  && >= 2.0
-                      , ghc               < 8.1
+                      , ghc               < 8.4
 
                       , monad-journal     < 0.8  && >= 0.4
                       , fclabels          == 2.0.*

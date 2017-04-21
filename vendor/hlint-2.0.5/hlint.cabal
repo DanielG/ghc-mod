@@ -1,0 +1,129 @@
+cabal-version:      >= 1.18
+build-type:         Simple
+name:               hlint
+version:            2.0.5
+license:            BSD3
+license-file:       LICENSE
+category:           Development
+author:             Neil Mitchell <ndmitchell@gmail.com>
+maintainer:         Neil Mitchell <ndmitchell@gmail.com>
+copyright:          Neil Mitchell 2006-2017
+synopsis:           Source code suggestions
+description:
+    HLint gives suggestions on how to improve your source code.
+homepage:           https://github.com/ndmitchell/hlint#readme
+bug-reports:        https://github.com/ndmitchell/hlint/issues
+data-dir:           data
+data-files:
+    hlint.yaml
+    default.yaml
+    Test.hs
+    report_template.html
+    hs-lint.el
+    hlint.1
+    hlint.ghci
+    HLint_QuickCheck.hs
+    HLint_TypeCheck.hs
+extra-doc-files:
+    README.md
+    CHANGES.txt
+tested-with:        GHC==8.0.2, GHC==7.10.3, GHC==7.8.4, GHC==7.6.3, GHC==7.4.2
+
+source-repository head
+    type:     git
+    location: https://github.com/ndmitchell/hlint.git
+
+flag threaded
+    default: True
+    manual: True
+    description: Build with support for multithreaded execution
+
+flag gpl
+    default: True
+    manual: True
+    description: Use GPL libraries, specifically hscolour
+
+library
+    default-language:   Haskell2010
+    build-depends:
+        base == 4.*, process, filepath, directory, containers,
+        unordered-containers, yaml, vector, text, bytestring,
+        transformers,
+        cpphs >= 1.20.1,
+        cmdargs >= 0.10,
+        haskell-src-exts >= 1.18 && < 1.20,
+        uniplate >= 1.5,
+        ansi-terminal >= 0.6.2,
+        extra >= 1.4.9,
+        refact >= 0.3
+
+    if flag(gpl)
+        build-depends: hscolour >= 1.21
+    else
+        cpp-options: -DGPL_SCARES_ME
+
+    hs-source-dirs:     src
+    exposed-modules:
+        Language.Haskell.HLint
+        Language.Haskell.HLint3
+    other-modules:
+        Paths_hlint
+        Apply
+        CmdLine
+        Grep
+        HLint
+        HsColour
+        Idea
+        Report
+        Util
+        Parallel
+        Refact
+        Config.All
+        Config.Compute
+        Config.Haskell
+        Config.Type
+        Config.Yaml
+        HSE.All
+        HSE.Bracket
+        HSE.FreeVars
+        HSE.Match
+        HSE.Reduce
+        HSE.Scope
+        HSE.Type
+        HSE.Util
+        Hint.All
+        Hint.Bracket
+        Hint.Comment
+        Hint.Duplicate
+        Hint.Export
+        Hint.Extensions
+        Hint.Import
+        Hint.Lambda
+        Hint.List
+        Hint.ListRec
+        Hint.Match
+        Hint.Monad
+        Hint.Naming
+        Hint.NewType
+        Hint.Pattern
+        Hint.Pragma
+        Hint.Restrict
+        Hint.Type
+        Hint.Unsafe
+        Hint.Util
+        Test.All
+        Test.Annotations
+        Test.InputOutput
+        Test.Proof
+        Test.Translate
+        Test.Util
+
+
+executable hlint
+    default-language:   Haskell2010
+    build-depends:      base, hlint
+    main-is:            src/Main.hs
+
+    ghc-options:        -rtsopts
+    if flag(threaded)
+        ghc-options:    -threaded

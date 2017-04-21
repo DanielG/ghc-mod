@@ -11,10 +11,10 @@ showPage dflag style = showDocWith dflag PageMode . withStyle dflag style
 showOneLine :: DynFlags -> PprStyle -> SDoc -> String
 showOneLine dflag style = showDocWith dflag OneLineMode . withStyle dflag style
 
-getStyle :: GhcMonad m => m PprStyle
-getStyle = do
+getStyle :: GhcMonad m => DynFlags -> m PprStyle
+getStyle df = do
     unqual <- getPrintUnqual
-    return $ mkUserStyle unqual AllTheWay
+    return $ mkUserStyle df unqual AllTheWay
 
-styleUnqualified :: PprStyle
-styleUnqualified = mkUserStyle neverQualify AllTheWay
+styleUnqualified :: DynFlags -> PprStyle
+styleUnqualified df = mkUserStyle df neverQualify AllTheWay
