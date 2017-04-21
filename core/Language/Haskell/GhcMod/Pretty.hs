@@ -47,8 +47,7 @@ renderSDoc sdoc = do
 
 gmComponentNameDoc :: ChComponentName -> Doc
 gmComponentNameDoc ChSetupHsName   = text $ "Setup.hs"
-gmComponentNameDoc (ChLibName "")  = text $ "library"
-gmComponentNameDoc (ChLibName n)   = text $ "library:" ++ n
+gmComponentNameDoc ChLibName       = text $ "library"
 gmComponentNameDoc (ChExeName n)   = text $ "exe:" ++ n
 gmComponentNameDoc (ChTestName n)  = text $ "test:" ++ n
 gmComponentNameDoc (ChBenchName n) = text $ "bench:" ++ n
