@@ -53,8 +53,8 @@ splits file lineNo colNo =
   ghandle handler $ runGmlT' [Left file] deferErrors $ do
       oopts <- outputOpts
       crdl <- cradle
-      style <- getStyle
       dflag <- G.getSessionDynFlags
+      style <- getStyle dflag
       modSum <- fileModSummaryWithMapping (cradleCurrentDir crdl </> file)
       whenFound' oopts (getSrcSpanTypeForSplit modSum lineNo colNo) $ \x -> do
           let (varName, bndLoc, (varLoc,varT))

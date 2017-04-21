@@ -6,6 +6,7 @@ import Distribution.Simple.Install
 import Distribution.Simple.Register
 import Distribution.Simple.InstallDirs as ID
 import Distribution.Simple.LocalBuildInfo
+import Distribution.Types.LocalBuildInfo (componentsConfigs)
 import Distribution.PackageDescription
 
 import Control.Arrow
@@ -51,7 +52,7 @@ xBuildDependsLike lbi =
    dependsMap ::
     LocalBuildInfo -> [(ComponentName, Deps)]
    dependsMap lbi =
-       second getDeps <$> allComponentsInBuildOrder lbi
+       (\x -> (componentLocalName x, getDeps x) ) <$> allComponentsInBuildOrder lbi
 
    otherDeps :: [(ComponentName, Deps)] -> Component -> Deps
    otherDeps deps comp = fromMaybe noDeps $

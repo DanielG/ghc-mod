@@ -5,7 +5,7 @@ import Data.IORef
 
 import GHC
 import GHC.Paths (libdir)
-import StaticFlags
+-- import StaticFlags
 import SysTools
 import DynFlags
 import HscMain
@@ -27,7 +27,7 @@ withLightHscEnv opts action = gbracket initEnv teardownEnv action
 
    initEnv :: m HscEnv
    initEnv = liftIO $ do
-     initStaticOpts
+     -- initStaticOpts
      settings <- initSysTools (Just libdir)
      dflags  <- initDynFlags (defaultDynFlags settings)
      env <- newHscEnv dflags

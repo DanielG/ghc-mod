@@ -67,6 +67,10 @@ deriveEqDynFlags qds = do
                       ]
        ignoredTypeNames =
            [ "LogAction"
+           , "LogFinaliser"
+           , "LogOutput"
+           , "OverridingBool"
+           , "Scheme"
            , "PackageState"
            , "Hooks"
            , "FlushOut"
