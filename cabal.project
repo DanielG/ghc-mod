@@ -5,5 +5,5 @@
 --
 packages:
  ./
- vendor/ghc-syb-utils-0.2.3/
+ vendor/ghc-syb/utils/
  vendor/cabal-helper/

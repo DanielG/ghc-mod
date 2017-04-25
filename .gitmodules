@@ -1,3 +1,8 @@
 [submodule "vendor/cabal-helper"]
 	path = vendor/cabal-helper
 	url = https://github.com/achirkin/cabal-helper.git
+
+[submodule "vendor/ghc-syb-utils"]
+        path = vendor/ghc-syb/utils
+        url = https://github.com/achirkin/ghc-syb.git
+
