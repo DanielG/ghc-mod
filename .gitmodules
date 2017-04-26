@@ -3,6 +3,6 @@
 	url = https://github.com/achirkin/cabal-helper.git
 
 [submodule "vendor/ghc-syb-utils"]
-        path = vendor/ghc-syb/utils
+        path = vendor/ghc-syb
         url = https://github.com/achirkin/ghc-syb.git
 
