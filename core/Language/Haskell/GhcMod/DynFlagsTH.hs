@@ -23,41 +23,12 @@ module Language.Haskell.GhcMod.DynFlagsTH where
 import Language.Haskell.TH
 import Language.Haskell.TH.Syntax
 import Control.Applicative
-import Data.Data
+import qualified Data.IntSet as IS
 import Data.Maybe
 import Data.Generics.Aliases
 import Data.Generics.Schemes
-import BasicTypes
 import DynFlags
 import Prelude
-
-deriving instance Data GhcMode
-deriving instance Data GhcLink
-deriving instance Data HscTarget
-deriving instance Data Way
-deriving instance Data DynLibLoader
-deriving instance Data Option
-deriving instance Data IgnorePackageFlag
-deriving instance Data PackageFlag
-deriving instance Data ModRenaming
-deriving instance Data PackageArg
-deriving instance Data TrustFlag
-deriving instance Data SafeHaskellMode
--- deriving instance Data SseVersion
-
--- -------------------------------------
-
--- instance Data SseVersion where
---   toConstr _ = toConstr SseVersionD
-
--- data SseVersionData = SseVersionD deriving Data
-
--- -------------------------------------
-
-instance Data IntWithInf where
-  toConstr _ = toConstr IntWithInfD
-
-data IntWithInfData = IntWithInfD deriving Data
 
 -- -------------------------------------
 
@@ -107,7 +78,6 @@ deriveEqDynFlags qds = do
 #if __GLASGOW_HASKELL__ <= 706
                       , "ways" -- 'Ways' is not exported :/
 #endif
-                      , "sseVersion"
                       ]
        ignoredTypeNames =
            [ "LogAction"
@@ -189,9 +159,24 @@ deriveEqDynFlags qds = do
                [e| $(eqfn) $(return fa) $(return fb) |]
 #endif
 
-           _ ->
-               -- [e| $(return fa) == $(return fb)  |]
-               -- [e| [($(return fa) == $(return fb), if $(return fa) == $(return fb) then "" else "default changed")] |]
-               [e| [($(return fa) == $(return fb), if $(return fa) == $(return fb) then "" else ("default changed:" ++ fon ++ ":" ++ (show $ toConstr $(return fa)) ++ " /= " ++ (show $ toConstr $(return fa))  )     )] |]
+           "generalFlags" -> checkIntSet "generalFlags"
 
---       expr' = [e| trace (if $(expr) == True then "" else show ($(litE $ StringL fon), $(expr))) $(expr) |]
+           "warningFlags" -> checkIntSet "warningFlags"
+
+           _ ->
+               [e| [($(return fa) == $(return fb), if $(return fa) == $(return fb) then "" else ("default changed:" ++ fon)  )] |]
+
+       checkIntSet fieldName = do
+               let eqfn = [| let fn aa bb = r
+                                   where
+                                     uni = IS.union aa bb
+                                     dif = IS.intersection aa bb
+                                     delta = IS.difference uni dif
+                                     -- deltaStr = show $ map toEnum $( (IS.toList delta) :: [GeneralFlag] )
+                                     r = if delta == IS.empty
+                                           then [(True, "")]
+                                           -- else [(False, "generalFlags:delta=" ++ deltaStr )]
+                                           else [(False, fieldName ++ ":delta=" ++ (show delta) )]
+                             in fn
+                          |]
+               [e| $(eqfn) $(return fa) $(return fb) |]
