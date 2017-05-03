@@ -14,10 +14,7 @@
 -- You should have received a copy of the GNU Affero General Public License
 -- along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-{-# OPTIONS_GHC -fno-warn-orphans #-}
 {-# LANGUAGE CPP, TemplateHaskell #-}
-{-# LANGUAGE StandaloneDeriving #-}
-{-# LANGUAGE DeriveDataTypeable #-}
 module Language.Haskell.GhcMod.DynFlagsTH where
 
 import Language.Haskell.TH
@@ -45,10 +42,6 @@ deriveEqDynFlags qds = do
   a <- newName "a"
   b <- newName "b"
 
-  -- let combFunc = [| \(bs,ss) -> (and bs, unwords ss) |]
-
-  -- e <- AppE (VarE 'and) . ListE <$> sequence (mapMaybe (eq a b) fs)
-  -- e <- AppE (combFunc) . ListE <$> sequence $ combFunc (catMaybes $ map (eq a b) fs)
   e <- ListE <$> sequence (mapMaybe (eq a b) fs)
 
   tysig@(SigD n _) :_ <- qds
@@ -103,8 +96,6 @@ deriveEqDynFlags qds = do
                [e| $(eqfn) $(return fa) $(return fb) |]
 
            "extraPkgConfs" -> do
-               -- let eqfn = [| let fn a' b' = and (zipWith eqpr (a' []) (b' []))
-               --                          && length (a' []) == length (b' [])
                let eqfn = [| let fn a' b' = cond a' b'
 
                                  cond a' b' = zz ++ ll
@@ -158,6 +149,13 @@ deriveEqDynFlags qds = do
                           |]
                [e| $(eqfn) $(return fa) $(return fb) |]
 #endif
+
+           "outputFile" -> do
+               let eqfn = [| let fn (Just f1) (Just f2) = [(f1 == f2, if f1 == f2 then "" else "outputFile changed")]
+                                 fn _ _ = [(True, "")] -- anything with a Nothing is fine.
+                             in fn
+                          |]
+               [e| $(eqfn) $(return fa) $(return fb) |]
 
            "generalFlags" -> checkIntSet "generalFlags"
 
