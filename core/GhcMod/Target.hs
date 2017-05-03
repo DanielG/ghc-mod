@@ -86,9 +86,9 @@ initSession opts mdf = do
          df <- liftIO $ hsc_dflags <$> readIORef hsc_env_ref
          changed <-
              withLightHscEnv' (initDF crdl) $ \hsc_env -> do
+               gmLog GmDebug "initSession" $ text $ "outputFiles:" ++ show (outputFile $ hsc_dflags hsc_env, outputFile df)
                let dfEq = concat $ hsc_dflags hsc_env `eqDynFlags` df
                gmLog GmDebug "initSession" $ text $ "dfEq=" ++ (show $ filter (\t -> not (fst t)) dfEq)
-               -- gmLog GmDebug "initSession" $ text $ "dfEq=" ++ (show  dfEq)
                let eq = and $ map fst dfEq
                -- return $ not $ hsc_dflags hsc_env `eqDynFlags` df
                return $ not eq
