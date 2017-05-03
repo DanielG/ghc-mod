@@ -170,10 +170,8 @@ deriveEqDynFlags qds = do
                                      uni = IS.union aa bb
                                      dif = IS.intersection aa bb
                                      delta = IS.difference uni dif
-                                     -- deltaStr = show $ map toEnum $( (IS.toList delta) :: [GeneralFlag] )
                                      r = if delta == IS.empty
                                            then [(True, "")]
-                                           -- else [(False, "generalFlags:delta=" ++ deltaStr )]
                                            else [(False, fieldName ++ ":delta=" ++ (show delta) )]
                              in fn
                           |]
