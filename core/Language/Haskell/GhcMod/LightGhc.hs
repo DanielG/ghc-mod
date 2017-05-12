@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 module Language.Haskell.GhcMod.LightGhc where
 
 import Control.Monad
@@ -6,7 +7,10 @@ import Data.IORef
 
 import GHC
 import GHC.Paths (libdir)
+#if MIN_VERSION_GLASGOW_HASKELL(8,2,0,0)
+#else
 import StaticFlags
+#endif
 import SysTools
 import DynFlags
 import HscMain
@@ -22,7 +26,10 @@ import qualified Language.Haskell.GhcMod.Gap as Gap
 newLightEnv :: IOish m => (DynFlags -> LightGhc DynFlags) -> m HscEnv
 newLightEnv mdf = do
   df <- liftIO $ do
+#if MIN_VERSION_GLASGOW_HASKELL(8,2,0,0)
+#else
      initStaticOpts
+#endif
      settings <- initSysTools (Just libdir)
      initDynFlags $ defaultDynFlags settings
 

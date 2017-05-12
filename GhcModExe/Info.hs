@@ -44,8 +44,8 @@ info file expr =
     body = do
       m <- mkRevRedirMapFunc
       sdoc  <- Gap.infoThing m expr
-      st    <- getStyle
       dflag <- G.getSessionDynFlags
+      st    <- getStyle dflag
       return $ showPage dflag st sdoc
 
 ----------------------------------------------------------------
@@ -65,7 +65,7 @@ types withConstraints file lineNo colNo =
         modSum       <- fileModSummaryWithMapping (cradleCurrentDir crdl </> file)
         srcSpanTypes <- getSrcSpanType withConstraints modSum lineNo colNo
         dflag        <- G.getSessionDynFlags
-        st           <- getStyle
+        st           <- getStyle dflag
         convert' $ map (toTup dflag st) $ sortBy (cmp `on` fst) srcSpanTypes
  where
    handler (SomeException ex) = do

@@ -42,13 +42,12 @@ import Language.Haskell.GhcMod.Gap (renderGm)
 renderSDoc :: GhcMonad m => SDoc -> m Doc
 renderSDoc sdoc = do
   df <- getSessionDynFlags
-  ppsty <- getStyle
+  ppsty <- getStyle df
   return $ withPprStyleDoc df ppsty sdoc
 
 gmComponentNameDoc :: ChComponentName -> Doc
 gmComponentNameDoc ChSetupHsName   = text $ "Setup.hs"
-gmComponentNameDoc (ChLibName "")  = text $ "library"
-gmComponentNameDoc (ChLibName n)   = text $ "library:" ++ n
+gmComponentNameDoc ChLibName       = text $ "library"
 gmComponentNameDoc (ChExeName n)   = text $ "exe:" ++ n
 gmComponentNameDoc (ChTestName n)  = text $ "test:" ++ n
 gmComponentNameDoc (ChBenchName n) = text $ "bench:" ++ n
