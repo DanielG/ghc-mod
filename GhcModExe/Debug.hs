@@ -60,7 +60,7 @@ debugInfo = do
       , "System GHC Version:   " ++ ghcVersion
       , "Root directory:       " ++ cradleRootDir
       , "Current directory:    " ++ cradleCurrentDir
-      , "GHC Package flags:\n"   ++ render (nest 4 $
+      , "GHC Package flags:\n"   ++ renderGm (nest 4 $
               fsep $ map text pkgOpts)
       , "GHC System libraries: " ++ ghcLibDir
       ] ++ cabal
@@ -98,17 +98,17 @@ cabalDebug ghcPkgPath = do
 
     return $
          [ "cabal-install Version: "    ++ cabalInstVersion
-         , "Cabal Library Versions:\n"  ++ render (nest 4 $
+         , "Cabal Library Versions:\n"  ++ renderGm (nest 4 $
               fsep $ map text cabalPackages)
          , "Cabal file:            "    ++ show cradleCabalFile
          , "Project:               " ++ show cradleProject
-         , "Cabal entrypoints:\n"       ++ render (nest 4 $
+         , "Cabal entrypoints:\n"       ++ renderGm (nest 4 $
               mapDoc gmComponentNameDoc smpDoc entrypoints)
-         , "Cabal components:\n"        ++ render (nest 4 $
+         , "Cabal components:\n"        ++ renderGm (nest 4 $
               mapDoc gmComponentNameDoc graphDoc graphs)
-         , "GHC Cabal options:\n"       ++ render (nest 4 $
+         , "GHC Cabal options:\n"       ++ renderGm (nest 4 $
               mapDoc gmComponentNameDoc (fsep . map text) opts)
-         , "GHC search path options:\n" ++ render (nest 4 $
+         , "GHC search path options:\n" ++ renderGm (nest 4 $
               mapDoc gmComponentNameDoc (fsep . map text) srcOpts)
          ]
 
@@ -126,11 +126,11 @@ componentInfo ts = do
     opts <- targetGhcOptions crdl sefnmn
 
     return $ unlines $
-         [ "Matching Components:\n"     ++ render (nest 4 $
+         [ "Matching Components:\n"     ++ renderGm (nest 4 $
               alistDoc (either text mnDoc) (setDoc gmComponentNameDoc) mdlcs)
-         , "Picked Component:\n"        ++ render (nest 4 $
+         , "Picked Component:\n"        ++ renderGm (nest 4 $
               gmComponentNameDoc cn)
-         , "GHC Cabal options:\n"       ++ render (nest 4 $ fsep $ map text opts)
+         , "GHC Cabal options:\n"       ++ renderGm (nest 4 $ fsep $ map text opts)
          ]
  where
    zipMap f l = l `zip` (f `map` l)

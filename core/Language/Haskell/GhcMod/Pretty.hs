@@ -15,7 +15,7 @@
 -- along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 module Language.Haskell.GhcMod.Pretty
-  ( render
+  ( renderGm
   , renderSDoc
   , gmComponentNameDoc
   , gmLogLevelDoc
@@ -37,7 +37,7 @@ import Outputable (SDoc, withPprStyleDoc)
 
 import Language.Haskell.GhcMod.Types
 import Language.Haskell.GhcMod.Doc
-import Language.Haskell.GhcMod.Gap (render)
+import Language.Haskell.GhcMod.Gap (renderGm)
 
 renderSDoc :: GhcMonad m => SDoc -> m Doc
 renderSDoc sdoc = do

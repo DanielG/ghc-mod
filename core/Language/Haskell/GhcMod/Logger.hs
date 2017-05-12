@@ -99,7 +99,7 @@ withLogger' env action = do
     let setLogger df = Gap.setLogAction df $ appendLogRef rfm df logref
         handlers = [
             GHandler $ \ex -> return $ Left $ runReader (sourceError ex) gpe,
-            GHandler $ \ex -> return $ Left [render $ ghcExceptionDoc ex]
+            GHandler $ \ex -> return $ Left [renderGm $ ghcExceptionDoc ex]
           ]
         gpe = GmPprEnv {
                 gpeDynFlags = hsc_dflags env

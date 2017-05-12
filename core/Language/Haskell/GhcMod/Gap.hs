@@ -31,7 +31,7 @@ module Language.Haskell.GhcMod.Gap (
   , occNameForUser
   , deSugar
   , showDocWith
-  , render
+  , renderGm
   , GapThing(..)
   , fromTyThing
   , fileModSummary
@@ -201,19 +201,21 @@ showDocWith dflags mode = Pretty.showDoc mode (pprCols dflags)
 showDocWith _ = Pretty.showDocWith
 #endif
 
-render :: Pretty.Doc -> String
+renderGm :: Pretty.Doc -> String
 #if __GLASGOW_HASKELL__ >= 800
-render = Pretty.fullRender Pretty.PageMode 80 1.2 string_txt ""
+renderGm = Pretty.fullRender Pretty.PageMode 80 1.2 string_txt ""
 #else
-render = Pretty.fullRender Pretty.PageMode 80 1.2 string_txt ""
+renderGm = Pretty.fullRender Pretty.PageMode 80 1.2 string_txt ""
 #endif
  where
    string_txt :: Pretty.TextDetails -> String -> String
    string_txt (Pretty.Chr c)   s  = c:s
    string_txt (Pretty.Str s1)  s2 = s1 ++ s2
    string_txt (Pretty.PStr s1) s2 = unpackFS s1 ++ s2
-   string_txt (Pretty.ZStr s1) s2 = zString s1 ++ s2
    string_txt (Pretty.LStr s1 _) s2 = unpackLitString s1 ++ s2
+#if __GLASGOW_HASKELL__ >= 708
+   string_txt (Pretty.ZStr s1) s2 = zString s1 ++ s2
+#endif
 
 
 ----------------------------------------------------------------

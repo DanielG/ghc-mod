@@ -39,7 +39,7 @@ main =
       hSetEncoding stdin enc
       catches (progMain res) [
               Handler $ \(e :: GhcModError) ->
-                runGmOutT globalOptions $ exitError $ render (gmeDoc e)
+                runGmOutT globalOptions $ exitError $ renderGm (gmeDoc e)
             ]
 
 progMain :: (Options, GhcModCommands) -> IO ()
@@ -121,7 +121,7 @@ wrapGhcCommands opts cmd =
        Right _ ->
            return ()
        Left ed ->
-           exitError $ render (gmeDoc ed)
+           exitError $ renderGm (gmeDoc ed)
 
    loadMMappedFiles from (Just to) = loadMappedFile from to
    loadMMappedFiles from (Nothing) = do

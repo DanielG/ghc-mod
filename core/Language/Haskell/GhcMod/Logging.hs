@@ -78,7 +78,7 @@ gmLog level loc' doc = do
   let loc | loc' == "" = empty
           | otherwise = text loc' <+>: empty
       msgDoc = sep [loc, doc]
-      msg = dropWhileEnd isSpace $ render $ gmLogLevelDoc level <+>: msgDoc
+      msg = dropWhileEnd isSpace $ renderGm $ gmLogLevelDoc level <+>: msgDoc
 
   when (level <= level') $ gmErrStrLn msg
   gmLogQuiet level loc' doc
