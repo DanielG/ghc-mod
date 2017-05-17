@@ -25,13 +25,12 @@ Description:
   For more information, please see its home page.
 
 Category:               GHC, Development
-Cabal-Version:          >= 1.14
+Cabal-Version:          >= 1.24
 Build-Type:             Custom
 Data-Files:             elisp/Makefile
                         elisp/*.el
 Data-Files:             LICENSE COPYING.BSD3 COPYING.AGPL3
 Extra-Source-Files:     ChangeLog
-                        SetupCompat.hs
                         NotCPP/*.hs
                         NotCPP/COPYING
                         core/Language/Haskell/GhcMod/Monad/Compat.hs_h
@@ -96,9 +95,10 @@ Extra-Source-Files:     ChangeLog
 
 Custom-Setup
   Setup-Depends:         base
-                       , Cabal < 1.25
+                       , Cabal >= 1.24 && < 1.25
                        , containers
                        , filepath
+                       , directory
                        , process
                        , template-haskell
                        , transformers
