@@ -1,6 +1,7 @@
 import Criterion.Main
 import Language.Haskell.GhcMod.Target
-import TestUtils
+import Language.Haskell.GhcMod.Monad
+import Language.Haskell.GhcMod.Types
 import Dir
 import System.IO.Temp
 import System.Process hiding (env)
