@@ -30,12 +30,8 @@ main :: IO ()
 main = defaultMainWithHooks $ simpleUserHooks {
    instHook = inst,
    copyHook = copy,
-
-   confHook = \(gpd, hbi) cf ->
-              xBuildDependsLike <$> (confHook simpleUserHooks) (gpd, hbi) cf
-
- , buildHook = \pd lbi hooks flags -> (buildHook simpleUserHooks) pd (patchLibexecdir lbi) hooks flags
- , hookedPrograms = [ simpleProgram "shelltest" ]
+   buildHook = \pd lbi hooks flags -> (buildHook simpleUserHooks) pd (patchLibexecdir lbi) hooks flags,
+   hookedPrograms = [ simpleProgram "shelltest" ]
  }
 
 patchLibexecdir :: LocalBuildInfo -> LocalBuildInfo
@@ -45,49 +41,6 @@ patchLibexecdir lbi = let
     lbi' = lbi { installDirTemplates = idirtpl { libexecdir = libexecdir' } }
   in
     lbi'
-
-
-xBuildDependsLike :: LocalBuildInfo -> LocalBuildInfo
-xBuildDependsLike lbi =
-  let
-      cc = componentsConfigs lbi
-      pd = localPkgDescr lbi
-      deps = dependsMap lbi
-  in lbi {
-          componentsConfigs =
-              [ (cn, updateClbi deps comp clbi, cdeps)
-              | (cn, clbi, cdeps) <- cc
-              , let comp = getComponent pd cn
-              ]
-         }
- where
-   updateClbi deps comp clbi = setUnionDeps (otherDeps deps comp) clbi
-
---   dependsMap ::
---    LocalBuildInfo -> [(ComponentName, ([(UnitId, PackageId)], Map PackageName ModuleRenaming))]
-   dependsMap lbi =
-       second (componentPackageDeps &&& componentPackageRenaming)
-           <$> allComponentsInBuildOrder lbi
-
---   otherDeps :: [(ComponentName, ([(UnitId, PackageId)], Map PackageName ModuleRenaming))] -> Component -> ([(UnitId, PackageId)], Map PackageName ModuleRenaming)
-   otherDeps deps comp = fromMaybe ([], M.empty) $
-       flip lookup deps =<< read <$> lookup "x-build-depends-like" fields
-      where
-        fields = customFieldsBI (componentBuildInfo comp)
-
-   setComponentPackageRenaming clbi cprn =
-     clbi { componentPackageRenaming =
-                componentPackageRenaming clbi `M.union` cprn }
-
---   setUnionDeps :: ([(UnitId, PackageId)], Map PackageName ModuleRenaming) -> ComponentLocalBuildInfo -> ComponentLocalBuildInfo
-   setUnionDeps (deps, rns) clbi = let
-      clbi' = setComponentPackageRenaming clbi rns
-      cpdeps = componentPackageDeps clbi
-    in
-      clbi' {
-          componentPackageDeps = cpdeps `union` deps
-      }
-
 
 -- mostly copypasta from 'defaultInstallHook'
 inst ::
