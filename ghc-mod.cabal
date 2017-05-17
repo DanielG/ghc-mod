@@ -272,7 +272,7 @@ Test-Suite spec
                         ConstraintKinds, FlexibleContexts,
                         DataKinds, KindSignatures, TypeOperators, ViewPatterns
   Main-Is:              Main.hs
-  Hs-Source-Dirs:       test, ., src, core
+  Hs-Source-Dirs:       test, src
   Ghc-Options:          -Wall -fno-warn-deprecations -threaded
   Type:                 exitcode-stdio-1.0
   Other-Modules:        Paths_ghc_mod
