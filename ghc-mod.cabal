@@ -107,7 +107,7 @@ Library
   Default-Extensions:   ScopedTypeVariables, RecordWildCards, NamedFieldPuns,
                         ConstraintKinds, FlexibleContexts,
                         DataKinds, KindSignatures, TypeOperators, ViewPatterns
-  HS-Source-Dirs:       ., core
+  HS-Source-Dirs:       ., core, shared
   Exposed-Modules:
                         GhcMod
                         GhcModExe.Boot
@@ -221,7 +221,7 @@ Executable ghc-mod
                       , GHCMod.Options.ShellParse
   GHC-Options:          -Wall -fno-warn-deprecations -threaded
   Default-Extensions:   ConstraintKinds, FlexibleContexts
-  HS-Source-Dirs:       src
+  HS-Source-Dirs:       src, shared
   X-Internal:           True
   Build-Depends:
                       -- See Note [GHC Boot libraries]
@@ -251,7 +251,7 @@ Executable ghc-modi
   if os(windows)
       Cpp-Options:      -DWINDOWS
   Default-Extensions:   ConstraintKinds, FlexibleContexts
-  HS-Source-Dirs:       src, .
+  HS-Source-Dirs:       ., src, shared
   Build-Depends:
                       -- See Note [GHC Boot libraries]
                         base

@@ -16,6 +16,7 @@ main = do
      , "-XScopedTypeVariables", "-XRecordWildCards", "-XNamedFieldPuns", "-XConstraintKinds", "-XFlexibleContexts", "-XDataKinds", "-XKindSignatures", "-XTypeOperators", "-XViewPatterns"
      , "-i" ++ distdir ++ "/build/autogen/"
      , "-icore/"
+     , "-ishared"
 --     , "-optP-include"
 --     , "-optP" ++ distdir ++ "/build/autogen/cabal_macros.h"
      , "GhcMod.hs"
