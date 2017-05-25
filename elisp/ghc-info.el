@@ -3,8 +3,9 @@
 ;;; ghc-info.el
 ;;;
 
-;; Author:  Kazu Yamamoto <Kazu@Mew.org>
+;; Author:  Kazu Yamamoto <Kazu@Mew.org>, Daniel Gröber <dxld@darkboxed.org>
 ;; Created: Nov 15, 2010
+;; Revised: Aug 16, 2014
 
 ;;; Code:
 
@@ -31,9 +32,8 @@
 ;;; type
 ;;;
 
-(defvar ghc-type-overlay nil)
-
-(make-variable-buffer-local 'ghc-type-overlay)
+(defvar-local ghc-type-overlay nil "Overlay marking the extent of the
+expression who's type was just analyzed.")
 
 (defun ghc-type-set-ix (n)
   (overlay-put ghc-type-overlay 'ix n))
@@ -57,11 +57,19 @@
 
 (defun ghc-type-init ()
   (setq ghc-type-overlay (make-overlay 0 0))
+  (overlay-put ghc-type-overlay 'ghc-type t)
   (overlay-put ghc-type-overlay 'face 'region)
   (ghc-type-clear-overlay)
   (setq after-change-functions
 	(cons 'ghc-type-clear-overlay after-change-functions))
   (add-hook 'post-command-hook 'ghc-type-post-command-hook))
+
+(defun ghc-type-deinit ()
+  (remove-hook 'post-command-hook 'ghc-type-post-command-hook)
+  (setq after-change-functions
+	(delq 'ghc-type-clear-overlay after-change-functions))
+  (ghc-type-clear-overlay)
+  (remove-overlays (point-min) (point-max) 'ghc-type t))
 
 (defun ghc-type-clear-overlay (&optional _beg _end _len)
   (when (overlayp ghc-type-overlay)

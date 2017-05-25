@@ -1,3 +1,4 @@
+;;; -*- lexical-binding: t -*-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
 ;;; ghc-check.el
@@ -21,7 +22,7 @@
     (t
      :inherit error))
   "Face used for error lines."
-  :group 'ghc)
+  :group 'ghc-mod)
 
 (defface ghc-face-warn
   '((((supports :underline (:style wave)))
@@ -29,7 +30,7 @@
     (t
      :inherit warning))
   "Face used for warning lines."
-  :group 'ghc)
+  :group 'ghc-mod)
 
 (defface ghc-face-hole
   '((((supports :underline (:style wave)))
@@ -37,28 +38,45 @@
     (t
      :inherit warning))
   "Face used for hole lines."
-  :group 'ghc)
+  :group 'ghc-mod)
 
-(defvar ghc-check-error-fringe (propertize "!" 'display '(left-fringe exclamation-mark)))
+(defvar ghc-check-error-fringe
+  (propertize "!" 'display '(left-fringe exclamation-mark)))
 
-(defvar ghc-check-warning-fringe (propertize "?" 'display '(left-fringe question-mark)))
+(defvar ghc-check-warning-fringe
+  (propertize "?" 'display '(left-fringe question-mark)))
 
-(defvar ghc-check-hole-fringe (propertize "_" 'display '(left-fringe horizontal-bar)))
+(defvar ghc-check-hole-fringe
+  (propertize "_" 'display '(left-fringe horizontal-bar)))
 
-(defvar ghc-display-error nil
-  "*How to display errors/warnings when using 'M-n' and 'M-p':
+(defcustom ghc-display-error nil
+  "*How to display errors/warnings when using 'M-n' and 'M-p'"
+  :type '(choice (const :tag "Do not display errors/warnings." nil)
+                 (const :tag "Display errors/warnings in the minibuffer." 'minibuffer)
+                 (const :tag "Display errors/warnings in a new buffer." 'other-buffer))
+  :group 'ghc-mod)
 
-nil            do not display errors/warnings.
-'minibuffer    display errors/warnings in the minibuffer.
-'other-buffer  display errors/warnings in a new buffer.
-")
+(defcustom ghc-display-hole 'other-buffer
+  "*How to display hole information when using 'C-c C-j' and 'C-c C-h'"
+  :type '(choice (const :tag "Display errors/warnings in the minibuffer." 'minibuffer)
+                 (const :tag "Display errors/warnings in a new buffer." 'other-buffer))
+  :group 'ghc-mod)
 
-(defvar ghc-display-hole 'other-buffer
-  "*How to display hole information when using 'C-c C-j' and 'C-c C-h'
+(defcustom ghc-check-jump-to-message nil
+  "After checking a buffer jump to the first hole/warning/error reported."
+  :type 'boolean
+  :group 'ghc-mod)
 
-'minibuffer    display errors/warnings in the minibuffer.
-'other-buffer  display errors/warnings in the a new buffer"
-)
+(defcustom ghc-check-jump-display-message nil
+  "After jumping to a location also display the error message."
+  :type 'boolean
+  :group 'ghc-mod)
+
+(defcustom ghc-check-jump-follow-other-files nil
+  "When attempting to jump to an error that is from another file
+open this file and jump to the error inside it."
+  :type 'boolean
+  :group 'ghc-mod)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -67,13 +85,19 @@ nil            do not display errors/warnings.
   ;; Only check syntax of visible buffers
   (when (and (buffer-file-name)
 	     (file-exists-p (buffer-file-name)))
+    (setq ghc-point@syntax-check (point))
     (ghc-with-process (ghc-check-send)
 		      'ghc-check-callback
 		      (lambda () (setq mode-line-process " -:-")))))
 
+
+(defun ghc-check-deinit ()
+  (ghc-kill-process)
+  (remove-overlays (point-min) (point-max) 'ghc-check t))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(ghc-defstruct hilit-info file line msg err hole coln)
+(ghc-defstruct msg-info file line coln msg type)
 
 (defun ghc-check-send ()
   (let ((file (buffer-file-name)))
@@ -106,21 +130,20 @@ nil            do not display errors/warnings.
       (ghc-with-current-buffer ghc-process-original-buffer
 	(let ((len (length infos)))
 	  (if (= len 0)
-	      (setq mode-line-process "")
-	    (let* ((errs (ghc-filter 'ghc-hilit-info-get-err infos))
+	      (setq mode-line-process nil)
+	    (let* ((errs (ghc-filter (lambda (info) (eq 'err (ghc-msg-info-get-type info))) infos))
 		   (elen (length errs))
 		   (wlen (- len elen)))
 	      (setq mode-line-process (format " %d:%d" elen wlen)))))
 	(force-mode-line-update))))
    (t
     (let* ((err (ghc-unescape-string (buffer-substring-no-properties (+ (point) 3) (point-max))))
-	   (info (ghc-make-hilit-info
+	   (info (ghc-make-msg-info
 		  :file "Fail errors:"
 		  :line 0
 		  :coln 0
 		  :msg  err
-		  :err  t
-		  :hole nil))
+		  :type 'err))
 	   (infos (list info))
 	   (file ghc-process-original-file)
 	   (buf ghc-process-original-buffer))
@@ -143,62 +166,104 @@ nil            do not display errors/warnings.
                (hole (save-match-data
                         (when (string-match "Found hole .\\(_[_[:alnum:]]*\\)." msg)
                               (match-string 1 msg))))
-	       (info (ghc-make-hilit-info
+	       (info (ghc-make-msg-info
 		      :file file
 		      :line line
                       :coln coln
 		      :msg  msg
-		      :err  (and (not wrn) (not hole))
-                      :hole hole)))
+		      :type (if wrn 'warn (if hole 'hole 'err)))))
 	  (unless (member info infos)
 	    (ghc-add infos info)))))))
+
+(defun ghc-check-add-overlay (i ofile info)
+  (pcase-let ((`(,file ,line ,coln ,msg ,type) info))
+    (let (beg end ovl)
+      (goto-char (point-min))
+      (cond
+       ((file-equal-p ofile file)
+	(if (eq type 'hole)
+	    (progn
+	      (forward-line (1- line))
+	      (forward-char (1- coln))
+	      (setq beg (point))
+	      (forward-word)
+	      (setq end (point)))
+	  (progn
+	    (forward-line (1- line))
+	    (forward-char (1- coln))
+	    (setq beg (point))
+	    (forward-sexp)
+	    ;; (skip-chars-forward "^[:space:]" (line-end-position))
+	    (setq end (point)))))
+       (t
+	(setq beg (point))
+	(forward-line)
+	(setq end (point))))
+
+      (setq ovl (make-overlay beg end))
+
+      ;; This is required so we can remove overlays later --- we need
+      ;; a property with a known value.
+      (overlay-put ovl 'ghc-check t)   
+      (overlay-put ovl 'ghc-index i)
+      (overlay-put ovl 'ghc-info info)
+      (overlay-put ovl 'help-echo msg)
+      (overlay-put ovl 'before-string
+		   (pcase type
+		     (`warn ghc-check-warning-fringe)
+		     (`hole ghc-check-hole-fringe )
+		     (`err  ghc-check-error-fringe)))
+
+      (overlay-put ovl 'face
+		   (pcase type
+		     (`warn 'ghc-face-warn)
+		     (`hole 'ghc-face-hole )
+		     (`err  'ghc-face-error))))))
+
+(defun ghc-check-overlay-file (ovl)
+  (let ((info (overlay-get ovl 'ghc-info)))
+    (ghc-msg-info-get-file info)))
+
+(defun ghc-check-overlay-line (ovl)
+  (let ((info (overlay-get ovl 'ghc-info)))
+    (ghc-msg-info-get-line info)))
+
+(defun ghc-check-overlay-coln (ovl)
+  (let ((info (overlay-get ovl 'ghc-info)))
+    (ghc-msg-info-get-coln info)))
+
+(defun ghc-check-overlay-msg (ovl)
+  (let ((info (overlay-get ovl 'ghc-info)))
+    (ghc-msg-info-get-msg info)))
 
 (defun ghc-check-highlight-original-buffer (ofile buf infos)
   (ghc-with-current-buffer buf
     (remove-overlays (point-min) (point-max) 'ghc-check t)
     (save-excursion
       (goto-char (point-min))
-      (dolist (info infos)
-	(let ((line (ghc-hilit-info-get-line info))
-	      (msg  (ghc-hilit-info-get-msg  info))
-	      (file (ghc-hilit-info-get-file info))
-	      (err  (ghc-hilit-info-get-err  info))
-              (hole (ghc-hilit-info-get-hole info))
-              (coln (ghc-hilit-info-get-coln info))
-	      beg end ovl)
-	  ;; FIXME: This is the Shlemiel painter's algorithm.
-	  ;; If this is a bottleneck for a large code, let's fix.
-	  (goto-char (point-min))
-	  (cond
-	   ((file-equal-p ofile file)
-            (if hole
-              (progn
-                (forward-line (1- line))
-                (forward-char (1- coln))
-                (setq beg (point))
-                (forward-char (length hole))
-                (setq end (point)))
-              (progn
-                (forward-line (1- line))
-                (forward-char (1- coln))
-                (setq beg (point))
-		(forward-sexp)
-                ;; (skip-chars-forward "^[:space:]" (line-end-position))
-                (setq end (point)))))
-	   (t
-	    (setq beg (point))
-	    (forward-line)
-	    (setq end (point))))
-	  (setq ovl (make-overlay beg end))
-	  (overlay-put ovl 'ghc-check t)
-	  (overlay-put ovl 'ghc-file file)
-	  (overlay-put ovl 'ghc-msg msg)
-	  (overlay-put ovl 'help-echo msg)
-          (overlay-put ovl 'ghc-hole hole)
-	  (let ((fringe (if err ghc-check-error-fringe (if hole ghc-check-hole-fringe ghc-check-warning-fringe)))
-		(face (if err 'ghc-face-error (if hole 'ghc-face-hole 'ghc-face-warn))))
-	    (overlay-put ovl 'before-string fringe)
-	    (overlay-put ovl 'face face)))))))
+      (let ((i 1))
+	(dolist (info infos)
+	  (ghc-check-add-overlay i ofile info)
+	  (setq i (1+ i)) )))
+
+    (when (and ghc-check-jump-to-message (equal (point) ghc-point@syntax-check))
+      (ghc-goto-first-error))))
+
+(defun ghc-check-jump-to-info (info &optional ofile)
+  (cl-block nil
+    (pcase-let ((`(,file ,line ,coln ,msg ,err ,hole) info))
+      (unless hole
+	(unless (file-equal-p (or ofile (buffer-file-name)) file)
+	  (if ghc-check-jump-follow-other-files
+	      (find-file file)
+	    (cl-return)))
+
+	(push-mark (point))
+	(goto-char (point-min))
+	(forward-line (1- line))
+	(forward-char (1- coln))
+	(when ghc-check-jump-display-message
+	  (ghc-display-info-to-buffer info))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -213,8 +278,8 @@ nil            do not display errors/warnings.
 (defun ghc-get-errors-over-warnings ()
   (let ((ovls (ghc-check-overlay-at (point))))
     (when ovls
-      (let ((msgs (mapcar (lambda (ovl) (overlay-get ovl 'ghc-msg)) ovls))
-	    (file (overlay-get (car ovls) 'ghc-file))
+      (let ((msgs (mapcar 'ghc-check-overlay-msg ovls))
+	    (file (ghc-check-overlay-file (car ovls)))
 	    errs wrns)
 	(dolist (msg msgs)
 	  (if (string-match "^Warning" msg)
@@ -222,7 +287,29 @@ nil            do not display errors/warnings.
 	    (ghc-add errs msg)))
 	(ghc-make-file-msgs :file file :msgs (nconc errs wrns))))))
 
-(defun ghc-display-errors ()
+(defun ghc-sort-errors-before-warnings (ovls)
+  (ghc-sort
+   ovls
+   (ghc-on
+    '<=
+    (lambda (ovl)
+      (pcase (ghc-msg-info-get-type (overlay-get ovl 'ghc-info))
+	(`err  0)
+	(`hole 1)
+	(`warn 2))))))
+
+(defun ghc-display-info-to-buffer (info)
+  (if (not info)
+      (message "No errors or warnings")
+    (pcase-let ((`(,file ,line ,coln ,msg ,type) info))
+      (ghc-display
+       nil
+       (lambda ()
+	 (insert file "\n\n")
+	 (mapc (lambda (x) (insert x "\n\n")) (list msg)))))))
+
+
+(defun ghc-display-errors-to-buffer ()
   (interactive)
   (let ((file-msgs (ghc-get-errors-over-warnings)))
     (if (null file-msgs)
@@ -250,8 +337,8 @@ nil            do not display errors/warnings.
 (defun ghc-get-only-holes ()
   (let ((ovls (ghc-check-overlay-at (point))))
     (when ovls
-      (let ((msgs (mapcar (lambda (ovl) (overlay-get ovl 'ghc-msg)) ovls))
-	    (file (overlay-get (car ovls) 'ghc-file))
+      (let ((msgs (mapcar 'ghc-check-overlay-msg ovls))
+	    (file (ghc-check-overlay-file (car ovls)))
 	    holes)
 	(dolist (msg msgs)
 	  (if (string-match "Found hole" msg)
@@ -313,18 +400,35 @@ nil            do not display errors/warnings.
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+(defun ghc-display-errors (&rest args)
+  (interactive)
+  (apply
+   (pcase ghc-display-error
+     (`minibuffer   'ghc-display-errors-to-minibuf)
+     ((or `other-buffer _) 'ghc-display-errors-to-buffer))
+   args))
+
+(defun ghc-goto-first-error ()
+  (interactive)
+  (let* ((ovls0 (overlays-in (point-min) (point-max)))
+         (ovls1 (ghc-filter 'ghc-overlay-p ovls0))
+	 (ovls2 (sort ovls1 (ghc-on '>= (lambda (ovl) (overlay-get ovl 'ghc-index)))))
+	 (ovls3 (ghc-sort-errors-before-warnings ovls2))
+         (first_error (first ovls3)))
+    (if first_error (ghc-check-jump-to-info (overlay-get first_error 'ghc-info)))))
+
 (defun ghc-goto-prev-error ()
   (interactive)
   (let* ((here (point))
          (ovls0 (ghc-check-overlay-at here))
          (end (if ovls0 (overlay-start (car ovls0)) here))
          (ovls1 (overlays-in (point-min) end))
-         (ovls2 (ghc-filter (lambda (ovl) (overlay-get ovl 'ghc-check)) ovls1))
+         (ovls2 (ghc-filter 'ghc-overlay-p ovls1))
          (pnts (mapcar 'overlay-start ovls2)))
     (if pnts (goto-char (apply 'max pnts))))
   (cond
    ((eq ghc-display-error 'minibuffer) (ghc-display-errors-to-minibuf))
-   ((eq ghc-display-error 'other-buffer) (ghc-display-errors))))
+   ((eq ghc-display-error 'other-buffer) (ghc-display-errors-to-buffer))))
 
 (defun ghc-goto-next-error ()
   (interactive)
@@ -332,12 +436,12 @@ nil            do not display errors/warnings.
          (ovls0 (ghc-check-overlay-at here))
          (beg (if ovls0 (overlay-end (car ovls0)) here))
          (ovls1 (overlays-in beg (point-max)))
-         (ovls2 (ghc-filter (lambda (ovl) (overlay-get ovl 'ghc-check)) ovls1))
+         (ovls2 (ghc-filter 'ghc-overlay-p ovls1))
          (pnts (mapcar 'overlay-start ovls2)))
     (if pnts (goto-char (apply 'min pnts))))
   (cond
    ((eq ghc-display-error 'minibuffer) (ghc-display-errors-to-minibuf))
-   ((eq ghc-display-error 'other-buffer) (ghc-display-errors))))
+   ((eq ghc-display-error 'other-buffer) (ghc-display-errors-to-buffer))))
 
 (defun ghc-goto-prev-hole ()
   (interactive)
@@ -345,7 +449,7 @@ nil            do not display errors/warnings.
          (ovls0 (ghc-check-overlay-at here))
          (end (if ovls0 (overlay-start (car ovls0)) here))
          (ovls1 (overlays-in (point-min) end))
-         (ovls2 (ghc-filter (lambda (ovl) (overlay-get ovl 'ghc-check)) ovls1))
+         (ovls2 (ghc-filter 'ghc-overlay-p ovls1))
          (ovls3 (ghc-filter (lambda (ovl) (overlay-get ovl 'ghc-hole)) ovls2))
          (pnts (mapcar 'overlay-start ovls3)))
     (if pnts (goto-char (apply 'max pnts))))
@@ -359,7 +463,7 @@ nil            do not display errors/warnings.
          (ovls0 (ghc-check-overlay-at here))
          (beg (if ovls0 (overlay-end (car ovls0)) here))
          (ovls1 (overlays-in beg (point-max)))
-         (ovls2 (ghc-filter (lambda (ovl) (overlay-get ovl 'ghc-check)) ovls1))
+         (ovls2 (ghc-filter 'ghc-overlay-p ovls1))
          (ovls3 (ghc-filter (lambda (ovl) (overlay-get ovl 'ghc-hole)) ovls2))
          (pnts (mapcar 'overlay-start ovls3)))
     (if pnts (goto-char (apply 'min pnts))))
@@ -372,7 +476,7 @@ nil            do not display errors/warnings.
 (defun ghc-check-insert-from-warning ()
   (interactive)
   (let ((ret t))
-    (dolist (data (delete-dups (mapcar (lambda (ovl) (overlay-get ovl 'ghc-msg)) (ghc-check-overlay-at (point)))) ret)
+    (dolist (data (delete-dups (mapcar 'ghc-check-overlay-msg (ghc-check-overlay-at (point)))) ret)
       (save-excursion
 	(cond
 	 ((string-match "Inferred type: \\|no type signature:" data)
@@ -483,12 +587,15 @@ nil            do not display errors/warnings.
 (defun ghc-jump-file ()
   (interactive)
   (let* ((ovl (car (ghc-check-overlay-at 1)))
-	 (file (if ovl (overlay-get ovl 'ghc-file))))
+	 (file (if ovl (ghc-check-overlay-file ovl))))
     (if file (find-file file))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defvar ghc-hlint-options nil "*Hlint options")
+(defcustom ghc-hlint-options nil
+  "*Hlint options"
+  :type '(string)
+  :group 'ghc-mod)
 
 (defvar ghc-check-command nil)
 

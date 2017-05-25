@@ -83,15 +83,4 @@
       (delete-region beg (point))
       (insert "import " mod " (" syms ")\n"))))
 
-(defun ghc-save-buffer ()
-  (interactive)
-  ;; fixme: better way then saving?
-  (if ghc-check-command ;; hlint
-      (if (buffer-modified-p)
-	  (call-interactively 'save-buffer))
-    (unless buffer-read-only
-      (set-buffer-modified-p t)
-      (call-interactively 'save-buffer)))
-  (ghc-check-syntax))
-
 (provide 'ghc-command)
