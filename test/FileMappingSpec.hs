@@ -122,13 +122,13 @@ spec = do
           withDirectory_ "test/data/file-mapping" $ do
             res <- runD $ do
               loadMappedFile "File.hs" "File_Redir_Lint.hs"
-              lint defaultLintOpts "File.hs"
+              lint lintOpts "File.hs"
             res `shouldBe` "File.hs:4:1: Warning: Eta reduce\NULFound:\NUL  func a b = (*) a b\NULWhy not:\NUL  func = (*)\n"
         it "lints in-memory file if one is specified and outputs original filename" $ do
           withDirectory_ "test/data/file-mapping" $ do
             res <- runD $ do
               loadMappedFileSource "File.hs" "func a b = (++) a b\n"
-              lint defaultLintOpts "File.hs"
+              lint lintOpts "File.hs"
             res `shouldBe` "File.hs:1:1: Warning: Eta reduce\NULFound:\NUL  func a b = (++) a b\NULWhy not:\NUL  func = (++)\n"
         it "shows types of the expression for redirected files" $ do
             let tdir = "test/data/file-mapping"
@@ -189,14 +189,14 @@ spec = do
           withDirectory_ "test/data/file-mapping/preprocessor" $ do
             res <- runD $ do
               loadMappedFile "File.hs" "File_Redir_Lint.hs"
-              lint defaultLintOpts "File.hs"
+              lint lintOpts "File.hs"
             res `shouldBe` "File.hs:6:1: Warning: Eta reduce\NULFound:\NUL  func a b = (*) a b\NULWhy not:\NUL  func = (*)\n"
         it "lints in-memory file if one is specified and outputs original filename" $ do
           withDirectory_ "test/data/file-mapping/preprocessor" $ do
             src <- readFile "File_Redir_Lint.hs"
             res <- runD $ do
               loadMappedFileSource "File.hs" src
-              lint defaultLintOpts "File.hs"
+              lint lintOpts "File.hs"
             res `shouldBe` "File.hs:6:1: Warning: Eta reduce\NULFound:\NUL  func a b = (*) a b\NULWhy not:\NUL  func = (*)\n"
       describe "literate haskell tests" $ do
         it "checks redirected file if one is specified and outputs original filename" $ do
@@ -252,3 +252,8 @@ spec = do
               mapM_ (uncurry loadMappedFileSource) fm
               types False "Bar.hs" 5 1
             res `shouldBe` unlines ["5 1 5 20 \"[Char]\""]
+
+
+lintOpts :: LintOpts
+lintOpts =
+    defaultLintOpts { optLintHlintOpts = ["--ignore=Use module export list"] }
