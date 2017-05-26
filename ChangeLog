@@ -1,3 +1,22 @@
+2017-05-26 v5.8.0.0
+	* Fix logic bug in fix for excessive use of `map-file`
+	* Bump HLint to 2.x
+	* Reorganize Cabal file to make maintanance easier
+	* Merge #872, Do not log warning when Stack project is preferred
+	* Merge #873, Fix build on case-insensitive filesystems
+	* Fix 'debug' command when ghc(-pkg) not on PATH
+	* Rework README
+	* Reorganize modules as preparation for splitting off ghc-mod-core
+	* Remove dependency on 'pretty' and use GHC's pretty printer instead
+	* Merge #854, Fix for "ghc-mod doc" when usind with stack
+	* Merge #858, Fix Gap.fromTyThing returning GHC internal
+	  representation instead of the user readable representation of
+	  types
+	* Fix #774, 'find*File' searching all the way up to /
+	* Fix #778, Check directory permissions before reading in
+	  findFileInParentsP
+	* Merge #817, fix #779, bad "ghc-mod check" performance
+
 2017-01-16 v5.7.0.0
 	* Bump cabal-helper to 0.7.3.0 to support Cabal-1.24.1.0
 	* Bump haskell-src-exts, optparse-applicative, pipes and extra
