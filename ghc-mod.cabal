@@ -213,6 +213,22 @@ Library
 
 Executable ghc-mod
   Default-Language:     Haskell2010
+  Main-Is:              GHCModWrapper.hs
+  Other-Modules:        Paths_ghc_mod
+  HS-Source-Dirs:       ., src, shared
+  GHC-Options:          -Wall
+  Build-Depends:        base      < 5 && >= 4.0
+                      , directory < 1.4
+                      , filepath  < 1.5
+                      , process   < 1.5
+
+                      , deepseq   < 1.5
+                      , binary    < 0.9 && >= 0.5.1.0
+                      , old-time  < 1.2
+                      , time      < 1.7
+
+Executable ghc-mod-real
+  Default-Language:     Haskell2010
   Main-Is:              GHCModMain.hs
   Other-Modules:        Paths_ghc_mod
                       , GHCMod.Options

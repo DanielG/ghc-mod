@@ -76,28 +76,20 @@ newTempDir _dir =
 whenM :: Monad m => m Bool -> m () -> m ()
 whenM mb ma = mb >>= flip when ma
 
--- | Returns the path to the currently running ghc-mod executable. With ghc<7.6
--- this is a guess but >=7.6 uses 'getExecutablePath'.
+-- | Returns the path to the currently running ghc-mod executable.
 ghcModExecutable :: IO FilePath
 ghcModExecutable = do
-    exe <- getExecutablePath'
+    exe <- getExecutablePath
     stack <- lookupEnv "STACK_EXE"
     case takeBaseName exe of
       "spec" | Just _ <- stack ->
-          (</> "ghc-mod") <$> getBinDir
+          (</> "ghc-mod-real") <$> getBinDir
       "spec" ->
-          (</> "dist/build/ghc-mod/ghc-mod") <$> getCurrentDirectory
+          (</> "dist/build/ghc-mod-real/ghc-mod-real") <$> getCurrentDirectory
       "ghc-mod" ->
           return exe
       _ ->
-          return $ takeDirectory exe </> "ghc-mod"
-
-getExecutablePath' :: IO FilePath
-#if __GLASGOW_HASKELL__ >= 706
-getExecutablePath' = getExecutablePath
-#else
-getExecutablePath' = getProgName
-#endif
+          return $ takeDirectory exe </> "ghc-mod-real"
 
 canonFilePath :: FilePath -> IO FilePath
 canonFilePath f = do
