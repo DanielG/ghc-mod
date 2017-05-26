@@ -55,7 +55,7 @@
 	(let ((pro (ghc-get-process cpro name buf root))
 	      (map-cmd (format "map-file %s\n" file)))
 ;	       (unmap-cmd (format "unmap-file %s\n" file)))
-	  (when (buffer-modified-p (current-buffer))
+	  (when (buffer-modified-p cbuf)
 	    (setq ghc-process-file-mapping t)
 	    (setq ghc-process-async-after-callback nil)
 	    (erase-buffer)
