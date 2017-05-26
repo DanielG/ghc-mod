@@ -22,10 +22,12 @@ import Data.Semigroup
 import Options.Applicative
 import Options.Applicative.Types
 import Options.Applicative.Builder.Internal
-import Language.Haskell.GhcMod.Types
 import Language.Haskell.GhcMod.Read
 import Language.Haskell.GhcMod.Options.DocUtils
 import Language.Haskell.GhcMod.Options.Help
+
+import GhcModExe.Lint
+import GhcModExe.Browse
 
 type Symbol = String
 type Expr = String

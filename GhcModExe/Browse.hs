@@ -1,7 +1,8 @@
 {-# LANGUAGE CPP #-}
 module GhcModExe.Browse (
     browse,
-    BrowseOpts(..)
+    BrowseOpts(..),
+    defaultBrowseOpts
   ) where
 
 import Safe
@@ -167,3 +168,17 @@ removeForAlls' ty (Just (pre, ftype))
 
 showOutputable :: Outputable a => DynFlags -> a -> String
 showOutputable dflag = unwords . lines . showPage dflag styleUnqualified . ppr
+
+data BrowseOpts = BrowseOpts {
+        optBrowseOperators      :: Bool
+        -- ^ If 'True', operators are also returned.
+      , optBrowseDetailed       :: Bool
+        -- ^ If 'True', types are also returned.
+      , optBrowseParents        :: Bool
+        -- ^ If 'True', parents are also returned.
+      , optBrowseQualified      :: Bool
+        -- ^ If 'True', will return fully qualified names
+    } deriving (Show)
+
+defaultBrowseOpts :: BrowseOpts
+defaultBrowseOpts = BrowseOpts False False False False

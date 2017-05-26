@@ -9,7 +9,6 @@ module GhcModExe.Internal (
   , GmEnv(..)
   -- * Various Paths
   , ghcLibDir
-  , ghcModExecutable
   -- * Logging
   , withLogger
   , setNoWarningFlags

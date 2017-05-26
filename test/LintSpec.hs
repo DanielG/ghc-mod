@@ -1,6 +1,6 @@
 module LintSpec where
 
-import GhcMod
+import GhcModExe.Lint
 import Test.Hspec
 import TestUtils
 

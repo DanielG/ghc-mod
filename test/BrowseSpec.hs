@@ -2,6 +2,7 @@ module BrowseSpec where
 
 import Control.Applicative
 import GhcMod
+import GhcModExe.Browse
 import Test.Hspec
 import Prelude
 

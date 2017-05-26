@@ -34,13 +34,10 @@ import Language.Haskell.GhcMod.Error
 import Language.Haskell.GhcMod.Types
 import Language.Haskell.GhcMod.Monad.Types
 import System.Directory
-import System.Environment
 import System.FilePath
 import System.IO.Temp (createTempDirectory)
 import System.Process (readProcess)
-import Text.Printf
 
-import Paths_ghc_mod (getLibexecDir, getBinDir)
 import Utils
 import Prelude
 
@@ -75,29 +72,6 @@ newTempDir _dir =
 
 whenM :: Monad m => m Bool -> m () -> m ()
 whenM mb ma = mb >>= flip when ma
-
--- | Returns the path to the currently running ghc-mod executable. With ghc<7.6
--- this is a guess but >=7.6 uses 'getExecutablePath'.
-ghcModExecutable :: IO FilePath
-ghcModExecutable = do
-    exe <- getExecutablePath'
-    stack <- lookupEnv "STACK_EXE"
-    case takeBaseName exe of
-      "spec" | Just _ <- stack ->
-          (</> "ghc-mod") <$> getBinDir
-      "spec" ->
-          (</> "dist/build/ghc-mod/ghc-mod") <$> getCurrentDirectory
-      "ghc-mod" ->
-          return exe
-      _ ->
-          return $ takeDirectory exe </> "ghc-mod"
-
-getExecutablePath' :: IO FilePath
-#if __GLASGOW_HASKELL__ >= 706
-getExecutablePath' = getExecutablePath
-#else
-getExecutablePath' = getProgName
-#endif
 
 canonFilePath :: FilePath -> IO FilePath
 canonFilePath f = do

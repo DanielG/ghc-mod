@@ -28,3 +28,13 @@ lint opt file = ghandle handler $
       | srcSpanFilename (ideaSpan idea) == temp
       = idea{ideaSpan=(ideaSpan idea){srcSpanFilename = orig}}
     substFile _ _ idea = idea
+
+-- | Options for "lintWith" function
+data LintOpts = LintOpts {
+        optLintHlintOpts :: [String]
+        -- ^ options that will be passed to hlint executable
+      } deriving (Show)
+
+-- | Default "LintOpts" instance
+defaultLintOpts :: LintOpts
+defaultLintOpts = LintOpts []
