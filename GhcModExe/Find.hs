@@ -44,9 +44,6 @@ import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy as LBS
 import Data.IORef
 
-import System.Directory.ModTime
-import System.IO.Unsafe
-
 import GHC.Generics (Generic)
 
 import Data.Map (Map)
@@ -55,7 +52,13 @@ import Data.Set (Set)
 import qualified Data.Set as S
 import Language.Haskell.GhcMod.PathsAndFiles
 import System.Directory
+import System.Directory.ModTime
+import System.Environment
+import System.FilePath
+import System.IO.Unsafe
 import Prelude
+
+import Paths_ghc_mod (getBinDir)
 
 ----------------------------------------------------------------
 
@@ -124,6 +127,20 @@ loadSymbolDb = do
   readProc <- gmReadProcess'
   out <- liftIO $ readProc ghcMod ["--verbose", "error", "dumpsym"] ""
   return $!! decode out
+
+ghcModExecutable :: IO FilePath
+ghcModExecutable = do
+    exe <- getExecutablePath
+    stack <- lookupEnv "STACK_EXE"
+    case takeBaseName exe of
+      "spec" | Just _ <- stack ->
+          (</> "ghc-mod") <$> getBinDir
+      "spec" ->
+          (</> "dist/build/ghc-mod-real/ghc-mod-real") <$> getCurrentDirectory
+      "ghc-mod-real" ->
+          return exe
+      _ ->
+          return $ takeDirectory exe </> "ghc-mod"
 
 ----------------------------------------------------------------
 -- used 'ghc-mod dumpsym'

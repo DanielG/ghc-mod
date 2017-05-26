@@ -10,6 +10,7 @@ import System.IO.Temp
 import System.Directory
 
 import GhcMod
+import GhcModExe.Lint
 
 spec :: Spec
 spec = do
