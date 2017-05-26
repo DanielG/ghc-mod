@@ -1,59 +1,68 @@
-language: haskell
-ghc:
-  - 7.6
-  - 7.8
-
+language: c
 sudo: false
-
-addons:
-  apt:
-    packages:
-    - zlib1g-dev
 
 cache:
   apt: true
   directories:
-  - ~/.cabal
-  - ~/.ghc
-  - ~/.stack
+  - $HOME/.stack
+  - $HOME/.ghc-mod
 
-before_cache:
-  - rm -f $HOME/.cabal/logs $HOME/.cabal/packages/*/build-reports.log
+addons:
+  apt:
+    packages:
+      - libfcgi-dev
+      - libgmp-dev
 
 before_install:
-  - wget https://github.com/commercialhaskell/stack/releases/download/v0.1.3.1/stack-0.1.3.1-x86_64-linux.gz
-  - mkdir stack-bin
-  - gunzip stack-0.1.3.1-x86_64-linux.gz
-  - mv stack-0.1.3.1-x86_64-linux stack-bin/stack
-  - chmod +x stack-bin/stack
-  - export PATH=$(pwd)/stack-bin:$PATH
+  - unset CC
+  - mkdir -p ~/.local/bin
+  - export PATH=$HOME/.local/bin:$PATH
+  - travis_retry curl -L https://www.stackage.org/stack/linux-x86_64 | tar xz --wildcards --strip-components=1 -C ~/.local/bin '*/stack'
   - stack --version
 
 install:
-  - export CABAL_VER="$(ghc-pkg describe ghc | sed -n '/^depends:/,/^[a-z]/p' | head -n-1 | sed '1{s/^depends://}' | grep " *Cabal" | tr -d "[:space:]" | sed 's/^Cabal-\([0-9.]*\)-.*/\1/g')"
-  - echo $CABAL_VER
-  - cabal update
-  - cabal install happy
-  - happy --version
-  - git clone --depth=1 https://github.com/DanielG/cabal-helper.git
-  - cabal install cabal-helper/ --constraint "Cabal == ${CABAL_VER}"
-  - cabal install -j --only-dependencies --enable-tests
+  # - git clone --depth=1 https://github.com/DanielG/cabal-helper.git
+  - stack --no-terminal setup --resolver=ghc-$GHCVER
+  - stack --no-terminal install cabal-install --resolver=$RES
+  - travis_retry cabal update
+  - stack --no-terminal install happy --resolver=$RES
+  - |
+    resf="ghc-$GHCVER.yaml"
+    echo "resolver: ghc-$GHCVER" > "$resf"
+    echo "packages: ['.']" >> "$resf"
+    stack --no-terminal solver --update-config --stack-yaml="$resf" || exit 101
+    sed -i 's/^resolver:/compiler:/;s/^extra-deps:/packages:/' "$resf"
+    echo "resolver: { name: 'ghc-$GHCVER', location: './$resf' }" > stack.yaml
+    echo "packages: ['.']" >> stack.yaml
+    ir=$( stack path --snapshot-install-root )
+    ls -d ${ir%/custom-ghc-*}/custom-ghc-* | grep -v "${ir%/*}" | while read i; do
+      rm -rfv "$i"
+    done
 
 
 script:
-  - touch ChangeLog # Create ChangeLog if we're not on the release branch
   - cabal check
-  - cabal sdist
-  - export SRC_TGZ="$PWD/dist/$(cabal info . | awk '{print $2 ".tar.gz";exit}')"
-  - rm -rf /tmp/test && mkdir -p /tmp/test
-  - cd /tmp/test
-  - tar -xf $SRC_TGZ && cd ghc-mod*/
-  - if [ -n "$(ghc --version | awk '{ print $8 }' | sed -n '/^7.8/p')" ]; then export WERROR="--ghc-option=-Werror"; fi
-  - cabal configure --enable-tests $WERROR
-  - cabal build
-  - export ghc_mod_datadir=$PWD
-  - cabal test
+  - |
+    case "$TRAVIS_BRANCH" in
+    "release"*)
+      touch ChangeLog
+      sdistdir="$TRAVIS_BUILD_DIR/../sdist-test"
+      mkdir -p "$sdistdir"
+      tar zvxf $(stack sdist 2>&1 | tail -n1 | sed 's/.* //') --strip-components=1 -C "$sdistdir"
+      cp "ghc-$GHCVER.yaml" stack.yaml "$sdistdir"
+      cd "$sdistdir"
+      ;;
+    esac
+  - stack --no-terminal build --test --no-run-tests
+  - export DOCTEST_DIST_DIR="$(stack path --dist-dir)"
+  - stack --no-terminal test
 
 matrix:
-  allow_failures:
-    - env: GHCVER=head
+  matrix:
+  include:
+  - env: GHCVER=7.8.4 RES=lts-2.22
+    compiler: ': #GHC 7.8.4'
+  - env: GHCVER=7.10.3 RES=lts-6.9
+    compiler: ': #GHC 7.10.3'
+  - env: GHCVER=8.0.1 RES=nightly-2016-08-01
+    compiler: ': #GHC 8.0.1'

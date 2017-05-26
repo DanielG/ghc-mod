@@ -1,4 +1,4 @@
--- ghc-mod: Making Haskell development *more* fun
+-- ghc-mod: Happy Haskell Hacking
 -- Copyright (C) 2015  Nikolay Yakimov <root@livid.pp.ru>
 --
 -- This program is free software: you can redistribute it and/or modify
@@ -24,12 +24,13 @@ module GHCMod.Options (
 
 import Options.Applicative
 import Options.Applicative.Types
-import Language.Haskell.GhcMod.Types
+
 import GHCMod.Options.Commands
+import GHCMod.Options.ShellParse
 import GHCMod.Version
 import Language.Haskell.GhcMod.Options.DocUtils
 import Language.Haskell.GhcMod.Options.Options
-import GHCMod.Options.ShellParse
+import Language.Haskell.GhcMod.Types
 
 parseArgs :: IO (Options, GhcModCommands)
 parseArgs =
@@ -37,7 +38,7 @@ parseArgs =
   where
     opts = info (argAndCmdSpec <**> helpVersion)
            $$  fullDesc
-           <=> header "ghc-mod: Happy Haskell Programming"
+           <=> header "ghc-mod: Happy Haskell Hacking"
 
 parseArgsInteractive :: String -> Either String GhcModCommands
 parseArgsInteractive args =
@@ -69,4 +70,3 @@ helpVersion =
 
 argAndCmdSpec :: Parser (Options, GhcModCommands)
 argAndCmdSpec = (,) <$> globalArgSpec <*> commandsSpec
-

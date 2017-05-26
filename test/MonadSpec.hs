@@ -25,19 +25,6 @@ spec = do
               <- newEmptyMVar
           mv_startup_barrier :: MVar ()
               <- newEmptyMVar
-          mv_startup_barrier :: MVar () <- newEmptyMVar
-
-          _t1 <- forkOS $ do
-                 putMVar mv_startup_barrier ()
-                 -- wait (inside GhcModT) for t2 to receive the exception
-                 _ <- runD $ liftIO $ readMVar mv_ex
-                 return ()
-
-          _t2 <- forkOS $ do
-                 readMVar mv_startup_barrier -- wait for t1 to start up
-                 res <- try $ runD $ return ()
-                 res' <- evaluate res
-                 putMVar mv_ex res'
 
           _t1 <- forkOS $ do
                  -- wait (inside GhcModT) for t2 to receive the exception

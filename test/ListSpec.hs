@@ -1,7 +1,7 @@
 module ListSpec where
 
 import Control.Applicative
-import Language.Haskell.GhcMod
+import GhcMod
 import Test.Hspec
 import TestUtils
 import Prelude

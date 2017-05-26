@@ -1,4 +1,4 @@
 module A1 where
-psogduapzsü9
+psogduapzs9
 import B
-lxäö,vLMCks
+lx,vLMCks

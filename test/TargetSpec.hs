@@ -22,20 +22,20 @@ spec = do
               runLightGhc env (return ()) `shouldReturn` ()
 
         it "has modules in scope" $ do
-            withLightHscEnv [] $ \env ->
+            (withLightHscEnv [] $ \env ->
               runLightGhc env $ do
                dflags <- getSessionDynFlags
                let i = intersect (listVisibleModuleNames dflags)
                                  ["Control.Applicative", "Control.Arrow"
                                  ,"Control.Exception", "GHC.Exts", "GHC.Float"]
-               liftIO $ i `shouldSatisfy` not . null
+               liftIO $ i `shouldSatisfy` not . null) :: IO ()
 
         it "can get module info" $ do
-            withLightHscEnv [] $ \env ->
+            (withLightHscEnv [] $ \env ->
               runLightGhc env $ do
                 mdl <- findModule "Data.List" Nothing
                 mmi <- getModuleInfo mdl
-                liftIO $ isJust mmi `shouldBe` True
+                liftIO $ isJust mmi `shouldBe` True) :: IO ()
 
 
     describe "resolveModule" $ do
