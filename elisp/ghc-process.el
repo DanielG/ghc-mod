@@ -17,7 +17,9 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defvar ghc-process-running nil)
-(defvar ghc-process-file-mapping nil)
+
+;; TODO: What happens when ghc-mod returns NG? Probably nothing pleasant.
+(defvar ghc-process-waiting-for-ok nil)
 
 (defvar-local ghc-process-process-name nil)
 (defvar-local ghc-process-original-buffer nil)
@@ -53,10 +55,11 @@
 	(setq ghc-process-original-file file)
 	(setq ghc-process-root root)
 	(let ((pro (ghc-get-process cpro name buf root))
-	      (map-cmd (format "map-file %s\n" file)))
-;	       (unmap-cmd (format "unmap-file %s\n" file)))
-	  (when (buffer-modified-p cbuf)
-	    (setq ghc-process-file-mapping t)
+	      (map-cmd (format "map-file %s\n" file))
+              (unmap-cmd (format "unmap-file %s\n" file))
+              (do-map-file (buffer-modified-p cbuf)))
+	  (when do-map-file
+	    (setq ghc-process-waiting-for-ok t)
 	    (setq ghc-process-async-after-callback nil)
 	    (erase-buffer)
 	    (when ghc-debug
@@ -71,27 +74,38 @@
 	    (process-send-string pro "\n\004\n")
 	    (condition-case nil
 		(let ((inhibit-quit nil))
-		  (while ghc-process-file-mapping
+		  (while ghc-process-waiting-for-ok
 		    (accept-process-output pro 0.1 nil t)))
 	      (quit
 	       (setq ghc-process-running nil)
-	       (setq ghc-process-file-mapping nil))))
+	       (setq ghc-process-waiting-for-ok nil))))
 	  ;; command
-	  (setq ghc-process-async-after-callback async-after-callback)
+	  (setq ghc-process-async-after-callback
+                (if do-map-file
+                    ;; TODO: probably racy. What happens when ghc-with-process
+                    ;; is called again before the unmap wait loop below
+                    ;; completes?
+                    (lambda (status)
+                      (if (functionp async-after-callback)
+                          (funcall async-after-callback status))
+                      (when ghc-debug
+                        (ghc-with-debug-buffer
+                         (insert (format "%% %s" unmap-cmd))))
+                      (process-send-string pro unmap-cmd)
+                      (condition-case nil
+                          (let ((inhibit-quit nil))
+                            (while ghc-process-waiting-for-ok
+                              (accept-process-output pro 0.1 nil t)))
+                        (quit
+                         (setq ghc-process-running nil)
+                         (setq ghc-process-waiting-for-ok nil))))
+                  ;; else
+                  async-after-callback))
 	  (erase-buffer)
 	  (when ghc-debug
 	    (ghc-with-debug-buffer
 	     (insert (format "%% %s" cmd))))
 	  (process-send-string pro cmd)
-
-	  ;;; this needs to be done asyncrounously after the command actually
-	  ;;; finished, gah
-	  ;; (when do-map-file
-	  ;;   (when ghc-debug
-	  ;;	 (ghc-with-debug-buffer
-	  ;;	  (insert (format "%% %s" unmap-cmd))))
-	  ;;   (process-send-string pro unmap-cmd))
-
 	  pro)))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -170,10 +184,10 @@
 	(goto-char (point-max))
 	(forward-line -1)
 
-	(cl-flet ((async-after-callback ()
+	(cl-flet ((async-after-callback (status)
 	        (condition-case err
 		    (progn
-		      (funcall ghc-process-async-after-callback 'ok)
+		      (funcall ghc-process-async-after-callback status)
 		      (setq ghc-process-running nil))
 		  (error
 		   (setq ghc-process-running nil)
@@ -181,17 +195,17 @@
 	  (cond
 	   ((looking-at "^OK$")
 	    (delete-region (point) (point-max))
-	    (setq ghc-process-file-mapping nil)
+	    (setq ghc-process-waiting-for-ok nil)
 	    (when ghc-process-async-after-callback
 	      (goto-char (point-min))
-	      (async-after-callback)
+	      (async-after-callback 'ok)
 	      ))
 	   ((looking-at "^NG ")
-	    (async-after-callback))))))))
+	    (async-after-callback 'ng))))))))
 
 (defun ghc-process-sentinel (_process _event)
   (setq ghc-process-running nil)
-  (setq ghc-process-file-mapping nil))
+  (setq ghc-process-waiting-for-ok nil))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
