@@ -8,8 +8,11 @@ import Data.Maybe
 import Data.Functor
 import Data.Function
 import Distribution.Simple.LocalBuildInfo
+import Distribution.Types.LocalBuildInfo (componentsConfigs)
+import Distribution.Types.MungedPackageId
 import Distribution.PackageDescription
 
+import qualified Distribution.Compat.Graph as G
 import Distribution.Simple
 import Distribution.Simple.Setup
 import Distribution.Simple.Install
@@ -39,8 +42,11 @@ $(ifelsedefD "componentsConfigs" [d|
     :: LocalBuildInfo
     -> [(ComponentName, ComponentLocalBuildInfo, [ComponentName])]
     -> LocalBuildInfo
- setComponentsConfigs lbi cs = $(recUpdE' (nE "lbi") (mkName "componentsConfigs") (VarE $ mkName "cs"))
-
+ -- setComponentsConfigs lbi cs = $(recUpdE' (nE "lbi") (mkName "componentsConfigs") (VarE $ mkName "cs"))
+ setComponentsConfigs lbi cs = $(recUpdE' (nE "lbi") (mkName "componentGraph") (VarE $ mkName "csg"))
+   where
+     csg = foldl (\g (_,x,_) -> G.insert x g) G.empty cs
+    -- $(recUpdE' (nE "lbi") (mkName "componentsConfigs") (VarE $ mkName "cs"))
  |] [d|
 
  setComponentsConfigs
@@ -138,7 +144,7 @@ $(ifD [d|
 
 $(ifelsedefD "componentPackageRenaming" [d|
  -- M.Map PackageName
- newtype Deps = Deps  { unDeps :: ([(InstalledPackageId, PackageId)], Map PackageName $(cT "ModuleRenaming")) }
+ newtype Deps = Deps  { unDeps :: ([(UnitId, MungedPackageId)], Map PackageName $(cT "ModuleRenaming")) }
 -- $(return $ TySynD $(mkName "Deps") [] [t| |] )
 
  noDeps = Deps ([], M.empty)
@@ -174,7 +180,7 @@ $(ifelsedefD "componentPackageRenaming" [d|
 
  |] [d|
 
- newtype Deps = Deps { unDeps :: [(InstalledPackageId, PackageId)] }
+ newtype Deps = Deps { unDeps :: [(UnitId, MungedPackageId)] }
 
  noDeps = Deps []
 
