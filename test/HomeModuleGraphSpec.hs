@@ -18,8 +18,8 @@
 
 module HomeModuleGraphSpec where
 
-import Language.Haskell.GhcMod.HomeModuleGraph
-import Language.Haskell.GhcMod.LightGhc
+import GhcMod.HomeModuleGraph
+import GhcMod.LightGhc
 import TestUtils
 
 import GHC

@@ -1,7 +1,7 @@
 module FileMappingSpec where
 
-import Language.Haskell.GhcMod.FileMapping
-import Language.Haskell.GhcMod.Utils (withMappedFile)
+import GhcMod.FileMapping
+import GhcMod.Utils (withMappedFile)
 import Test.Hspec
 import TestUtils
 import qualified Data.Map as M

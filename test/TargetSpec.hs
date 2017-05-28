@@ -1,9 +1,9 @@
 {-# LANGUAGE OverloadedStrings #-}
 module TargetSpec where
 
-import Language.Haskell.GhcMod.Target
-import Language.Haskell.GhcMod.LightGhc
-import Language.Haskell.GhcMod.Gap
+import GhcMod.Target
+import GhcMod.LightGhc
+import GhcMod.Gap
 import Test.Hspec
 
 import TestUtils

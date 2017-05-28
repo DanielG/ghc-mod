@@ -4,9 +4,9 @@ module CabalHelperSpec where
 import Control.Arrow
 import Control.Applicative
 import Distribution.Helper
-import Language.Haskell.GhcMod.CabalHelper
-import Language.Haskell.GhcMod.PathsAndFiles
-import Language.Haskell.GhcMod.Error
+import GhcMod.CabalHelper
+import GhcMod.PathsAndFiles
+import GhcMod.Error
 import Test.Hspec
 import System.Directory
 import System.FilePath

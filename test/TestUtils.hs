@@ -10,14 +10,14 @@ module TestUtils (
   , shouldReturnError
   , isPkgDbAt
   , isPkgConfDAt
-  , module Language.Haskell.GhcMod.Monad
-  , module Language.Haskell.GhcMod.Types
+  , module GhcMod.Monad
+  , module GhcMod.Types
   ) where
 
-import Language.Haskell.GhcMod.Logging
-import Language.Haskell.GhcMod.Monad
-import Language.Haskell.GhcMod.Cradle
-import Language.Haskell.GhcMod.Types
+import GhcMod.Logging
+import GhcMod.Monad
+import GhcMod.Cradle
+import GhcMod.Types
 
 import Control.Arrow
 import Control.Category

@@ -1,8 +1,8 @@
 module CustomPackageDbSpec where
 
-import Language.Haskell.GhcMod.CabalHelper
-import Language.Haskell.GhcMod.CustomPackageDb
-import Language.Haskell.GhcMod.Error
+import GhcMod.CabalHelper
+import GhcMod.CustomPackageDb
+import GhcMod.Error
 import System.Process
 import Test.Hspec
 import Prelude
