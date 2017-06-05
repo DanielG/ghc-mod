@@ -7,6 +7,19 @@
 ;; Author:  Kazu Yamamoto <Kazu@Mew.org>
 ;; Created: Mar  9, 2014
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;
+;;; Customize Variables
+;;;
+
+(defcustom ghc-use-nix-shell nil
+  "Invoke GHC as in a nix-shell environment. If you use the Nix
+package manager, you may create a `shell.nix` file for your
+project (perhaps using `cabal2nix`)."
+  :type '(choice (const :tag "Use nix-shell" 't)
+                 (const :tag "Do not use nix-shell" nil))
+  :group 'ghc-mod)
+
 ;;; Code:
 
 (require 'ghc-func)
@@ -105,6 +118,20 @@
     (ghc-start-process name buf root))
    (t cpro)))
 
+(defun set-nix-shell-env (root)
+  "Make 'process-environment buffer-local, and set all NIX_GHC*
+environment variables nix-shell would set."
+  (make-local-variable 'process-environment)
+  (let ((env (shell-command-to-string
+              (concat "cd " root
+                      " && nix-shell --run 'env | grep ^NIX_GHC'"))))
+    (mapc (lambda (ln)
+            (let* ((splits (split-string ln "="))
+                   (name (car splits))
+                   (val (cadr splits)))
+              (setenv name val)))
+          (split-string env "\n"))))
+
 (defun ghc-start-process (name buf root)
   (let* ((default-directory root)
 	 (process-connection-type nil) ;; using PIPE due to ^D
@@ -112,6 +139,7 @@
 		       '("-b" "\n" "-l" "--line-prefix=O: ,E: ")
 		       (ghc-make-ghc-options)
 		       '("legacy-interactive")))
+         (_ (when ghc-use-nix-shell (set-nix-shell-env root)))
 	 (pro (apply 'start-process name buf ghc-command opts)))
     (set-process-filter pro 'ghc-process-filter)
     (set-process-sentinel pro 'ghc-process-sentinel)
