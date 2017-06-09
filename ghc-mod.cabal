@@ -145,7 +145,7 @@ Library
                       , hlint                < 2.1  && >= 2.0.8
                       , monad-control        < 1.1  && >= 1
                       , monad-journal        < 0.8  && >= 0.4
-                      , optparse-applicative < 0.14 && >= 0.13.0.0
+                      , optparse-applicative < 0.15 && >= 0.14
                       , pipes                < 4.4  && >= 4.1
                       , safe                 < 0.4  && >= 0.3.9
                       , semigroups           < 0.19 && >= 0.10.0
@@ -184,7 +184,7 @@ Executable ghc-mod
                       , base                 < 4.11 && >= 4.6.0.1
                       , fclabels             < 2.1  && >= 2.0
                       , monad-control        < 1.1  && >= 1
-                      , optparse-applicative < 0.14 && >= 0.13.0.0
+                      , optparse-applicative < 0.15 && >= 0.14
                       , semigroups           < 0.19 && >= 0.10.0
                       , split                < 0.3  && >= 0.2.2
 

@@ -63,10 +63,10 @@ helpVersion =
     r :: ReadM (a -> a)
     r = do
       v <- readerAsk
-      case v of
-        "help" -> readerAbort ShowHelpText
-        "version" -> readerAbort $ InfoMsg ghcModVersion
-        _ -> return id
+      readerAbort $ case v of
+        "help"    -> ShowHelpText
+        "version" -> InfoMsg ghcModVersion
+        _         -> UnexpectedError v (SomeParser argAndCmdSpec)
 
 argAndCmdSpec :: Parser (Options, GhcModCommands)
 argAndCmdSpec = (,) <$> globalArgSpec <*> commandsSpec
