@@ -2,8 +2,8 @@ module CradleSpec where
 
 import Control.Applicative
 import Data.List (isSuffixOf)
-import Language.Haskell.GhcMod.Cradle
-import Language.Haskell.GhcMod.Types
+import GhcMod.Cradle
+import GhcMod.Types
 import System.Directory (canonicalizePath)
 import System.FilePath (pathSeparator)
 import Test.Hspec

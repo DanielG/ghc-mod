@@ -1,9 +1,9 @@
 module PathsAndFilesSpec where
 
 
-import Language.Haskell.GhcMod.PathsAndFiles
-import Language.Haskell.GhcMod.Cradle
-import qualified Language.Haskell.GhcMod.Utils as U
+import GhcMod.PathsAndFiles
+import GhcMod.Cradle
+import qualified GhcMod.Utils as U
 
 import Control.Monad.Trans.Maybe
 import System.Directory
