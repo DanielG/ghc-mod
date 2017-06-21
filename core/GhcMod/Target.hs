@@ -21,6 +21,8 @@ import Control.Arrow
 import Control.Applicative
 import Control.Category ((.))
 import GHC
+import qualified HscTypes as GHC
+import qualified GhcMonad as G
 #if __GLASGOW_HASKELL__ >= 800
 import GHC.LanguageExtensions
 #endif
@@ -139,18 +141,29 @@ runGmlT' :: IOish m
               -> (forall gm. GhcMonad gm => DynFlags -> gm DynFlags)
               -> GmlT m a
               -> GhcModT m a
-runGmlT' fns mdf action = runGmlTWith fns mdf id action
+runGmlT' fns mdf action = runGmlTWith fns mdf False id action
 
--- | Run a GmlT action (i.e. a function in the GhcMonad) in the context
--- of certain files or modules, with updated GHC flags and a final
--- transformation
+-- | Run a GmlT action (i.e. a function in the GhcMonad) in the context of
+-- certain files or modules, with updated GHC flags, and updated ModuleGraph
+runGmlTfm :: IOish m
+              => [Either FilePath ModuleName]
+              -> (forall gm. GhcMonad gm => DynFlags -> gm DynFlags)
+              -> Bool
+              -> GmlT m a
+              -> GhcModT m a
+runGmlTfm fns mdf mmg action = runGmlTWith fns mdf mmg id action
+
+-- | Run a GmlT action (i.e. a function in the GhcMonad) in the context of
+-- certain files or modules, with updated GHC flags, updated ModuleGraph and a
+-- final transformation
 runGmlTWith :: IOish m
                  => [Either FilePath ModuleName]
                  -> (forall gm. GhcMonad gm => DynFlags -> gm DynFlags)
+                 -> Bool
                  -> (GmlT m a -> GmlT m b)
                  -> GmlT m a
                  -> GhcModT m b
-runGmlTWith efnmns' mdf wrapper action = do
+runGmlTWith efnmns' mdf filterModSums wrapper action = do
     crdl <- cradle
     Options { optGhcUserOptions } <- options
 
@@ -177,8 +190,13 @@ runGmlTWith efnmns' mdf wrapper action = do
     mappedStrs <- getMMappedFilePaths
     let targetStrs = mappedStrs ++ map moduleNameString mns ++ cfns
 
+    gmVomit
+      "session-ghc-options"
+      (text "Using the following targets")
+      (intercalate " " $ map (("\""++) . (++"\"")) targetStrs)
+
     unGmlT $ wrapper $ do
-      loadTargets opts targetStrs
+      loadTargets opts targetStrs filterModSums
       action
 
 targetGhcOptions :: forall m. IOish m
@@ -443,8 +461,8 @@ resolveGmComponents mcache cs = do
    same f a b = (f a) == (f b)
 
 -- | Set the files as targets and load them.
-loadTargets :: IOish m => [GHCOption] -> [FilePath] -> GmlT m ()
-loadTargets opts targetStrs = do
+loadTargets :: IOish m => [GHCOption] -> [FilePath] -> Bool -> GmlT m ()
+loadTargets opts targetStrs filterModSums = do
     targets' <-
         withLightHscEnv opts $ \env ->
                 liftM (nubBy ((==) `on` targetId))
@@ -457,6 +475,8 @@ loadTargets opts targetStrs = do
           text "Loading" <+>: fsep (map (text . showTargetId) targets)
 
     setTargets targets
+
+    when filterModSums $ updateModuleGraph $ concatMap filePathFromTarget targets
 
     mg <- depanal [] False
 
@@ -490,6 +510,26 @@ loadTargets opts targetStrs = do
 
     showTargetId (Target (TargetModule s) _ _) = moduleNameString s
     showTargetId (Target (TargetFile s _) _ _) = s
+
+    filePathFromTarget (Target (TargetModule _) _ _) = []
+    filePathFromTarget (Target (TargetFile s _) _ _) = [s]
+
+    updateModuleGraph :: (GhcMonad m, GmState m, GmEnv m,
+                          MonadIO m, GmLog m, GmOut m)
+                      => [FilePath] -> m ()
+    updateModuleGraph fps = do
+      let
+        fpSet = Set.fromList fps
+        mustRecompile ms = case (ml_hs_file . ms_location)  ms of
+          Nothing -> ms
+          Just f -> if Set.member f fpSet
+                      then ms {ms_hspp_opts = setDynFlagsRecompile (ms_hspp_opts ms)}
+                      else ms
+        update s = s {hsc_mod_graph = map mustRecompile (hsc_mod_graph s)}
+      G.modifySession update
+
+    setDynFlagsRecompile :: DynFlags -> DynFlags
+    setDynFlagsRecompile df = gopt_set df Opt_ForceRecomp
 
 needsHscInterpreted :: ModuleGraph -> Bool
 needsHscInterpreted = any $ \ms ->

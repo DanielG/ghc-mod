@@ -33,6 +33,7 @@ check files =
     runGmlTWith
       (map Left files)
       return
+      False
       ((fmap fst <$>) . withLogger Gap.setNoMaxRelevantBindings)
       (return ())
 
@@ -53,5 +54,6 @@ expand files =
     runGmlTWith
       (map Left files)
       return
+      False
       ((fmap fst <$>) . withLogger (Gap.setDumpSplices . setNoWarningFlags))
       (return ())
