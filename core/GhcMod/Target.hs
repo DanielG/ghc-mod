@@ -21,6 +21,7 @@ import Control.Arrow
 import Control.Applicative
 import Control.Category ((.))
 import GHC
+import qualified Hooks    as GHC
 import qualified HscTypes as GHC
 import qualified GhcMonad as G
 #if __GLASGOW_HASKELL__ >= 800
@@ -141,7 +142,7 @@ runGmlT' :: IOish m
               -> (forall gm. GhcMonad gm => DynFlags -> gm DynFlags)
               -> GmlT m a
               -> GhcModT m a
-runGmlT' fns mdf action = runGmlTWith fns mdf False id action
+runGmlT' fns mdf action = runGmlTWith fns mdf id action
 
 -- | Run a GmlT action (i.e. a function in the GhcMonad) in the context of
 -- certain files or modules, with updated GHC flags, and updated ModuleGraph
@@ -149,9 +150,11 @@ runGmlTfm :: IOish m
               => [Either FilePath ModuleName]
               -> (forall gm. GhcMonad gm => DynFlags -> gm DynFlags)
               -> Bool
+              -> (GHC.Hooks -> GHC.Hooks)
               -> GmlT m a
               -> GhcModT m a
-runGmlTfm fns mdf mmg action = runGmlTWith fns mdf mmg id action
+runGmlTfm fns mdf forceReload updateHooks action
+  = runGmlTWith' fns mdf forceReload updateHooks id action
 
 -- | Run a GmlT action (i.e. a function in the GhcMonad) in the context of
 -- certain files or modules, with updated GHC flags, updated ModuleGraph and a
@@ -159,11 +162,24 @@ runGmlTfm fns mdf mmg action = runGmlTWith fns mdf mmg id action
 runGmlTWith :: IOish m
                  => [Either FilePath ModuleName]
                  -> (forall gm. GhcMonad gm => DynFlags -> gm DynFlags)
-                 -> Bool
                  -> (GmlT m a -> GmlT m b)
                  -> GmlT m a
                  -> GhcModT m b
-runGmlTWith efnmns' mdf filterModSums wrapper action = do
+runGmlTWith efnmns' mdf wrapper action =
+  runGmlTWith' efnmns' mdf False id wrapper action
+
+-- | Run a GmlT action (i.e. a function in the GhcMonad) in the context of
+-- certain files or modules, with updated GHC flags, updated ModuleGraph and a
+-- final transformation
+runGmlTWith' :: IOish m
+                 => [Either FilePath ModuleName]
+                 -> (forall gm. GhcMonad gm => DynFlags -> gm DynFlags)
+                 -> Bool
+                 -> (GHC.Hooks -> GHC.Hooks)
+                 -> (GmlT m a -> GmlT m b)
+                 -> GmlT m a
+                 -> GhcModT m b
+runGmlTWith' efnmns' mdf filterModSums updateHooks wrapper action = do
     crdl <- cradle
     Options { optGhcUserOptions } <- options
 
@@ -186,6 +202,8 @@ runGmlTWith efnmns' mdf filterModSums wrapper action = do
 
     initSession opts' $
         setHscNothing >>> setLogger >>> mdf
+
+    unGmlT $ G.modifySession $ \s -> s { hsc_dflags = (hsc_dflags s) { GHC.hooks = updateHooks (GHC.hooks $ hsc_dflags s) }}
 
     mappedStrs <- getMMappedFilePaths
     let targetStrs = mappedStrs ++ map moduleNameString mns ++ cfns
@@ -476,6 +494,8 @@ loadTargets opts targetStrs filterModSums = do
           text "Loading" <+>: fsep (map (text . showTargetId) targets)
 
     setTargets targets
+
+    when filterModSums $ updateModuleGraph setDynFlagsRecompile targetFileNames
 
     mg <- depanal [] False
 
