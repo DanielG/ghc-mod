@@ -470,15 +470,16 @@ loadTargets opts targetStrs filterModSums = do
               >>= mapM relativize
 
     let targets = map (\t -> t { targetAllowObjCode = False }) targets'
+        targetFileNames = concatMap filePathFromTarget targets
 
     gmLog GmDebug "loadTargets" $
           text "Loading" <+>: fsep (map (text . showTargetId) targets)
 
     setTargets targets
 
-    when filterModSums $ updateModuleGraph $ concatMap filePathFromTarget targets
-
     mg <- depanal [] False
+
+    when filterModSums $ updateModuleGraph setDynFlagsRecompile targetFileNames
 
     let interp = needsHscInterpreted mg
     target <- hscTarget <$> getSessionDynFlags
@@ -498,6 +499,8 @@ loadTargets opts targetStrs filterModSums = do
         void $ load LoadAllTargets
       _ -> error ("loadTargets: unsupported hscTarget")
 
+    when filterModSums $ updateModuleGraph unSetDynFlagsRecompile targetFileNames
+
     gmLog GmDebug "loadTargets" $ text "Loading done"
 
   where
@@ -516,20 +519,23 @@ loadTargets opts targetStrs filterModSums = do
 
     updateModuleGraph :: (GhcMonad m, GmState m, GmEnv m,
                           MonadIO m, GmLog m, GmOut m)
-                      => [FilePath] -> m ()
-    updateModuleGraph fps = do
+                      => (DynFlags -> DynFlags) -> [FilePath] -> m ()
+    updateModuleGraph df fps = do
       let
         fpSet = Set.fromList fps
         mustRecompile ms = case (ml_hs_file . ms_location)  ms of
           Nothing -> ms
           Just f -> if Set.member f fpSet
-                      then ms {ms_hspp_opts = setDynFlagsRecompile (ms_hspp_opts ms)}
+                      then ms {ms_hspp_opts = df (ms_hspp_opts ms)}
                       else ms
         update s = s {hsc_mod_graph = map mustRecompile (hsc_mod_graph s)}
       G.modifySession update
 
     setDynFlagsRecompile :: DynFlags -> DynFlags
     setDynFlagsRecompile df = gopt_set df Opt_ForceRecomp
+
+    unSetDynFlagsRecompile :: DynFlags -> DynFlags
+    unSetDynFlagsRecompile df = gopt_unset df Opt_ForceRecomp
 
 needsHscInterpreted :: ModuleGraph -> Bool
 needsHscInterpreted = any $ \ms ->
