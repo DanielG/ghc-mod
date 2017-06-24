@@ -502,13 +502,16 @@ loadTargets opts targetStrs mUpdateHooks = do
 
     mg <- depanal [] False
 
-    when filterModSums $ updateModuleGraph setDynFlagsRecompile targetFileNames
-
     let interp = needsHscInterpreted mg
     target <- hscTarget <$> getSessionDynFlags
     when (interp && target /= HscInterpreted) $ do
-      _ <- setSessionDynFlags . setHscInterpreted =<< getSessionDynFlags
+      let
+        setHooks :: DynFlags -> DynFlags
+        setHooks df = df { GHC.hooks = (fromMaybe id mUpdateHooks) (GHC.hooks df) }
+      _ <- setSessionDynFlags . setHscInterpreted . setHooks =<< getSessionDynFlags
       gmLog GmInfo "loadTargets" $ text "Target needs interpeter, switching to LinkInMemory/HscInterpreted. Perfectly normal if anything is using TemplateHaskell, QuasiQuotes or PatternSynonyms."
+
+    when filterModSums $ updateModuleGraph setDynFlagsRecompile targetFileNames
 
     target' <- hscTarget <$> getSessionDynFlags
 
