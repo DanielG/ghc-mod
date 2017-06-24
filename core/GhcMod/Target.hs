@@ -149,12 +149,11 @@ runGmlT' fns mdf action = runGmlTWith fns mdf id action
 runGmlTfm :: IOish m
               => [Either FilePath ModuleName]
               -> (forall gm. GhcMonad gm => DynFlags -> gm DynFlags)
-              -> Bool
-              -> (GHC.Hooks -> GHC.Hooks)
+              -> Maybe (GHC.Hooks -> GHC.Hooks)
               -> GmlT m a
               -> GhcModT m a
-runGmlTfm fns mdf forceReload updateHooks action
-  = runGmlTWith' fns mdf forceReload updateHooks id action
+runGmlTfm fns mdf mUpdateHooks action
+  = runGmlTWith' fns mdf mUpdateHooks id action
 
 -- | Run a GmlT action (i.e. a function in the GhcMonad) in the context of
 -- certain files or modules, with updated GHC flags, updated ModuleGraph and a
@@ -166,7 +165,7 @@ runGmlTWith :: IOish m
                  -> GmlT m a
                  -> GhcModT m b
 runGmlTWith efnmns' mdf wrapper action =
-  runGmlTWith' efnmns' mdf False id wrapper action
+  runGmlTWith' efnmns' mdf Nothing wrapper action
 
 -- | Run a GmlT action (i.e. a function in the GhcMonad) in the context of
 -- certain files or modules, with updated GHC flags, updated ModuleGraph and a
@@ -174,12 +173,13 @@ runGmlTWith efnmns' mdf wrapper action =
 runGmlTWith' :: IOish m
                  => [Either FilePath ModuleName]
                  -> (forall gm. GhcMonad gm => DynFlags -> gm DynFlags)
-                 -> Bool
-                 -> (GHC.Hooks -> GHC.Hooks)
+                 -> Maybe (GHC.Hooks -> GHC.Hooks)
+                         -- ^ If a hook update is provided, force the reloading
+                         -- of the specified targets
                  -> (GmlT m a -> GmlT m b)
                  -> GmlT m a
                  -> GhcModT m b
-runGmlTWith' efnmns' mdf filterModSums updateHooks wrapper action = do
+runGmlTWith' efnmns' mdf mUpdateHooks wrapper action = do
     crdl <- cradle
     Options { optGhcUserOptions } <- options
 
@@ -203,8 +203,6 @@ runGmlTWith' efnmns' mdf filterModSums updateHooks wrapper action = do
     initSession opts' $
         setHscNothing >>> setLogger >>> mdf
 
-    unGmlT $ G.modifySession $ \s -> s { hsc_dflags = (hsc_dflags s) { GHC.hooks = updateHooks (GHC.hooks $ hsc_dflags s) }}
-
     mappedStrs <- getMMappedFilePaths
     let targetStrs = mappedStrs ++ map moduleNameString mns ++ cfns
 
@@ -214,7 +212,7 @@ runGmlTWith' efnmns' mdf filterModSums updateHooks wrapper action = do
       (intercalate " " $ map (("\""++) . (++"\"")) targetStrs)
 
     unGmlT $ wrapper $ do
-      loadTargets opts targetStrs filterModSums
+      loadTargets opts targetStrs mUpdateHooks
       action
 
 targetGhcOptions :: forall m. IOish m
@@ -479,8 +477,8 @@ resolveGmComponents mcache cs = do
    same f a b = (f a) == (f b)
 
 -- | Set the files as targets and load them.
-loadTargets :: IOish m => [GHCOption] -> [FilePath] -> Bool -> GmlT m ()
-loadTargets opts targetStrs filterModSums = do
+loadTargets :: IOish m => [GHCOption] -> [FilePath] -> Maybe (GHC.Hooks -> GHC.Hooks) -> GmlT m ()
+loadTargets opts targetStrs mUpdateHooks = do
     targets' <-
         withLightHscEnv opts $ \env ->
                 liftM (nubBy ((==) `on` targetId))
@@ -492,6 +490,11 @@ loadTargets opts targetStrs filterModSums = do
 
     gmLog GmDebug "loadTargets" $
           text "Loading" <+>: fsep (map (text . showTargetId) targets)
+
+
+    let filterModSums = isJust mUpdateHooks
+    gmLog GmDebug "loadTargets" $
+          text "filterModSums" <+>: text (show filterModSums)
 
     setTargets targets
 
@@ -543,10 +546,11 @@ loadTargets opts targetStrs filterModSums = do
     updateModuleGraph df fps = do
       let
         fpSet = Set.fromList fps
+        updateHooks df = df { GHC.hooks = (fromMaybe id mUpdateHooks) (GHC.hooks df)}
         mustRecompile ms = case (ml_hs_file . ms_location)  ms of
           Nothing -> ms
           Just f -> if Set.member f fpSet
-                      then ms {ms_hspp_opts = df (ms_hspp_opts ms)}
+                      then ms {ms_hspp_opts = (df . updateHooks) (ms_hspp_opts ms)}
                       else ms
         update s = s {hsc_mod_graph = map mustRecompile (hsc_mod_graph s)}
       G.modifySession update
