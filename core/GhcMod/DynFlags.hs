@@ -103,6 +103,6 @@ deferErrors df = return $
 ----------------------------------------------------------------
 
 deriveEqDynFlags [d|
-  eqDynFlags :: DynFlags -> DynFlags -> Bool
+  eqDynFlags :: DynFlags -> DynFlags -> [[(Bool, String)]]
   eqDynFlags = undefined
  |]
