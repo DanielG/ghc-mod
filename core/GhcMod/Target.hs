@@ -193,6 +193,7 @@ runGmlTWith' efnmns' mdf mUpdateHooks wrapper action = do
     cfns <- mapM getCanonicalFileNameSafe ccfns
     let serfnmn = Set.fromList $ map Right mns ++ map Left cfns
     (opts, mappedStrs) <- targetGhcOptions crdl serfnmn
+
     let opts' = opts ++ ["-O0", "-fno-warn-missing-home-modules"] ++ optGhcUserOptions
 
     gmVomit
@@ -213,7 +214,6 @@ runGmlTWith' efnmns' mdf mUpdateHooks wrapper action = do
     initSession opts' $
         setHscNothing >>> setLogger >>> mdf
 
-    mappedStrs <- getMMappedFilePaths
     let targetStrs = mappedStrs ++ map moduleNameString mns ++ cfns
 
     gmVomit
