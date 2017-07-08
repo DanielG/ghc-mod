@@ -192,8 +192,13 @@ runGmlTWith' efnmns' mdf mUpdateHooks wrapper action = do
         ccfns = map (cradleCurrentDir crdl </>) fns
     cfns <- mapM getCanonicalFileNameSafe ccfns
     let serfnmn = Set.fromList $ map Right mns ++ map Left cfns
-    opts <- targetGhcOptions crdl serfnmn
+    (opts, mappedStrs) <- targetGhcOptions crdl serfnmn
     let opts' = opts ++ ["-O0"] ++ optGhcUserOptions
+
+    gmVomit
+      "session-ghc-options"
+      (text "Using the following mapped files")
+      (intercalate " " $ map (("\""++) . (++"\"")) mappedStrs)
 
     gmVomit
       "session-ghc-options"
@@ -208,7 +213,6 @@ runGmlTWith' efnmns' mdf mUpdateHooks wrapper action = do
     initSession opts' $
         setHscNothing >>> setLogger >>> mdf
 
-    mappedStrs <- getMMappedFilePaths
     let targetStrs = mappedStrs ++ map moduleNameString mns ++ cfns
 
     gmVomit
@@ -223,21 +227,25 @@ runGmlTWith' efnmns' mdf mUpdateHooks wrapper action = do
 targetGhcOptions :: forall m. IOish m
                   => Cradle
                   -> Set (Either FilePath ModuleName)
-                  -> GhcModT m [GHCOption]
+                  -> GhcModT m ([GHCOption],[FilePath])
 targetGhcOptions crdl sefnmn = do
     when (Set.null sefnmn) $ error "targetGhcOptions: no targets given"
 
     case cradleProject crdl of
       proj
           | isCabalHelperProject proj -> cabalOpts crdl
-          | otherwise -> sandboxOpts crdl
+          | otherwise -> do
+              opts <- sandboxOpts crdl
+              mappedStrs <- getMMappedFilePaths
+              return (opts, mappedStrs)
  where
    zipMap f l = l `zip` (f `map` l)
 
-   cabalOpts :: Cradle -> GhcModT m [String]
+   cabalOpts :: Cradle -> GhcModT m ([String],[FilePath])
    cabalOpts Cradle{..} = do
        mcs <- cabalResolvedComponents
-
+       mappedStrs <- getMMappedFilePaths
+       let mappedComps = zipMap (moduleComponents mcs . Left) mappedStrs
        let mdlcs = moduleComponents mcs `zipMap` Set.toList sefnmn
            candidates = findCandidates $ map snd mdlcs
 
@@ -248,15 +256,20 @@ targetGhcOptions crdl sefnmn = do
           then do
             -- First component should be ChLibName, if no lib will take lexically first exe.
             let cns = filter (/= ChSetupHsName) $ Map.keys mcs
+                cn = head cns
+                mappedStrsInComp = map fst $ filter (Set.member cn . snd) mappedComps
 
             gmLog GmDebug "" $ strDoc $ "Could not find a component assignment, falling back to picking library component in cabal file."
-            return $ gmcGhcOpts $ fromJustNote "targetGhcOptions, no-assignment" $ Map.lookup (head cns) mcs
+            let opts = gmcGhcOpts $ fromJustNote "targetGhcOptions, no-assignment" $ Map.lookup cn mcs
+            return (opts, mappedStrsInComp)
           else do
             when noCandidates $
               throwError $ GMECabalCompAssignment mdlcs
 
             let cn = pickComponent candidates
-            return $ gmcGhcOpts $ fromJustNote "targetGhcOptions" $ Map.lookup cn mcs
+                mappedStrsInComp = map fst $ filter (Set.member cn . snd) mappedComps
+                opts = gmcGhcOpts $ fromJustNote "targetGhcOptions" $ Map.lookup cn mcs
+            return (opts, mappedStrsInComp)
 
 resolvedComponentsCache :: IOish m => FilePath ->
     Cached (GhcModT m) GhcModState
