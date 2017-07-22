@@ -213,7 +213,7 @@ runGmlTWith' efnmns' mdf mUpdateHooks wrapper action = do
     initSession opts' $
         setHscNothing >>> setLogger >>> mdf
 
-    let targetStrs = mappedStrs ++ map moduleNameString mns ++ cfns
+    let targetStrs = map moduleNameString mns ++ cfns
 
     gmVomit
       "session-ghc-options"
