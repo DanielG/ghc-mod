@@ -15,16 +15,21 @@
 -- along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 {-# LANGUAGE CPP, TemplateHaskell #-}
+{-# LANGUAGE StandaloneDeriving #-}
+{-# LANGUAGE DeriveDataTypeable #-}
 module GhcMod.DynFlagsTH where
 
 import Language.Haskell.TH
 import Language.Haskell.TH.Syntax
 import Control.Applicative
+import qualified Data.IntSet as IS
 import Data.Maybe
 import Data.Generics.Aliases
 import Data.Generics.Schemes
 import DynFlags
 import Prelude
+
+-- -------------------------------------
 
 deriveEqDynFlags :: Q [Dec] -> Q [Dec]
 deriveEqDynFlags qds = do
@@ -39,7 +44,7 @@ deriveEqDynFlags qds = do
   a <- newName "a"
   b <- newName "b"
 
-  e <- AppE (VarE 'and) . ListE <$> sequence (catMaybes $ map (eq a b) fs)
+  e <- ListE <$> sequence (mapMaybe (eq a b) fs)
 
   tysig@(SigD n _) :_ <- qds
 
@@ -84,31 +89,40 @@ deriveEqDynFlags qds = do
        expr =
          case fon of
            "rtsOptsEnabled" -> do
-               let eqfn = [| let fn RtsOptsNone RtsOptsNone = True
-                                 fn RtsOptsSafeOnly RtsOptsSafeOnly = True
-                                 fn RtsOptsAll RtsOptsAll = True
-                                 fn _ _ = False
+               let eqfn = [| let fn RtsOptsNone RtsOptsNone = [(True, "")]
+                                 fn RtsOptsSafeOnly RtsOptsSafeOnly = [(True, "")]
+                                 fn RtsOptsAll RtsOptsAll = [(True, "")]
+                                 fn _ _ = [(False, "rtsOptsEnabled changed")]
                              in fn
                           |]
                [e| $(eqfn) $(return fa) $(return fb) |]
 
            "extraPkgConfs" -> do
-               let eqfn = [| let fn a' b' = and (zipWith eqpr (a' []) (b' []))
-                                        && length (a' []) == length (b' [])
-                                 eqpr GlobalPkgConf GlobalPkgConf = True
-                                 eqpr UserPkgConf UserPkgConf = True
-                                 eqpr (PkgConfFile pa) (PkgConfFile pb) = pa == pb
-                                 eqpr _ _ = False
+               let eqfn = [| let fn a' b' = cond a' b'
+
+                                 cond a' b' = zz ++ ll
+                                   where
+                                    zz :: [(Bool,String)]
+                                    zz = (zipWith eqpr (a' []) (b' []))
+
+                                    ll :: [(Bool,String)]
+                                    ll = [(   length (a' []) == length (b' [])
+                                         , if length (a' []) == length (b' []) then "" else "extraPkgConfs length mismatch")]
+
+                                 eqpr GlobalPkgConf GlobalPkgConf = (True, "")
+                                 eqpr UserPkgConf UserPkgConf = (True, "")
+                                 eqpr (PkgConfFile pa) (PkgConfFile pb) = (pa == pb,if pa == pb then "" else "extraPkgConfs changed")
+                                 eqpr _ _ = (False, "extraPkgConfs changed")
                              in fn
                           |]
                [e| $(eqfn) $(return fa) $(return fb) |]
 
 #if __GLASGOW_HASKELL__ >= 710 && __GLASGOW_HASKELL__ < 800
            "sigOf" -> do
-               let eqfn = [| let fn NotSigOf NotSigOf = True
-                                 fn (SigOf a') (SigOf b') = a' == b'
-                                 fn (SigOfMap a') (SigOfMap b') = a' == b'
-                                 fn _ _ = False
+               let eqfn = [| let fn NotSigOf NotSigOf = [(True, "")]
+                                 fn (SigOf a') (SigOf b') = [(a' == b', if a' == b' then "" else "sigOf changed")]
+                                 fn (SigOfMap a') (SigOfMap b') = [(a' == b', if a' == b' then "" else "sigOfMap changed")]
+                                 fn _ _ = [(False, "sigOf changed")]
                              in fn
                           |]
                [e| $(eqfn) $(return fa) $(return fb) |]
@@ -116,12 +130,12 @@ deriveEqDynFlags qds = do
 
 #if __GLASGOW_HASKELL <= 706
            "profAuto" -> do
-               let eqfn = [| let fn NoProfAuto NoProfAuto = True
-                                 fn ProfAutoAll ProfAutoAll = True
-                                 fn ProfAutoTop ProfAutoTop = True
-                                 fn ProfAutoExports ProfAutoExports = True
-                                 fn ProfAutoCalls ProfAutoCalls = True
-                                 fn _ _ = False
+               let eqfn = [| let fn NoProfAuto NoProfAuto = [(True, "")]
+                                 fn ProfAutoAll ProfAutoAll = [(True, "")]
+                                 fn ProfAutoTop ProfAutoTop = [(True, "")]
+                                 fn ProfAutoExports ProfAutoExports = [(True, "")]
+                                 fn ProfAutoCalls ProfAutoCalls = [(True, "")]
+                                 fn _ _ = [(False, "profAuto changed")]
                              in fn
                           |]
                [e| $(eqfn) $(return fa) $(return fb) |]
@@ -129,16 +143,38 @@ deriveEqDynFlags qds = do
 
 #if __GLASGOW_HASKELL__ >= 706
            "language" -> do
-               let eqfn = [| let fn (Just Haskell98) (Just Haskell98) = True
-                                 fn (Just Haskell2010) (Just Haskell2010) = True
-                                 fn Nothing Nothing = True
-                                 fn _ _ = False
+               let eqfn = [| let fn (Just Haskell98) (Just Haskell98) = [(True, "")]
+                                 fn (Just Haskell2010) (Just Haskell2010) = [(True, "")]
+                                 fn Nothing Nothing = [(True, "")]
+                                 fn _ _ = [(False, "language changed")]
                              in fn
                           |]
                [e| $(eqfn) $(return fa) $(return fb) |]
 #endif
 
-           _ ->
-               [e| $(return fa) == $(return fb)  |]
+           "outputFile" -> do
+               let eqfn = [| let fn (Just f1) (Just f2) = [(f1 == f2, if f1 == f2 then "" else "outputFile changed")]
+                                 fn _ _ = [(True, "")] -- anything with a Nothing is fine.
+                             in fn
+                          |]
+               [e| $(eqfn) $(return fa) $(return fb) |]
 
---       expr' = [e| trace (if $(expr) == True then "" else show ($(litE $ StringL fon), $(expr))) $(expr) |]
+           "generalFlags" -> checkIntSet "generalFlags"
+
+           "warningFlags" -> checkIntSet "warningFlags"
+
+           _ ->
+               [e| [($(return fa) == $(return fb), if $(return fa) == $(return fb) then "" else ("default changed:" ++ fon)  )] |]
+
+       checkIntSet fieldName = do
+               let eqfn = [| let fn aa bb = r
+                                   where
+                                     uni = IS.union aa bb
+                                     dif = IS.intersection aa bb
+                                     delta = IS.difference uni dif
+                                     r = if delta == IS.empty
+                                           then [(True, "")]
+                                           else [(False, fieldName ++ ":delta=" ++ (show delta) )]
+                             in fn
+                          |]
+               [e| $(eqfn) $(return fa) $(return fb) |]
