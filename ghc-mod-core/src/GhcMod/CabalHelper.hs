@@ -48,7 +48,7 @@ import System.Process
 import System.Exit
 import Prelude hiding ((.))
 
-import Paths_ghc_mod as GhcMod
+import Paths_ghc_mod_core as GhcMod
 
 -- | Only package related GHC options, sufficient for things that don't need to
 -- access home modules

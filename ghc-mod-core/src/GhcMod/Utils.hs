@@ -40,7 +40,7 @@ import System.IO.Temp (createTempDirectory)
 import System.Process (readProcess)
 import Text.Printf
 
-import Paths_ghc_mod (getLibexecDir, getBinDir)
+import Paths_ghc_mod_core (getLibexecDir, getBinDir)
 import Utils
 import Prelude
 
