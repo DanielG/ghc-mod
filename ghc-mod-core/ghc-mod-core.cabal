@@ -114,6 +114,7 @@ Library
                       , djinn-ghc            < 0.1  && >= 0.0.2.2
                       , extra                < 1.6  && >= 1.4
                       , fclabels             < 2.1  && >= 2.0
+                      , fingertree           < 0.2  && >= 0.1.1.0
                       , ghc-paths            < 0.2  && >= 0.1.0.9
                       , ghc-syb-utils        < 0.3  && >= 0.2.3
                       , haskell-src-exts     < 1.20 && >= 1.18

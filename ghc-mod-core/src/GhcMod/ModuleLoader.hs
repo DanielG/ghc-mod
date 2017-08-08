@@ -4,15 +4,25 @@
 
 module GhcMod.ModuleLoader
   ( getTypecheckedModuleGhc
+  , HasGhcModuleCache(..)
+  , GhcModuleCache(..)
+  , CachedModule(..)
+  , FileUri(..)
+  , UriCache(..)
+  , Pos(..)
+  , modifyCache
+  , emptyModuleCache
   ) where
 
 import           Control.Monad.State.Strict
 import qualified Data.Map                          as Map
+import           Data.Dynamic
+import qualified Data.IntervalMap.FingerTree as IM
+import qualified Data.Text                         as T
 import           GHC                               (TypecheckedModule)
 import qualified GhcMod.Monad                      as GM
 import qualified GhcMod.Target                     as GM
 import qualified GhcMod.Types                      as GM
--- import           Haskell.Ide.Engine.MonadFunctions
 import           System.Directory
 import           System.FilePath
 
@@ -115,3 +125,59 @@ hscFrontend fn ref mod_summary = do
         hsc_env <- GHC.getHscEnv
         GHC.tcRnModule' hsc_env mod_summary False hpm
 
+-- ---------------------------------------------------------------------
+
+-- | for compatibility with haskell-lsp.
+newtype FileUri = FileUri { getFileUri :: T.Text }
+  deriving (Eq,Ord,Read,Show)
+
+type UriCaches = Map.Map FileUri UriCache
+
+data UriCache = UriCache
+  { cachedModule :: !CachedModule
+  , cachedData   :: !(Map.Map TypeRep Dynamic)
+  } deriving Show
+
+data Pos = Pos { line :: Int, col :: Int}
+  deriving (Eq,Show,Read,Ord)
+
+type LocMap = IM.IntervalMap Pos GHC.Name
+
+data CachedModule = CachedModule
+  { tcMod          :: !TypecheckedModule
+  , locMap         :: !LocMap
+  , revMap         :: !(FilePath -> FilePath)
+  , newPosToOldPos :: !(Pos -> Maybe Pos)
+  , oldPosToNewPos :: !(Pos -> Maybe Pos)
+  }
+
+instance Show CachedModule where
+  show CachedModule{} = "CachedModule { .. }"
+
+-- ---------------------------------------------------------------------
+
+modifyCache :: (HasGhcModuleCache m) => (GhcModuleCache -> GhcModuleCache) -> m ()
+modifyCache f = do
+  mc <- getModuleCache
+  setModuleCache (f mc)
+
+-- ---------------------------------------------------------------------
+-- The following to move into ghc-mod-core
+
+class (Monad m) => HasGhcModuleCache m where
+  getModuleCache :: m GhcModuleCache
+  setModuleCache :: GhcModuleCache -> m ()
+
+emptyModuleCache :: GhcModuleCache
+emptyModuleCache = GhcModuleCache Map.empty Map.empty Map.empty
+
+data GhcModuleCache = GhcModuleCache
+  {
+    extensibleState :: !(Map.Map TypeRep Dynamic)
+              -- ^ stores custom state information.
+  , cradleCache :: !(Map.Map FilePath GM.Cradle)
+              -- ^ map from dirs to cradles
+  , uriCaches  :: !UriCaches
+  } deriving (Show)
+
+-- ---------------------------------------------------------------------
