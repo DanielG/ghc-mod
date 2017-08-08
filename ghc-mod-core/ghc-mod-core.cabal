@@ -51,21 +51,6 @@ Library
   HS-Source-Dirs:       . src shared
   Exposed-Modules:
                         GhcModCore
-                        -- GhcMod.Exe.Boot
-                        -- GhcMod.Exe.Browse
-                        -- GhcMod.Exe.CaseSplit
-                        -- GhcMod.Exe.Check
-                        -- GhcMod.Exe.Debug
-                        -- GhcMod.Exe.FillSig
-                        -- GhcMod.Exe.Find
-                        -- GhcMod.Exe.Flag
-                        -- GhcMod.Exe.Info
-                        -- GhcMod.Exe.Internal
-                        -- GhcMod.Exe.Lang
-                        -- GhcMod.Exe.Lint
-                        -- GhcMod.Exe.Modules
-                        -- GhcMod.Exe.PkgDoc
-                        -- GhcMod.Exe.Test
                         GhcMod.CabalHelper
                         GhcMod.Caching
                         GhcMod.Caching.Types
@@ -84,6 +69,7 @@ Library
                         GhcMod.LightGhc
                         GhcMod.Logger
                         GhcMod.Logging
+                        GhcMod.ModuleLoader
                         GhcMod.Monad
                         GhcMod.Monad.Env
                         GhcMod.Monad.Log

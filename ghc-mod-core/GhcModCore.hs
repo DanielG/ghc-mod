@@ -31,33 +31,6 @@ module GhcModCore (
   , runGhcModT
   , withOptions
   , dropSession
-  -- * 'GhcMod' utilities
-  -- , boot
-  -- , browse
-  -- , check
-  -- , checkSyntax
-  -- , debugInfo
-  -- , componentInfo
-  -- , expandTemplate
-  -- , info
-  -- , lint
-  -- , pkgDoc
-  -- , rootInfo
-  -- , types
-  -- , test
-  -- , splits
-  -- , sig
-  -- , refine
-  -- , auto
-  -- , modules
-  -- , languages
-  -- , flags
-  -- , findSymbol
-  -- , lookupSymbol
-  -- , dumpSymbol
-  -- -- * SymbolDb
-  -- , loadSymbolDb
-  -- , isOutdated
   -- * Output
   , gmPutStr
   , gmErrStr
@@ -67,12 +40,15 @@ module GhcModCore (
   , loadMappedFile
   , loadMappedFileSource
   , unloadMappedFile
+  -- * HIE integration utilities
+  , getTypecheckedModuleGhc
   ) where
 
 import GhcMod.Cradle
 import GhcMod.FileMapping
 import GhcMod.Logging
 import GhcMod.Monad
+import GhcMod.ModuleLoader
 import GhcMod.Output
 import GhcMod.Target
 import GhcMod.Types
