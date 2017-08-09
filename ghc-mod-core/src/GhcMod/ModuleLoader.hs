@@ -366,14 +366,24 @@ genLocMap tm = names
 
     rspToInt = uncurry IM.Interval . unpackRealSrcSpan
 
+#if __GLASGOW_HASKELL__ > 710
     names  = IM.union names2 $ SYB.everything IM.union (IM.empty `SYB.mkQ` hsRecFieldT) typechecked
-    names2 = SYB.everything IM.union (IM.empty `SYB.mkQ`  fieldOcc
+#else
+    names = names2
+#endif
+    names2 = SYB.everything IM.union (IM.empty
+#if __GLASGOW_HASKELL__ > 710
+                                               `SYB.mkQ`  fieldOcc
                                                `SYB.extQ` hsRecFieldN
                                                `SYB.extQ` checker) renamed
+#else
+                                               `SYB.mkQ` checker) renamed
+#endif
 
     checker (GHC.L (GHC.RealSrcSpan r) x) = IM.singleton (rspToInt r) x
     checker _                             = IM.empty
 
+#if __GLASGOW_HASKELL__ > 710
     fieldOcc :: GHC.FieldOcc GHC.Name -> LocMap
     fieldOcc (GHC.FieldOcc (GHC.L (GHC.RealSrcSpan r) _) n) = IM.singleton (rspToInt r) n
     fieldOcc _ = IM.empty
@@ -385,6 +395,7 @@ genLocMap tm = names
     hsRecFieldT :: GHC.LHsExpr GHC.Id -> LocMap
     hsRecFieldT (GHC.L _ (GHC.HsRecFld (GHC.Ambiguous (GHC.L (GHC.RealSrcSpan r) _) n) )) = IM.singleton (rspToInt r) (Var.varName n)
     hsRecFieldT _ = IM.empty
+#endif
 
 -- | Seaches for all the symbols at a point in the
 -- given LocMap
