@@ -26,6 +26,10 @@ module GhcMod.ModuleLoader
   , deleteCachedModule
   , getCradle
   , runActionWithContext
+  , genLocMap
+  , getNamesAtPos
+  , unpackRealSrcSpan
+  , toPos
   -- * Usage
   -- $usage
   , put
@@ -37,9 +41,11 @@ module GhcMod.ModuleLoader
   ) where
 
 import           Control.Monad.State.Strict hiding (put,get,modify,gets)
-import qualified Data.Map                          as Map
+import qualified Data.Generics                     as SYB
 import           Data.Dynamic
-import qualified Data.IntervalMap.FingerTree as IM
+import qualified Data.IntervalMap.FingerTree       as IM
+import qualified Data.Map                          as Map
+import           Data.Maybe
 import qualified Data.Text                         as T
 import           GHC                               (TypecheckedModule)
 import qualified GhcMod.Cradle                     as GM
@@ -55,7 +61,9 @@ import qualified GhcMonad                          as GHC
 import qualified Hooks                             as GHC
 import qualified HscMain                           as GHC
 import qualified HscTypes                          as GHC
+import qualified SrcLoc                            as GHC
 import qualified TcRnMonad                         as GHC
+import qualified Var
 
 import Control.Monad.Trans.Control
 import Exception (ExceptionMonad )
@@ -343,6 +351,61 @@ deleteCachedModule :: (Monad m, GM.MonadIO m, HasGhcModuleCache m) => FileUri ->
 deleteCachedModule uri = do
   uri' <- canonicalizeUri uri
   modifyCache (\s -> s { uriCaches = Map.delete uri' (uriCaches s) })
+
+-- ---------------------------------------------------------------------
+
+-- | Generates a LocMap from a TypecheckedModule,
+-- which allows fast queries for all the symbols
+-- located at a particular point in the source
+genLocMap :: TypecheckedModule -> LocMap
+genLocMap tm = names
+  where
+    typechecked = GHC.tm_typechecked_source tm
+    renamed = fromJust $ GHC.tm_renamed_source tm
+
+    rspToInt = uncurry IM.Interval . unpackRealSrcSpan
+
+    names  = IM.union names2 $ SYB.everything IM.union (IM.empty `SYB.mkQ` hsRecFieldT) typechecked
+    names2 = SYB.everything IM.union (IM.empty `SYB.mkQ`  fieldOcc
+                                               `SYB.extQ` hsRecFieldN
+                                               `SYB.extQ` checker) renamed
+
+    checker (GHC.L (GHC.RealSrcSpan r) x) = IM.singleton (rspToInt r) x
+    checker _                             = IM.empty
+
+    fieldOcc :: GHC.FieldOcc GHC.Name -> LocMap
+    fieldOcc (GHC.FieldOcc (GHC.L (GHC.RealSrcSpan r) _) n) = IM.singleton (rspToInt r) n
+    fieldOcc _ = IM.empty
+
+    hsRecFieldN :: GHC.LHsExpr GHC.Name -> LocMap
+    hsRecFieldN (GHC.L _ (GHC.HsRecFld (GHC.Unambiguous (GHC.L (GHC.RealSrcSpan r) _) n) )) = IM.singleton (rspToInt r) n
+    hsRecFieldN _ = IM.empty
+
+    hsRecFieldT :: GHC.LHsExpr GHC.Id -> LocMap
+    hsRecFieldT (GHC.L _ (GHC.HsRecFld (GHC.Ambiguous (GHC.L (GHC.RealSrcSpan r) _) n) )) = IM.singleton (rspToInt r) (Var.varName n)
+    hsRecFieldT _ = IM.empty
+
+-- | Seaches for all the symbols at a point in the
+-- given LocMap
+getNamesAtPos :: Pos -> LocMap -> [((Pos,Pos), GHC.Name)]
+getNamesAtPos p im = map f $ IM.search p im
+  where f (IM.Interval a b, x) = ((a, b), x)
+
+-- ---------------------------------------------------------------------
+
+unpackRealSrcSpan :: GHC.RealSrcSpan -> (Pos, Pos)
+unpackRealSrcSpan rspan =
+  (toPos (l1,c1),toPos (l2,c2))
+  where s  = GHC.realSrcSpanStart rspan
+        l1 = GHC.srcLocLine s
+        c1 = GHC.srcLocCol s
+        e  = GHC.realSrcSpanEnd rspan
+        l2 = GHC.srcLocLine e
+        c2 = GHC.srcLocCol e
+
+toPos :: (Int,Int) -> Pos
+toPos (l,c) = Pos (l-1) (c-1)
+
 
 -- ---------------------------------------------------------------------
 -- Extensible state, based on
