@@ -46,4 +46,4 @@ emacs -q -nw ChangeLog
 git add ChangeLog
 git commit -m "ChangeLog"
 
-git tag "v$VERSION"
+git tag -f "v$VERSION"

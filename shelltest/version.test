@@ -1,0 +1,7 @@
+cabal exec -- ghc-mod version
+>>> /^ghc-mod version [0-9.]+ compiled by GHC [0-9.]+/
+>>>= 0
+
+cabal exec -- ghc-mod --version
+>>> /^ghc-mod version [0-9.]+ compiled by GHC [0-9.]+/
+>>>= 0

@@ -1,7 +1,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 module FindSpec where
 
-import Language.Haskell.GhcMod.Find
+import GhcMod.Exe.Find
 import Test.Hspec
 import TestUtils
 

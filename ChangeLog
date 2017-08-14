@@ -1,0 +1,325 @@
+2017-05-26 v5.8.0.0
+	* Fix logic bug in fix for excessive use of `map-file`
+	* Bump HLint to 2.x
+	* Reorganize Cabal file to make maintanance easier
+	* Merge #872, Do not log warning when Stack project is preferred
+	* Merge #873, Fix build on case-insensitive filesystems
+	* Fix 'debug' command when ghc(-pkg) not on PATH
+	* Rework README
+	* Reorganize modules as preparation for splitting off ghc-mod-core
+	* Remove dependency on 'pretty' and use GHC's pretty printer instead
+	* Merge #854, Fix for "ghc-mod doc" when usind with stack
+	* Merge #858, Fix Gap.fromTyThing returning GHC internal
+	  representation instead of the user readable representation of
+	  types
+	* Fix #774, 'find*File' searching all the way up to /
+	* Fix #778, Check directory permissions before reading in
+	  findFileInParentsP
+	* Merge #817, fix #779, bad "ghc-mod check" performance
+
+2017-01-16 v5.7.0.0
+	* Bump cabal-helper to 0.7.3.0 to support Cabal-1.24.1.0
+	* Bump haskell-src-exts, optparse-applicative, pipes and extra
+	  to be compatible with stackage.
+
+2016-07-29 v5.6.0.0
+	* Bump cabal-helper to 0.7, adds support for Cabal-1.24
+	* Merge #737, `map-file` caching issues
+	* Merge #767, Add `browse` option to show symbol "parents"
+	* Merge #731, Type constraints
+	* Fix #69 (via #731), Missing type constraints
+	* Fix #438, Case splitting not working
+	* Fix #790, Don't try to use 'cabal' or 'stack' when it's not installed
+	* Add support for GHC 8.0
+
+2016-01-19 v5.5.0.0
+	* Fix #660, cabal-helper errors when no global GHC is installed (Stack)
+	* Fix #665, Reinstate internally managed CWD (no more `ghc-mod root`
+	  requirement for frontends)
+	* Merge #707, Support for spaces in file names when using
+	  legacy-interactive
+	* Merge #694, #706, #703, Rewrite command line parser using
+	  optparse-applicative. Thanks @lierdakil!
+	* Merge #693, Fix slowdown and bugs caused by excessive use of
+	  `map-file`
+	* Fix #678, "No instance nor default method for class operation put"
+	* Fix #683, #684, a variety of caching related issues
+	* Fix #666, The issue of the beast >:3
+	* Merge #649, elisp: Add ghc-report-errors to inhibit *GHC Error*
+	  logging
+	* Fix #621, Preserve Cabal flag selection across automatic
+	  reconfiguration
+
+2015-09-16 v5.4.0.0
+	* Add support for the Stack build tool
+	* Fix #554, `module not interpreted` errors when using the `type`
+	  command
+	* Merge #484, support for file redirection
+	* Add support for file redirection to Emacs frontend so
+	  all commands should work even with unsaved files now!
+	* Support inserting holes in type signatures
+	* Merge #543, Fix URL anchors being dropped in OS X
+	* Fix GHC session always being dropped in interactive mode (caused
+	  super slowness)
+	* Expose all internal modules because API will get a major
+	  redesign soon anyways
+	* ghc-mod(i) executable must now be run in project directory for
+	  commands other than `root`
+	* Add --line-prefix option for multiplexing stdout/err onto one stream
+
+2015-08-14 v5.3.0.0
+	* Re-license majority of code under the AGPL-3
+	* Add support for GHC 7.10 and Cabal 1.22
+	* Remove `cabalDependPackages', `cabalAllTargets'
+	* Merge #434, Fix finding sandbox config file and directory.
+	* Merge #431, Re-add output line separator global option for expand
+	  command.
+	* Merge #470, Support for overriding the package-db stack
+	* Merge #486, Fix ineffective cache invalidation for `find`
+
+2014-12-31 v5.2.1.2
+	* Merge #377, Fix `browse` erroneously thinking haskell2010 identifiers
+	  are operators
+	* Fix incompatibility with monad-control >= 1.0.0
+	* Fix temporary directories not being removed properly
+	* Merge #405, #408, a race condition in the Emacs frontend
+	* Merge #403, Support unicode quotes in module regexp
+
+2014-11-03 v5.2.1.1
+	* Fix `findCabalFiles` thinking `$HOME/.cabal` is a cabal file.
+	* Support `where` clauses, `let` bindings and `case` expressions
+	  in case splitting, #400
+
+2014-11-02 v5.2.1.0
+	* Fix `newTempDir` on Windows
+	* GhcModT's liftIO instance now converts GhcMOdError exceptions
+	  into monadic failures
+
+2014-10-30 v5.2.0.0
+	* Return type of `loadSymbolDb` is now in GhcModT
+	* Function `dumpSymbol` now takes the path of the target directory
+	* Fix #387, Pattern match failure in GhcPkg
+	* Fix #386, `ghc-mod version` should not check `cabal configure`
+	* Fix #391, Error on command `-g` when used before command despite
+	  --help output saying this is valid
+	* Fix formatting of `ghc-version` constant in the elisp code.  in
+	  version 5.1.1.0 the string was "v5.1.1.0" instead of "5.1.1.0".
+
+2014-10-04 v5.1.1.0
+	* Handle various consistency related issues: #222, #224, #326, #332
+	* Add `isOutdated` to Language.Haskell.GhcMod
+
+2014-09-17 v5.1.0.2
+	* Fix building with haskell-src-exts < 1.16.0
+
+2014-09-16 v5.1.0.1
+	* Fix building with haskell-src-exts-1.16.0
+	* Loosen monad-journal dependency
+
+2014-09-12 v5.1.0.0
+	* GhcModError is now a recursive data type (`GMECabalConfigure`'s
+	  type changed)
+	* GhcModT's MonadIO instance now converts IOError's to failures in
+	  the ErrorT part of GhcModT on `liftIO`.
+	* Make `loadSymbolDb` polimorphic in the return types's monad.
+	* Add `hoistGhcModT` to Language.Haskell.GhcMod.Internal
+	* Fix `check` command for modules using `-XPatternSynonyms`
+	* Merge #364, Support cabal configuration flags
+
+2014-08-29 v5.0.1.2
+	* Merge #345, Try fixing duplicate errors
+	* Merge #344, elisp: Use advice to check syntax on save-buffer
+	* Merge #341, support `browse -d` in ghc-modi
+	* Merge #352, elisp: Fix C-u accidentally getting turned into a
+	  prefix command
+
+2014-08-24 v5.0.1.1
+	* Fix CaseSplitting faliure when using "fancy types" (see #336)
+	* Print error information in "spec" test suite when using `extract`
+
+2014-08-20 v5.0.1
+	* Fix missing file in "Data-Files"
+
+2014-08-20 v5.0.0
+	* ghc-mod consumes much less memory than ghc-mod-4.1.
+	* @serras brought the results of Google Summer code
+	  including case splitting and better type hole
+	* @DanielG provided the new monad based API
+
+2014-05-16 v4.1.6
+	* Reverting "Trying to fix rare hang on Nix".
+
+2014-05-16 v4.1.5
+	* Fixing the build on GHC 7.8.3.
+
+2014-05-16 v4.1.4
+	* Trying to fix rare hang on Nix.
+
+2014-05-16 v4.1.3
+	* Making -g-fxxx work.
+
+2014-05-16 v4.1.2
+	* Setting Opt_WarnTypedHoles correctly.
+
+2014-05-16 v4.1.1
+	* Making Emacs front-end more stable.
+
+2014-04-30 v4.1.0
+	* ghc-modi now provides "type", "info", and "boot".
+	* ghc-mod now provides "find".
+	* Packages, which are specified in a cabal file but not installed,
+	  are filtered out. (@DanielG)
+	* ghc-mod/ghc-modi treats "-l" properly.
+	* ghc-mod obsoletes "-p". Use "ghc-mod browse package:module".
+	* M-x ghc-debug has been implemented.
+	* "type" and "info" can work even if files contain type errors.
+	* "boot" as a new API.
+
+2014-04-07 v4.0.2
+	* The ghc-display-error option (@notogawa)
+	* Fixing a file bug for Windows (@Kiripon)
+	* The -b option for ghc-modi (@yuga)
+
+2014-04-03 v4.0.1
+	* Displaying a qualified name for one if two unqualified names
+	  are conflict.
+
+2014-04-01 v4.0.0
+	* Implementing interactive "ghc-modi" command.
+	  "check", "find", and "lint" are available.
+	* Introducing a concept of project root directory.
+	  Thanks to this, sandbox without cabal can be used.
+	  "ghd-mod debug" displays the project root.
+	* Syntax error highlighting (C-xC-s) gets much faster
+	  thanks to ghc-modi. "flymake" was thrown away and
+	  syntax error highlighting is implemented from a scratch.
+	* Resolving the "import hell". You dont' have to type
+	  "import Foo" anymore. Use M-t or C-cC-m.
+	* Inserting "module Foo" (M-t) can insert all paths
+	  relative to the project root.
+	* M-C-d displays a html document even if it is in its sandbox.
+	* M-s now merges the same module lines in addition to sorting.
+	* A bug fix for hlint support. (@eagletmt)
+
+2014-03-15 v3.1.7
+	* Defining ghc-debug for Elisp debugging.
+	* Catching up the latest hlint which does not provide --quite.
+
+2014-02-07 v3.1.6
+	* Testing with multi GHC versions. (@eagletmt)
+	* Checking package ID. (@naota)
+	* Supporting GHC 7.8.1 RC1. (@bartavelle)
+
+2014-01-14 v3.1.5
+	* Catching up to GHC 7.7. (@scottgw)
+	* Testing with multi GHC versions. (@eagletmt)
+	* Workaround for the coming new Haskell Platform.
+	* Supporting flymake of the coming Emacs 24.4.
+
+2013-11-20 v3.1.4
+	* GHCi loading as fallback for browse. (@khorser)
+	* Supporting GHC 7.7. (@schell)
+	* Introducing the "-p" and "-q" option for browse. (@mvoidex)
+
+2013-10-07 v3.1.3
+	* Fixing tests. (@eagletmt)
+
+2013-09-21 v3.1.2
+	* Supporting sandbox for "list" and "browse". (@eagletmt)
+
+2013-09-21 v3.1.1
+	* Making Cradle strict.
+
+2013-09-21 v3.1.0
+	* API breaks backward compatibility.
+	* Supporting sandbox sharing.
+
+2013-09-16 v3.0.2
+	* Fixing a bug of "dist/build/autogen/cabal_macros.h".
+
+2013-09-16 v3.0.1
+	* Exporting more low level APIs.
+	* Adding "-ibuild/autogen"
+	* Adding "-optP". (Macros from a Cabal file
+	  and "dist/build/autogen/cabal_macros.h")
+
+2013-09-06 v3.0.0
+	* Supporting the sandbox of cabal 1.18.
+	* Obsoleting the support for cabal-dev.
+
+2013-09-04 v2.1.2
+	* Supporting multiple target files. (@nh2)
+
+2013-09-03 v2.1.1
+	* A bug fix for library dependency.
+
+2013-09-03 v2.1.0
+	* Exporting Language.Haskell.GhcMod.Internal. (@alanz)
+	* Supporting GHC 7.7. (@co-dan)
+
+2013-05-30 v2.0.3
+	* Using finalizePackageDescription to enable "if else" in a cabal
+	file.
+
+2013-05-21 v2.0.2
+	* Document fixes.
+
+2013-05-21 v2.0.1
+	* Document fixes.
+
+2013-05-21 v2.0.0
+	* ghc-mod also provides a library (Language.Haskell.GhcMod)
+
+2013-05-13 v1.12.5
+	* A bug fix for the case where a cabal file is broken.
+
+2013-04-02 v1.12.4
+
+	* C-M-d on Emacs now can browse functions and types.
+	* Checking "QuasiQuotes" as well as "TemplateHaskell". (@eagletmt)
+	* "ghc-mod info" can display info of non-exported functions.
+	  (@mvoidex)
+
+2013-03-16 v1.12.3
+
+	* "ghc-mod info" and "ghc-mod type" also check Template Haskell.
+	  (@eagletmt)
+
+2013-03-13 v1.12.2
+
+	* New logic to set "-fno-code" using "depanal"
+	* Cleaning up the code relating to Doc/SDoc
+
+2013-03-07 v1.12.1
+
+	* Fixing a bug to find a sandbox.
+
+2013-03-05 v1.12.0
+
+	* "ghc-mod debug" to see which cabal file and sand box are used
+	* Fast "ghc-mod check" if Template Haskell is not used
+	* "ghc-mod brwose -d" displays more information (@eagletmt)
+
+2013-03-01 v1.11.5
+
+	* New option "-d" for "ghc-mod browse" to show symbols with type
+	info (@moidex)
+
+2013-02-15 v1.11.4
+
+	* Adding Hspec test suite
+	* Better way to show Extension (@eagletmt)
+	* Removing the library itself from Cabal dependencies
+
+2012-12-11 v1.11.3
+
+	* Display a filname instead of "Dummy" if an error occur
+
+2012-10-30 v1.11.2
+
+	* Extract dependencies from a Cabal file if exists and specify
+	  them to "ghc-mod check" (@khibino)
+
+2012-10-19 v1.11.1
+
+	* Supporting GHC 7.6.x (@cartazio, @dysinger, @ihameed)

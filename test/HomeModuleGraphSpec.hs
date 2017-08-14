@@ -1,4 +1,4 @@
--- ghc-mod: Making Haskell development *more* fun
+-- ghc-mod: Happy Haskell Hacking
 -- Copyright (C) 2015  Daniel Gröber <dxld ÄT darkboxed DOT org>
 --
 -- This program is free software: you can redistribute it and/or modify
@@ -18,8 +18,8 @@
 
 module HomeModuleGraphSpec where
 
-import Language.Haskell.GhcMod.HomeModuleGraph
-import Language.Haskell.GhcMod.LightGhc
+import GhcMod.HomeModuleGraph
+import GhcMod.LightGhc
 import TestUtils
 
 import GHC

@@ -1,0 +1,74 @@
+stages:
+  - build
+
+.before_script_template: &common_before_script
+  before_script:
+    - ls -l ..
+    - apt-get update && apt-get install alex happy
+    - mkdir -p ../ghc-mod.sdist-$CI_PIPELINE_ID
+    - touch ChangeLog
+    - cabal update
+    - cabal sdist --output-directory=../ghc-mod.sdist-$CI_PIPELINE_ID
+    - cd ../ghc-mod.sdist-$CI_PIPELINE_ID
+
+after_script:
+  - cd "$CI_PROJECT_DIR"
+  - ghc-pkg list | tee packages.list
+  - rm -rf  "$CI_PROJECT_DIR"/../ghc-mod.sdist-$CI_PIPELINE_ID
+
+.script_template: &common_script
+  script:
+    - echo $PWD
+    - ghc-pkg list
+    - cabal install --user --only-dependencies -j2 --force-reinstalls --upgrade-dependencies --enable-tests --enable-documentation
+    - which cabal
+    - cabal --version
+    - cabal configure --enable-tests
+    - cabal build -j2
+    - which cabal
+    - cabal --version
+    - ./dist/build/spec/spec
+    - ./dist/build/doctest/doctest
+    - cabal haddock
+
+.artifacts_template: &common_artifacts
+  artifacts:
+    paths:
+      - packages.list
+      - ~/.cabal/logs
+    when: always
+
+job-ghc800:
+  image: registry.gitlab.com/dxld/ghc-mod:ghc8.0.2-cabal-install1.24.0.2
+  stage: build
+  <<: *common_before_script
+  <<: *common_script
+  <<: *common_artifacts
+
+job-ghc710:
+  image: registry.gitlab.com/dxld/ghc-mod:ghc7.10.3-cabal-install1.22.8.0
+  stage: build
+  <<: *common_before_script
+  <<: *common_script
+  <<: *common_artifacts
+
+job-ghc708:
+  image: registry.gitlab.com/dxld/ghc-mod:ghc7.8.4-cabal-install1.18.1.0
+  stage: build
+  <<: *common_before_script
+  <<: *common_script
+  <<: *common_artifacts
+
+
+job-ghc706:
+  image: registry.gitlab.com/dxld/ghc-mod:ghc7.6.3-cabal-install1.18.1.0
+  stage: build
+  before_script:
+    - cabal update
+    - cabal install alex
+    - cabal install happy
+    - cp ~/.cabal/bin/{alex,happy} /usr/local/bin
+    - rm -rf ~/.cabal/{bin,lib,libexec,setup-exe-cache,share,store} ~/.ghc
+  allow_failure: true
+  <<: *common_script
+  <<: *common_artifacts

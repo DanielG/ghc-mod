@@ -3,7 +3,7 @@ module InfoSpec where
 
 import Control.Applicative
 import Data.List (isPrefixOf)
-import Language.Haskell.GhcMod
+import GhcMod
 #if __GLASGOW_HASKELL__ < 706
 import System.Environment.Executable (getExecutablePath)
 #else

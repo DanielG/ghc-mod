@@ -1,0 +1,9 @@
+name:                browse-cabal
+version:             0
+build-type:          Simple
+cabal-version:       >=1.2
+
+library
+  hs-source-dirs:      .
+  build-depends:       base
+  exposed-modules:     MyModule

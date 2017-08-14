@@ -1,7 +1,7 @@
 {-# LANGUAGE CPP #-}
 module CheckSpec where
 
-import Language.Haskell.GhcMod
+import GhcMod
 
 import Data.List
 import System.Process

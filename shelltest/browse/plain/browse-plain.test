@@ -1,0 +1,4 @@
+# # TODO: make this work
+# cabal exec -- ghc-mod browse MyModule
+# >>>
+# >>>= !0
