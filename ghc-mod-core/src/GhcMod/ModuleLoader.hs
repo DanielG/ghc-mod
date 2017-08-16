@@ -16,7 +16,6 @@ module GhcMod.ModuleLoader
   , emptyModuleCache
   , ModuleCache(..)
   -- * foo
-  , ExtensionClass(..)
   , cachedModules
   , getCachedModule
   , withCachedModule
@@ -29,8 +28,9 @@ module GhcMod.ModuleLoader
   , getNamesAtPos
   , unpackRealSrcSpan
   , toPos
-  -- * Usage
+  -- * Extensible state Usage
   -- $usage
+  , ExtensionClass(..)
   , put
   , modify
   , remove
