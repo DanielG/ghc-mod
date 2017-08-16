@@ -226,7 +226,7 @@ uriToFilePath (FileUri uri)
         platformAdjust path = path
 
 filePathToUri :: FilePath -> FileUri
-filePathToUri file@(drive:':':rest) = FileUri $ T.pack $ "file:///" ++ file
+filePathToUri file@(_drive:':':_rest) = FileUri $ T.pack $ "file:///" ++ file
 filePathToUri file = FileUri $ T.pack $ "file://" ++ file
 
 canonicalizeUri :: MonadIO m => FileUri -> m FileUri
