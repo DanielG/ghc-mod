@@ -5,6 +5,7 @@
 
 module GhcMod.ModuleLoader
   ( getTypecheckedModuleGhc
+  , getTypecheckedModuleGhc'
   , HasGhcModuleCache(..)
   , GhcModuleCache(..)
   , CachedModule(..)
@@ -40,6 +41,7 @@ module GhcMod.ModuleLoader
   ) where
 
 import           Control.Monad.State.Strict hiding (put,get,modify,gets)
+import           Data.Char
 import qualified Data.Generics                     as SYB
 import           Data.Dynamic
 import qualified Data.IntervalMap.FingerTree       as IM
@@ -95,28 +97,45 @@ tweakModSummaryDynFlags ms =
 -- Appends the parent directories of all the mapped files
 -- to the includePaths for CPP purposes.
 -- Use in combination with `runActionInContext` for best results
-getTypecheckedModuleGhc :: GM.IOish m
+getTypecheckedModuleGhc' :: GM.IOish m
   => (GM.GmlT m () -> GM.GmlT m a) -> FilePath -> GM.GhcModT m (a, Maybe TypecheckedModule)
-getTypecheckedModuleGhc wrapper targetFile = do
+getTypecheckedModuleGhc' wrapper targetFile = do
   cfileName <- liftIO $ canonicalizePath targetFile
   mfs <- GM.getMMappedFiles
   mFileName <- liftIO . canonicalizePath $ getMappedFileName cfileName mfs
+  ref <- liftIO $ newIORef Nothing
+  let keepInfo = pure . (mFileName ==)
+      saveModule = writeIORef ref . Just
+  res <- getTypecheckedModuleGhc wrapper targetFile keepInfo saveModule
+  mtm <- liftIO $ readIORef ref
+  return (res, mtm)
+
+-- | like getTypecheckedModuleGhc' but allows you to keep an arbitary number of Modules
+-- `keepInfo` decides which TypecheckedModule to keep
+-- `saveModule` is the callback that is passed the TypecheckedModule
+getTypecheckedModuleGhc :: GM.IOish m
+  => (GM.GmlT m () -> GM.GmlT m a) -> FilePath -> (FilePath -> IO Bool) -> (TypecheckedModule -> IO ()) -> GM.GhcModT m a
+getTypecheckedModuleGhc wrapper targetFile keepInfo saveModule = do
+  cfileName <- liftIO $ canonicalizePath targetFile
+  mfs <- GM.getMMappedFiles
   let ips = map takeDirectory $ Map.keys mfs
       setIncludePaths df = df { GHC.includePaths = ips ++ GHC.includePaths df }
-  ref <- liftIO $ newIORef Nothing
   let
     setTarget fileName
       = GM.runGmlTWith' [Left fileName]
                         (return . setIncludePaths)
-                        (Just $ updateHooks cfileName mFileName ref)
+                        (Just $ updateHooks keepInfo saveModule)
                         wrapper
                         (return ())
   res <- setTarget cfileName
-  mtm <- liftIO $ readIORef ref
-  return (res, mtm)
+  return res
 
-updateHooks :: FilePath -> FilePath -> IORef HookIORefData -> GHC.Hooks -> GHC.Hooks
-updateHooks _ofp fp ref hooks = hooks {
+updateHooks
+  :: (FilePath -> IO Bool)
+  -> (TypecheckedModule -> IO ())
+  -> GHC.Hooks
+  -> GHC.Hooks
+updateHooks fp ref hooks = hooks {
 #if __GLASGOW_HASKELL__ <= 710
         GHC.hscFrontendHook   = Just $ hscFrontend fp ref
 #else
@@ -135,14 +154,14 @@ runGhcInHsc action = do
 
 -- | Frontend hook that keeps the TypecheckedModule for its first argument
 -- and stores it in the IORef passed to it
-hscFrontend :: FilePath -> IORef HookIORefData -> GHC.ModSummary -> GHC.Hsc GHC.TcGblEnv
-hscFrontend fn ref mod_summary = do
+hscFrontend :: (FilePath -> IO Bool) -> (TypecheckedModule -> IO ()) -> GHC.ModSummary -> GHC.Hsc GHC.TcGblEnv
+hscFrontend keepInfoFunc saveModule mod_summary = do
     mfn <- canonicalizeModSummary mod_summary
     let
       -- md = GHC.moduleNameString $ GHC.moduleName $ GHC.ms_mod mod_summary
-      keepInfo = case mfn of
-                   Just fileName -> fn == fileName
-                   Nothing       -> False
+    keepInfo <- case mfn of
+      Just fileName -> liftIO $ keepInfoFunc fileName
+      Nothing       -> pure False
     -- liftIO $ debugm $ "hscFrontend: got mod,file" ++ show (md, mfn)
     if keepInfo
       then runGhcInHsc $ do
@@ -153,7 +172,7 @@ hscFrontend fn ref mod_summary = do
         tc <- GHC.typecheckModule p
         let tc_gbl_env = fst $ GHC.tm_internals_ tc
 
-        liftIO $ writeIORef ref $ Just tc
+        liftIO $ saveModule tc
         return tc_gbl_env
       else do
         hpm <- GHC.hscParse' mod_summary
@@ -193,11 +212,21 @@ instance Show CachedModule where
 
 uriToFilePath :: FileUri -> Maybe FilePath
 uriToFilePath (FileUri uri)
-  | "file://" `T.isPrefixOf` uri = Just $ T.unpack $ T.drop n uri
+  | "file://" `T.isPrefixOf` uri = Just $ platformAdjust . uriDecode . T.unpack $ T.drop n uri
   | otherwise = Nothing
-      where n = T.length "file://"
+      where
+        n = T.length "file://"
+
+        uriDecode ('%':x:y:rest) = toEnum (16 * digitToInt x + digitToInt y) : uriDecode rest
+        uriDecode (x:xs) = x : uriDecode xs
+        uriDecode [] = []
+
+        -- Drop leading '/' for absolute Windows paths
+        platformAdjust path@('/':_drive:':':_rest) = tail path
+        platformAdjust path = path
 
 filePathToUri :: FilePath -> FileUri
+filePathToUri file@(_drive:':':_rest) = FileUri $ T.pack $ "file:///" ++ file
 filePathToUri file = FileUri $ T.pack $ "file://" ++ file
 
 canonicalizeUri :: MonadIO m => FileUri -> m FileUri
