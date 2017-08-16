@@ -210,8 +210,8 @@ instance Show CachedModule where
 
 -- ---------------------------------------------------------------------
 
-uriToFilePath :: Uri -> Maybe FilePath
-uriToFilePath (Uri uri)
+uriToFilePath :: FileUri -> Maybe FilePath
+uriToFilePath (FileUri uri)
   | "file://" `T.isPrefixOf` uri = Just $ platformAdjust . uriDecode . T.unpack $ T.drop n uri
   | otherwise = Nothing
       where
@@ -225,9 +225,9 @@ uriToFilePath (Uri uri)
         platformAdjust path@('/':_drive:':':_rest) = tail path
         platformAdjust path = path
 
-filePathToUri :: FilePath -> Uri
-filePathToUri file@(_drive:':':_rest) = Uri $ T.pack $ "file:///" ++ file
-filePathToUri file = Uri $ T.pack $ "file://" ++ file
+filePathToUri :: FilePath -> FileUri
+filePathToUri file@(drive:':':rest) = FileUri $ T.pack $ "file:///" ++ file
+filePathToUri file = FileUri $ T.pack $ "file://" ++ file
 
 canonicalizeUri :: MonadIO m => FileUri -> m FileUri
 canonicalizeUri uri =
