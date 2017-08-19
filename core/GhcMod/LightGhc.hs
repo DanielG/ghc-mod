@@ -1,3 +1,5 @@
+{-# LANGUAGE CPP #-}
+
 module GhcMod.LightGhc where
 
 import Control.Monad
@@ -6,7 +8,9 @@ import Data.IORef
 
 import GHC
 import GHC.Paths (libdir)
+#if __GLASGOW_HASKELL__ < 802
 import StaticFlags
+#endif
 import SysTools
 import DynFlags
 import HscMain
@@ -16,6 +20,11 @@ import GhcMod.Types
 import GhcMod.Monad.Types
 import GhcMod.DynFlags
 import qualified GhcMod.Gap as Gap
+
+#if __GLASGOW_HASKELL__ >= 802
+initStaticOpts :: Monad m => m ()
+initStaticOpts = return ()
+#endif
 
 -- We have to be more careful about tearing down 'HscEnv's since GHC 8 added an
 -- out of process GHCI server which has to be shutdown.

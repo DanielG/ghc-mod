@@ -116,7 +116,9 @@ getSignature modSum lineNo colNo = do
     p@ParsedModule{pm_parsed_source = ps} <- G.parseModule modSum
     -- Inspect the parse tree to find the signature
     case listifyParsedSpans ps (lineNo, colNo) :: [G.LHsDecl G.RdrName] of
-#if __GLASGOW_HASKELL__ >= 800
+#if __GLASGOW_HASKELL__ >= 802
+      [L loc (G.SigD (Ty.TypeSig names (G.HsWC _ (G.HsIB _ (L _ ty) _))))] ->
+#elif __GLASGOW_HASKELL__ >= 800
       [L loc (G.SigD (Ty.TypeSig names (G.HsIB _ (G.HsWC _ _ (L _ ty)))))] ->
 #elif __GLASGOW_HASKELL__ >= 710
       [L loc (G.SigD (Ty.TypeSig names (L _ ty) _))] ->
@@ -133,7 +135,9 @@ getSignature modSum lineNo colNo = do
         case Gap.getClass lst of
             Just (clsName,loc) -> obtainClassInfo minfo clsName loc
             _                  -> return Nothing
-#if __GLASGOW_HASKELL__ >= 800
+#if __GLASGOW_HASKELL__ >= 802
+      [L loc (G.TyClD (G.FamDecl (G.FamilyDecl info (L _ name) (G.HsQTvs _ vars _) _ _ _)))] -> do
+#elif __GLASGOW_HASKELL__ >= 800
       [L loc (G.TyClD (G.FamDecl (G.FamilyDecl info (L _ name) (G.HsQTvs _ vars _) _ _)))] -> do
 #elif __GLASGOW_HASKELL__ >= 708
       [L loc (G.TyClD (G.FamDecl (G.FamilyDecl info (L _ name) (G.HsQTvs _ vars) _)))] -> do
@@ -365,7 +369,11 @@ refine file lineNo colNo (Expression expr) =
       modSum <- fileModSummaryWithMapping file
       p <- G.parseModule modSum
       tcm@TypecheckedModule{tm_typechecked_source = tcs} <- G.typecheckModule p
+#if __GLASGOW_HASKELL__ >= 802
+      ety <- G.exprType G.TM_Inst expr
+#else
       ety <- G.exprType expr
+#endif
       whenFound oopts (findVar dflag style tcm tcs lineNo colNo) $
         \(loc, name, rty, paren) ->
             let eArgs = getFnArgs ety

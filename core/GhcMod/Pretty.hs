@@ -14,6 +14,8 @@
 -- You should have received a copy of the GNU Affero General Public License
 -- along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+{-# LANGUAGE CPP #-}
+
 module GhcMod.Pretty
   ( renderGm
   , renderSDoc
@@ -47,8 +49,14 @@ renderSDoc sdoc = do
 
 gmComponentNameDoc :: ChComponentName -> Doc
 gmComponentNameDoc ChSetupHsName   = text $ "Setup.hs"
+#if MIN_VERSION_cabal_helper(0,8,0)
+gmComponentNameDoc ChLibName       = text $ "library"
+gmComponentNameDoc (ChSubLibName _)= text $ "library"
+gmComponentNameDoc (ChFLibName _)  = text $ "flibrary"
+#else
 gmComponentNameDoc (ChLibName "")  = text $ "library"
 gmComponentNameDoc (ChLibName n)   = text $ "library:" ++ n
+#endif
 gmComponentNameDoc (ChExeName n)   = text $ "exe:" ++ n
 gmComponentNameDoc (ChTestName n)  = text $ "test:" ++ n
 gmComponentNameDoc (ChBenchName n) = text $ "bench:" ++ n
