@@ -63,19 +63,19 @@ loadMappedFileSource from src = do
     hPutStr h src'
     hClose h
     return fn
-  loadMappedFile' from to True
+  loadMappedFile' from to
   where escape (x:xs) = if x `elem` "\\\""
                         then '\\':x:escape xs
                         else x:escape xs
         escape [] = []
 
-loadMappedFile' :: IOish m => FilePath -> FilePath -> Bool -> GhcModT m ()
-loadMappedFile' from to isTemp = do
+loadMappedFile' :: IOish m => FilePath -> FilePath -> GhcModT m ()
+loadMappedFile' from to = do
   cfn <- getCanonicalFileNameSafe from
   unloadMappedFile' cfn
   crdl <- cradle
   let to' = makeRelative (cradleRootDir crdl) to
-  addMMappedFile cfn (FileMapping to' isTemp)
+  addMMappedFile cfn (FileMapping to')
 
 mapFile :: (IOish m, GmState m) => HscEnv -> Target -> m Target
 mapFile _ (Target tid@(TargetFile filePath _) taoc _) = do
@@ -109,7 +109,7 @@ unloadMappedFile = getCanonicalFileNameSafe >=> unloadMappedFile'
 unloadMappedFile' :: IOish m => FilePath -> GhcModT m ()
 unloadMappedFile' cfn = void $ runMaybeT $ do
   fm <- MaybeT $ lookupMMappedFile cfn
-  liftIO $ when (fmTemp fm) $ removeFile (fmPath fm)
+  liftIO $ removeFile (fmPath fm)
   delMMappedFile cfn
 
 fileModSummaryWithMapping :: (IOish m, GmState m, GhcMonad m, GmEnv m) =>
