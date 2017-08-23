@@ -31,7 +31,9 @@ loadMappedFile :: IOish m
                => FilePath -- ^ \'from\', file that will be mapped
                -> FilePath -- ^ \'to\', file to take source from
                -> GhcModT m ()
-loadMappedFile from to = loadMappedFile' from to False
+loadMappedFile from to = do
+  src <- liftIO $ readFile to
+  loadMappedFileSource from src
 
 {- |
 maps 'FilePath', given as first argument to have source as given
@@ -50,10 +52,15 @@ loadMappedFileSource from src = do
   to <- liftIO $ do
     (fn, h) <- openTempFile tmpdir (takeFileName from)
     hSetEncoding h enc
+    hPutStr h $ "{-# LINE 1 \""++escape from++"\" #-}\n"
     hPutStr h src
     hClose h
     return fn
   loadMappedFile' from to True
+  where escape (x:xs) = if x `elem` "\\\""
+                        then '\\':x:escape xs
+                        else x:escape xs
+        escape [] = []
 
 loadMappedFile' :: IOish m => FilePath -> FilePath -> Bool -> GhcModT m ()
 loadMappedFile' from to isTemp = do
