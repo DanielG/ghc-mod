@@ -79,7 +79,6 @@ import SysTools
 import GHCi (stopIServ)
 #endif
 
-import qualified Name
 import qualified InstEnv
 import qualified Pretty
 import qualified StringBuffer as SB
@@ -407,8 +406,8 @@ filterOutChildren get_thing xs
   where
     implicits = mkNameSet [getName t | x <- xs, t <- implicitTyThings (get_thing x)]
 
-infoThing :: GhcMonad m => (FilePath -> FilePath) -> Expression -> m SDoc
-infoThing m (Expression str) = do
+infoThing :: GhcMonad m => Expression -> m SDoc
+infoThing (Expression str) = do
     names <- parseName str
 #if __GLASGOW_HASKELL__ >= 708
     mb_stuffs <- mapM (getInfo False) names
@@ -417,45 +416,30 @@ infoThing m (Expression str) = do
     mb_stuffs <- mapM getInfo names
     let filtered = filterOutChildren (\(t,_f,_i) -> t) (catMaybes mb_stuffs)
 #endif
-    return $ vcat (intersperse (text "") $ map (pprInfo m False) filtered)
+    return $ vcat (intersperse (text "") $ map (pprInfo False) filtered)
 
 #if __GLASGOW_HASKELL__ >= 708
-pprInfo :: (FilePath -> FilePath) -> Bool -> (TyThing, GHC.Fixity, [ClsInst], [FamInst]) -> SDoc
-pprInfo m _ (thing, fixity, insts, famInsts)
-    = pprTyThingInContextLoc' thing
+pprInfo :: Bool -> (TyThing, GHC.Fixity, [ClsInst], [FamInst]) -> SDoc
+pprInfo _ (thing, fixity, insts, famInsts)
+    = pprTyThingInContextLoc thing
    $$ show_fixity fixity
    $$ InstEnv.pprInstances insts
    $$ pprFamInsts famInsts
-#else
-pprInfo :: (FilePath -> FilePath) -> PrintExplicitForalls -> (TyThing, GHC.Fixity, [ClsInst]) -> SDoc
-pprInfo m pefas (thing, fixity, insts)
-    = pprTyThingInContextLoc' pefas thing
-   $$ show_fixity fixity
-   $$ vcat (map pprInstance insts)
-#endif
   where
     show_fixity fx
       | fx == defaultFixity = Outputable.empty
       | otherwise           = ppr fx <+> ppr (getName thing)
-#if __GLASGOW_HASKELL__ >= 708
-    pprTyThingInContextLoc' thing' = hang (pprTyThingInContext thing') 2
-                                        (char '\t' <> ptext (sLit "--") <+> loc)
-                         where loc = ptext (sLit "Defined") <+> pprNameDefnLoc' (getName thing')
 #else
-    pprTyThingInContextLoc' pefas' thing' = hang (pprTyThingInContext pefas' thing') 2
-                                    (char '\t' <> ptext (sLit "--") <+> loc)
-                               where loc = ptext (sLit "Defined") <+> pprNameDefnLoc' (getName thing')
+pprInfo :: PrintExplicitForalls -> (TyThing, GHC.Fixity, [ClsInst]) -> SDoc
+pprInfo pefas (thing, fixity, insts)
+    = pprTyThingInContextLoc pefas thing
+   $$ show_fixity fixity
+   $$ vcat (map pprInstance insts)
+  where
+    show_fixity fx
+      | fx == defaultFixity = Outputable.empty
+      | otherwise           = ppr fx <+> ppr (getName thing)
 #endif
-    pprNameDefnLoc' name
-      = case Name.nameSrcLoc name of
-           RealSrcLoc s -> ptext (sLit "at") <+> ppr (subst s)
-           UnhelpfulLoc s
-             | Name.isInternalName name || Name.isSystemName name
-             -> ptext (sLit "at") <+> ftext s
-             | otherwise
-             -> ptext (sLit "in") <+> quotes (ppr (nameModule name))
-      where subst s = mkRealSrcLoc (realFP s) (srcLocLine s) (srcLocCol s)
-            realFP = mkFastString . m . unpackFS . srcLocFile
 
 ----------------------------------------------------------------
 ----------------------------------------------------------------

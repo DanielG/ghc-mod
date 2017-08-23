@@ -20,7 +20,6 @@ import GhcMod.Logging
 import GhcMod.Monad
 import GhcMod.SrcUtils
 import GhcMod.Types
-import GhcMod.Utils (mkRevRedirMapFunc)
 import GhcMod.FileMapping (fileModSummaryWithMapping)
 
 ----------------------------------------------------------------
@@ -42,8 +41,7 @@ info file expr =
 
     body :: (GhcMonad m, GmState m, GmEnv m) => m String
     body = do
-      m <- mkRevRedirMapFunc
-      sdoc  <- Gap.infoThing m expr
+      sdoc  <- Gap.infoThing expr
       st    <- getStyle
       dflag <- G.getSessionDynFlags
       return $ showPage dflag st sdoc
