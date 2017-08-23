@@ -8,6 +8,7 @@ import qualified Data.Map as M
 import Dir
 import System.IO.Temp
 import System.Directory
+import Data.Maybe
 
 import GhcMod
 
@@ -20,14 +21,14 @@ spec = do
               loadMappedFile "File.hs" "File.hs"
               getMMappedFiles
             dir <- getCurrentDirectory
-            show mappedFiles `shouldBe` show (M.fromList [(dir </> "File.hs", FileMapping "File.hs" False)])
+            M.lookup (dir </> "File.hs") mappedFiles `shouldSatisfy` isJust
         it "should try to guess a canonical name if file doesn't exist" $ do
           withDirectory_ "test/data/file-mapping" $ do
             mappedFiles <- runD $ do
               loadMappedFile "NonExistantFile.hs" "File.hs"
               getMMappedFiles
             dir <- getCurrentDirectory
-            show mappedFiles `shouldBe` show (M.fromList [(dir </> "NonExistantFile.hs", FileMapping "File.hs" False)])
+            M.lookup (dir </> "NonExistantFile.hs") mappedFiles `shouldSatisfy` isJust
 
       describe "loadMappedFileSource" $ do
         it "inserts a given FilePath FileMapping into state with canonicalized path" $ do
@@ -37,7 +38,7 @@ spec = do
               getMMappedFiles
             dir <- getCurrentDirectory
             -- TODO
-            M.toList mappedFiles `shouldSatisfy` \[(fn, FileMapping _to True)] ->
+            M.toList mappedFiles `shouldSatisfy` \[(fn, FileMapping _to)] ->
               fn == dir </> "File.hs"
         it "should try to guess a canonical name if file doesn't exist" $ do
           withDirectory_ "test/data/file-mapping" $ do
@@ -46,24 +47,24 @@ spec = do
               getMMappedFiles
             dir <- getCurrentDirectory
             -- TODO
-            M.toList mappedFiles `shouldSatisfy` \[(fn, FileMapping _to True)] ->
+            M.toList mappedFiles `shouldSatisfy` \[(fn, FileMapping _to)] ->
               fn == dir </> "NonExistantFile.hs"
 
       describe "unloadMappedFile" $ do
         it "removes a given FilePath from state" $ do
           withDirectory_ "test/data/file-mapping" $ do
             mappedFiles <- runD $ do
-              loadMappedFile "File.hs" "File2.hs"
+              loadMappedFile "File.hs" "File_Redir.hs"
               unloadMappedFile "File.hs"
               getMMappedFiles
-            show mappedFiles `shouldBe` show (M.fromList ([] :: [(FilePath, FileMapping)]))
+            mappedFiles `shouldSatisfy` M.null
         it "should work even if file does not exist" $ do
           withDirectory_ "test/data/file-mapping" $ do
             mappedFiles <- runD $ do
-              loadMappedFile "NonExistantFile.hs" "File2.hs"
+              loadMappedFile "NonExistantFile.hs" "File_Redir.hs"
               unloadMappedFile "NonExistantFile.hs"
               getMMappedFiles
-            show mappedFiles `shouldBe` show (M.fromList ([] :: [(FilePath, FileMapping)]))
+            mappedFiles `shouldSatisfy` M.null
         it "should remove created temporary files" $ do
           withDirectory_ "test/data/file-mapping" $ do
             dir <- getCurrentDirectory
@@ -80,7 +81,7 @@ spec = do
             res <- runD $ do
               loadMappedFile "File.hs" "File_Redir.hs"
               withMappedFile "File.hs" return
-            res `shouldBe` "File_Redir.hs"
+            res `shouldNotBe` "File.hs"
         it "checks if there is an in-memory file and calls and action with temporary file" $ do
           withDirectory_ "test/data/file-mapping" $ do
             (fn, src) <- runD $ do
@@ -89,7 +90,7 @@ spec = do
                 src <- liftIO $ readFile fn
                 return (fn, src)
             fn `shouldSatisfy` (/="File.hs")
-            src `shouldBe` "main = test"
+            last (lines src) `shouldBe` "main = test"
         it "runs action with original filename if there is no mapping" $ do
           withDirectory_ "test/data/file-mapping" $ do
             fn <- runD $ do
