@@ -19,6 +19,7 @@ import System.Directory
 import Control.Monad.Trans.Maybe
 import GHC
 import Control.Monad
+import Language.Preprocessor.Unlit (unlit)
 
 {- | maps 'FilePath', given as first argument to take source from
 'FilePath' given as second argument. Works exactly the same as
@@ -50,10 +51,16 @@ loadMappedFileSource from src = do
   tmpdir <- cradleTempDir `fmap` cradle
   enc <- liftIO . mkTextEncoding . optEncoding =<< options
   to <- liftIO $ do
-    (fn, h) <- openTempFile tmpdir (takeFileName from)
+    let fileName = takeFileName from
+        (fileName', src')
+          | snd (splitExtension fileName) == ".lhs"
+          = (takeBaseName fileName ++ ".hs", unlit from src)
+          | otherwise = (fileName, src)
+        linePragma = "{-# LINE 1 \""++escape from++"\" #-}\n"
+    (fn, h) <- openTempFile tmpdir fileName'
     hSetEncoding h enc
-    hPutStr h $ "{-# LINE 1 \""++escape from++"\" #-}\n"
-    hPutStr h src
+    hPutStr h linePragma
+    hPutStr h src'
     hClose h
     return fn
   loadMappedFile' from to True
