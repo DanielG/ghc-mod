@@ -92,7 +92,7 @@ Extra-Source-Files:     ChangeLog
 
 Custom-Setup
   Setup-Depends:         base
-                       , Cabal >= 1.18 && < 1.25
+                       , Cabal >= 1.18 && < 2.1
                        , containers
                        , filepath
                        , directory
