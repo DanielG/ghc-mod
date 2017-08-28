@@ -222,7 +222,6 @@ Executable ghc-mod
   GHC-Options:          -Wall -fno-warn-deprecations -threaded
   Default-Extensions:   ConstraintKinds, FlexibleContexts
   HS-Source-Dirs:       src, shared
-  X-Internal:           True
   Build-Depends:
                       -- See Note [GHC Boot libraries]
                         directory
