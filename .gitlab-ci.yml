@@ -38,6 +38,13 @@ after_script:
       - ~/.cabal/logs
     when: always
 
+job-ghc802:
+  image: registry.gitlab.com/dxld/ghc-mod:ghc8.2.1-cabal-install2.0.0.0
+  stage: build
+  <<: *common_before_script
+  <<: *common_script
+  <<: *common_artifacts
+
 job-ghc800:
   image: registry.gitlab.com/dxld/ghc-mod:ghc8.0.2-cabal-install1.24.0.2
   stage: build
@@ -53,22 +60,8 @@ job-ghc710:
   <<: *common_artifacts
 
 job-ghc708:
-  image: registry.gitlab.com/dxld/ghc-mod:ghc7.8.4-cabal-install1.18.1.0
+  image: registry.gitlab.com/dxld/ghc-mod:ghc7.8.4-cabal-install1.18.2.0
   stage: build
   <<: *common_before_script
-  <<: *common_script
-  <<: *common_artifacts
-
-
-job-ghc706:
-  image: registry.gitlab.com/dxld/ghc-mod:ghc7.6.3-cabal-install1.18.1.0
-  stage: build
-  before_script:
-    - cabal update
-    - cabal install alex
-    - cabal install happy
-    - cp ~/.cabal/bin/{alex,happy} /usr/local/bin
-    - rm -rf ~/.cabal/{bin,lib,libexec,setup-exe-cache,share,store} ~/.ghc
-  allow_failure: true
   <<: *common_script
   <<: *common_artifacts
