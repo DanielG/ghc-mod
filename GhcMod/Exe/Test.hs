@@ -1,3 +1,5 @@
+{-# LANGUAGE CPP #-}
+
 module GhcMod.Exe.Test where
 
 import Control.Applicative
@@ -36,6 +38,15 @@ test f = runGmlT' [Left f] (fmap setHscInterpreted . deferErrors) $ do
 
     return ""
 
+#if __GLASGOW_HASKELL__ >= 802
+runTest :: GhcMonad m => String -> m (Maybe SomeException)
+runTest fn = do
+  res <- execStmt ("quickCheck " ++ fn) execOptions
+  return $ case res of
+    ExecComplete (Right _) _ -> Nothing
+    ExecComplete (Left se) _ -> Just se
+    _                        -> error "runTest"
+#else
 runTest :: GhcMonad m => String -> m (Maybe SomeException)
 runTest fn = do
   res <- runStmt ("quickCheck " ++ fn) RunToCompletion
@@ -43,3 +54,4 @@ runTest fn = do
     RunOk [] -> Nothing
     RunException se -> Just se
     _ -> error "runTest"
+#endif
