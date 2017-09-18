@@ -5,9 +5,10 @@ stages:
   before_script:
     - ls -l ..
     - apt-get update && apt-get install alex happy
+    - ghc-pkg list
+    - cabal update && cabal install --only-dependencies -j2 --enable-tests --enable-documentation
     - mkdir -p ../ghc-mod.sdist-$CI_PIPELINE_ID
     - touch ChangeLog
-    - cabal update
     - cabal sdist --output-directory=../ghc-mod.sdist-$CI_PIPELINE_ID
     - cd ../ghc-mod.sdist-$CI_PIPELINE_ID
 
@@ -19,8 +20,6 @@ after_script:
 .script_template: &common_script
   script:
     - echo $PWD
-    - ghc-pkg list
-    - cabal install --user --only-dependencies -j2 --force-reinstalls --upgrade-dependencies --enable-tests --enable-documentation
     - which cabal
     - cabal --version
     - cabal configure --enable-tests

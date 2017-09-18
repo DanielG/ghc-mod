@@ -24,7 +24,7 @@ Description:
 
 
 Category:               GHC, Development
-Cabal-Version:          >= 1.18
+Cabal-Version:          >= 1.24
 Build-Type:             Custom
 Data-Files:             elisp/Makefile
                         elisp/*.el
@@ -92,7 +92,8 @@ Extra-Source-Files:     ChangeLog
 
 Custom-Setup
   Setup-Depends:         base
-                       , Cabal >= 1.18 && < 2.1
+                       , Cabal               < 2.1  && >= 1.24
+                       , cabal-doctest       < 1.1  && >= 1
                        , containers
                        , filepath
                        , directory
@@ -273,7 +274,10 @@ Test-Suite doctest
   Main-Is:              doctests.hs
   Build-Depends:        base                 < 4.11 && >= 4.6.0.1
                       , doctest              < 0.12 && >= 0.9.3
-
+                      , directory
+                      , ghc
+                      , mtl
+                      , transformers
 
 Test-Suite spec
   Default-Language:     Haskell2010
