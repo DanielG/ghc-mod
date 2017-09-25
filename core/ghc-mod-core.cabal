@@ -1,0 +1,146 @@
+Name:                   ghc-mod-core
+Version:                5.9.0.0
+Author:                 Kazu Yamamoto <kazu@iij.ad.jp>,
+                        Daniel Gröber <dxld@darkboxed.org>,
+                        Alejandro Serrano <trupill@gmail.com>,
+                        Nikolay Yakimov <root@livid.pp.ru>
+Maintainer:             Daniel Gröber <dxld@darkboxed.org>
+License:                AGPL-3
+License-File:           LICENSE
+License-Files:          COPYING.BSD3 COPYING.AGPL3
+Homepage:               https://github.com/DanielG/ghc-mod
+Synopsis:               Happy Haskell Hacking
+Description:
+  ghc-mod is a backend program to enrich Haskell programming in editors. It
+  strives to offer most of the features one has come to expect from modern IDEs
+  in any editor.
+
+  ghc-mod provides a library for other haskell programs to use as well as a
+  standalone program for easy editor integration. All of the fundamental
+  functionality of the frontend program can be accessed through the library
+  however many implementation details are hidden and if you want to
+  significantly extend ghc-mod you should submit these changes upstream instead
+  of implementing them on top of the library.
+
+
+Category:               GHC, Development
+Cabal-Version:          >= 1.18
+Build-Type:             Custom
+-- Extra-Source-Files:     ChangeLog
+
+
+Custom-Setup
+  Setup-Depends:         base
+                       , Cabal >= 1.18 && < 2.1
+                       , containers
+                       , filepath
+                       , directory
+                       , process
+                       , template-haskell
+                       , transformers
+
+
+Library
+  Default-Language:     Haskell2010
+  GHC-Options:          -Wall -fno-warn-deprecations
+  Default-Extensions:   ScopedTypeVariables, RecordWildCards, NamedFieldPuns,
+                        ConstraintKinds, FlexibleContexts,
+                        DataKinds, KindSignatures, TypeOperators, ViewPatterns
+  HS-Source-Dirs:       . shared
+  Exposed-Modules:
+                        GhcModCore
+                        GhcMod.CabalHelper
+                        GhcMod.Caching
+                        GhcMod.Caching.Types
+                        GhcMod.Convert
+                        GhcMod.Cradle
+                        GhcMod.CustomPackageDb
+                        GhcMod.DebugLogger
+                        GhcMod.Doc
+                        GhcMod.DynFlags
+                        GhcMod.DynFlagsTH
+                        GhcMod.Error
+                        GhcMod.FileMapping
+                        GhcMod.Gap
+                        GhcMod.GhcPkg
+                        GhcMod.HomeModuleGraph
+                        GhcMod.LightGhc
+                        GhcMod.Logger
+                        GhcMod.Logging
+                        GhcMod.Monad
+                        GhcMod.Monad.Env
+                        GhcMod.Monad.Log
+                        GhcMod.Monad.Newtypes
+                        GhcMod.Monad.Orphans
+                        GhcMod.Monad.Out
+                        GhcMod.Monad.State
+                        GhcMod.Monad.Types
+                        GhcMod.Options.DocUtils
+                        GhcMod.Options.Help
+                        GhcMod.Options.Options
+                        GhcMod.Output
+                        GhcMod.PathsAndFiles
+                        GhcMod.Pretty
+                        GhcMod.Read
+                        GhcMod.SrcUtils
+                        GhcMod.Stack
+                        GhcMod.Target
+                        GhcMod.Types
+                        GhcMod.Utils
+                        GhcMod.World
+                        Utils
+                        Data.Binary.Generic
+                        System.Directory.ModTime
+  Other-Modules:        Paths_ghc_mod_core
+  Build-Depends:
+                      -- See Note [GHC Boot libraries]
+                        binary
+                      , bytestring
+                      , containers
+                      , deepseq
+                      , directory
+                      , filepath
+                      , mtl
+                      , old-time
+                      , process
+                      , template-haskell
+                      , time
+                      , transformers
+
+                      , base                 < 4.11 && >= 4.6.0.1
+                      , djinn-ghc            < 0.1  && >= 0.0.2.2
+                      , extra                < 1.7  && >= 1.4
+                      , fclabels             < 2.1  && >= 2.0
+                      , fingertree           < 0.2  && >= 0.1.1.0
+                      , ghc-paths            < 0.2  && >= 0.1.0.9
+                      , ghc-syb-utils        < 0.3  && >= 0.2.3
+                      , haskell-src-exts     < 1.20 && >= 1.18
+                      , hlint                < 3.0  && >= 2.0.8
+                      , monad-control        < 1.1  && >= 1
+                      , monad-journal        < 0.9  && >= 0.4
+                      , optparse-applicative < 0.15 && >= 0.13.0.0
+                      , pipes                < 4.4  && >= 4.1
+                      , safe                 < 0.4  && >= 0.3.9
+                      , semigroups           < 0.19 && >= 0.10.0
+                      , split                < 0.3  && >= 0.2.2
+                      , syb                  < 0.8  && >= 0.5.1
+                      , temporary            < 1.3  && >= 1.2.0.3
+                      , text                 < 1.3  && >= 1.2.1.3
+                      , transformers-base    < 0.5  && >= 0.4.4
+
+                      , cabal-helper         < 0.9  && >= 0.8.0.2
+                      , ghc                  < 8.4  && >= 7.6
+
+  if impl(ghc >= 8.0)
+    Build-Depends:      ghc-boot
+  if impl(ghc < 7.8)
+    Build-Depends:      convertible          < 1.2  && >= 1.1.0.0
+
+Source-Repository head
+  Type:                 git
+  Location:             https://github.com/DanielG/ghc-mod.git
+
+-- Note [GHC Boot libraries]
+--
+-- We don't give bounds to GHC boot libraries as our dependency on 'ghc' already
+-- constrains these packages to the version that shipped with GHC.

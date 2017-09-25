@@ -35,7 +35,7 @@ import qualified Data.ByteString.Char8 as BS8
 import System.FilePath
 import System.Directory.ModTime
 import Utils (TimedFile(..), timeMaybe, mightExist)
-import Paths_ghc_mod (version)
+import Paths_ghc_mod_core (version)
 import Prelude
 
 import GhcMod.Monad.Types
