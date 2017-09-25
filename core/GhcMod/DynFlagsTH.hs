@@ -83,6 +83,10 @@ deriveEqDynFlags qds = do
            , "FlushOut"
            , "FlushErr"
            , "Settings" -- I think these can't cange at runtime
+           , "LogFinaliser"   -- added for ghc-8.2
+           , "LogOutput"      -- added for ghc-8.2
+           , "OverridingBool" -- added for ghc-8.2
+           , "Scheme"         -- added for ghc-8.2
            ]
        ignoredTypeOccNames = [ "OnOff" ]
 

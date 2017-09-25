@@ -4,12 +4,18 @@ stages:
 .before_script_template: &common_before_script
   before_script:
     - ls -l ..
-    - apt-get update && apt-get install alex happy
+    - apt-get update && apt-get install alex happy libtinfo-dev
     - ghc-pkg list
-    - cabal update && cabal install --only-dependencies -j2 --enable-tests --enable-documentation
+    - (cd .. && git clone https://github.com/alanz/cabal-helper.git)
+    - cabal update
+    - cabal sandbox --sandbox=$HOME/.sandbox init
+    - cabal sandbox add-source ../cabal-helper
+    - cabal sandbox add-source ../ghc-mod/ghc-mod-core
+    - cabal install --only-dependencies -j2 --enable-tests --enable-documentation
     - mkdir -p ../ghc-mod.sdist-$CI_PIPELINE_ID
     - touch ChangeLog
     - cabal sdist --output-directory=../ghc-mod.sdist-$CI_PIPELINE_ID
+    - cp cabal.sandbox.config ../ghc-mod.sdist-$CI_PIPELINE_ID/
     - cd ../ghc-mod.sdist-$CI_PIPELINE_ID
 
 after_script:

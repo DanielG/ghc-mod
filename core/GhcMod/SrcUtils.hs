@@ -47,8 +47,14 @@ type CstGenQS = M.Map Var Type
 -- | Generic type to simplify SYB definition
 type CstGenQT a = forall m. GhcMonad m => a Id -> CstGenQS -> (m [(SrcSpan, Type)], CstGenQS)
 
-collectSpansTypes :: (GhcMonad m) => Bool -> G.TypecheckedModule -> (Int, Int) -> m [(SrcSpan, Type)]
-collectSpansTypes withConstraints tcs lc =
+collectSpansTypes :: (GhcMonad m) => Bool -> G.TypecheckedModule -> (Int,Int) -> m [(SrcSpan, Type)]
+collectSpansTypes withConstraints tcs lc = collectSpansTypes' withConstraints tcs (`G.spans` lc)
+
+collectAllSpansTypes :: (GhcMonad m) => Bool -> G.TypecheckedModule -> m [(SrcSpan, Type)]
+collectAllSpansTypes withConstraints tcs = collectSpansTypes' withConstraints tcs (const True)
+
+collectSpansTypes' :: (GhcMonad m) => Bool -> G.TypecheckedModule -> (SrcSpan -> Bool) -> m [(SrcSpan, Type)]
+collectSpansTypes' withConstraints tcs f =
   -- This walks AST top-down, left-to-right, while carrying CstGenQS down the tree
   -- (but not left-to-right)
   everythingStagedWithContext TypeChecker M.empty (liftM2 (++))
@@ -92,7 +98,7 @@ collectSpansTypes withConstraints tcs lc =
     collectBinders = listifyStaged TypeChecker (const True)
     -- Gets monomorphic type with location
     getType' x@(L spn _)
-      | G.isGoodSrcSpan spn && spn `G.spans` lc
+      | G.isGoodSrcSpan spn && f spn
       = getType tcs x
       | otherwise = return Nothing
     -- Gets constrained type

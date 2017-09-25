@@ -70,6 +70,7 @@ import NameSet
 import OccName
 import Outputable
 import PprTyThing
+import IfaceSyn
 import StringBuffer
 import TcType
 import Var (varType)
@@ -108,7 +109,10 @@ import TcRnTypes
 #endif
 #endif
 
-#if MIN_VERSION_GLASGOW_HASKELL(8,0,1,20161117)
+#if MIN_VERSION_GLASGOW_HASKELL(8,2,0,0)
+import GHC hiding (ClsInst, withCleanupSession, setLogAction)
+import qualified GHC (withCleanupSession)
+#elif MIN_VERSION_GLASGOW_HASKELL(8,0,1,20161117)
 import GHC hiding (ClsInst, withCleanupSession)
 import qualified GHC (withCleanupSession)
 #elif __GLASGOW_HASKELL__ >= 706
@@ -459,9 +463,9 @@ pprInfo m pefas (thing, fixity, insts)
       = showWithLoc (pprDefinedAt' (getName axiom)) $
         hang (ptext (sLit "type instance") <+> pprTypeApp (coAxiomTyCon axiom) lhs_tys)
            2 (equals <+> ppr rhs)
-#else
+# else
     pprFamInst' ispec = showWithLoc (pprDefinedAt' (getName ispec)) (pprFamInstHdr ispec)
-#endif
+# endif
 #else
     pprTyThingInContextLoc' pefas' thing' = showWithLoc (pprDefinedAt' thing') (pprTyThingInContext pefas' thing')
 #endif
