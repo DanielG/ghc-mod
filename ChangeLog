@@ -8,7 +8,7 @@
 	* Rework README
 	* Reorganize modules as preparation for splitting off ghc-mod-core
 	* Remove dependency on 'pretty' and use GHC's pretty printer instead
-	* Merge #854, Fix for "ghc-mod doc" when usind with stack
+	* Merge #854, Fix for "ghc-mod doc" when using stack
 	* Merge #858, Fix Gap.fromTyThing returning GHC internal
 	  representation instead of the user readable representation of
 	  types
