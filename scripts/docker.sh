@@ -21,12 +21,14 @@ while read -r ghc_rel ghc ghc_arch ghc_ext cabal cabal_rev image; do
     cabal_meta_file=cabal-install-"${cabal}"-"${cabal_rev}".cabal
 
     ADDITIONAL_COMMANDS=""
+    ADDITIONAL_BOOTSTRAP_SETUP="true"
 
     if [ x"$image" = x"debian:squeeze" ]; then
-        ADDITIONAL_PACKAGES=" libncursesw5"
+        ADDITIONAL_PACKAGES=" libncursesw5 realpath"
         ADDITIONAL_COMMANDS="${ADDITIONAL_COMMANDS}COPY sources.list /etc/apt/
 COPY 10-no-check-valid-until /etc/apt/apt.conf.d/
 "
+        ADDITIONAL_BOOTSTRAP_SETUP="sed -i -e 's|^HACKAGE_URL=.*|HACKAGE_URL=http://hackage.haskell.org/package|' -e 's/^JOBS=.*/JOBS=/' bootstrap.sh"
 
         cat > "$tmpdir"/sources.list <<EOF
 deb http://archive.debian.org/debian-archive/debian/ squeeze main
@@ -72,7 +74,8 @@ RUN tar -xf ghc-*.tar.* && \
 RUN tar -xf cabal-install-*.tar.* && \
     cd cabal-install-* && \
       cp /root/$cabal_meta_file cabal-install.cabal && \
-      ./bootstrap.sh --global && \
+      ${ADDITIONAL_BOOTSTRAP_SETUP} && \
+      ./bootstrap.sh --no-doc --global && \
     cd .. && \
     rm -r cabal-*
 EOF
@@ -83,7 +86,12 @@ done <<EOF
 8.0.2  8.0.2  x86_64-deb8-linux         xz  1.24.0.2  0 debian:jessie
 7.10.3 7.10.3 x86_64-deb8-linux         xz  1.24.0.2  0 debian:jessie
 7.8.4  7.8.4  x86_64-unknown-linux-deb7 xz  1.24.0.2  0 debian:jessie
+7.6.3  7.6.3  x86_64-unknown-linux      bz2 1.24.0.2  0 debian:squeeze
+7.4.2  7.4.2  x86_64-unknown-linux      bz2 1.24.0.2  0 debian:squeeze
 EOF
+
+# 7.2.2  7.2.2  x86_64-unknown-linux      bz2 1.24.0.2  0 debian:squeeze
+# 7.0.4  7.0.4  x86_64-unknown-linux      bz2 1.24.0.2  0 debian:squeeze
 
 # 7.10.3 7.10.3 x86_64-deb8-linux         xz  1.22.9.0  0 debian:jessie
 # 7.8.4  7.8.4  x86_64-unknown-linux-deb7 xz  1.18.2.0  0 debian:jessie
