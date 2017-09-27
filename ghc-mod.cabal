@@ -291,6 +291,7 @@ Test-Suite spec
   Other-Modules:        Paths_ghc_mod
                         Dir
                         TestUtils
+                        GhcMod.Exe.Options.ShellParse
 
 -- $ ls test/*Spec.hs | sed 's_^.*/\(.*\)\.hs$_\1_' | sort
                         BrowseSpec
