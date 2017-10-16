@@ -1,5 +1,3 @@
-#!/usr/bin/env runhaskell
-
 {-# LANGUAGE CPP #-}
 
 #ifndef MIN_VERSION_cabal_doctest
