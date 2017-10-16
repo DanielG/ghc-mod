@@ -1,4 +1,3 @@
-#!/usr/bin/env runhaskell
 {-# LANGUAGE RecordWildCards, NamedFieldPuns #-}
 import Distribution.Simple
 import Distribution.Simple.Utils
