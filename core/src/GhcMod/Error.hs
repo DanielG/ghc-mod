@@ -45,7 +45,7 @@ import Exception
 import Panic
 import Pretty
 import Config (cProjectVersion, cHostPlatformString)
-import Paths_ghc_mod (version)
+import Paths_ghc_mod_core (version)
 
 import GhcMod.Types
 import GhcMod.Pretty
