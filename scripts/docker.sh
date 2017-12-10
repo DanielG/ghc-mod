@@ -1,5 +1,8 @@
 #!/bin/sh
 
+# Usage: ./docker.sh [GHC_VER]
+# Example: ./docker.sh 8.2.2
+
 namespace="registry.gitlab.com/dxld/ghc-mod"
 target="$1"
 
@@ -64,9 +67,9 @@ WORKDIR /root
 
 $ADDITIONAL_COMMANDS
 
-RUN apt-get update && apt-get upgrade && \
+RUN apt-get update && apt-get upgrade -y && \
     apt-get install -y --no-install-recommends \
-      alex happy wget git xz-utils gpgv ca-certificates build-essential libgmp3-dev zlib1g-dev $ADDITIONAL_PACKAGES && \
+      alex happy wget git xz-utils gpgv ca-certificates build-essential libgmp3-dev libtinfo-dev zlib1g-dev $ADDITIONAL_PACKAGES && \
     apt-get clean
 RUN tar -xf ghc-*.tar.* && \
     cd ghc-* && ./configure --prefix=/usr/local && make install && cd .. && \
@@ -82,6 +85,7 @@ EOF
 
     docker build -t "${namespace}:ghc${ghc}-cabal-install${cabal}" "$tmpdir"
 done <<EOF
+8.2.2  8.2.2  x86_64-deb8-linux         xz  2.0.0.0   0 debian:jessie
 8.2.1  8.2.1  x86_64-deb8-linux         xz  2.0.0.0   0 debian:jessie
 8.0.2  8.0.2  x86_64-deb8-linux         xz  1.24.0.2  0 debian:jessie
 7.10.3 7.10.3 x86_64-deb8-linux         xz  1.24.0.2  0 debian:jessie
