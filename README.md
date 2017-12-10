@@ -9,6 +9,8 @@ Vim, Atom, IntelliJ and VSCode.
 - for [people developing Haskell IDEs (Using ghc-mod as an IDE backend program)](#using-ghc-mod-as-an-ide-backend-program)
 - for [developing Haskell tooling (Using ghc-mod as a library)](#using-ghc-mod-as-a-library)
 
+*Note: GHC 8.2 is not currently supported, See [#900](https://github.com/DanielG/ghc-mod/issues/900)*
+
 ## Overview
 
 ### Using ghc-mod in your Development Environment
