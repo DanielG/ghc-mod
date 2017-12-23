@@ -284,7 +284,6 @@ data GmComponentType = GMCRaw
                      | GMCResolved
 data GmComponent (t :: GmComponentType) eps = GmComponent {
     gmcHomeModuleGraph :: GmModuleGraph
-  , gmcName            :: ChComponentName
   , gmcGhcOpts         :: [GHCOption]
   , gmcGhcPkgOpts      :: [GHCOption]
   , gmcGhcSrcOpts      :: [GHCOption]
@@ -292,6 +291,7 @@ data GmComponent (t :: GmComponentType) eps = GmComponent {
   , gmcRawEntrypoints  :: ChEntrypoint
   , gmcEntrypoints     :: eps
   , gmcSourceDirs      :: [FilePath]
+  , gmcName            :: ChComponentName  
   } deriving (Eq, Ord, Show, Read, Generic, Functor)
 
 instance Binary eps => Binary (GmComponent t eps) where
