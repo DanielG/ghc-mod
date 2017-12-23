@@ -89,28 +89,17 @@ getComponents = chCached $ \distdir -> Cached {
     cacheLens = Just (lGmcComponents . lGmCaches),
     cacheFile = cabalHelperCacheFile distdir,
     cachedAction = \ _tcf (_progs, _projdir, _ver) _ma -> do
-      runCHQuery $ do
-        q <- join7
-               <$> ghcOptions
-               <*> ghcPkgOptions
-               <*> ghcSrcOptions
-               <*> ghcLangOptions
-               <*> entrypoints
-               <*> entrypoints
-               <*> sourceDirs
-        let cs = flip map q $ curry8 (GmComponent mempty)
-        return ([setupConfigPath distdir], cs)
+      cs <- runCHQuery $ components $
+             GmComponent mempty
+               CH.<$> ghcOptions
+               CH.<.> ghcPkgOptions
+               CH.<.> ghcSrcOptions
+               CH.<.> ghcLangOptions
+               CH.<.> entrypoints
+               CH.<.> entrypoints
+               CH.<.> sourceDirs
+      return ([setupConfigPath distdir], cs)
   }
- where
-   curry8 fn (a, (b, (c, (d, (e, (f, (g, h))))))) = fn a b c d e f g h
-
-   join7 a b c d e f = join' a . join' b . join' c . join' d . join' e . join' f
-   join' :: Eq a => [(a,b)] -> [(a,c)] -> [(a,(b,c))]
-   join' lb lc = [ (a, (b, c))
-                 | (a, b)  <- lb
-                 , (a', c) <- lc
-                 , a == a'
-                 ]
 
 getQueryEnv :: (IOish m, GmOut m, GmEnv m) => m QueryEnv
 getQueryEnv = do
@@ -119,7 +108,7 @@ getQueryEnv = do
   readProc <- gmReadProcess
   let projdir = cradleRootDir crdl
       distdir = projdir </> cradleDistDir crdl
-  return (defaultQueryEnv projdir distdir) {
+  return (mkQueryEnv projdir distdir) {
                   qeReadProcess = readProc
                 , qePrograms = helperProgs progs
                 }
@@ -134,7 +123,7 @@ prepareCabalHelper :: (IOish m, GmEnv m, GmOut m, GmLog m) => m ()
 prepareCabalHelper = do
   crdl <- cradle
   when (isCabalHelperProject $ cradleProject crdl) $
-       withCabal $ prepare' =<< getQueryEnv
+       withCabal $ prepare =<< getQueryEnv
 
 withAutogen :: (IOish m, GmEnv m, GmOut m, GmLog m) => m a -> m a
 withAutogen action = do
@@ -158,7 +147,7 @@ withAutogen action = do
  where
    writeAutogen = do
      gmLog GmDebug "" $ strDoc $ "writing Cabal autogen files"
-     writeAutogenFiles' =<< getQueryEnv
+     writeAutogenFiles =<< getQueryEnv
 
 
 withCabal :: (IOish m, GmEnv m, GmOut m, GmLog m) => m a -> m a
