@@ -3,7 +3,7 @@ module CabalHelperSpec where
 
 import Control.Arrow
 import Control.Applicative
-import Distribution.Helper
+import Distribution.Helper hiding ( (<.>))
 import GhcMod.CabalHelper
 import GhcMod.PathsAndFiles
 import GhcMod.Error
@@ -86,7 +86,7 @@ spec = do
                   opts <- map gmcGhcOpts <$> runD' tdir getComponents
                   let ghcOpts = head opts
                       pkgs = pkgOptions ghcOpts
-                  pkgs `shouldBe` ["Cabal","base"]
+                  sort pkgs `shouldBe` ["Cabal","base"]
 
             test
 
