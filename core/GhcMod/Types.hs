@@ -291,7 +291,7 @@ data GmComponent (t :: GmComponentType) eps = GmComponent {
   , gmcRawEntrypoints  :: ChEntrypoint
   , gmcEntrypoints     :: eps
   , gmcSourceDirs      :: [FilePath]
-  , gmcName            :: ChComponentName  
+  , gmcName            :: ChComponentName
   } deriving (Eq, Ord, Show, Read, Generic, Functor)
 
 instance Binary eps => Binary (GmComponent t eps) where
