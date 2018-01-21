@@ -5,6 +5,7 @@
 
 ;; Author:  Kazu Yamamoto <Kazu@Mew.org>
 ;; Created: Dec 27, 2011
+;; License: BSD-3-clause
 
 (require 'ghc-process)
 

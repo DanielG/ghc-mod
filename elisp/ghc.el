@@ -3,6 +3,7 @@
 ;; Author:  Kazu Yamamoto <Kazu@Mew.org>
 ;; Created: Sep 25, 2009
 ;; Revised:
+;; License: BSD-3-clause
 
 ;; Put the following code to your "~/.emacs".
 ;;

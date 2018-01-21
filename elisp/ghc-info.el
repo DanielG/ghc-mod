@@ -5,6 +5,7 @@
 
 ;; Author:  Kazu Yamamoto <Kazu@Mew.org>
 ;; Created: Nov 15, 2010
+;; License: BSD-3-clause
 
 ;;; Code:
 
