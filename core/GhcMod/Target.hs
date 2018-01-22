@@ -164,7 +164,7 @@ runGmlTWith efnmns' mdf wrapper action = do
     cfns <- mapM getCanonicalFileNameSafe ccfns
     let serfnmn = Set.fromList $ map Right mns ++ map Left cfns
     opts <- targetGhcOptions crdl serfnmn
-    let opts' = opts ++ ["-O0", "-fno-missing-home-modules"] ++ optGhcUserOptions
+    let opts' = opts ++ ["-O0", "-fno-warn-missing-home-modules"] ++ optGhcUserOptions
 
     gmVomit
       "session-ghc-options"
