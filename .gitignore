@@ -4,6 +4,7 @@ elisp/*.elc
 /.cabal-sandbox/
 /.stack-work/
 /test/data/**/stack.yaml
+/test/data/**/.cabal-sandbox/
 add-source-timestamps
 package.cache
 cabal.sandbox.config

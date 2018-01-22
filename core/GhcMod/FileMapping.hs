@@ -19,6 +19,7 @@ import System.Directory
 import Control.Monad.Trans.Maybe
 import GHC
 import Control.Monad
+import Language.Preprocessor.Unlit (unlit)
 
 {- | maps 'FilePath', given as first argument to take source from
 'FilePath' given as second argument. Works exactly the same as
@@ -31,7 +32,9 @@ loadMappedFile :: IOish m
                => FilePath -- ^ \'from\', file that will be mapped
                -> FilePath -- ^ \'to\', file to take source from
                -> GhcModT m ()
-loadMappedFile from to = loadMappedFile' from to False
+loadMappedFile from to = do
+  src <- liftIO $ readFile to
+  loadMappedFileSource from src
 
 {- |
 maps 'FilePath', given as first argument to have source as given
@@ -48,20 +51,31 @@ loadMappedFileSource from src = do
   tmpdir <- cradleTempDir `fmap` cradle
   enc <- liftIO . mkTextEncoding . optEncoding =<< options
   to <- liftIO $ do
-    (fn, h) <- openTempFile tmpdir (takeFileName from)
+    let fileName = takeFileName from
+        (fileName', src')
+          | snd (splitExtension fileName) == ".lhs"
+          = (takeBaseName fileName ++ ".hs", unlit from src)
+          | otherwise = (fileName, src)
+        linePragma = "{-# LINE 1 \""++escape from++"\" #-}\n"
+    (fn, h) <- openTempFile tmpdir fileName'
     hSetEncoding h enc
-    hPutStr h src
+    hPutStr h linePragma
+    hPutStr h src'
     hClose h
     return fn
-  loadMappedFile' from to True
+  loadMappedFile' from to
+  where escape (x:xs) = if x `elem` "\\\""
+                        then '\\':x:escape xs
+                        else x:escape xs
+        escape [] = []
 
-loadMappedFile' :: IOish m => FilePath -> FilePath -> Bool -> GhcModT m ()
-loadMappedFile' from to isTemp = do
+loadMappedFile' :: IOish m => FilePath -> FilePath -> GhcModT m ()
+loadMappedFile' from to = do
   cfn <- getCanonicalFileNameSafe from
   unloadMappedFile' cfn
   crdl <- cradle
   let to' = makeRelative (cradleRootDir crdl) to
-  addMMappedFile cfn (FileMapping to' isTemp)
+  addMMappedFile cfn (FileMapping to')
 
 mapFile :: (IOish m, GmState m) => HscEnv -> Target -> m Target
 mapFile _ (Target tid@(TargetFile filePath _) taoc _) = do
@@ -95,7 +109,7 @@ unloadMappedFile = getCanonicalFileNameSafe >=> unloadMappedFile'
 unloadMappedFile' :: IOish m => FilePath -> GhcModT m ()
 unloadMappedFile' cfn = void $ runMaybeT $ do
   fm <- MaybeT $ lookupMMappedFile cfn
-  liftIO $ when (fmTemp fm) $ removeFile (fmPath fm)
+  liftIO $ removeFile (fmPath fm)
   delMMappedFile cfn
 
 fileModSummaryWithMapping :: (IOish m, GmState m, GhcMonad m, GmEnv m) =>

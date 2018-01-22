@@ -70,7 +70,7 @@ data OutputStyle = LispStyle  -- ^ S expression style.
 -- | The type for line separator. Historically, a Null string is used.
 newtype LineSeparator = LineSeparator String deriving (Show)
 
-data FileMapping =  FileMapping {fmPath :: FilePath, fmTemp :: Bool}
+newtype FileMapping =  FileMapping {fmPath :: FilePath}
                   deriving (Eq, Show)
 
 type FileMappingMap = Map FilePath FileMapping

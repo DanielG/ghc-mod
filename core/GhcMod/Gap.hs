@@ -79,14 +79,9 @@ import SysTools
 import GHCi (stopIServ)
 #endif
 
-import qualified Name
 import qualified InstEnv
 import qualified Pretty
 import qualified StringBuffer as SB
-
-#if __GLASGOW_HASKELL__ >= 710
-import CoAxiom (coAxiomTyCon)
-#endif
 
 #if __GLASGOW_HASKELL__ >= 708
 import FamInstEnv
@@ -411,8 +406,8 @@ filterOutChildren get_thing xs
   where
     implicits = mkNameSet [getName t | x <- xs, t <- implicitTyThings (get_thing x)]
 
-infoThing :: GhcMonad m => (FilePath -> FilePath) -> Expression -> m SDoc
-infoThing m (Expression str) = do
+infoThing :: GhcMonad m => Expression -> m SDoc
+infoThing (Expression str) = do
     names <- parseName str
 #if __GLASGOW_HASKELL__ >= 708
     mb_stuffs <- mapM (getInfo False) names
@@ -421,61 +416,30 @@ infoThing m (Expression str) = do
     mb_stuffs <- mapM getInfo names
     let filtered = filterOutChildren (\(t,_f,_i) -> t) (catMaybes mb_stuffs)
 #endif
-    return $ vcat (intersperse (text "") $ map (pprInfo m False) filtered)
+    return $ vcat (intersperse (text "") $ map (pprInfo False) filtered)
 
 #if __GLASGOW_HASKELL__ >= 708
-pprInfo :: (FilePath -> FilePath) -> Bool -> (TyThing, GHC.Fixity, [ClsInst], [FamInst]) -> SDoc
-pprInfo m _ (thing, fixity, insts, famInsts)
-    = pprTyThingInContextLoc' thing
+pprInfo :: Bool -> (TyThing, GHC.Fixity, [ClsInst], [FamInst]) -> SDoc
+pprInfo _ (thing, fixity, insts, famInsts)
+    = pprTyThingInContextLoc thing
    $$ show_fixity fixity
-   $$ vcat (map pprInstance' insts)
-   $$ vcat (map pprFamInst' famInsts)
-#else
-pprInfo :: (FilePath -> FilePath) -> PrintExplicitForalls -> (TyThing, GHC.Fixity, [ClsInst]) -> SDoc
-pprInfo m pefas (thing, fixity, insts)
-    = pprTyThingInContextLoc' pefas thing
-   $$ show_fixity fixity
-   $$ vcat (map pprInstance' insts)
-#endif
+   $$ InstEnv.pprInstances insts
+   $$ pprFamInsts famInsts
   where
     show_fixity fx
       | fx == defaultFixity = Outputable.empty
       | otherwise           = ppr fx <+> ppr (getName thing)
-#if __GLASGOW_HASKELL__ >= 708
-    pprTyThingInContextLoc' thing' = showWithLoc (pprDefinedAt' thing') (pprTyThingInContext thing')
-#if __GLASGOW_HASKELL__ >= 710
-    pprFamInst' (FamInst { fi_flavor = DataFamilyInst rep_tc })
-      = pprTyThingInContextLoc (ATyCon rep_tc)
-
-    pprFamInst' (FamInst { fi_flavor = SynFamilyInst, fi_axiom = axiom
-                        , fi_tys = lhs_tys, fi_rhs = rhs })
-      = showWithLoc (pprDefinedAt' (getName axiom)) $
-        hang (ptext (sLit "type instance") <+> pprTypeApp (coAxiomTyCon axiom) lhs_tys)
-           2 (equals <+> ppr rhs)
 #else
-    pprFamInst' ispec = showWithLoc (pprDefinedAt' (getName ispec)) (pprFamInstHdr ispec)
+pprInfo :: PrintExplicitForalls -> (TyThing, GHC.Fixity, [ClsInst]) -> SDoc
+pprInfo pefas (thing, fixity, insts)
+    = pprTyThingInContextLoc pefas thing
+   $$ show_fixity fixity
+   $$ vcat (map pprInstance insts)
+  where
+    show_fixity fx
+      | fx == defaultFixity = Outputable.empty
+      | otherwise           = ppr fx <+> ppr (getName thing)
 #endif
-#else
-    pprTyThingInContextLoc' pefas' thing' = showWithLoc (pprDefinedAt' thing') (pprTyThingInContext pefas' thing')
-#endif
-    showWithLoc loc doc
-        = hang doc 2 (char '\t' <> comment <+> loc)
-        -- The tab tries to make them line up a bit
-      where
-        comment = ptext (sLit "--")
-    pprInstance' ispec = hang (pprInstanceHdr ispec)
-        2 (ptext (sLit "--") <+> pprDefinedAt' (getName ispec))
-    pprDefinedAt' thing' = ptext (sLit "Defined") <+> pprNameDefnLoc' (getName thing')
-    pprNameDefnLoc' name
-      = case Name.nameSrcLoc name of
-           RealSrcLoc s -> ptext (sLit "at") <+> ppr (subst s)
-           UnhelpfulLoc s
-             | Name.isInternalName name || Name.isSystemName name
-             -> ptext (sLit "at") <+> ftext s
-             | otherwise
-             -> ptext (sLit "in") <+> quotes (ppr (nameModule name))
-      where subst s = mkRealSrcLoc (realFP s) (srcLocLine s) (srcLocCol s)
-            realFP = mkFastString . m . unpackFS . srcLocFile
 
 ----------------------------------------------------------------
 ----------------------------------------------------------------

@@ -128,18 +128,6 @@ getCanonicalFileNameSafe fn = do
     splitPath' = splitPath
 #endif
 
-mkRevRedirMapFunc :: (Functor m, GmState m, GmEnv m) => m (FilePath -> FilePath)
-mkRevRedirMapFunc = do
-  rm <- M.fromList <$> map (uncurry mf) <$> M.toList <$> getMMappedFiles
-  crdl <- cradle
-  return $ \key ->
-    fromMaybe key
-    $ makeRelative (cradleRootDir crdl)
-    <$> M.lookup key rm
-  where
-    mf :: FilePath -> FileMapping -> (FilePath, FilePath)
-    mf from to = (fmPath to, from)
-
 findFilesWith' :: (FilePath -> IO Bool) -> [FilePath] -> String -> IO [FilePath]
 findFilesWith' _ [] _ = return []
 findFilesWith' f (d:ds) fileName = do
