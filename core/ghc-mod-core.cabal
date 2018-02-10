@@ -32,13 +32,6 @@ Build-Type:             Custom
 Custom-Setup
   Setup-Depends:         base
                        , Cabal >= 1.18 && < 2.1
-                       , containers
-                       , filepath
-                       , directory
-                       , process
-                       , template-haskell
-                       , transformers
-
 
 Library
   Default-Language:     Haskell2010

@@ -94,13 +94,6 @@ Custom-Setup
   Setup-Depends:         base
                        , Cabal               < 2.1  && >= 1.24
                        , cabal-doctest       < 1.1  && >= 1
-                       , containers
-                       , filepath
-                       , directory
-                       , process
-                       , template-haskell
-                       , transformers
-
 
 Library
   Default-Language:     Haskell2010
@@ -234,11 +227,7 @@ Test-Suite doctest
   Default-Extensions:   ConstraintKinds, FlexibleContexts
   Main-Is:              doctests.hs
   Build-Depends:        base                 < 4.11 && >= 4.6.0.1
-                      , doctest              < 0.12 && >= 0.9.3
-                      , directory
-                      , ghc
-                      , mtl
-                      , transformers
+                      , doctest              < 0.14 && >= 0.11.3
 
 Test-Suite spec
   Default-Language:     Haskell2010
