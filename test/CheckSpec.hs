@@ -64,8 +64,10 @@ spec = do
         it "works with cabal builtin preprocessors" $ do
             withDirectory_ "test/data/cabal-preprocessors" $ do
                 _ <- system "cabal clean"
-                _ <- system "cabal build"
-                res <- runD $ checkSyntax ["Main.hs"]
+                -- _ <- system "cabal build"
+                _ <- system "cabal build -v3"
+                -- res <- runD $ checkSyntax ["Main.hs"]
+                res <- runV $ checkSyntax ["Main.hs"]
                 res `shouldBe` "Preprocessed.hsc:3:1:Warning: Top-level binding with no type signature: warning :: ()\n"
 
         it "Uses the right qualification style" $ do
