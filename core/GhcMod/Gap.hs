@@ -47,8 +47,19 @@ module GhcMod.Gap (
   , GhcMod.Gap.isSynTyCon
   , parseModuleHeader
   , mkErrStyle'
+#if __GLASGOW_HASKELL__ < 804
   , everythingStagedWithContext
+#endif
   , withCleanupSession
+#if __GLASGOW_HASKELL__ >= 804
+  , GHC.GhcPs
+  , GHC.GhcRn
+  , GHC.GhcTc
+#else
+  , GhcPs
+  , GhcRn
+  , GhcTc
+#endif
   ) where
 
 import Control.Applicative hiding (empty)
@@ -70,6 +81,7 @@ import NameSet
 import OccName
 import Outputable
 import PprTyThing
+import IfaceSyn
 import StringBuffer
 import TcType
 import Var (varType)
@@ -108,7 +120,10 @@ import TcRnTypes
 #endif
 #endif
 
-#if MIN_VERSION_GLASGOW_HASKELL(8,0,1,20161117)
+#if MIN_VERSION_GLASGOW_HASKELL(8,2,0,0)
+import GHC hiding (ClsInst, withCleanupSession, setLogAction)
+import qualified GHC (withCleanupSession)
+#elif MIN_VERSION_GLASGOW_HASKELL(8,0,1,20161117)
 import GHC hiding (ClsInst, withCleanupSession)
 import qualified GHC (withCleanupSession)
 #elif __GLASGOW_HASKELL__ >= 706
@@ -125,7 +140,9 @@ import UniqFM (eltsUFM)
 import Module
 #endif
 
-#if __GLASGOW_HASKELL__ >= 704
+#if __GLASGOW_HASKELL__ >= 804
+import qualified EnumSet as E (EnumSet, empty)
+#elif __GLASGOW_HASKELL__ >= 704
 import qualified Data.IntSet as I (IntSet, empty)
 #endif
 
@@ -140,10 +157,12 @@ import Parser
 import SrcLoc
 import Packages
 import Data.Generics (GenericQ, extQ, gmapQ)
+#if __GLASGOW_HASKELL__ < 804
 import GHC.SYB.Utils (Stage(..))
+#endif
 
 import GhcMod.Types (Expression(..))
-import Prelude
+import Prelude hiding ( (<>) )
 
 ----------------------------------------------------------------
 ----------------------------------------------------------------
@@ -284,7 +303,11 @@ fileModSummary :: GhcMonad m => FilePath -> m ModSummary
 fileModSummary file' = do
     mss <- getModuleGraph
     file <- liftIO $ canonicalizePath file'
+#if __GLASGOW_HASKELL__ >= 804
+    [ms] <- liftIO $ flip filterM (mgModSummaries mss) $ \m ->
+#else
     [ms] <- liftIO $ flip filterM mss $ \m ->
+#endif
         (Just file==) <$> canonicalizePath `traverse` ml_hs_file (ms_location m)
     return ms
 
@@ -296,8 +319,14 @@ withInteractiveContext action = gbracket setup teardown body
     body _ = do
         topImports >>= setCtx
         action
+    topImports :: GhcMonad m => m [InteractiveImport]
     topImports = do
+#if __GLASGOW_HASKELL__ >= 804
+        mg <- getModuleGraph
+        ms <- filterM moduleIsInterpreted =<< map ms_mod <$> (return $ mgModSummaries mg)
+#else
         ms <- filterM moduleIsInterpreted =<< map ms_mod <$> getModuleGraph
+#endif
         let iis = map (IIModule . modName) ms
 #if __GLASGOW_HASKELL__ >= 704
         return iis
@@ -393,7 +422,7 @@ class HasType a where
     getType :: GhcMonad m => TypecheckedModule -> a -> m (Maybe (SrcSpan, Type))
 
 
-instance HasType (LHsBind Id) where
+instance HasType (LHsBind GhcTc) where
 #if __GLASGOW_HASKELL__ >= 708
     getType _ (L spn FunBind{fun_matches = m}) = return $ Just (spn, typ)
       where in_tys = mg_arg_tys m
@@ -417,7 +446,10 @@ filterOutChildren get_thing xs
 infoThing :: GhcMonad m => (FilePath -> FilePath) -> Expression -> m SDoc
 infoThing m (Expression str) = do
     names <- parseName str
-#if __GLASGOW_HASKELL__ >= 708
+#if __GLASGOW_HASKELL__ >= 804
+    mb_stuffs <- mapM (getInfo False) names
+    let filtered = filterOutChildren (\(t,_f,_i,_fam,_doc) -> t) (catMaybes mb_stuffs)
+#elif __GLASGOW_HASKELL__ >= 708
     mb_stuffs <- mapM (getInfo False) names
     let filtered = filterOutChildren (\(t,_f,_i,_fam) -> t) (catMaybes mb_stuffs)
 #else
@@ -426,7 +458,14 @@ infoThing m (Expression str) = do
 #endif
     return $ vcat (intersperse (text "") $ map (pprInfo m False) filtered)
 
-#if __GLASGOW_HASKELL__ >= 708
+#if __GLASGOW_HASKELL__ >= 804
+pprInfo :: (FilePath -> FilePath) -> Bool -> (TyThing, GHC.Fixity, [ClsInst], [FamInst],SDoc) -> SDoc
+pprInfo m _ (thing, fixity, insts, famInsts,_doc)
+    = pprTyThingInContextLoc' thing
+   $$ show_fixity fixity
+   $$ vcat (map pprInstance' insts)
+   $$ vcat (map pprFamInst' famInsts)
+#elif __GLASGOW_HASKELL__ >= 708
 pprInfo :: (FilePath -> FilePath) -> Bool -> (TyThing, GHC.Fixity, [ClsInst], [FamInst]) -> SDoc
 pprInfo m _ (thing, fixity, insts, famInsts)
     = pprTyThingInContextLoc' thing
@@ -459,9 +498,9 @@ pprInfo m pefas (thing, fixity, insts)
       = showWithLoc (pprDefinedAt' (getName axiom)) $
         hang (ptext (sLit "type instance") <+> pprTypeApp (coAxiomTyCon axiom) lhs_tys)
            2 (equals <+> ppr rhs)
-#else
+# else
     pprFamInst' ispec = showWithLoc (pprDefinedAt' (getName ispec)) (pprFamInstHdr ispec)
-#endif
+# endif
 #else
     pprTyThingInContextLoc' pefas' thing' = showWithLoc (pprDefinedAt' thing') (pprTyThingInContext pefas' thing')
 #endif
@@ -514,7 +553,7 @@ nameForUser = pprOccName . getOccName
 occNameForUser :: OccName -> SDoc
 occNameForUser = pprOccName
 
-deSugar :: TypecheckedModule -> LHsExpr Id -> HscEnv
+deSugar :: TypecheckedModule -> LHsExpr GhcTc -> HscEnv
          -> IO (Maybe CoreExpr)
 #if __GLASGOW_HASKELL__ >= 708
 deSugar _   e hs_env = snd <$> deSugarExpr hs_env e
@@ -555,7 +594,11 @@ fromTyThing _                          = GtN
 ----------------------------------------------------------------
 ----------------------------------------------------------------
 
-#if __GLASGOW_HASKELL__ >= 704
+#if __GLASGOW_HASKELL__ >= 804
+type WarnFlags = E.EnumSet WarningFlag
+emptyWarnFlags :: WarnFlags
+emptyWarnFlags = E.empty
+#elif __GLASGOW_HASKELL__ >= 704
 type WarnFlags = I.IntSet
 emptyWarnFlags :: WarnFlags
 emptyWarnFlags = I.empty
@@ -568,15 +611,22 @@ emptyWarnFlags = []
 ----------------------------------------------------------------
 ----------------------------------------------------------------
 
+-- See https://ghc.haskell.org/trac/ghc/wiki/Migration/8.4#GHCAPIchanges
+#if __GLASGOW_HASKELL__ <= 802
+type GhcPs = RdrName
+type GhcRn = Name
+type GhcTc = Id
+#endif
+
 #if __GLASGOW_HASKELL__ >= 708
-type GLMatch = LMatch RdrName (LHsExpr RdrName)
+type GLMatch = LMatch GhcPs (LHsExpr GhcPs)
 type GLMatchI = LMatch Id (LHsExpr Id)
 #else
-type GLMatch = LMatch RdrName
+type GLMatch = LMatch GhcPs
 type GLMatchI = LMatch Id
 #endif
 
-getClass :: [LInstDecl Name] -> Maybe (Name, SrcSpan)
+getClass :: [LInstDecl GhcRn] -> Maybe (Name, SrcSpan)
 #if __GLASGOW_HASKELL__ >= 802
 -- Instance declarations of sort 'instance F (G a)'
 getClass [L loc (ClsInstD (ClsInstDecl {cid_poly_ty = HsIB _ (L _ (HsForAllTy _ (L _ (HsAppTy (L _ (HsTyVar _ (L _ className))) _)))) _}))] = Just (className, loc)
@@ -664,7 +714,7 @@ parseModuleHeader
     :: String         -- ^ Haskell module source text (full Unicode is supported)
     -> DynFlags
     -> FilePath       -- ^ the filename (for source locations)
-    -> Either ErrorMessages (WarningMessages, Located (HsModule RdrName))
+    -> Either ErrorMessages (WarningMessages, Located (HsModule GhcPs))
 parseModuleHeader str dflags filename =
    let
        loc  = mkRealSrcLoc (mkFastString filename) 1 1
@@ -672,7 +722,11 @@ parseModuleHeader str dflags filename =
    in
    case L.unP Parser.parseHeader (mkPState dflags buf loc) of
 
+#if __GLASGOW_HASKELL__ >= 804
+     PFailed _ sp err   ->
+#else
      PFailed sp err   ->
+#endif
 #if __GLASGOW_HASKELL__ >= 706
          Left (unitBag (mkPlainErrMsg dflags sp err))
 #else
@@ -700,8 +754,10 @@ instance NFData ByteString where
   rnf (Chunk _ b) = rnf b
 #endif
 
+#if __GLASGOW_HASKELL__ < 804
 -- | Like 'everything', but avoid known potholes, based on the 'Stage' that
 --   generated the Ast.
+-- everythingWithContext ::             s -> (r -> r -> r)      -> GenericQ (s -> (r, s)) -> GenericQ r
 everythingStagedWithContext :: Stage -> s -> (r -> r -> r) -> r -> GenericQ (s -> (r, s)) -> GenericQ r
 everythingStagedWithContext stage s0 f z q x
   | (const False
@@ -716,6 +772,7 @@ everythingStagedWithContext stage s0 f z q x
 #endif
         fixity     = const (stage<Renamer)                     :: GHC.Fixity -> Bool
         (r, s') = q x s0
+#endif
 
 withCleanupSession :: GhcMonad m => m a -> m a
 #if __GLASGOW_HASKELL__ >= 800

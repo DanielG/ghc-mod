@@ -49,6 +49,7 @@ import Paths_ghc_mod_core (version)
 
 import GhcMod.Types
 import GhcMod.Pretty
+import Prelude hiding ( (<>) )
 
 type GmError m = MonadError GhcModError m
 

@@ -22,7 +22,13 @@ module GhcMod.DynFlagsTH where
 import Language.Haskell.TH
 import Language.Haskell.TH.Syntax
 import Control.Applicative
+#if __GLASGOW_HASKELL__ >= 804
+import GHC.LanguageExtensions
+import qualified EnumSet as E
+import qualified Data.Set as IS
+#else
 import qualified Data.IntSet as IS
+#endif
 import Data.Maybe
 import Data.Generics.Aliases
 import Data.Generics.Schemes
@@ -83,6 +89,10 @@ deriveEqDynFlags qds = do
            , "FlushOut"
            , "FlushErr"
            , "Settings" -- I think these can't cange at runtime
+           , "LogFinaliser"   -- added for ghc-8.2
+           , "LogOutput"      -- added for ghc-8.2
+           , "OverridingBool" -- added for ghc-8.2
+           , "Scheme"         -- added for ghc-8.2
            ]
        ignoredTypeOccNames = [ "OnOff" ]
 
@@ -164,13 +174,26 @@ deriveEqDynFlags qds = do
            "generalFlags" -> checkIntSet "generalFlags"
 
            "warningFlags" -> checkIntSet "warningFlags"
+#if __GLASGOW_HASKELL__ >= 804
+           "dumpFlags"    -> checkIntSet "dumpFlags"
+           "fatalWarningFlags" -> checkIntSet "fatalWarningFlags"
+           "extensionFlags" -> checkIntSet "extensionFlags"
+#endif
 
            _ ->
                [e| [($(return fa) == $(return fb), if $(return fa) == $(return fb) then "" else ("default changed:" ++ fon)  )] |]
 
        checkIntSet fieldName = do
-               let eqfn = [| let fn aa bb = r
+               let eqfn = [| let fn aa' bb' = r
                                    where
+#if __GLASGOW_HASKELL__ >= 804
+                                     aa = toSet aa'
+                                     bb = toSet bb'
+#else
+                                     aa = aa'
+                                     bb = bb'
+#endif
+
                                      uni = IS.union aa bb
                                      dif = IS.intersection aa bb
                                      delta = IS.difference uni dif
@@ -180,3 +203,15 @@ deriveEqDynFlags qds = do
                              in fn
                           |]
                [e| $(eqfn) $(return fa) $(return fb) |]
+
+
+#if __GLASGOW_HASKELL__ >= 804
+toSet es = IS.fromList $ E.toList es
+
+deriving instance Ord GeneralFlag
+deriving instance Ord DynFlags.WarningFlag
+deriving instance Ord DynFlags.DumpFlag
+deriving instance Ord DynFlags.LlvmTarget
+deriving instance Ord Extension
+deriving instance Eq LlvmTarget
+#endif
