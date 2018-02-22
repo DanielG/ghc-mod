@@ -28,7 +28,7 @@ let
          };
 
     {
-        ghc-mod = overrideCabal (doJailbreak (cp "ghc-mod")) (drv: {
+        ghc-mod = overrideCabal (doJailbreak (build "ghc-mod" ./.)) (drv: {
         doBenchmark = false;
         doCheck = false;
         doHaddock = false;
