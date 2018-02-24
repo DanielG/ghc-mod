@@ -28,14 +28,21 @@ let
          };
 
     {
-        ghc-mod = overrideCabal (doJailbreak (build "ghc-mod" ./.)) (drv: {
+        ghc-mod-pinned = overrideCabal (doJailbreak (cp "ghc-mod")) (drv: {
         doBenchmark = false;
         doCheck = false;
         doHaddock = false;
-      });
+      
+        });
+        ghc-mod = overrideCabal (doJailbreak (build "ghc-mod" ./.)) (drv: {
+          doBenchmark = false;
+          doCheck = false;
+          doHaddock = false;
+        });
     };
   };
 in rec {
   drv = overrides.${package};
   ghc-mod = if pkgs.lib.inNixShell then drv.env else drv;
+  ghc-mod-pinned = overrides.ghc-mod-pinned;
 }
