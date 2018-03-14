@@ -185,7 +185,10 @@ withCabal action = do
           case proj of
             CabalProject -> do
                 gmLog GmDebug "" $ strDoc "reconfiguring Cabal project"
-                cabalReconfigure (optPrograms opts) crdl flgs
+                cabalReconfigure "configure" (optPrograms opts) crdl flgs
+            CabalNewProject -> do
+                gmLog GmDebug "" $ strDoc "reconfiguring Cabal new-build project"
+                cabalReconfigure "new-configure" (optPrograms opts) crdl flgs
             StackProject {} -> do
                 gmLog GmDebug "" $ strDoc "reconfiguring Stack project"
                 -- TODO: we could support flags for stack too, but it seems
@@ -202,7 +205,7 @@ withCabal action = do
     action
 
  where
-   cabalReconfigure progs crdl flgs = do
+   cabalReconfigure cmd progs crdl flgs = do
      readProc <- gmReadProcess
      withDirectory_ (cradleRootDir crdl) $ do
         cusPkgStack <- maybe [] ((PackageDb "clear"):) <$> getCustomPkgDbStack
@@ -220,7 +223,7 @@ withCabal action = do
             toFlag (f, False) = '-':f
             flagOpt = ["--flags", unwords $ map toFlag flgs]
 
-        liftIO $ void $ readProc (T.cabalProgram progs) ("configure":progOpts) ""
+        liftIO $ void $ readProc (T.cabalProgram progs) (cmd:progOpts) ""
    stackReconfigure deps crdl progs = do
      withDirectory_ (cradleRootDir crdl) $ do
        supported <- haveStackSupport

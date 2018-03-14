@@ -87,15 +87,30 @@ cabalCradle cabalProg wdir = do
       gmLog GmInfo "" $ text "'cabal' executable wasn't found, trying next project type"
       mzero
 
-    gmLog GmInfo "" $ text "Using Cabal project at" <+>: text cabalDir
-    return Cradle {
-        cradleProject    = CabalProject
-      , cradleCurrentDir = wdir
-      , cradleRootDir    = cabalDir
-      , cradleTempDir    = error "tmpDir"
-      , cradleCabalFile  = Just cabalFile
-      , cradleDistDir    = "dist"
-      }
+    isDistNewstyle <- liftIO $ doesDirectoryExist $ cabalDir </> "dist-newstyle"
+    -- TODO: consider a flag to choose new-build if neither "dist" nor "dist-newstyle" exist
+    --       Or default to is for cabal >= 2.0 ?, unless flag saying old style
+    if isDistNewstyle
+      then do
+        gmLog GmInfo "" $ text "Using Cabal new-build project at" <+>: text cabalDir
+        return Cradle {
+            cradleProject    = CabalNewProject
+          , cradleCurrentDir = wdir
+          , cradleRootDir    = cabalDir
+          , cradleTempDir    = error "tmpDir"
+          , cradleCabalFile  = Just cabalFile
+          , cradleDistDir    = "dist-newstyle"
+          }
+      else do
+        gmLog GmInfo "" $ text "Using Cabal project at" <+>: text cabalDir
+        return Cradle {
+            cradleProject    = CabalProject
+          , cradleCurrentDir = wdir
+          , cradleRootDir    = cabalDir
+          , cradleTempDir    = error "tmpDir"
+          , cradleCabalFile  = Just cabalFile
+          , cradleDistDir    = "dist"
+          }
 
 stackCradle ::
     (IOish m, GmLog m, GmOut m) => FilePath -> FilePath -> MaybeT m Cradle
