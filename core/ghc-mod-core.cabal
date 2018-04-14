@@ -54,6 +54,7 @@ Library
                         GhcMod.LightGhc
                         GhcMod.Logger
                         GhcMod.Logging
+                        GhcMod.ModuleLoader
                         GhcMod.Monad
                         GhcMod.Monad.Env
                         GhcMod.Monad.Log

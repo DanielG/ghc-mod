@@ -40,12 +40,16 @@ module GhcModCore (
   , loadMappedFile
   , loadMappedFileSource
   , unloadMappedFile
+  -- * HIE integration utilities
+  , getTypecheckedModuleGhc
+  , getTypecheckedModuleGhc'
   ) where
 
 import GhcMod.Cradle
 import GhcMod.FileMapping
 import GhcMod.Logging
 import GhcMod.Monad
+import GhcMod.ModuleLoader
 import GhcMod.Output
 import GhcMod.Target
 import GhcMod.Types
