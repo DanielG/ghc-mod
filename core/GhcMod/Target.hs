@@ -476,7 +476,11 @@ loadTargets opts targetStrs = do
     case target' of
       HscNothing -> do
         void $ load LoadAllTargets
+#if __GLASGOW_HASKELL__ >= 804
+        forM_ (mgModSummaries mg) $
+#else
         forM_ mg $
+#endif
           handleSourceError (gmLog GmDebug "loadTargets" . text . show)
           . void . (parseModule >=> typecheckModule >=> desugarModule)
       HscInterpreted -> do
@@ -497,7 +501,12 @@ loadTargets opts targetStrs = do
     showTargetId (Target (TargetFile s _) _ _) = s
 
 needsHscInterpreted :: ModuleGraph -> Bool
+#if __GLASGOW_HASKELL__ >= 804
+needsHscInterpreted mg = foo (mgModSummaries mg)
+  where foo = any $ \ms ->
+#else
 needsHscInterpreted = any $ \ms ->
+#endif
                 let df = ms_hspp_opts ms in
 #if __GLASGOW_HASKELL__ >= 800
                    TemplateHaskell `xopt` df
