@@ -112,7 +112,7 @@ initSession opts mdf = do
    putNewSession s = do
      crdl <- cradle
      nhsc_env_ref <- liftIO . newIORef =<< newLightEnv (initDF crdl)
-     runLightGhc' nhsc_env_ref $ setSessionDynFlags =<< getSessionDynFlags
+     _ <- runLightGhc' nhsc_env_ref $ setSessionDynFlags =<< getSessionDynFlags
      gmsPut s { gmGhcSession = Just $ GmGhcSession nhsc_env_ref }
 
 
@@ -164,7 +164,7 @@ runGmlTWith efnmns' mdf wrapper action = do
     cfns <- mapM getCanonicalFileNameSafe ccfns
     let serfnmn = Set.fromList $ map Right mns ++ map Left cfns
     opts <- targetGhcOptions crdl serfnmn
-    let opts' = opts ++ ["-O0"] ++ optGhcUserOptions
+    let opts' = opts ++ ["-O0", "-fno-warn-missing-home-modules"] ++ optGhcUserOptions
 
     gmVomit
       "session-ghc-options"
@@ -367,7 +367,7 @@ resolveEntrypoint Cradle {..} c@GmComponent {..} = do
 -- ghc do the warning about it. Right now we run that module through
 -- resolveModule like any other
 resolveChEntrypoints :: FilePath -> ChEntrypoint -> IO [CompilationUnit]
-resolveChEntrypoints _ (ChLibEntrypoint em om) =
+resolveChEntrypoints _ (ChLibEntrypoint em om _) =
     return $ map (Right . chModToMod) (em ++ om)
 
 resolveChEntrypoints _ (ChExeEntrypoint main om) =

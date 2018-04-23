@@ -1,5 +1,5 @@
 Name:                   ghc-mod
-Version:                5.8.0.0
+Version:                5.9.0.0
 Author:                 Kazu Yamamoto <kazu@iij.ad.jp>,
                         Daniel Gröber <dxld@darkboxed.org>,
                         Alejandro Serrano <trupill@gmail.com>,
@@ -24,7 +24,7 @@ Description:
 
 
 Category:               GHC, Development
-Cabal-Version:          >= 1.18
+Cabal-Version:          >= 1.24
 Build-Type:             Custom
 Data-Files:             elisp/Makefile
                         elisp/*.el
@@ -92,14 +92,8 @@ Extra-Source-Files:     ChangeLog
 
 Custom-Setup
   Setup-Depends:         base
-                       , Cabal >= 1.18 && < 1.25
-                       , containers
-                       , filepath
-                       , directory
-                       , process
-                       , template-haskell
-                       , transformers
-
+                       , Cabal               < 2.1  && >= 1.24
+                       , cabal-doctest       < 1.1  && >= 1
 
 Library
   Default-Language:     Haskell2010
@@ -107,7 +101,7 @@ Library
   Default-Extensions:   ScopedTypeVariables, RecordWildCards, NamedFieldPuns,
                         ConstraintKinds, FlexibleContexts,
                         DataKinds, KindSignatures, TypeOperators, ViewPatterns
-  HS-Source-Dirs:       ., core, shared
+  HS-Source-Dirs:       .
   Exposed-Modules:
                         GhcMod
                         GhcMod.Exe.Boot
@@ -125,49 +119,7 @@ Library
                         GhcMod.Exe.Modules
                         GhcMod.Exe.PkgDoc
                         GhcMod.Exe.Test
-                        GhcMod.CabalHelper
-                        GhcMod.Caching
-                        GhcMod.Caching.Types
-                        GhcMod.Convert
-                        GhcMod.Cradle
-                        GhcMod.CustomPackageDb
-                        GhcMod.DebugLogger
-                        GhcMod.Doc
-                        GhcMod.DynFlags
-                        GhcMod.DynFlagsTH
-                        GhcMod.Error
-                        GhcMod.FileMapping
-                        GhcMod.Gap
-                        GhcMod.GhcPkg
-                        GhcMod.HomeModuleGraph
-                        GhcMod.LightGhc
-                        GhcMod.Logger
-                        GhcMod.Logging
-                        GhcMod.Monad
-                        GhcMod.Monad.Env
-                        GhcMod.Monad.Log
-                        GhcMod.Monad.Newtypes
-                        GhcMod.Monad.Orphans
-                        GhcMod.Monad.Out
-                        GhcMod.Monad.State
-                        GhcMod.Monad.Types
-                        GhcMod.Options.DocUtils
-                        GhcMod.Options.Help
-                        GhcMod.Options.Options
-                        GhcMod.Output
-                        GhcMod.PathsAndFiles
-                        GhcMod.Pretty
-                        GhcMod.Read
-                        GhcMod.SrcUtils
-                        GhcMod.Stack
-                        GhcMod.Target
-                        GhcMod.Types
-                        GhcMod.Utils
-                        GhcMod.World
   Other-Modules:        Paths_ghc_mod
-                        Utils
-                        Data.Binary.Generic
-                        System.Directory.ModTime
   Build-Depends:
                       -- See Note [GHC Boot libraries]
                         binary
@@ -183,12 +135,13 @@ Library
                       , time
                       , transformers
 
-                      , base                 < 4.10 && >= 4.6.0.1
+                      , base                 < 4.11 && >= 4.6.0.1
                       , djinn-ghc            < 0.1  && >= 0.0.2.2
                       , extra                < 1.6  && >= 1.4
                       , fclabels             < 2.1  && >= 2.0
                       , ghc-paths            < 0.2  && >= 0.1.0.9
                       , ghc-syb-utils        < 0.3  && >= 0.2.3
+                      , ghc-mod-core         == 5.9.0.0
                       , haskell-src-exts     < 1.20 && >= 1.18
                       , hlint                < 2.1  && >= 2.0.8
                       , monad-control        < 1.1  && >= 1
@@ -203,13 +156,12 @@ Library
                       , text                 < 1.3  && >= 1.2.1.3
                       , transformers-base    < 0.5  && >= 0.4.4
 
-                      , cabal-helper         < 0.8  && >= 0.7.3.0
-                      , ghc                  < 8.2  && >= 7.6
+                      , cabal-helper         < 0.9  && >= 0.8.0.0
+                      , ghc                  < 8.4  && >= 7.8
+                      , ghc-mod-core
 
   if impl(ghc >= 8.0)
     Build-Depends:      ghc-boot
-  if impl(ghc < 7.8)
-    Build-Depends:      convertible          < 1.2  && >= 1.1.0.0
 
 Executable ghc-mod
   Default-Language:     Haskell2010
@@ -221,7 +173,7 @@ Executable ghc-mod
                       , GhcMod.Exe.Options.ShellParse
   GHC-Options:          -Wall -fno-warn-deprecations -threaded
   Default-Extensions:   ConstraintKinds, FlexibleContexts
-  HS-Source-Dirs:       src, shared
+  HS-Source-Dirs:       src
   X-Internal:           True
   Build-Depends:
                       -- See Note [GHC Boot libraries]
@@ -230,28 +182,27 @@ Executable ghc-mod
                       , mtl
                       , process
 
-                      , base                 < 4.10 && >= 4.6.0.1
+                      , base                 < 4.11 && >= 4.6.0.1
                       , fclabels             < 2.1  && >= 2.0
                       , monad-control        < 1.1  && >= 1
                       , optparse-applicative < 0.14 && >= 0.13.0.0
                       , semigroups           < 0.19 && >= 0.10.0
                       , split                < 0.3  && >= 0.2.2
 
-                      , ghc                  < 8.2  && >= 7.6
+                      , ghc                  < 8.4  && >= 7.8
                       , ghc-mod
+                      , ghc-mod-core
 
 
 Executable ghc-modi
   Default-Language:     Haskell2010
   Main-Is:              GhcModi.hs
   Other-Modules:        Paths_ghc_mod
-                        Utils
-                        System.Directory.ModTime
   GHC-Options:          -Wall -threaded -fno-warn-deprecations
   if os(windows)
       Cpp-Options:      -DWINDOWS
   Default-Extensions:   ConstraintKinds, FlexibleContexts
-  HS-Source-Dirs:       ., src, shared
+  HS-Source-Dirs:       ., src
   Build-Depends:
                       -- See Note [GHC Boot libraries]
                         binary
@@ -262,9 +213,10 @@ Executable ghc-modi
                       , process
                       , time
 
-                      , base                 < 4.10 && >= 4.6.0.1
+                      , base                 < 4.11 && >= 4.6.0.1
 
                       , ghc-mod
+                      , ghc-mod-core
 
 
 Test-Suite doctest
@@ -274,9 +226,8 @@ Test-Suite doctest
   Ghc-Options:          -Wall
   Default-Extensions:   ConstraintKinds, FlexibleContexts
   Main-Is:              doctests.hs
-  Build-Depends:        base                 < 4.10 && >= 4.6.0.1
-                      , doctest              < 0.12 && >= 0.9.3
-
+  Build-Depends:        base                 < 4.11 && >= 4.6.0.1
+                      , doctest              < 0.14 && >= 0.11.3
 
 Test-Suite spec
   Default-Language:     Haskell2010
@@ -290,6 +241,7 @@ Test-Suite spec
   Other-Modules:        Paths_ghc_mod
                         Dir
                         TestUtils
+                        GhcMod.Exe.Options.ShellParse
 
 -- $ ls test/*Spec.hs | sed 's_^.*/\(.*\)\.hs$_\1_' | sort
                         BrowseSpec
@@ -321,9 +273,9 @@ Test-Suite spec
                       , process
                       , transformers
 
-                      , base                 < 4.10 && >= 4.6.0.1
+                      , base                 < 4.11 && >= 4.6.0.1
                       , fclabels             < 2.1  && >= 2.0
-                      , hspec                < 2.4  && >= 2.0.0
+                      , hspec                < 2.5  && >= 2.0.0
                       , monad-journal        < 0.8  && >= 0.4
                       , split                < 0.3  && >= 0.2.2
                       , temporary            < 1.3  && >= 1.2.0.3
@@ -335,9 +287,10 @@ Test-Suite spec
     Build-Depends:      ghc-boot
 
   Build-Depends:
-                        cabal-helper         < 0.8  && >= 0.7.1.0
-                      , ghc                  < 8.2  && >= 7.6
+                        cabal-helper         < 0.9  && >= 0.8.0.0
+                      , ghc                  < 8.4  && >= 7.8
                       , ghc-mod
+                      , ghc-mod-core
 
 
 Test-Suite shelltest
@@ -347,7 +300,7 @@ Test-Suite shelltest
   Type:                 exitcode-stdio-1.0
   if flag(shelltest)
     Build-Tools:        shelltest
-  Build-Depends:        base                 < 4.10 && >= 4.6.0.1
+  Build-Depends:        base                 < 4.11 && >= 4.6.0.1
                       , process              < 1.5
                       -- , shelltestrunner >= 1.3.5
   if !flag(shelltest)
@@ -367,11 +320,12 @@ Benchmark criterion
                         directory
                       , filepath
 
-                      , base                 < 4.10 && >= 4.6.0.1
+                      , base                 < 4.11 && >= 4.6.0.1
                       , criterion            < 1.2  && >= 1.1.1.0
                       , temporary            < 1.3  && >= 1.2.0.3
 
                       , ghc-mod
+                      , ghc-mod-core
   Buildable:          False
 
 Flag shelltest

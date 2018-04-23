@@ -3,7 +3,7 @@ module CabalHelperSpec where
 
 import Control.Arrow
 import Control.Applicative
-import Distribution.Helper
+import Distribution.Helper hiding ( (<.>) )
 import GhcMod.CabalHelper
 import GhcMod.PathsAndFiles
 import GhcMod.Error

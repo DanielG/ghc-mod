@@ -1,4 +1,6 @@
 {-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE StandaloneDeriving #-}
+{-# LANGUAGE CPP #-}
 
 module GhcMod.DynFlags where
 
@@ -13,6 +15,12 @@ import GhcMod.DebugLogger
 import GhcMod.DynFlagsTH
 import System.IO.Unsafe (unsafePerformIO)
 import Prelude
+
+-- For orphans
+#if __GLASGOW_HASKELL__ == 802
+import Util (OverridingBool(..))
+import PprColour
+#endif
 
 setEmptyLogger :: DynFlags -> DynFlags
 setEmptyLogger df =
@@ -101,6 +109,12 @@ deferErrors df = return $
   Gap.setDeferTypeErrors $ setNoWarningFlags df
 
 ----------------------------------------------------------------
+
+#if __GLASGOW_HASKELL__ == 802
+deriving instance Eq OverridingBool
+deriving instance Eq PprColour.Scheme
+deriving instance Eq PprColour.PprColour
+#endif
 
 deriveEqDynFlags [d|
   eqDynFlags :: DynFlags -> DynFlags -> [[(Bool, String)]]
