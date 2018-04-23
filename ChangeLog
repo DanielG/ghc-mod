@@ -1,8 +1,10 @@
 XXXX-XX-XX v5.9.0.0
+        * Add support for GHC 8.2
         * Re(move) worst Setup.hs hacks, this is cabal-helper's problem now
         * Use cabal-doctest as 'setup-depends' to make doctest more robust.
         * Bump cabal-helper to 0.8.0.0 to support Cabal-2.0
-        * Add support for GHC 8.2
+        * Split-off 'ghc-mod-core' package
+        * Hack around -Wmissing-home-modules errors (#924)
 
 2017-05-26 v5.8.0.0
 	* Fix logic bug in fix for excessive use of `map-file`
