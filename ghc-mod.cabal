@@ -92,7 +92,7 @@ Extra-Source-Files:     ChangeLog
 
 Custom-Setup
   Setup-Depends:         base
-                       , Cabal               < 2.1  && >= 1.24
+                       , Cabal               < 2.3  && >= 1.24
                        , cabal-doctest       < 1.1  && >= 1
 
 Library
@@ -136,7 +136,7 @@ Library
                       , transformers
 
                       , base                 < 4.12 && >= 4.6.0.1
-                      , djinn-ghc            < 0.1  && >= 0.0.2.2
+                      -- , djinn-ghc            < 0.1  && >= 0.0.2.2
                       , extra                < 1.7  && >= 1.4
                       , fclabels             < 2.1  && >= 2.0
                       , ghc-paths            < 0.2  && >= 0.1.0.9
@@ -227,7 +227,7 @@ Test-Suite doctest
   Default-Extensions:   ConstraintKinds, FlexibleContexts
   Main-Is:              doctests.hs
   Build-Depends:        base                 < 4.12 && >= 4.6.0.1
-                      , doctest              < 0.14 && >= 0.11.3
+                      , doctest              < 0.16 && >= 0.11.3
 
 Test-Suite spec
   Default-Language:     Haskell2010

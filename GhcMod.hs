@@ -48,7 +48,7 @@ module GhcMod (
   , splits
   , sig
   , refine
-  , auto
+  -- , auto
   , modules
   , languages
   , flags

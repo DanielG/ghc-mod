@@ -57,8 +57,15 @@ type CstGenQS = M.Map G.Var Type
 type CstGenQT a = forall m. GhcMonad m => a G.Id -> CstGenQS -> (m [(SrcSpan, Type)], CstGenQS)
 #endif
 
-collectSpansTypes :: forall m.(GhcMonad m) => Bool -> G.TypecheckedModule -> (Int, Int) -> m [(SrcSpan, Type)]
-collectSpansTypes withConstraints tcs lc =
+collectSpansTypes :: (GhcMonad m) => Bool -> G.TypecheckedModule -> (Int,Int) -> m [(SrcSpan, Type)]
+collectSpansTypes withConstraints tcs lc = collectSpansTypes' withConstraints tcs (`G.spans` lc)
+
+collectAllSpansTypes :: (GhcMonad m) => Bool -> G.TypecheckedModule -> m [(SrcSpan, Type)]
+collectAllSpansTypes withConstraints tcs = collectSpansTypes' withConstraints tcs (const True)
+
+collectSpansTypes' :: forall m. (GhcMonad m) => Bool -> G.TypecheckedModule -> (SrcSpan -> Bool) -> m [(SrcSpan, Type)]
+-- collectSpansTypes' :: forall m.(GhcMonad m) => Bool -> G.TypecheckedModule -> (Int, Int) -> m [(SrcSpan, Type)]
+collectSpansTypes' withConstraints tcs f =
   -- This walks AST top-down, left-to-right, while carrying CstGenQS down the tree
   -- (but not left-to-right)
 #if __GLASGOW_HASKELL__ >= 804
@@ -118,7 +125,7 @@ collectSpansTypes withConstraints tcs lc =
     -- Gets monomorphic type with location
     getType' :: forall t . (HasType (Located t)) => Located t -> m (Maybe (SrcSpan, Type))
     getType' x@(L spn _)
-      | G.isGoodSrcSpan spn && (spn `G.spans` lc)
+      | G.isGoodSrcSpan spn && f spn
       = getType tcs x
       | otherwise = return Nothing
     -- Gets constrained type

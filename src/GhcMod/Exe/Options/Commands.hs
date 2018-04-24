@@ -13,12 +13,15 @@
 --
 -- You should have received a copy of the GNU Affero General Public License
 -- along with this program.  If not, see <http://www.gnu.org/licenses/>.
+{-# LANGUAGE CPP               #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# OPTIONS_GHC -fno-warn-unused-do-bind #-}
 
 module GhcMod.Exe.Options.Commands where
 
+#if __GLASGOW_HASKELL__ < 804
 import Data.Semigroup
+#endif
 import Options.Applicative
 import Options.Applicative.Types
 import Options.Applicative.Builder.Internal
@@ -55,7 +58,7 @@ data GhcModCommands =
   | CmdType Bool FilePath Point
   | CmdSplit FilePath Point
   | CmdSig FilePath Point
-  | CmdAuto FilePath Point
+  -- | CmdAuto FilePath Point
   | CmdRefine FilePath Point Expr
   | CmdTest FilePath
   -- interactive-only commands
@@ -167,9 +170,9 @@ commands =
               "ghc-mod would add the following on the next line:"
               code "func x y z f = _func_body"
               "(See: https://github.com/DanielG/ghc-mod/pull/274)"
-    <> command "auto"
-          $$  info autoArgSpec
-          $$  progDesc "Try to automatically fill the contents of a hole"
+    -- <> command "auto"
+    --       $$  info autoArgSpec
+    --       $$  progDesc "Try to automatically fill the contents of a hole"
     <> command "refine"
           $$  info refineArgSpec
           $$  progDesc "Refine the typed hole at (LINE,COL) given EXPR"
@@ -229,7 +232,7 @@ locArgSpec x = x
 
 modulesArgSpec, docArgSpec, findArgSpec,
   lintArgSpec, browseArgSpec, checkArgSpec, expandArgSpec,
-  infoArgSpec, typeArgSpec, autoArgSpec, splitArgSpec,
+  infoArgSpec, typeArgSpec, splitArgSpec,
   sigArgSpec, refineArgSpec, debugComponentArgSpec,
   mapArgSpec, unmapArgSpec, legacyInteractiveArgSpec :: Parser GhcModCommands
 
@@ -277,7 +280,7 @@ typeArgSpec = locArgSpec $ CmdType <$>
           $$  long "constraints"
           <=> short 'c'
           <=> help "Include constraints into type signature"
-autoArgSpec = locArgSpec (pure CmdAuto)
+-- autoArgSpec = locArgSpec (pure CmdAuto)
 splitArgSpec = locArgSpec (pure CmdSplit)
 sigArgSpec = locArgSpec (pure CmdSig)
 refineArgSpec = locArgSpec (pure CmdRefine) <*> strArg "SYMBOL"

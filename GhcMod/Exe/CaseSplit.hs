@@ -12,7 +12,7 @@ import System.FilePath
 import Prelude
 
 import qualified DataCon as Ty
-import GHC (GhcMonad, LPat, Id, ParsedModule(..), TypecheckedModule(..), DynFlags, SrcSpan, Type, GenLocated(L))
+import GHC (GhcMonad, LPat, ParsedModule(..), TypecheckedModule(..), DynFlags, SrcSpan, Type, GenLocated(L))
 import qualified GHC as G
 import Outputable (PprStyle)
 import qualified TyCon as Ty
@@ -88,7 +88,7 @@ getSrcSpanTypeForFnSplit :: GhcMonad m => G.ModSummary -> Int -> Int -> m (Maybe
 getSrcSpanTypeForFnSplit modSum lineNo colNo = do
     p@ParsedModule{pm_parsed_source = _pms} <- G.parseModule modSum
     tcm@TypecheckedModule{tm_typechecked_source = tcs} <- G.typecheckModule p
-    let varPat = find isPatternVar $ listifySpans tcs (lineNo, colNo) :: Maybe (LPat Id)
+    let varPat = find isPatternVar $ listifySpans tcs (lineNo, colNo) :: Maybe (LPat Gap.GhcTc)
         match  = last $ listifySpans tcs (lineNo, colNo) :: Gap.GLMatchI
     case varPat of
       Nothing  -> return Nothing
@@ -96,7 +96,9 @@ getSrcSpanTypeForFnSplit modSum lineNo colNo = do
         varT <- Gap.getType tcm varPat'  -- Finally we get the type of the var
         case varT of
           Just varT' ->
-#if __GLASGOW_HASKELL__ >= 710
+#if __GLASGOW_HASKELL__ >= 804
+            let (L matchL (G.Match _ _ (G.GRHSs rhsLs _))) = match
+#elif __GLASGOW_HASKELL__ >= 710
             let (L matchL (G.Match _ _ _ (G.GRHSs rhsLs _))) = match
 #else
             let (L matchL (G.Match _ _ (G.GRHSs rhsLs _))) = match
@@ -104,11 +106,11 @@ getSrcSpanTypeForFnSplit modSum lineNo colNo = do
             in return $ Just (SplitInfo (getPatternVarName varPat') matchL varT' (map G.getLoc rhsLs) )
           _ -> return Nothing
 
-isPatternVar :: LPat Id -> Bool
+isPatternVar :: LPat Gap.GhcTc -> Bool
 isPatternVar (L _ (G.VarPat _)) = True
 isPatternVar _                  = False
 
-getPatternVarName :: LPat Id -> G.Name
+getPatternVarName :: LPat Gap.GhcTc -> G.Name
 #if __GLASGOW_HASKELL__ >= 800
 getPatternVarName (L _ (G.VarPat (L _ vName))) = G.getName vName
 #else
