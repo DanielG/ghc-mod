@@ -619,12 +619,13 @@ type GhcTc = Id
 #endif
 
 #if __GLASGOW_HASKELL__ >= 804
+type GLMatch  = LMatch GhcPs (LHsExpr GhcPs)
 type GLMatchI = LMatch GhcTc (LHsExpr GhcTc)
 #elif __GLASGOW_HASKELL__ >= 708
-type GLMatch = LMatch GhcPs (LHsExpr GhcPs)
+type GLMatch  = LMatch GhcPs (LHsExpr GhcPs)
 type GLMatchI = LMatch Id (LHsExpr Id)
 #else
-type GLMatch = LMatch GhcPs
+type GLMatch  = LMatch GhcPs
 type GLMatchI = LMatch Id
 #endif
 
