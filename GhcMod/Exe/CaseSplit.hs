@@ -14,7 +14,6 @@ import System.FilePath
 import Prelude
 
 import qualified DataCon as Ty
-import GHC (GhcMonad, LPat, TypecheckedModule(..), DynFlags, SrcSpan, Type, GenLocated(L))
 import qualified GHC as G
 import Outputable (PprStyle)
 import qualified TyCon as Ty
@@ -37,11 +36,11 @@ import Control.DeepSeq
 -- CASE SPLITTING
 ----------------------------------------------------------------
 
-data SplitInfo = SplitInfo G.Name SrcSpan (SrcSpan, Type) [SrcSpan]
-               | TySplitInfo G.Name SrcSpan (SrcSpan, Ty.Kind)
+data SplitInfo = SplitInfo G.Name G.SrcSpan (G.SrcSpan, G.Type) [G.SrcSpan]
+               | TySplitInfo G.Name G.SrcSpan (G.SrcSpan, Ty.Kind)
 data SplitToTextInfo = SplitToTextInfo { sVarName     :: String
-                                       , sBindingSpan :: SrcSpan
-                                       , sVarSpan     :: SrcSpan
+                                       , sBindingSpan :: G.SrcSpan
+                                       , sVarSpan     :: G.SrcSpan
                                        , sTycons      :: [String]
                                        }
 data SplitResult = SplitResult { sStartLine :: Int
@@ -76,7 +75,7 @@ splits file lineNo colNo =
 
 -- | Split an identifier in a function definition.
 -- Meant for library-usage.
-splits' :: IOish m => FilePath -> TypecheckedModule -> Int -> Int -> GhcModT m (Maybe SplitResult)
+splits' :: IOish m => FilePath -> G.TypecheckedModule -> Int -> Int -> GhcModT m (Maybe SplitResult)
 splits' file tcm lineNo colNo =
   ghandle handler $ runGmlT' [Left file] deferErrors $ performSplit file tcm lineNo colNo
   where
@@ -85,14 +84,14 @@ splits' file tcm lineNo colNo =
             text "" $$ nest 4 (showToDoc ex)
       return Nothing
 
-performSplit :: IOish m => FilePath -> TypecheckedModule -> Int -> Int -> GmlT m (Maybe SplitResult)
+performSplit :: IOish m => FilePath -> G.TypecheckedModule -> Int -> Int -> GmlT m (Maybe SplitResult)
 performSplit file tcm lineNo colNo = do
   style <- getStyle
   dflag <- G.getSessionDynFlags
   maybeSplitInfo <- getSrcSpanTypeForSplit tcm lineNo colNo
   sequenceA $ constructSplitResult file maybeSplitInfo dflag style
 
-constructSplitResult :: (IOish m) => FilePath -> Maybe SplitInfo -> DynFlags -> PprStyle -> Maybe (GmlT m SplitResult)
+constructSplitResult :: (IOish m) => FilePath -> Maybe SplitInfo -> G.DynFlags -> PprStyle -> Maybe (GmlT m SplitResult)
 constructSplitResult file maybeSplitInfo dflag style = do
   splitInfo <- maybeSplitInfo
   let splitToTextInfo = constructSplitToTextInfo splitInfo dflag style
@@ -105,7 +104,7 @@ constructSplitResult file maybeSplitInfo dflag style = do
       newText   = genCaseSplitTextFile file splitToTextInfo
   return $ SplitResult startLine startCol endLine endCol . T.pack <$> newText
 
-constructSplitToTextInfo :: SplitInfo -> DynFlags -> PprStyle -> SplitToTextInfo
+constructSplitToTextInfo :: SplitInfo -> G.DynFlags -> PprStyle -> SplitToTextInfo
 constructSplitToTextInfo splitInfo dflag style =
   SplitToTextInfo varName' bndLoc varLoc typeCons
   where
@@ -127,7 +126,7 @@ maybeSrcSpanEnd s = case G.srcSpanEnd s of
 ----------------------------------------------------------------
 -- a. Code for getting the information of the variable
 
-getSrcSpanTypeForSplit :: GhcMonad m => TypecheckedModule -> Int -> Int -> m (Maybe SplitInfo)
+getSrcSpanTypeForSplit :: G.GhcMonad m => G.TypecheckedModule -> Int -> Int -> m (Maybe SplitInfo)
 getSrcSpanTypeForSplit tcm lineNo colNo = do
   fn <- getSrcSpanTypeForFnSplit tcm lineNo colNo
   if isJust fn
@@ -135,10 +134,10 @@ getSrcSpanTypeForSplit tcm lineNo colNo = do
      else getSrcSpanTypeForTypeSplit tcm lineNo colNo
 
 -- Information for a function case split
-getSrcSpanTypeForFnSplit :: GhcMonad m => TypecheckedModule -> Int -> Int -> m (Maybe SplitInfo)
-getSrcSpanTypeForFnSplit tcm@TypecheckedModule{tm_typechecked_source = tcs} lineNo colNo = do
-    let varPat = find isPatternVar $ listifySpans tcs (lineNo, colNo) :: Maybe (LPat Gap.GhcTc)
-        match  = last $ listifySpans tcs (lineNo, colNo) :: Gap.GLMatchI
+getSrcSpanTypeForFnSplit :: G.GhcMonad m => G.TypecheckedModule -> Int -> Int -> m (Maybe SplitInfo)
+getSrcSpanTypeForFnSplit tcm@G.TypecheckedModule{G.tm_typechecked_source = tcs} lineNo colNo = do
+    let varPat = find isPatternVar $ listifySpans tcs (lineNo, colNo) :: Maybe (G.LPat Gap.GhcTc)
+        match  = last $ listifySpans tcs (lineNo, colNo) :: G.LMatch Gap.GhcTc (G.LHsExpr Gap.GhcTc)
     case varPat of
       Nothing  -> return Nothing
       Just varPat' -> do
@@ -146,42 +145,42 @@ getSrcSpanTypeForFnSplit tcm@TypecheckedModule{tm_typechecked_source = tcs} line
         case varT of
           Just varT' ->
 #if __GLASGOW_HASKELL__ >= 804
-            let (L matchL (G.Match _ _ (G.GRHSs rhsLs _))) = match
+            let (G.L matchL (G.Match _ _ (G.GRHSs rhsLs _))) = match
 #elif __GLASGOW_HASKELL__ >= 710
-            let (L matchL (G.Match _ _ _ (G.GRHSs rhsLs _))) = match
+            let (G.L matchL (G.Match _ _ _ (G.GRHSs rhsLs _))) = match
 #else
-            let (L matchL (G.Match _ _ (G.GRHSs rhsLs _))) = match
+            let (G.L matchL (G.Match _ _ (G.GRHSs rhsLs _))) = match
 #endif
             in return $ Just (SplitInfo (getPatternVarName varPat') matchL varT' (map G.getLoc rhsLs) )
           _ -> return Nothing
 
-isPatternVar :: LPat Gap.GhcTc -> Bool
-isPatternVar (L _ (G.VarPat _)) = True
+isPatternVar :: G.LPat Gap.GhcTc -> Bool
+isPatternVar (G.L _ (G.VarPat _)) = True
 isPatternVar _                  = False
 
-getPatternVarName :: LPat Gap.GhcTc -> G.Name
+getPatternVarName :: G.LPat Gap.GhcTc -> G.Name
 #if __GLASGOW_HASKELL__ >= 800
-getPatternVarName (L _ (G.VarPat (L _ vName))) = G.getName vName
+getPatternVarName (G.L _ (G.VarPat (G.L _ vName))) = G.getName vName
 #else
-getPatternVarName (L _ (G.VarPat vName)) = G.getName vName
+getPatternVarName (G.L _ (G.VarPat vName)) = G.getName vName
 #endif
 getPatternVarName _                      = error "This should never happened"
 
 -- TODO: Information for a type family case split
-getSrcSpanTypeForTypeSplit :: GhcMonad m => TypecheckedModule -> Int -> Int -> m (Maybe SplitInfo)
+getSrcSpanTypeForTypeSplit :: G.GhcMonad m => G.TypecheckedModule -> Int -> Int -> m (Maybe SplitInfo)
 getSrcSpanTypeForTypeSplit _tcm _lineNo _colNo = return Nothing
 
 ----------------------------------------------------------------
 -- b. Code for getting the possible constructors
 
-getTyCons :: DynFlags -> PprStyle -> G.Name -> G.Type ->  [String]
+getTyCons :: G.DynFlags -> PprStyle -> G.Name -> G.Type ->  [String]
 getTyCons dflag style name ty | Just (tyCon, _) <- Ty.splitTyConApp_maybe ty =
   let name' = showName dflag style name  -- Convert name to string
   in getTyCon dflag style name' tyCon
 getTyCons dflag style name _ = [showName dflag style name]
 
 -- Write cases for one type
-getTyCon :: DynFlags -> PprStyle -> String -> Ty.TyCon -> [String]
+getTyCon :: G.DynFlags -> PprStyle -> String -> Ty.TyCon -> [String]
 -- 1. Non-matcheable type constructors
 getTyCon _ _ name tyCon | isNotMatcheableTyCon tyCon = [name]
 -- 2. Special cases
@@ -203,7 +202,7 @@ isNotMatcheableTyCon ty = Ty.isPrimTyCon ty  -- Primitive types, such as Int#
                        || Ty.isFunTyCon ty   -- Function types
 
 -- Write case for one constructor
-getDataCon :: DynFlags -> PprStyle -> String -> Ty.DataCon -> String
+getDataCon :: G.DynFlags -> PprStyle -> String -> Ty.DataCon -> String
 -- 1. Infix constructors
 getDataCon dflag style vName dcon | Ty.dataConIsInfix dcon =
   let dName  = showName dflag style $ Ty.dataConName dcon
@@ -247,7 +246,7 @@ newVarsSpecialSingleton :: String -> Int -> Int -> String
 newVarsSpecialSingleton v _     1 = v
 newVarsSpecialSingleton v start n = newVars v start n
 
-showFieldNames :: DynFlags -> PprStyle -> String -> [G.Name] -> String
+showFieldNames :: G.DynFlags -> PprStyle -> String -> [G.Name] -> String
 showFieldNames _     _     _ []      = "" -- This should never happen
 showFieldNames dflag style v (x:xs) = let fName = showName dflag style x
                                           fAcc  = fName ++ " = " ++ v ++ "_" ++ fName
@@ -277,7 +276,7 @@ getCaseSplitText t SplitToTextInfo{ sVarName = sVN, sBindingSpan = sBS
       replaced'   = head replaced : map (indentBindingTo sBS) (tail replaced)
    in T.unpack $ T.intercalate (T.pack "\n") (concat replaced')
 
-getBindingText :: [T.Text] -> SrcSpan -> [T.Text]
+getBindingText :: [T.Text] -> G.SrcSpan -> [T.Text]
 getBindingText t srcSpan =
   let Just (sl,sc,el,ec) = Gap.getSrcSpan srcSpan
       lines_ = drop (sl - 1) $ take el t
@@ -288,7 +287,7 @@ getBindingText t srcSpan =
             let (first,rest,last_) = (head lines_, tail $ init lines_, last lines_)
              in T.drop (sc - 1) first : rest ++ [T.take ec last_]
 
-srcSpanDifference :: SrcSpan -> SrcSpan -> (Int,Int,Int,Int)
+srcSpanDifference :: G.SrcSpan -> G.SrcSpan -> (Int,Int,Int,Int)
 srcSpanDifference b v =
   let Just (bsl,bsc,_   ,_)  = Gap.getSrcSpan b
       Just (vsl,vsc,vel,vec) = Gap.getSrcSpan v
@@ -307,7 +306,7 @@ replaceVarWithTyCon t (vsl,vsc,_,vec) varname tycon =
                                else T.replicate spacesToAdd (T.pack " ") `T.append` line)
               [0 ..] t
 
-indentBindingTo :: SrcSpan -> [T.Text] -> [T.Text]
+indentBindingTo :: G.SrcSpan -> [T.Text] -> [T.Text]
 indentBindingTo bndLoc binds =
   let Just (_,sl,_,_) = Gap.getSrcSpan bndLoc
       indent      = (T.replicate (sl - 1) (T.pack " ") `T.append`)
