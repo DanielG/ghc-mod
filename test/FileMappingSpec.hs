@@ -116,6 +116,15 @@ spec = do
               checkSyntax ["File.hs"]
             res `shouldBe` "File.hs:1:1:Warning: Top-level binding with no type signature: main :: IO ()\n"
 
+        it "works in a project with multiple executables (multiple Main modules)" $ do
+          let fm = [ ("Main.hs", "Main_Redir.hs")
+                   , ("OtherMain.hs", "OtherMain_Redir.hs")
+                   ]
+          res <- runD'  "test/data/file-mapping/duplicate-main" $ do
+            mapM_ (uncurry loadMappedFile) fm
+            checkSyntax ["Main.hs"]
+          res `shouldBe` "" -- check it doesn't error
+
         it "checks in-memory file if one is specified and outputs original filename" $ do
           withDirectory_ "test/data/file-mapping" $ do
             let fm = [("File.hs", "main = putStrLn \"Hello World!\"\n")]
