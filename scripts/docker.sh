@@ -3,7 +3,7 @@
 # Usage: ./docker.sh [GHC_VER]
 # Example: ./docker.sh 8.2.2
 # Faster Example:
-#     $ echo 8.4.1 8.2.2 8.0.2 7.10.3 7.8.4 | xargs -P4 -n1 -- ./docker.sh
+#     $ echo 8.4.3 8.2.2 8.0.2 7.10.3 7.8.4 | xargs -P4 -n1 -- ./docker.sh
 
 
 namespace="registry.gitlab.com/dxld/ghc-mod"
@@ -26,25 +26,9 @@ while read -r ghc_rel ghc ghc_arch ghc_ext cabal cabal_rev image; do
     cabal_file="$(basename "$cabal_url")"
     cabal_meta_file=cabal-install-"${cabal}"-"${cabal_rev}".cabal
 
+    ADDITIONAL_PACKAGES=""
     ADDITIONAL_COMMANDS=""
     ADDITIONAL_BOOTSTRAP_SETUP="true"
-
-    if [ x"$image" = x"debian:squeeze" ]; then
-        ADDITIONAL_PACKAGES=" libncursesw5 realpath"
-        ADDITIONAL_COMMANDS="${ADDITIONAL_COMMANDS}COPY sources.list /etc/apt/
-COPY 10-no-check-valid-until /etc/apt/apt.conf.d/
-"
-        ADDITIONAL_BOOTSTRAP_SETUP="sed -i -e 's|^HACKAGE_URL=.*|HACKAGE_URL=http://hackage.haskell.org/package|' -e 's/^JOBS=.*/JOBS=/' bootstrap.sh"
-
-        cat > "$tmpdir"/sources.list <<EOF
-deb http://archive.debian.org/debian-archive/debian/ squeeze main
-deb http://archive.debian.org/debian-archive/debian/ squeeze-lts main
-#deb http://snapshot.debian.org/archive/debian-security/20160216T165545Z/ squeeze/updates main
-EOF
-        cat > "$tmpdir"/10-no-check-valid-until <<EOF
-Acquire::Check-Valid-Until "0";
-EOF
-    fi
 
     mkdir -p "$dldir"
     d="$(pwd)"; cd "$dldir" || exit 1
@@ -88,7 +72,7 @@ EOF
 
     docker build -t "${namespace}:ghc${ghc}-cabal-install${cabal}" "$tmpdir"
 done <<EOF
-8.4.1  8.4.1  x86_64-deb8-linux         xz  2.2.0.0   0 debian:jessie
+8.4.3  8.4.3  x86_64-deb8-linux         xz  2.2.0.0   0 debian:jessie
 8.2.2  8.2.2  x86_64-deb8-linux         xz  2.0.0.0   0 debian:jessie
 8.0.2  8.0.2  x86_64-deb8-linux         xz  2.0.0.0   0 debian:jessie
 7.10.3 7.10.3 x86_64-deb8-linux         xz  2.0.0.0   0 debian:jessie
