@@ -5,6 +5,7 @@
 
 ;; Author:  Kazu Yamamoto <Kazu@Mew.org>
 ;; Created: Sep 25, 2009
+;; License: BSD-3-clause
 
 (require 'ghc-func)
 (require 'ghc-comp)

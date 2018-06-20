@@ -184,6 +184,11 @@ data GhcModLog = GhcModLog {
       gmLogMessages  :: [(GmLogLevel, String, Doc)]
     } deriving (Show)
 
+#if __GLASGOW_HASKELL__ >= 804
+instance Semigroup GhcModLog where
+  (<>) = mappend
+#endif
+
 instance Monoid GhcModLog where
     mempty = GhcModLog (Just GmPanic) (Last Nothing) mempty
     GhcModLog ml vd ls `mappend` GhcModLog ml' vd' ls' =
@@ -274,6 +279,11 @@ instance Binary GmModuleGraph where
     where
       swapMap :: Ord v => Map k v -> Map v k
       swapMap = Map.fromList . map (\(x, y) -> (y, x)) . Map.toList
+
+#if __GLASGOW_HASKELL__ >= 804
+instance Semigroup GmModuleGraph where
+  (<>) = mappend
+#endif
 
 instance Monoid GmModuleGraph where
   mempty  = GmModuleGraph mempty

@@ -1,5 +1,7 @@
 -- TODO: remove CPP once Gap(ed)
 {-# LANGUAGE CPP, TupleSections, FlexibleInstances, Rank2Types #-}
+{-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
 module GhcMod.SrcUtils where
@@ -9,12 +11,13 @@ import CoreUtils (exprType)
 import Data.Generics
 import Data.Maybe
 import Data.Ord as O
-import GHC (LHsExpr, LPat, Id, DynFlags, SrcSpan, Type, Located, ParsedSource, RenamedSource, TypecheckedSource, GenLocated(L))
-import Var (Var)
+import GHC (LHsExpr, LPat, DynFlags, SrcSpan, Type, Located, ParsedSource, RenamedSource, TypecheckedSource, GenLocated(L))
 import qualified GHC as G
 import qualified Var as G
 import qualified Type as G
+#if __GLASGOW_HASKELL__ < 804
 import GHC.SYB.Utils
+#endif
 import GhcMonad
 import qualified Language.Haskell.Exts as HE
 import GhcMod.Doc
@@ -31,42 +34,63 @@ import qualified Data.Map as M
 
 ----------------------------------------------------------------
 
-instance HasType (LHsExpr Id) where
+instance HasType (LHsExpr GhcTc) where
     getType tcm e = do
         hs_env <- G.getSession
         mbe <- liftIO $ Gap.deSugar tcm e hs_env
         return $ (G.getLoc e, ) <$> CoreUtils.exprType <$> mbe
 
-instance HasType (LPat Id) where
+instance HasType (LPat GhcTc) where
     getType _ (G.L spn pat) = return $ Just (spn, hsPatType pat)
 
 ----------------------------------------------------------------
 
+#if __GLASGOW_HASKELL__ >= 804
 -- | Stores mapping from monomorphic to polymorphic types
-type CstGenQS = M.Map Var Type
+type CstGenQS = M.Map (G.IdP GhcTc) Type
 -- | Generic type to simplify SYB definition
-type CstGenQT a = forall m. GhcMonad m => a Id -> CstGenQS -> (m [(SrcSpan, Type)], CstGenQS)
+type CstGenQT m a = a GhcTc -> CstGenQS -> (m [(SrcSpan, Type)], CstGenQS)
+#else
+-- | Stores mapping from monomorphic to polymorphic types
+type CstGenQS = M.Map G.Var Type
+-- | Generic type to simplify SYB definition
+type CstGenQT a = forall m. GhcMonad m => a G.Id -> CstGenQS -> (m [(SrcSpan, Type)], CstGenQS)
+#endif
 
-collectSpansTypes :: (GhcMonad m) => Bool -> G.TypecheckedModule -> (Int, Int) -> m [(SrcSpan, Type)]
-collectSpansTypes withConstraints tcs lc =
+collectSpansTypes :: (GhcMonad m) => Bool -> G.TypecheckedModule -> (Int,Int) -> m [(SrcSpan, Type)]
+collectSpansTypes withConstraints tcs lc = collectSpansTypes' withConstraints tcs (`G.spans` lc)
+
+collectAllSpansTypes :: (GhcMonad m) => Bool -> G.TypecheckedModule -> m [(SrcSpan, Type)]
+collectAllSpansTypes withConstraints tcs = collectSpansTypes' withConstraints tcs (const True)
+
+collectSpansTypes' :: forall m. (GhcMonad m) => Bool -> G.TypecheckedModule -> (SrcSpan -> Bool) -> m [(SrcSpan, Type)]
+-- collectSpansTypes' :: forall m.(GhcMonad m) => Bool -> G.TypecheckedModule -> (Int, Int) -> m [(SrcSpan, Type)]
+collectSpansTypes' withConstraints tcs f =
   -- This walks AST top-down, left-to-right, while carrying CstGenQS down the tree
   -- (but not left-to-right)
+#if __GLASGOW_HASKELL__ >= 804
+  everythingWithContext M.empty (liftM2 (++))
+#else
   everythingStagedWithContext TypeChecker M.empty (liftM2 (++))
     (return [])
+#endif
     ((return [],)
-      `mkQ`  (hsBind    :: CstGenQT G.LHsBind) -- matches on binds
-      `extQ` (genericCT :: CstGenQT G.LHsExpr) -- matches on expressions
-      `extQ` (genericCT :: CstGenQT G.LPat) -- matches on patterns
+      `mkQ`  (hsBind    :: G.LHsBind GhcTc -> CstGenQS -> (m [(SrcSpan, Type)], CstGenQS)) -- matches on binds
+      `extQ` (genericCT :: G.LHsExpr GhcTc -> CstGenQS -> (m [(SrcSpan, Type)], CstGenQS)) -- matches on expressions
+      `extQ` (genericCT :: G.LPat    GhcTc -> CstGenQS -> (m [(SrcSpan, Type)], CstGenQS)) -- matches on patterns
+
       )
     (G.tm_typechecked_source tcs)
   where
     -- Helper function to insert mapping into CstGenQS
     insExp x = M.insert (G.abe_mono x) (G.varType $ G.abe_poly x)
     -- If there is AbsBinds here, insert mapping into CstGenQS if needed
+
     hsBind (L _ G.AbsBinds{abs_exports = es'}) s
       | withConstraints = (return [], foldr insExp s es')
       | otherwise       = (return [], s)
-#if __GLASGOW_HASKELL__ >= 800
+#if __GLASGOW_HASKELL__ >= 804
+#elif __GLASGOW_HASKELL__ >= 800
     -- TODO: move to Gap
     -- Note: this deals with bindings with explicit type signature, e.g.
     --    double :: Num a => a -> a
@@ -83,20 +107,33 @@ collectSpansTypes withConstraints tcs lc =
     -- Otherwise, it's the same as other cases
     hsBind x s = genericCT x s
     -- Generic SYB function to get type
+    genericCT :: forall b . (Data (b GhcTc), HasType (Located (b GhcTc)))
+              => Located (b GhcTc) -> CstGenQS -> (m [(SrcSpan, Type)], CstGenQS)
     genericCT x s
       | withConstraints
       = (maybe [] (uncurry $ constrainedType (collectBinders x) s) <$> getType' x, s)
       | otherwise = (maybeToList <$> getType' x, s)
+#if __GLASGOW_HASKELL__ >= 804
     -- Collects everything with Id from LHsBind, LHsExpr, or LPat
-    collectBinders :: Data a => a -> [Id]
+    collectBinders :: Data a => a -> [G.IdP GhcTc]
+    collectBinders = listify (const True)
+#else
+    -- Collects everything with Id from LHsBind, LHsExpr, or LPat
+    collectBinders :: Data a => a -> [G.Id]
     collectBinders = listifyStaged TypeChecker (const True)
+#endif
     -- Gets monomorphic type with location
+    getType' :: forall t . (HasType (Located t)) => Located t -> m (Maybe (SrcSpan, Type))
     getType' x@(L spn _)
-      | G.isGoodSrcSpan spn && spn `G.spans` lc
+      | G.isGoodSrcSpan spn && f spn
       = getType tcs x
       | otherwise = return Nothing
     -- Gets constrained type
-    constrainedType :: [Var] -- ^ Binders in expression, i.e. anything with Id
+#if __GLASGOW_HASKELL__ >= 804
+    constrainedType :: [G.IdP GhcTc] -- ^ Binders in expression, i.e. anything with Id
+#else
+    constrainedType :: [G.Var] -- ^ Binders in expression, i.e. anything with Id
+#endif
                     -> CstGenQS -- ^ Map from Id to polymorphic type
                     -> SrcSpan -- ^ extent of expression, copied to result
                     -> Type -- ^ monomorphic type
@@ -112,10 +149,17 @@ collectSpansTypes withConstraints tcs lc =
         build x | Just cti <- x `M.lookup` s
                 = let
                     (preds', ctt) = getPreds cti
+#if __GLASGOW_HASKELL__ >= 804
+                    -- list of type variables in monomorphic type
+                    vts = listify G.isTyVar $ G.varType x
+                    -- list of type variables in polymorphic type
+                    tvm = listify G.isTyVarTy ctt
+#else
                     -- list of type variables in monomorphic type
                     vts = listifyStaged TypeChecker G.isTyVar $ G.varType x
                     -- list of type variables in polymorphic type
                     tvm = listifyStaged TypeChecker G.isTyVarTy ctt
+#endif
                   in Just (preds', zip vts tvm)
                 | otherwise = Nothing
         -- list of constraints
@@ -138,22 +182,36 @@ collectSpansTypes withConstraints tcs lc =
                | otherwise = ([], x)
 
 listifySpans :: Typeable a => TypecheckedSource -> (Int, Int) -> [Located a]
+#if __GLASGOW_HASKELL__ >= 804
+listifySpans tcs lc = listify p tcs
+#else
 listifySpans tcs lc = listifyStaged TypeChecker p tcs
+#endif
   where
     p (L spn _) = G.isGoodSrcSpan spn && spn `G.spans` lc
 
 listifyParsedSpans :: Typeable a => ParsedSource -> (Int, Int) -> [Located a]
+#if __GLASGOW_HASKELL__ >= 804
+listifyParsedSpans pcs lc = listify p pcs
+#else
 listifyParsedSpans pcs lc = listifyStaged Parser p pcs
+#endif
   where
     p (L spn _) = G.isGoodSrcSpan spn && spn `G.spans` lc
 
 listifyRenamedSpans :: Typeable a => RenamedSource -> (Int, Int) -> [Located a]
+#if __GLASGOW_HASKELL__ >= 804
+listifyRenamedSpans pcs lc = listify p pcs
+#else
 listifyRenamedSpans pcs lc = listifyStaged Renamer p pcs
+#endif
   where
     p (L spn _) = G.isGoodSrcSpan spn && spn `G.spans` lc
 
+#if __GLASGOW_HASKELL__ < 804
 listifyStaged :: Typeable r => Stage -> (r -> Bool) -> GenericQ [r]
 listifyStaged s p = everythingStaged s (++) [] ([] `mkQ` (\x -> [x | p x]))
+#endif
 
 cmp :: SrcSpan -> SrcSpan -> Ordering
 cmp a b

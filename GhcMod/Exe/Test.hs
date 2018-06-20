@@ -22,7 +22,11 @@ test f = runGmlT' [Left f] (fmap setHscInterpreted . deferErrors) $ do
     mg <- getModuleGraph
     root <- cradleRootDir <$> cradle
     f' <- makeRelative root <$> liftIO (canonicalizePath f)
+#if __GLASGOW_HASKELL__ >= 804
+    let Just ms = find ((==Just f') . ml_hs_file . ms_location) (mgModSummaries mg)
+#else
     let Just ms = find ((==Just f') . ml_hs_file . ms_location) mg
+#endif
         mdl = ms_mod ms
         mn = moduleName mdl
 

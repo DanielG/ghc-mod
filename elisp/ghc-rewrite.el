@@ -5,6 +5,7 @@
 
 ;; Author:  Alejandro Serrano <trupill@gmail.com>
 ;; Created: Jun 17, 2014
+;; License: BSD-3-clause
 
 ;;; Code:
 

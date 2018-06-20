@@ -21,6 +21,9 @@ import Control.Arrow
 import Control.Applicative
 import Control.Category ((.))
 import GHC
+import qualified Hooks    as GHC
+import qualified HscTypes as GHC
+import qualified GhcMonad as G
 #if __GLASGOW_HASKELL__ >= 800
 import GHC.LanguageExtensions
 #endif
@@ -146,16 +149,42 @@ runGmlT' :: IOish m
               -> GhcModT m a
 runGmlT' fns mdf action = runGmlTWith fns mdf id action
 
--- | Run a GmlT action (i.e. a function in the GhcMonad) in the context
--- of certain files or modules, with updated GHC flags and a final
--- transformation
+-- | Run a GmlT action (i.e. a function in the GhcMonad) in the context of
+-- certain files or modules, with updated GHC flags, and updated ModuleGraph
+runGmlTfm :: IOish m
+              => [Either FilePath ModuleName]
+              -> (forall gm. GhcMonad gm => DynFlags -> gm DynFlags)
+              -> Maybe (GHC.Hooks -> GHC.Hooks)
+              -> GmlT m a
+              -> GhcModT m a
+runGmlTfm fns mdf mUpdateHooks action
+  = runGmlTWith' fns mdf mUpdateHooks id action
+
+-- | Run a GmlT action (i.e. a function in the GhcMonad) in the context of
+-- certain files or modules, with updated GHC flags, updated ModuleGraph and a
+-- final transformation
 runGmlTWith :: IOish m
                  => [Either FilePath ModuleName]
                  -> (forall gm. GhcMonad gm => DynFlags -> gm DynFlags)
                  -> (GmlT m a -> GmlT m b)
                  -> GmlT m a
                  -> GhcModT m b
-runGmlTWith efnmns' mdf wrapper action = do
+runGmlTWith efnmns' mdf wrapper action =
+  runGmlTWith' efnmns' mdf Nothing wrapper action
+
+-- | Run a GmlT action (i.e. a function in the GhcMonad) in the context of
+-- certain files or modules, with updated GHC flags, updated ModuleGraph and a
+-- final transformation
+runGmlTWith' :: IOish m
+                 => [Either FilePath ModuleName]
+                 -> (forall gm. GhcMonad gm => DynFlags -> gm DynFlags)
+                 -> Maybe (GHC.Hooks -> GHC.Hooks)
+                         -- ^ If a hook update is provided, force the reloading
+                         -- of the specified targets
+                 -> (GmlT m a -> GmlT m b)
+                 -> GmlT m a
+                 -> GhcModT m b
+runGmlTWith' efnmns' mdf mUpdateHooks wrapper action = do
     crdl <- cradle
     Options { optGhcUserOptions } <- options
 
@@ -163,8 +192,14 @@ runGmlTWith efnmns' mdf wrapper action = do
         ccfns = map (cradleCurrentDir crdl </>) fns
     cfns <- mapM getCanonicalFileNameSafe ccfns
     let serfnmn = Set.fromList $ map Right mns ++ map Left cfns
-    opts <- targetGhcOptions crdl serfnmn
+    (opts, mappedStrs) <- targetGhcOptions crdl serfnmn
+
     let opts' = opts ++ ["-O0", "-fno-warn-missing-home-modules"] ++ optGhcUserOptions
+
+    gmVomit
+      "session-ghc-options"
+      (text "Using the following mapped files")
+      (intercalate " " $ map (("\""++) . (++"\"")) mappedStrs)
 
     gmVomit
       "session-ghc-options"
@@ -179,31 +214,39 @@ runGmlTWith efnmns' mdf wrapper action = do
     initSession opts' $
         setHscNothing >>> setLogger >>> mdf
 
-    mappedStrs <- getMMappedFilePaths
     let targetStrs = mappedStrs ++ map moduleNameString mns ++ cfns
 
+    gmVomit
+      "session-ghc-options"
+      (text "Using the following targets")
+      (intercalate " " $ map (("\""++) . (++"\"")) targetStrs)
+
     unGmlT $ wrapper $ do
-      loadTargets opts targetStrs
+      loadTargets opts targetStrs mUpdateHooks
       action
 
 targetGhcOptions :: forall m. IOish m
                   => Cradle
                   -> Set (Either FilePath ModuleName)
-                  -> GhcModT m [GHCOption]
+                  -> GhcModT m ([GHCOption],[FilePath])
 targetGhcOptions crdl sefnmn = do
     when (Set.null sefnmn) $ error "targetGhcOptions: no targets given"
 
     case cradleProject crdl of
       proj
           | isCabalHelperProject proj -> cabalOpts crdl
-          | otherwise -> sandboxOpts crdl
+          | otherwise -> do
+              opts <- sandboxOpts crdl
+              mappedStrs <- getMMappedFilePaths
+              return (opts, mappedStrs)
  where
    zipMap f l = l `zip` (f `map` l)
 
-   cabalOpts :: Cradle -> GhcModT m [String]
+   cabalOpts :: Cradle -> GhcModT m ([GHCOption],[FilePath])
    cabalOpts Cradle{..} = do
        mcs <- cabalResolvedComponents
-
+       mappedStrs <- getMMappedFilePaths
+       let mappedComps = zipMap (moduleComponents mcs . Left) mappedStrs
        let mdlcs = moduleComponents mcs `zipMap` Set.toList sefnmn
            candidates = findCandidates $ map snd mdlcs
 
@@ -214,15 +257,22 @@ targetGhcOptions crdl sefnmn = do
           then do
             -- First component should be ChLibName, if no lib will take lexically first exe.
             let cns = filter (/= ChSetupHsName) $ Map.keys mcs
+                cn = head cns
+                mappedStrsInComp = map fst $ filter (Set.member cn . snd) mappedComps
 
             gmLog GmDebug "" $ strDoc $ "Could not find a component assignment, falling back to picking library component in cabal file."
-            return $ gmcGhcOpts $ fromJustNote "targetGhcOptions, no-assignment" $ Map.lookup (head cns) mcs
+            let opts = gmcGhcOpts (fromJustNote "targetGhcOptions, no-assignment" $ Map.lookup cn mcs)
+                         ++ ["-Wno-missing-home-modules"]
+            return (opts, mappedStrsInComp)
           else do
             when noCandidates $
               throwError $ GMECabalCompAssignment mdlcs
 
             let cn = pickComponent candidates
-            return $ gmcGhcOpts $ fromJustNote "targetGhcOptions" $ Map.lookup cn mcs
+                mappedStrsInComp = map fst $ filter (Set.member cn . snd) mappedComps
+                opts = gmcGhcOpts (fromJustNote "targetGhcOptions" $ Map.lookup cn mcs)
+                         ++ ["-Wno-missing-home-modules"]
+            return (opts, mappedStrsInComp)
 
 resolvedComponentsCache :: IOish m => FilePath ->
     Cached (GhcModT m) GhcModState
@@ -311,7 +361,7 @@ packageGhcOptions = do
           | otherwise -> sandboxOpts crdl
 
 -- also works for plain projects!
-sandboxOpts :: (IOish m, GmEnv m) => Cradle -> m [String]
+sandboxOpts :: (IOish m, GmEnv m) => Cradle -> m [GHCOption]
 sandboxOpts crdl = do
     mCusPkgDb <- getCustomPkgDbStack
     pkgDbStack <- liftIO $ getSandboxPackageDbStack
@@ -367,8 +417,8 @@ resolveEntrypoint Cradle {..} c@GmComponent {..} = do
 -- ghc do the warning about it. Right now we run that module through
 -- resolveModule like any other
 resolveChEntrypoints :: FilePath -> ChEntrypoint -> IO [CompilationUnit]
-resolveChEntrypoints _ (ChLibEntrypoint em om _) =
-    return $ map (Right . chModToMod) (em ++ om)
+resolveChEntrypoints _ (ChLibEntrypoint em om sm) =
+    return $ map (Right . chModToMod) (em ++ om ++ sm)
 
 resolveChEntrypoints _ (ChExeEntrypoint main om) =
     return $ [Left main] ++ map (Right . chModToMod) om
@@ -448,8 +498,8 @@ resolveGmComponents mcache cs = do
    same f a b = (f a) == (f b)
 
 -- | Set the files as targets and load them.
-loadTargets :: IOish m => [GHCOption] -> [FilePath] -> GmlT m ()
-loadTargets opts targetStrs = do
+loadTargets :: IOish m => [GHCOption] -> [FilePath] -> Maybe (GHC.Hooks -> GHC.Hooks) -> GmlT m ()
+loadTargets opts targetStrs mUpdateHooks = do
     targets' <-
         withLightHscEnv opts $ \env ->
                 liftM (nubBy ((==) `on` targetId))
@@ -457,31 +507,50 @@ loadTargets opts targetStrs = do
               >>= mapM relativize
 
     let targets = map (\t -> t { targetAllowObjCode = False }) targets'
+        targetFileNames = concatMap filePathFromTarget targets
 
     gmLog GmDebug "loadTargets" $
           text "Loading" <+>: fsep (map (text . showTargetId) targets)
 
+
+    let filterModSums = isJust mUpdateHooks
+    gmLog GmDebug "loadTargets" $
+          text "filterModSums" <+>: text (show filterModSums)
+
     setTargets targets
+
+    when filterModSums $ updateModuleGraph setDynFlagsRecompile targetFileNames
 
     mg <- depanal [] False
 
     let interp = needsHscInterpreted mg
     target <- hscTarget <$> getSessionDynFlags
     when (interp && target /= HscInterpreted) $ do
-      _ <- setSessionDynFlags . setHscInterpreted =<< getSessionDynFlags
+      let
+        setHooks :: DynFlags -> DynFlags
+        setHooks df = df { GHC.hooks = (fromMaybe id mUpdateHooks) (GHC.hooks df) }
+      _ <- setSessionDynFlags . setHscInterpreted . setHooks =<< getSessionDynFlags
       gmLog GmInfo "loadTargets" $ text "Target needs interpeter, switching to LinkInMemory/HscInterpreted. Perfectly normal if anything is using TemplateHaskell, QuasiQuotes or PatternSynonyms."
+
+    when filterModSums $ updateModuleGraph setDynFlagsRecompile targetFileNames
 
     target' <- hscTarget <$> getSessionDynFlags
 
     case target' of
       HscNothing -> do
         void $ load LoadAllTargets
+#if __GLASGOW_HASKELL__ >= 804
+        forM_ (mgModSummaries mg) $
+#else
         forM_ mg $
+#endif
           handleSourceError (gmLog GmDebug "loadTargets" . text . show)
           . void . (parseModule >=> typecheckModule >=> desugarModule)
       HscInterpreted -> do
         void $ load LoadAllTargets
       _ -> error ("loadTargets: unsupported hscTarget")
+
+    when filterModSums $ updateModuleGraph unSetDynFlagsRecompile targetFileNames
 
     gmLog GmDebug "loadTargets" $ text "Loading done"
 
@@ -496,8 +565,41 @@ loadTargets opts targetStrs = do
     showTargetId (Target (TargetModule s) _ _) = moduleNameString s
     showTargetId (Target (TargetFile s _) _ _) = s
 
+    filePathFromTarget (Target (TargetModule _) _ _) = []
+    filePathFromTarget (Target (TargetFile s _) _ _) = [s]
+
+    updateModuleGraph :: (GhcMonad m, GmState m, GmEnv m,
+                          MonadIO m, GmLog m, GmOut m)
+                      => (DynFlags -> DynFlags) -> [FilePath] -> m ()
+    updateModuleGraph df fps = do
+      let
+        fpSet = Set.fromList fps
+        updateHooks df = df { GHC.hooks = (fromMaybe id mUpdateHooks) (GHC.hooks df)}
+        mustRecompile ms = case (ml_hs_file . ms_location)  ms of
+          Nothing -> ms
+          Just f -> if Set.member f fpSet
+                      then ms {ms_hspp_opts = (df . updateHooks) (ms_hspp_opts ms)}
+                      else ms
+#if __GLASGOW_HASKELL__ >= 804
+        update s = s {hsc_mod_graph = mkModuleGraph $ map mustRecompile (mgModSummaries $ hsc_mod_graph s)}
+#else
+        update s = s {hsc_mod_graph = map mustRecompile (hsc_mod_graph s)}
+#endif
+      G.modifySession update
+
+    setDynFlagsRecompile :: DynFlags -> DynFlags
+    setDynFlagsRecompile df = gopt_set df Opt_ForceRecomp
+
+    unSetDynFlagsRecompile :: DynFlags -> DynFlags
+    unSetDynFlagsRecompile df = gopt_unset df Opt_ForceRecomp
+
 needsHscInterpreted :: ModuleGraph -> Bool
+#if __GLASGOW_HASKELL__ >= 804
+needsHscInterpreted mg = foo (mgModSummaries mg)
+  where foo = any $ \ms ->
+#else
 needsHscInterpreted = any $ \ms ->
+#endif
                 let df = ms_hspp_opts ms in
 #if __GLASGOW_HASKELL__ >= 800
                    TemplateHaskell `xopt` df
