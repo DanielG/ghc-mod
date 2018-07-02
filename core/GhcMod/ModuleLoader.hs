@@ -73,8 +73,19 @@ getTypecheckedModuleGhc :: GM.IOish m
   => (GM.GmlT m () -> GM.GmlT m a) -> [FilePath] -> (FilePath -> IO Bool) -> (TypecheckedModule -> IO ()) -> GM.GhcModT m a
 getTypecheckedModuleGhc wrapper targetFiles keepInfo saveModule = do
   mfs <- GM.getMMappedFiles
+
+#if __GLASGOW_HASKELL__ >= 806
+  let ips = map takeDirectory $ Map.keys mfs
+      getPaths ips' df = GHC.IncludeSpecs qpaths (ips' ++ gpaths)
+        where
+          -- Note, introduced for include path issues on windows, see
+          -- https://ghc.haskell.org/trac/ghc/ticket/14312
+          GHC.IncludeSpecs qpaths gpaths = GHC.includePaths df
+      setIncludePaths df = df { GHC.includePaths = getPaths ips df }
+#else
   let ips = map takeDirectory $ Map.keys mfs
       setIncludePaths df = df { GHC.includePaths = ips ++ GHC.includePaths df }
+#endif
   GM.runGmlTWith' (map Left targetFiles)
                   (return . setIncludePaths)
                   (Just $ updateHooks keepInfo saveModule)

@@ -93,6 +93,7 @@ deriveEqDynFlags qds = do
            , "LogOutput"      -- added for ghc-8.2
            , "OverridingBool" -- added for ghc-8.2
            , "Scheme"         -- added for ghc-8.2
+           , "LoadedPlugin"   -- added for ghc-8.6
            ]
        ignoredTypeOccNames = [ "OnOff" ]
 
@@ -205,6 +206,9 @@ deriveEqDynFlags qds = do
                [e| $(eqfn) $(return fa) $(return fb) |]
 
 
+#if __GLASGOW_HASKELL__ >= 806
+deriving instance Eq IncludeSpecs
+#endif
 #if __GLASGOW_HASKELL__ >= 804
 toSet es = IS.fromList $ E.toList es
 

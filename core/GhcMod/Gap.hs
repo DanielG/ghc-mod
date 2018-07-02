@@ -232,7 +232,11 @@ renderGm = Pretty.fullRender Pretty.PageMode 80 1.2 string_txt ""
    string_txt (Pretty.Chr c)   s  = c:s
    string_txt (Pretty.Str s1)  s2 = s1 ++ s2
    string_txt (Pretty.PStr s1) s2 = unpackFS s1 ++ s2
+#if __GLASGOW_HASKELL__ >= 806
+   string_txt (Pretty.LStr s1) s2 = unpackLitString s1 ++ s2
+#else
    string_txt (Pretty.LStr s1 _) s2 = unpackLitString s1 ++ s2
+#endif
 #if __GLASGOW_HASKELL__ >= 708
    string_txt (Pretty.ZStr s1) s2 = zString s1 ++ s2
 #endif
@@ -421,7 +425,12 @@ class HasType a where
 
 
 instance HasType (LHsBind GhcTc) where
-#if __GLASGOW_HASKELL__ >= 708
+#if __GLASGOW_HASKELL__ >= 806
+    getType _ (L spn FunBind{fun_matches = m}) = return $ Just (spn, typ)
+      where in_tys = mg_arg_tys $ mg_ext m
+            out_typ = mg_res_ty $ mg_ext m
+            typ = mkFunTys in_tys out_typ
+#elif __GLASGOW_HASKELL__ >= 708
     getType _ (L spn FunBind{fun_matches = m}) = return $ Just (spn, typ)
       where in_tys = mg_arg_tys m
             out_typ = mg_res_ty m
@@ -617,7 +626,12 @@ type GhcTc = Id
 #endif
 
 getClass :: [LInstDecl GhcRn] -> Maybe (Name, SrcSpan)
-#if __GLASGOW_HASKELL__ >= 802
+#if __GLASGOW_HASKELL__ >= 806
+-- Instance declarations of sort 'instance F (G a)'
+getClass [L loc (ClsInstD _ (ClsInstDecl {cid_poly_ty = HsIB _ (L _ (HsForAllTy _ _ (L _ (HsAppTy _ (L _ (HsTyVar _ _ (L _ className))) _))))}))] = Just (className, loc)
+-- Instance declarations of sort 'instance F G' (no variables)
+getClass [L loc (ClsInstD _ (ClsInstDecl {cid_poly_ty = HsIB _ (L _ (HsAppTy _ (L _ (HsTyVar _ _ (L _ className))) _))}))] = Just (className, loc)
+#elif __GLASGOW_HASKELL__ >= 802
 -- Instance declarations of sort 'instance F (G a)'
 getClass [L loc (ClsInstD (ClsInstDecl {cid_poly_ty = HsIB _ (L _ (HsForAllTy _ (L _ (HsAppTy (L _ (HsTyVar _ (L _ className))) _)))) _}))] = Just (className, loc)
 -- Instance declarations of sort 'instance F G' (no variables)
