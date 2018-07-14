@@ -144,22 +144,18 @@ getSrcSpanTypeForFnSplit tcm@G.TypecheckedModule{G.tm_typechecked_source = tcs} 
         varT <- Gap.getType tcm varPat'  -- Finally we get the type of the var
         case varT of
           Just varT' ->
-#if __GLASGOW_HASKELL__ >= 804
-            let (G.L matchL (G.Match _ _ (G.GRHSs rhsLs _))) = match
-#elif __GLASGOW_HASKELL__ >= 710
-            let (G.L matchL (G.Match _ _ _ (G.GRHSs rhsLs _))) = match
-#else
-            let (G.L matchL (G.Match _ _ (G.GRHSs rhsLs _))) = match
-#endif
+            let (G.L matchL (G.Match { G.m_grhss = G.GRHSs { G.grhssGRHSs = rhsLs }})) = match
             in return $ Just (SplitInfo (getPatternVarName varPat') matchL varT' (map G.getLoc rhsLs) )
           _ -> return Nothing
 
 isPatternVar :: G.LPat Gap.GhcTc -> Bool
-isPatternVar (G.L _ (G.VarPat _)) = True
-isPatternVar _                  = False
+isPatternVar (G.L _ (G.VarPat {})) = True
+isPatternVar _                     = False
 
 getPatternVarName :: G.LPat Gap.GhcTc -> G.Name
-#if __GLASGOW_HASKELL__ >= 800
+#if __GLASGOW_HASKELL__ >= 806
+getPatternVarName (G.L _ (G.VarPat _ (G.L _ vName))) = G.getName vName
+#elif __GLASGOW_HASKELL__ >= 800
 getPatternVarName (G.L _ (G.VarPat (G.L _ vName))) = G.getName vName
 #else
 getPatternVarName (G.L _ (G.VarPat vName)) = G.getName vName
