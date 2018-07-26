@@ -86,7 +86,7 @@ spec = do
                   opts <- map gmcGhcOpts <$> runD' tdir getComponents
                   let ghcOpts = head opts
                       pkgs = pkgOptions ghcOpts
-                  pkgs `shouldBe` ["Cabal","base"]
+                  pkgs `shouldBe` ["base","Cabal"]
 
             test
 

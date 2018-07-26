@@ -40,6 +40,7 @@ import Outputable (SDoc, withPprStyleDoc)
 import GhcMod.Types
 import GhcMod.Doc
 import GhcMod.Gap (renderGm)
+import Prelude hiding ( (<>))
 
 renderSDoc :: GhcMonad m => SDoc -> m Doc
 renderSDoc sdoc = do

@@ -14,6 +14,7 @@
 -- You should have received a copy of the GNU Affero General Public License
 -- along with this program.  If not, see <http://www.gnu.org/licenses/>.
 {-# LANGUAGE OverloadedStrings, FlexibleInstances, GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE CPP #-}
 
 module GhcMod.Options.Help where
 
@@ -33,6 +34,11 @@ type MyDoc = MyDocM (Maybe Doc) ()
 instance IsString (MyDocM (Maybe Doc) a) where
     fromString = append . para
 
+#if __GLASGOW_HASKELL__ >= 804
+instance Semigroup (MyDocM (Maybe Doc) ()) where
+  (<>) = mappend
+#endif
+
 instance Monoid (MyDocM (Maybe Doc) ()) where
   mappend a b = append $ doc a <> doc b
   mempty = append PP.empty
@@ -47,7 +53,7 @@ append s = modify m >> return undefined
     m Nothing = Just s
     m (Just old) = Just $ old PP..$. s
 
-infixr 7 \\
+infixr 7 \\ -- comment to sort out CPP
 (\\) :: MyDoc -> MyDoc -> MyDoc
 (\\) a b = append $ doc a PP.<+> doc b
 

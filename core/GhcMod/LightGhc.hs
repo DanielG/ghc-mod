@@ -31,9 +31,17 @@ initStaticOpts = return ()
 newLightEnv :: IOish m => (DynFlags -> LightGhc DynFlags) -> m HscEnv
 newLightEnv mdf = do
   df <- liftIO $ do
+#if MIN_VERSION_GLASGOW_HASKELL(8,2,0,0)
+#else
      initStaticOpts
+#endif
      settings <- initSysTools (Just libdir)
+#if __GLASGOW_HASKELL__ >= 804
+     let llvmTgtList = [] -- TODO: where should this come from?
+     initDynFlags $ defaultDynFlags settings llvmTgtList
+#else
      initDynFlags $ defaultDynFlags settings
+#endif
 
   hsc_env <- liftIO $ newHscEnv df
   df' <- runLightGhc hsc_env $ mdf df

@@ -151,7 +151,7 @@ ghcCommands (CmdInfo file symb) = info file $ Expression symb
 ghcCommands (CmdType wCon file (line, col)) = types wCon file line col
 ghcCommands (CmdSplit file (line, col)) = splits file line col
 ghcCommands (CmdSig file (line, col)) = sig file line col
-ghcCommands (CmdAuto file (line, col)) = auto file line col
+-- ghcCommands (CmdAuto file (line, col)) = auto file line col
 ghcCommands (CmdRefine file (line, col) expr) = refine file line col $ Expression expr
 -- interactive-only commands
 ghcCommands (CmdMapFile f) =

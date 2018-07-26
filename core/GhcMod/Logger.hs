@@ -19,7 +19,7 @@ import Data.IORef (IORef, newIORef, readIORef, writeIORef, modifyIORef)
 import System.FilePath (normalise)
 
 import ErrUtils
-import GHC
+import GHC hiding ( convert )
 import HscTypes
 import Outputable
 import qualified GHC as G

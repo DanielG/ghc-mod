@@ -123,7 +123,7 @@ componentInfo ts = do
         mdlcs = moduleComponents mcs `zipMap` Set.toList sefnmn
         candidates = findCandidates $ map snd mdlcs
         cn = pickComponent candidates
-    opts <- targetGhcOptions crdl sefnmn
+    opts <- fst <$> targetGhcOptions crdl sefnmn
 
     return $ unlines $
          [ "Matching Components:\n"     ++ renderGm (nest 4 $

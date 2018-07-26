@@ -1,2 +1,3 @@
 packages: .
           ./core
+          ../cabal-helper
