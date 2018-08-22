@@ -82,6 +82,10 @@ Library
                         Data.Binary.Generic
                         System.Directory.ModTime
   Other-Modules:        Paths_ghc_mod_core
+
+  -- workaround until c-h 0.8.1.0 gets fixed or we release a new version
+  Build-Tool-Depends:   cabal-helper:cabal-helper-wrapper
+
   Build-Depends:
                       -- See Note [GHC Boot libraries]
                         binary
