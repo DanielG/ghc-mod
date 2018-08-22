@@ -63,10 +63,10 @@ import GhcMod.Logger
 import GhcMod.Logging
 import GhcMod.Monad
 import GhcMod.Types
-import GhcMod.Utils
 import GhcMod.World
 import GhcMod.CabalHelper
 import GhcMod.FileMapping
+import GhcMod.PathsAndFiles
 
 -- | Obtaining the directory for ghc system libraries.
 ghcLibDir :: FilePath

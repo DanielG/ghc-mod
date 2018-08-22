@@ -1,5 +1,5 @@
 -- ghc-mod: Happy Haskell Hacking
--- Copyright (C) 2015  Daniel Gröber <dxld ÄT darkboxed DOT org>
+-- Copyright (C) 2015-2018  Daniel Gröber <dxld ÄT darkboxed DOT org>
 --
 -- This program is free software: you can redistribute it and/or modify
 -- it under the terms of the GNU Affero General Public License as published by
@@ -19,6 +19,7 @@ module GhcMod.PathsAndFiles (
   , module GhcMod.Caching
   ) where
 
+import Cabal.Plan
 import Config (cProjectVersion)
 import Control.Arrow (second)
 import Control.Applicative
@@ -31,9 +32,14 @@ import Data.Maybe
 import Data.Traversable hiding (mapM)
 import Distribution.Helper (buildPlatform)
 import System.Directory
+import System.Environment
 import System.FilePath
 import System.Process
 
+import qualified Data.Text as Text
+import qualified Data.Map as Map
+
+import Paths_ghc_mod_core (getBinDir)
 import GhcMod.Types
 import GhcMod.Caching
 import qualified GhcMod.Utils as U
@@ -76,6 +82,70 @@ findCabalSandboxDir dir =
 findCustomPackageDbFile :: FilePath -> IO (Maybe FilePath)
 findCustomPackageDbFile dir =
     mightExist $ dir </> "ghc-mod.package-db-stack"
+
+-- Ugh... this is all a giant hack, why can't cabal just add
+-- 'build-tool-depends' exes to PATH for tests ...
+findExecutableInCabalDistDir
+    :: String -> String -> FilePath -> IO (Either String FilePath)
+findExecutableInCabalDistDir pkg_name exe basepath = do
+    mpath <- runMaybeT $ msum $ map trydir $ parents basepath
+    return $ case mpath of
+      Just path -> Right path
+      Nothing   -> Left $
+        "findExecutableInCabalDistDir " ++
+        intercalate " " [pkg_name, exe, basepath] ++
+        ": no matching exe found"
+  where
+    trydir :: FilePath -> MaybeT IO FilePath
+    trydir dir = do
+      let v1_exe_path  = dir </> "build" </> "ghc-mod" </> "ghc-mod"
+          v2_plan_path = dir </> "cache" </> "plan.json"
+
+      v1  <- liftIO $ doesFileExist $ dir </> "setup-config"
+      v1e <- liftIO $ doesFileExist v1_exe_path
+      v2  <- liftIO $ doesFileExist v2_plan_path
+
+      let v1_path | v1 && v1e = return v1_exe_path
+                  | otherwise = mzero
+
+      if v2
+        then do
+          mpath <- exeFromPlan v2_plan_path
+          case mpath of
+            Just path -> return path
+            Nothing -> v1_path
+        else v1_path
+
+    exeFromPlan plan = do
+      plan <- liftIO $ decodePlanJson plan
+      let exes = filter ((==exe) . takeBaseName)
+               $ catMaybes
+               $ concat
+               $ Map.map (Map.elems . Map.map ciBinFile . uComps)
+               $ Map.filter ((==pkg_name) . unitPkgName)
+               $ pjUnits plan
+      return $ case exes of
+        [exe] -> Just exe
+        _     -> Nothing
+
+    unitPkgName Unit { uPId = PkgId (PkgName n) _ } = Text.unpack n
+
+-- | Returns the path to the currently running ghc-mod executable. With ghc<7.6
+-- this is a guess but >=7.6 uses 'getExecutablePath'.
+ghcModExecutable :: IO FilePath
+ghcModExecutable = do
+    exe <- U.getExecutablePath'
+    stack <- lookupEnv "STACK_EXE"
+    case takeBaseName exe of
+      "spec" -> do
+          egmexe <- findExecutableInCabalDistDir "ghc-mod" "ghc-mod" exe
+          if | Right gmexe <- egmexe -> return gmexe
+             | Just _ <- stack -> (</> "ghc-mod") <$> getBinDir
+             | Left msg <- egmexe -> error msg
+      "ghc-mod" ->
+          return exe
+      _ ->
+          return $ takeDirectory exe </> "ghc-mod"
 
 -- | Get path to sandbox config file
 getSandboxDb :: Cradle -> IO (Maybe GhcPkgDb)
