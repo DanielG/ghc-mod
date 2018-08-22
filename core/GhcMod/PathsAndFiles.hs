@@ -123,6 +123,7 @@ findExecutableInCabalDistDir pkg_name exe basepath = do
       let exes = filter ((==exe) . takeBaseName)
                $ catMaybes
                $ concat
+               $ Map.elems
                $ Map.map (Map.elems . Map.map ciBinFile . uComps)
                $ Map.filter ((==pkg_name) . unitPkgName)
                $ pjUnits plan
