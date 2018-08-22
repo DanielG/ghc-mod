@@ -1,0 +1,6 @@
+ghc-mod was originally licensed under the BSD3 but the primary license has been
+changed to the AGPL3, files originally contributed under the BSD3 license remain
+under this license and can generally be identified by the lack of a GPL header.
+
+See the files COPYING.BSD3 and COPYING.AGPL3 in the source distribution for
+copies of the two licenses.
