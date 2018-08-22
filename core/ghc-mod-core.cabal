@@ -98,7 +98,7 @@ Library
                       , transformers
 
                       , base                 < 4.11 && >= 4.6.0.1
-                      , cabal-plan           < 0.5  && >= 0.4
+                      , cabal-plan           < 0.5  && >= 0.3
                       , djinn-ghc            < 0.1  && >= 0.0.2.2
                       , extra                < 1.7  && >= 1.4
                       , fclabels             < 2.1  && >= 2.0
