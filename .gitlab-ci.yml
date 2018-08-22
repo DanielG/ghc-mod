@@ -3,6 +3,9 @@ stages:
 
 .before_script_template: &common_before_script
   before_script:
+    - mkdir -p ~/.cabal /cache/store
+    - rm -rf ~/.cabal/store
+    - ln -s /cache/store ~/.cabal/store
     - ls -l ..
     - mkdir -p ../ghc-mod.sdist-$CI_PIPELINE_ID
     - cabal update
