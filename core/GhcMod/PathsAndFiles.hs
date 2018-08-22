@@ -23,7 +23,6 @@ module GhcMod.PathsAndFiles (
 
 import Cabal.Plan
 import Config (cProjectVersion)
-import Control.Arrow (second)
 import Control.Applicative
 import Control.Exception as E
 import Control.Monad
