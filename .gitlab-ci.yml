@@ -22,7 +22,7 @@ after_script:
     - echo $PWD
     - which cabal
     - cabal --version
-    - cabal new-configure --enable-tests --only-dependencies
+    - cabal new-configure --enable-tests
     - cabal new-build
     - cabal new-test
     - cabal new-haddock
