@@ -24,7 +24,6 @@ module GhcMod.Utils (
   ) where
 
 import Control.Applicative
-import Data.Char
 import qualified Data.Map as M
 import Data.Maybe (fromMaybe)
 import Data.Either (rights)
@@ -38,7 +37,6 @@ import System.Environment
 import System.FilePath
 import System.IO.Temp (createTempDirectory)
 import System.Process (readProcess)
-import Text.Printf
 
 import Utils
 import Prelude
@@ -53,20 +51,6 @@ withDirectory_ dir action =
     (liftIO getCurrentDirectory)
     (liftIO . setCurrentDirectory)
     (\_ -> liftIO (setCurrentDirectory dir) >> action)
-
-uniqTempDirName :: FilePath -> FilePath
-uniqTempDirName dir =
-  "ghc-mod" ++ map escapeDriveChar drive ++ map escapePathChar path
-  where
-    (drive, path) = splitDrive dir
-    escapeDriveChar :: Char -> Char
-    escapeDriveChar c
-      | isAlphaNum c = c
-      | otherwise     = '-'
-    escapePathChar :: Char -> Char
-    escapePathChar c
-      | c `elem` pathSeparators = '-'
-      | otherwise               = c
 
 newTempDir :: FilePath -> IO FilePath
 newTempDir _dir =
