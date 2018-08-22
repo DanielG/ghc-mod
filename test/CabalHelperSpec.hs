@@ -3,6 +3,9 @@ module CabalHelperSpec where
 
 import Control.Arrow
 import Control.Applicative
+import Data.Char
+import Data.List
+import Data.List.Split (splitOn)
 import Distribution.Helper hiding ( (<.>) )
 import GhcMod.CabalHelper
 import GhcMod.PathsAndFiles
@@ -15,7 +18,6 @@ import Prelude
 
 import Dir
 import TestUtils
-import Data.List
 
 import Config (cProjectVersionInt)
 
@@ -29,15 +31,19 @@ gmeProcessException _ = False
 pkgOptions :: [String] -> [String]
 pkgOptions [] = []
 pkgOptions (_:[]) = []
-pkgOptions (x:y:xs) | x == "-package-id" = [name y] ++ pkgOptions xs
+pkgOptions (x:y:xs) | x == "-package-id" = [pkgName y] ++ pkgOptions xs
                     | otherwise = pkgOptions (y:xs)
- where
-   stripDash s = maybe s id $ (flip drop s . (+1) <$> findIndex (=='-') s)
-#if __GLASGOW_HASKELL__ >= 800
-   name s = reverse $ stripDash $ reverse s
-#else
-   name s = reverse $ stripDash $ stripDash $ reverse s
-#endif
+
+
+pkgName :: String -> String
+pkgName n = intercalate "-" $ reverse $
+    case reverse $ splitOn "-" n of
+      hash : ver : rest@(_:_) | isHash hash, isVer ver -> rest
+      ver  :       rest@(_:_) | isVer ver -> rest
+      rest -> rest
+  where
+    isHash = all isAlphaNum
+    isVer  = all (`elem` "1234567890.")
 
 idirOpts :: [(c, [String])] -> [(c, [String])]
 idirOpts = map (second $ map (drop 2) . filter ("-i"`isPrefixOf`))
@@ -66,15 +72,15 @@ spec = do
         it "handles stack project" $ do
             let tdir = "test/data/stack-project"
             [ghcOpts] <- map gmcGhcOpts . filter ((==ChExeName "new-template-exe") . gmcName) <$> runD' tdir getComponents
-            let pkgs = pkgOptions ghcOpts
-            sort pkgs `shouldBe` ["base", "bytestring"]
+            let pkgs = sort $ pkgOptions ghcOpts
+            pkgs `shouldBe` ["base", "bytestring"]
 #endif
 
         it "extracts build dependencies" $ do
             let tdir = "test/data/cabal-project"
             opts <- map gmcGhcOpts <$> runD' tdir getComponents
             let ghcOpts:_ = opts
-                pkgs = pkgOptions ghcOpts
+                pkgs = sort $ pkgOptions ghcOpts
             pkgs `shouldBe` ["Cabal","base","template-haskell"]
 
         it "uses non default flags and preserves them across reconfigures" $ do
@@ -85,7 +91,7 @@ spec = do
             let test = do
                   opts <- map gmcGhcOpts <$> runD' tdir getComponents
                   let ghcOpts = head opts
-                      pkgs = pkgOptions ghcOpts
+                      pkgs = sort $ pkgOptions ghcOpts
                   pkgs `shouldBe` ["Cabal","base"]
 
             test
