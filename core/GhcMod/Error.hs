@@ -121,7 +121,7 @@ ghcExceptionDoc (Panic msg) = vcat $ map text $ lines $ printf "\
    gmVer = showVersion version
    ghcVer = cProjectVersion
    platform = cHostPlatformString
-   url = "https://github.com/kazu-yamamoto/ghc-mod/issues" :: String
+   url = "https://github.com/DanielG/ghc-mod/issues" :: String
 
 ghcExceptionDoc e = text $ showGhcException e ""
 
