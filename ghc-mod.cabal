@@ -78,6 +78,8 @@ Extra-Source-Files:     ChangeLog
                         test/data/file-mapping/*.hs
                         test/data/file-mapping/preprocessor/*.hs
                         test/data/file-mapping/lhs/*.lhs
+                        test/data/file-mapping/duplicate-main/*.hs
+                        test/data/file-mapping/duplicate-main/*.cabal
                         test/data/nice-qualification/*.hs
                         test/data/stack-project/stack.yaml.in
                         test/data/stack-project/new-template.cabal
