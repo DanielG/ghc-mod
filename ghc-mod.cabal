@@ -24,7 +24,7 @@ Description:
 
 
 Category:               GHC, Development
-Cabal-Version:          >= 1.24
+Cabal-Version:          1.24
 Build-Type:             Custom
 Data-Files:             elisp/Makefile
                         elisp/*.el
