@@ -17,7 +17,7 @@ import qualified GhcMod.Monad                      as GM
 import qualified GhcMod.Target                     as GM
 import qualified GhcMod.Types                      as GM
 
-import           GHC                               (TypecheckedModule)
+import           GHC                               (TypecheckedModule, ParsedModule)
 import qualified GHC
 import qualified DynFlags                          as GHC
 import qualified GhcMonad                          as GHC
@@ -54,43 +54,47 @@ tweakModSummaryDynFlags ms =
 -- to the includePaths for CPP purposes.
 -- Use in combination with `runActionInContext` for best results
 getTypecheckedModuleGhc' :: GM.IOish m
-  => (GM.GmlT m () -> GM.GmlT m a) -> FilePath -> GM.GhcModT m (a, Maybe TypecheckedModule)
+  => (GM.GmlT m () -> GM.GmlT m a) -> FilePath -> GM.GhcModT m (a, Maybe TypecheckedModule, Maybe ParsedModule)
 getTypecheckedModuleGhc' wrapper targetFile = do
   cfileName <- liftIO $ canonicalizePath targetFile
   mfs <- GM.getMMappedFiles
   mFileName <- liftIO . canonicalizePath $ getMappedFileName cfileName mfs
-  ref <- liftIO $ newIORef Nothing
+  refTypechecked <- liftIO $ newIORef Nothing
+  refParsed <- liftIO $ newIORef Nothing
   let keepInfo = pure . (mFileName ==)
-      saveModule = writeIORef ref . Just
-  res <- getTypecheckedModuleGhc wrapper [cfileName] keepInfo saveModule
-  mtm <- liftIO $ readIORef ref
-  return (res, mtm)
+      saveTypechecked = writeIORef refTypechecked . Just
+      saveParsed = writeIORef refParsed . Just
+  res <- getTypecheckedModuleGhc wrapper [cfileName] keepInfo saveTypechecked saveParsed
+  mtm <- liftIO $ readIORef refTypechecked
+  mpm <- liftIO $ readIORef refParsed
+  return (res, mtm, mpm)
 
 -- | like getTypecheckedModuleGhc' but allows you to keep an arbitary number of Modules
 -- `keepInfo` decides which TypecheckedModule to keep
 -- `saveModule` is the callback that is passed the TypecheckedModule
 getTypecheckedModuleGhc :: GM.IOish m
-  => (GM.GmlT m () -> GM.GmlT m a) -> [FilePath] -> (FilePath -> IO Bool) -> (TypecheckedModule -> IO ()) -> GM.GhcModT m a
-getTypecheckedModuleGhc wrapper targetFiles keepInfo saveModule = do
+  => (GM.GmlT m () -> GM.GmlT m a) -> [FilePath] -> (FilePath -> IO Bool) -> (TypecheckedModule -> IO ()) -> (ParsedModule -> IO ()) -> GM.GhcModT m a
+getTypecheckedModuleGhc wrapper targetFiles keepInfo saveTypechecked saveParsed = do
   mfs <- GM.getMMappedFiles
   let ips = map takeDirectory $ Map.keys mfs
       setIncludePaths df = df { GHC.includePaths = ips ++ GHC.includePaths df }
   GM.runGmlTWith' (map Left targetFiles)
                   (return . setIncludePaths)
-                  (Just $ updateHooks keepInfo saveModule)
+                  (Just $ updateHooks keepInfo saveTypechecked saveParsed)
                   wrapper
                   (return ())
 
 updateHooks
   :: (FilePath -> IO Bool)
   -> (TypecheckedModule -> IO ())
+  -> (ParsedModule -> IO ())
   -> GHC.Hooks
   -> GHC.Hooks
-updateHooks fp ref hooks = hooks {
+updateHooks fp ref refParsed hooks = hooks {
 #if __GLASGOW_HASKELL__ <= 710
         GHC.hscFrontendHook   = Just $ hscFrontend fp ref
 #else
-        GHC.hscFrontendHook   = Just $ fmap GHC.FrontendTypecheck . hscFrontend fp ref
+        GHC.hscFrontendHook   = Just $ fmap GHC.FrontendTypecheck . hscFrontend fp ref refParsed
 #endif
       }
 
@@ -105,24 +109,26 @@ runGhcInHsc action = do
 
 -- | Frontend hook that keeps the TypecheckedModule for its first argument
 -- and stores it in the IORef passed to it
-hscFrontend :: (FilePath -> IO Bool) -> (TypecheckedModule -> IO ()) -> GHC.ModSummary -> GHC.Hsc GHC.TcGblEnv
-hscFrontend keepInfoFunc saveModule mod_summary = do
+hscFrontend :: (FilePath -> IO Bool) -> (TypecheckedModule -> IO ()) -> (ParsedModule -> IO ()) -> GHC.ModSummary -> GHC.Hsc GHC.TcGblEnv
+hscFrontend keepInfoFunc saveTypechecked saveParsed mod_summary = do
     mfn <- canonicalizeModSummary mod_summary
       -- md = GHC.moduleNameString $ GHC.moduleName $ GHC.ms_mod mod_summary
     keepInfo <- case mfn of
       Just fileName -> liftIO $ keepInfoFunc fileName
       Nothing       -> pure False
-    -- liftIO $ debugm $ "hscFrontend: got mod,file" ++ show (md, mfn)
+
     if keepInfo
       then runGhcInHsc $ do
         let modSumWithRaw = tweakModSummaryDynFlags mod_summary
 
         p' <- GHC.parseModule modSumWithRaw
         let p = p' {GHC.pm_mod_summary = mod_summary}
+        liftIO $ saveParsed p
+
         tc <- GHC.typecheckModule p
         let tc_gbl_env = fst $ GHC.tm_internals_ tc
 
-        liftIO $ saveModule tc
+        liftIO $ saveTypechecked tc
         return tc_gbl_env
       else do
         hpm <- GHC.hscParse' mod_summary
