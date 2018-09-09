@@ -4,8 +4,8 @@
 -- | Uses GHC hooks to load a TypecheckedModule
 
 module GhcMod.ModuleLoader
-  ( getTypecheckedModuleGhc
-  , getTypecheckedModuleGhc'
+  ( getModulesGhc
+  , getModulesGhc'
   ) where
 
 import           Control.Monad.IO.Class
@@ -47,15 +47,15 @@ tweakModSummaryDynFlags ms =
   let df = GHC.ms_hspp_opts ms
   in ms { GHC.ms_hspp_opts = GHC.gopt_set df GHC.Opt_KeepRawTokenStream }
 
--- | Gets a TypecheckedModule from a given file
+-- | Gets a TypecheckedModule and/or ParsedModule from a given file
 -- The `wrapper` allows arbitary data to be captured during
 -- the compilation process, like errors and warnings
 -- Appends the parent directories of all the mapped files
 -- to the includePaths for CPP purposes.
 -- Use in combination with `runActionInContext` for best results
-getTypecheckedModuleGhc' :: GM.IOish m
+getModulesGhc' :: GM.IOish m
   => (GM.GmlT m () -> GM.GmlT m a) -> FilePath -> GM.GhcModT m (a, Maybe TypecheckedModule, Maybe ParsedModule)
-getTypecheckedModuleGhc' wrapper targetFile = do
+getModulesGhc' wrapper targetFile = do
   cfileName <- liftIO $ canonicalizePath targetFile
   mfs <- GM.getMMappedFiles
   mFileName <- liftIO . canonicalizePath $ getMappedFileName cfileName mfs
@@ -64,17 +64,18 @@ getTypecheckedModuleGhc' wrapper targetFile = do
   let keepInfo = pure . (mFileName ==)
       saveTypechecked = writeIORef refTypechecked . Just
       saveParsed = writeIORef refParsed . Just
-  res <- getTypecheckedModuleGhc wrapper [cfileName] keepInfo saveTypechecked saveParsed
+  res <- getModulesGhc wrapper [cfileName] keepInfo saveTypechecked saveParsed
   mtm <- liftIO $ readIORef refTypechecked
   mpm <- liftIO $ readIORef refParsed
   return (res, mtm, mpm)
 
--- | like getTypecheckedModuleGhc' but allows you to keep an arbitary number of Modules
--- `keepInfo` decides which TypecheckedModule to keep
--- `saveModule` is the callback that is passed the TypecheckedModule
-getTypecheckedModuleGhc :: GM.IOish m
+-- | like getModulesGhc' but allows you to keep an arbitary number of Modules
+-- `keepInfo` decides which module to keep
+-- `saveTypechecked` is the callback that is passed the TypecheckedModule
+-- `saveParsed` is the callback that is passed the ParsedModule
+getModulesGhc :: GM.IOish m
   => (GM.GmlT m () -> GM.GmlT m a) -> [FilePath] -> (FilePath -> IO Bool) -> (TypecheckedModule -> IO ()) -> (ParsedModule -> IO ()) -> GM.GhcModT m a
-getTypecheckedModuleGhc wrapper targetFiles keepInfo saveTypechecked saveParsed = do
+getModulesGhc wrapper targetFiles keepInfo saveTypechecked saveParsed = do
   mfs <- GM.getMMappedFiles
   let ips = map takeDirectory $ Map.keys mfs
       setIncludePaths df = df { GHC.includePaths = ips ++ GHC.includePaths df }
