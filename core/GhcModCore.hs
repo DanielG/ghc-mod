@@ -41,8 +41,8 @@ module GhcModCore (
   , loadMappedFileSource
   , unloadMappedFile
   -- * HIE integration utilities
-  , getTypecheckedModuleGhc
-  , getTypecheckedModuleGhc'
+  , getModulesGhc
+  , getModulesGhc'
   ) where
 
 import GhcMod.Cradle
