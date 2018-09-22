@@ -92,7 +92,7 @@ Extra-Source-Files:     ChangeLog
 
 Custom-Setup
   Setup-Depends:         base
-                       , Cabal               < 2.3  && >= 1.24
+                       , Cabal               < 2.5  && >= 1.24
                        , cabal-doctest       < 1.1  && >= 1
 
 Library
@@ -135,7 +135,7 @@ Library
                       , time
                       , transformers
 
-                      , base                 < 4.12 && >= 4.6.0.1
+                      , base                 < 4.14 && >= 4.6.0.1
                       -- , djinn-ghc            < 0.1  && >= 0.0.2.2
                       , extra                < 1.7  && >= 1.4
                       , fclabels             < 2.1  && >= 2.0
@@ -152,11 +152,11 @@ Library
                       , split                < 0.3  && >= 0.2.2
                       , syb                  < 0.8  && >= 0.5.1
                       , temporary            < 1.3  && >= 1.2.0.3
-                      , text                 < 1.3  && >= 1.2.1.3
+                      , text                 < 1.4  && >= 1.2.1.3
                       , transformers-base    < 0.5  && >= 0.4.4
 
-                      , cabal-helper         < 0.9  && >= 0.8.0.0
-                      , ghc                  < 8.5  && >= 7.8
+                      , cabal-helper         < 1.1  && >= 1.0
+                      , ghc                  < 8.7  && >= 7.8
 
   if impl(ghc >= 8.0)
     Build-Depends:      ghc-boot
@@ -182,14 +182,14 @@ Executable ghc-mod
                       , mtl
                       , process
 
-                      , base                 < 4.12 && >= 4.6.0.1
+                      , base                 < 4.14 && >= 4.6.0.1
                       , fclabels             < 2.1  && >= 2.0
                       , monad-control        < 1.1  && >= 1
                       , optparse-applicative < 0.15 && >= 0.13.0.0
                       , semigroups           < 0.19 && >= 0.10.0
                       , split                < 0.3  && >= 0.2.2
 
-                      , ghc                  < 8.5  && >= 7.8
+                      , ghc                  < 8.7  && >= 7.8
                       , ghc-mod
                       , ghc-mod-core
 
@@ -213,7 +213,7 @@ Executable ghc-modi
                       , process
                       , time
 
-                      , base                 < 4.12 && >= 4.6.0.1
+                      , base                 < 4.14 && >= 4.6.0.1
 
                       , ghc-mod
                       , ghc-mod-core
@@ -226,7 +226,7 @@ Test-Suite doctest
   Ghc-Options:          -Wall
   Default-Extensions:   ConstraintKinds, FlexibleContexts
   Main-Is:              doctests.hs
-  Build-Depends:        base                 < 4.12 && >= 4.6.0.1
+  Build-Depends:        base                 < 4.14 && >= 4.6.0.1
                       , doctest              < 0.16 && >= 0.11.3
 
 Test-Suite spec
@@ -273,7 +273,7 @@ Test-Suite spec
                       , process
                       , transformers
 
-                      , base                 < 4.12 && >= 4.6.0.1
+                      , base                 < 4.14 && >= 4.6.0.1
                       , fclabels             < 2.1  && >= 2.0
                       , hspec                < 2.6  && >= 2.0.0
                       , monad-journal        < 0.9  && >= 0.4
@@ -287,8 +287,8 @@ Test-Suite spec
     Build-Depends:      ghc-boot
 
   Build-Depends:
-                        cabal-helper         < 0.9  && >= 0.8.0.0
-                      , ghc                  < 8.5  && >= 7.8
+                        cabal-helper         < 1.1  && >= 0.8.0.0
+                      , ghc                  < 8.7  && >= 7.8
                       , ghc-mod
                       , ghc-mod-core
 
@@ -300,7 +300,7 @@ Test-Suite shelltest
   Type:                 exitcode-stdio-1.0
   if flag(shelltest)
     Build-Tools:        shelltest
-  Build-Depends:        base                 < 4.12 && >= 4.6.0.1
+  Build-Depends:        base                 < 4.14 && >= 4.6.0.1
                       , process              < 1.5
                       -- , shelltestrunner >= 1.3.5
   if !flag(shelltest)
@@ -320,7 +320,7 @@ Benchmark criterion
                         directory
                       , filepath
 
-                      , base                 < 4.12 && >= 4.6.0.1
+                      , base                 < 4.14 && >= 4.6.0.1
                       , criterion            < 1.2  && >= 1.1.1.0
                       , temporary            < 1.3  && >= 1.2.0.3
 

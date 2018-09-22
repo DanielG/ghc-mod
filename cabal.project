@@ -1,3 +1,22 @@
 packages: .
           ./core
-          ../cabal-helper
+          -- ../cabal-helper
+          -- ../polyparse
+
+
+source-repository-package
+    type: git
+    location: https://github.com/bergmark/polyparse
+    tag: 8a69ee7e57db798c106d8b56dce05b1dfc4fed37
+
+
+source-repository-package
+    type: git
+    location: https://github.com/alanz/cabal-helper
+    tag: 4ba48c3b8bd0df732b5e65bc13655595a53392bb
+
+allow-newer:HTTP-4000.3.12:base
+allow-newer:polyparse-1.12:base
+allow-newer:unliftio-core-0.1.2.0:base
+allow-newer:fclabels-2.0.3.3:base
+allow-newer:fclabels-2.0.3.3:template-haskell
