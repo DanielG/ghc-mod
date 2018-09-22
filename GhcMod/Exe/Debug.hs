@@ -34,12 +34,15 @@ debugInfo = do
     Options {..} <- options
     Cradle {..} <- cradle
 
-    [ghcPath, ghcPkgPath] <- liftIO $
+    mpaths <- liftIO $
         case cradleProject of
           StackProject se ->
               catMaybes <$> sequence [getStackGhcPath se, getStackGhcPkgPath se]
           _ ->
               return ["ghc", "ghc-pkg"]
+    (ghcPath, ghcPkgPath) <- case mpaths of
+      [ghc,ghcp] -> return (ghc,ghcp)
+      _ -> error "pattern match fail"
 
     cabal <-
         case cradleProject of
@@ -67,13 +70,16 @@ debugInfo = do
 
 stackPaths :: IOish m => GhcModT m [String]
 stackPaths = do
-    Cradle { cradleProject = StackProject senv } <- cradle
-    ghc <- getStackGhcPath senv
-    ghcPkg <- getStackGhcPkgPath senv
-    return $
-         [ "Stack ghc executable:    " ++ show ghc
-         , "Stack ghc-pkg executable:" ++ show ghcPkg
-         ]
+    Cradle { cradleProject = menv } <- cradle
+    case menv of
+      StackProject senv -> do
+        ghc <- getStackGhcPath senv
+        ghcPkg <- getStackGhcPkgPath senv
+        return $
+             [ "Stack ghc executable:    " ++ show ghc
+             , "Stack ghc-pkg executable:" ++ show ghcPkg
+             ]
+      _ -> error "stackPaths:expected a stack project"
 
 cabalDebug :: IOish m => FilePath -> GhcModT m [String]
 cabalDebug ghcPkgPath = do

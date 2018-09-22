@@ -48,8 +48,10 @@ gmSetLogLevel level =
 
 gmGetLogLevel :: forall m. GmLog m => m GmLogLevel
 gmGetLogLevel = do
-  GhcModLog { gmLogLevel = Just level } <-  gmlHistory
-  return level
+  GhcModLog { gmLogLevel = mlevel } <-  gmlHistory
+  case mlevel of
+    Just level -> return level
+    _          -> error "mempty value for GhcModLog must use a Just value"
 
 gmSetDumpLevel :: GmLog m => Bool -> m ()
 gmSetDumpLevel level =
@@ -73,7 +75,10 @@ decreaseLogLevel l = pred l
 -- False
 gmLog :: (MonadIO m, GmLog m, GmOut m) => GmLogLevel -> String -> Doc -> m ()
 gmLog level loc' doc = do
-  GhcModLog { gmLogLevel = Just level' } <- gmlHistory
+  GhcModLog { gmLogLevel = mlevel' } <- gmlHistory
+  level' <- case mlevel' of
+    Nothing -> error "mempty value for GhcModLog must use a Just value"
+    Just l -> return l
 
   let loc | loc' == "" = empty
           | otherwise = text loc' <+>: empty

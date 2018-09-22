@@ -14,6 +14,7 @@
 -- You should have received a copy of the GNU Affero General Public License
 -- along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+{-# LANGUAGE CPP #-}
 module GhcMod.PathsAndFiles (
     module GhcMod.PathsAndFiles
   , module GhcMod.Caching
@@ -81,7 +82,12 @@ findCustomPackageDbFile dir =
 getSandboxDb :: Cradle -> IO (Maybe GhcPkgDb)
 getSandboxDb crdl = do
   mConf <- traverse readFile =<< mightExist (sandboxConfigFile crdl)
+
+#if MIN_VERSION_cabal_helper(1,0,0)
+  bp <- return buildPlatform
+#else
   bp <- buildPlatform readProcess
+#endif
   return $ PackageDb . fixPkgDbVer bp <$> (extractSandboxDbDir =<< mConf)
 
  where

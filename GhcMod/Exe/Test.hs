@@ -30,7 +30,10 @@ test f = runGmlT' [Left f] (fmap setHscInterpreted . deferErrors) $ do
         mdl = ms_mod ms
         mn = moduleName mdl
 
-    Just mi <- getModuleInfo mdl
+    mmi <- getModuleInfo mdl
+    mi <- case mmi of
+            Just mi -> return mi
+            _ -> error "pattern match fail"
     let exs = map (occNameString . getOccName) $ modInfoExports mi
         cqs = filter ("prop_" `isPrefixOf`) exs
 

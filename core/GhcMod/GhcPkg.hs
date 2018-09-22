@@ -68,8 +68,10 @@ getGhcPkgProgram = do
   progs <- optPrograms <$> options
   case cradleProject crdl of
     (StackProject senv) -> do
-        Just ghcPkg <- getStackGhcPkgPath senv
-        return ghcPkg
+        mghcPkg <- getStackGhcPkgPath senv
+        case mghcPkg of
+          Just ghcPkg -> return ghcPkg
+          _ -> error "pattern match fail"
     _ ->
         return $ ghcPkgProgram progs
 
@@ -81,8 +83,10 @@ getPackageDbStack = do
     PlainProject ->
         return [GlobalDb, UserDb]
     SandboxProject -> do
-        Just db <- liftIO $ getSandboxDb crdl
-        return $ [GlobalDb, db]
+        mdb <- liftIO $ getSandboxDb crdl
+        case mdb of
+          Just db -> return $ [GlobalDb, db]
+          _ -> error "pattern match fail"
     CabalProject ->
         getCabalPackageDbStack
     (StackProject StackEnv {..}) ->

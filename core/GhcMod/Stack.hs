@@ -40,12 +40,15 @@ import Prelude
 
 patchStackPrograms :: (IOish m, GmOut m) => Cradle -> Programs -> m Programs
 patchStackPrograms Cradle { cradleProject = (StackProject senv) } progs = do
-  Just ghc <- getStackGhcPath senv
-  Just ghcPkg <- getStackGhcPkgPath senv
-  return $ progs {
-      ghcProgram = ghc
-    , ghcPkgProgram = ghcPkg
-    }
+  mghc <- getStackGhcPath senv
+  mghcPkg <- getStackGhcPkgPath senv
+  case (mghc,mghcPkg) of
+    (Just ghc,Just ghcPkg) ->
+      return $ progs {
+          ghcProgram = ghc
+        , ghcPkgProgram = ghcPkg
+        }
+    _ -> error "pattern match fail"
 patchStackPrograms _crdl progs = return progs
 
 getStackEnv :: (IOish m, GmOut m, GmLog m)

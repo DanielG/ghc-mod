@@ -306,12 +306,14 @@ fileModSummary file' = do
     mss <- getModuleGraph
     file <- liftIO $ canonicalizePath file'
 #if __GLASGOW_HASKELL__ >= 804
-    [ms] <- liftIO $ flip filterM (mgModSummaries mss) $ \m ->
+    mss <- liftIO $ flip filterM (mgModSummaries mss) $ \m ->
 #else
-    [ms] <- liftIO $ flip filterM mss $ \m ->
+    mss <- liftIO $ flip filterM mss $ \m ->
 #endif
         (Just file==) <$> canonicalizePath `traverse` ml_hs_file (ms_location m)
-    return ms
+    case mss of
+      [ms] -> return ms
+      _ -> error "pattern match Fail"
 
 withInteractiveContext :: GhcMonad m => m a -> m a
 withInteractiveContext action = gbracket setup teardown body

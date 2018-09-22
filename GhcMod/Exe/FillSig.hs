@@ -129,9 +129,11 @@ getSignature modSum lineNo colNo = do
         return $ Just $ Signature loc (map G.unLoc names) ty
       [L _ (G.InstD {})] -> do
         -- We found an instance declaration
-        TypecheckedModule{tm_renamed_source = Just tcs
+        TypecheckedModule{tm_renamed_source = mtcs
                          ,tm_checked_module_info = minfo} <- G.typecheckModule p
-        let lst = listifyRenamedSpans tcs (lineNo, colNo)
+        let lst = case mtcs of
+                    Just tcs -> listifyRenamedSpans tcs (lineNo, colNo)
+                    _ -> error "pattern match fail"
         case Gap.getClass lst of
             Just (clsName,loc) -> obtainClassInfo minfo clsName loc
             _                  -> return Nothing

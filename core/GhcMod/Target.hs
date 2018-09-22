@@ -206,7 +206,10 @@ runGmlTWith' efnmns' mdf mUpdateHooks wrapper action = do
       (text "Initializing GHC session with following options")
       (intercalate " " $ map (("\""++) . (++"\"")) opts')
 
-    GhcModLog { gmLogLevel = Just level } <- gmlHistory
+    GhcModLog { gmLogLevel = mlevel } <- gmlHistory
+    level <- case mlevel of
+      Just level -> return level
+      _ -> error "pattern match fail"
     putErr <- gmErrStrIO
     let setLogger | level >= GmDebug = setDebugLogger putErr
                   | otherwise = setEmptyLogger
