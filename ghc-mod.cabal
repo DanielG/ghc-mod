@@ -30,7 +30,7 @@ Data-Files:             elisp/Makefile
                         elisp/*.el
 Extra-Source-Files:     ChangeLog
                         README.md
-                        core/GhcMod/Monad/Compat.hs_h
+                        -- core/GhcMod/Monad/Compat.hs_h
                         test/data/annotations/*.hs
                         test/data/broken-cabal/*.cabal
                         test/data/broken-sandbox/cabal.sandbox.config
@@ -157,6 +157,7 @@ Library
 
                       , cabal-helper         < 0.9  && >= 0.8.0.0
                       , ghc                  < 8.5  && >= 7.8
+                      , ghc-mod-core
 
   if impl(ghc >= 8.0)
     Build-Depends:      ghc-boot
@@ -279,7 +280,6 @@ Test-Suite spec
                       , monad-journal        < 0.9  && >= 0.4
                       , split                < 0.3  && >= 0.2.2
                       , temporary            < 1.3  && >= 1.2.0.3
-
 
   if impl(ghc < 7.8)
     Build-Depends:      convertible          < 1.2  && >= 1.1.0.0

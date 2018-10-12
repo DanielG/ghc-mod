@@ -133,6 +133,7 @@ defaultOptions = Options {
 ----------------------------------------------------------------
 
 data Project = CabalProject
+             | CabalNewProject
              | SandboxProject
              | PlainProject
              | StackProject StackEnv
@@ -141,6 +142,7 @@ data Project = CabalProject
 isCabalHelperProject :: Project -> Bool
 isCabalHelperProject StackProject {} = True
 isCabalHelperProject CabalProject {} = True
+isCabalHelperProject CabalNewProject {} = True
 isCabalHelperProject _ = False
 
 data StackEnv = StackEnv {
@@ -301,7 +303,7 @@ data GmComponent (t :: GmComponentType) eps = GmComponent {
   , gmcRawEntrypoints  :: ChEntrypoint
   , gmcEntrypoints     :: eps
   , gmcSourceDirs      :: [FilePath]
-  , gmcName            :: ChComponentName  
+  , gmcName            :: ChComponentName
   } deriving (Eq, Ord, Show, Read, Generic, Functor)
 
 instance Binary eps => Binary (GmComponent t eps) where

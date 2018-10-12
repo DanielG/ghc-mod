@@ -85,6 +85,8 @@ getPackageDbStack = do
         return $ [GlobalDb, db]
     CabalProject ->
         getCabalPackageDbStack
+    CabalNewProject ->
+        getCabalPackageDbStack
     (StackProject StackEnv {..}) ->
         return $ [GlobalDb, PackageDb seSnapshotPkgDb, PackageDb seLocalPkgDb]
   return $ fromMaybe stack mCusPkgStack
