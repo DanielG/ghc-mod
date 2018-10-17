@@ -1,0 +1,11 @@
+resolver: lts-12.13
+packages:
+- ./core
+- ./cabal-helper
+- .
+allow-newer: true
+extra-deps:
+- cabal-plan-0.4.0.0
+- djinn-ghc-0.0.2.3
+- djinn-lib-0.0.1.3
+

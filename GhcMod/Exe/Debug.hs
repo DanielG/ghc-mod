@@ -130,7 +130,8 @@ componentInfo ts = do
               alistDoc (either text mnDoc) (setDoc gmComponentNameDoc) mdlcs)
          , "Picked Component:\n"        ++ renderGm (nest 4 $
               gmComponentNameDoc cn)
-         , "GHC Cabal options:\n"       ++ renderGm (nest 4 $ fsep $ map text opts)
+         , "GHC Cabal options:\n"       ++ renderGm (nest 4 $ fsep $ map text $ fst opts)
+                                        ++ renderGm (nest 4 $ fsep $ map text $ snd opts)
          ]
  where
    zipMap f l = l `zip` (f `map` l)

@@ -19,7 +19,7 @@ import OccName
 test :: IOish m
       => FilePath -> GhcModT m String
 test f = runGmlT' [Left f] (fmap setHscInterpreted . deferErrors) $ do
-    mg <- getModuleGraph
+    mg <- mgModSummaries <$> getModuleGraph
     root <- cradleRootDir <$> cradle
     f' <- makeRelative root <$> liftIO (canonicalizePath f)
     let Just ms = find ((==Just f') . ml_hs_file . ms_location) mg

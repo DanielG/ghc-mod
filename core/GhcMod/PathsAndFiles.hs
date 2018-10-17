@@ -81,7 +81,7 @@ findCustomPackageDbFile dir =
 getSandboxDb :: Cradle -> IO (Maybe GhcPkgDb)
 getSandboxDb crdl = do
   mConf <- traverse readFile =<< mightExist (sandboxConfigFile crdl)
-  bp <- buildPlatform readProcess
+  let bp = buildPlatform
   return $ PackageDb . fixPkgDbVer bp <$> (extractSandboxDbDir =<< mConf)
 
  where

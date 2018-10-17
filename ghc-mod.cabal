@@ -92,7 +92,7 @@ Extra-Source-Files:     ChangeLog
 
 Custom-Setup
   Setup-Depends:         base
-                       , Cabal               < 2.1  && >= 1.24
+                       , Cabal               < 2.3  && >= 1.24
                        , cabal-doctest       < 1.1  && >= 1
 
 Library

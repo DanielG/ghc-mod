@@ -184,11 +184,7 @@ listifySpans tcs lc = listifyStaged TypeChecker p tcs
     p (L spn _) = G.isGoodSrcSpan spn && spn `G.spans` lc
 
 listifyParsedSpans :: Typeable a => ParsedSource -> (Int, Int) -> [Located a]
-#if __GLASGOW_HASKELL__ >= 804
 listifyParsedSpans pcs lc = listify p pcs
-#else
-listifyParsedSpans pcs lc = listifyStaged Parser p pcs
-#endif
   where
     p (L spn _) = G.isGoodSrcSpan spn && spn `G.spans` lc
 

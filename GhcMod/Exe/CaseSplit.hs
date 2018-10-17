@@ -88,7 +88,7 @@ getSrcSpanTypeForFnSplit :: GhcMonad m => G.ModSummary -> Int -> Int -> m (Maybe
 getSrcSpanTypeForFnSplit modSum lineNo colNo = do
     p@ParsedModule{pm_parsed_source = _pms} <- G.parseModule modSum
     tcm@TypecheckedModule{tm_typechecked_source = tcs} <- G.typecheckModule p
-    let varPat = find isPatternVar $ listifySpans tcs (lineNo, colNo) :: Maybe (LPat Id)
+    let varPat = find isPatternVar $ listifySpans tcs (lineNo, colNo) :: Maybe (G.LHsBind G.GhcTc)
         match  = last $ listifySpans tcs (lineNo, colNo) :: Gap.GLMatchI
     case varPat of
       Nothing  -> return Nothing
@@ -97,23 +97,20 @@ getSrcSpanTypeForFnSplit modSum lineNo colNo = do
         case varT of
           Just varT' ->
 #if __GLASGOW_HASKELL__ >= 710
-            let (L matchL (G.Match _ _ _ (G.GRHSs rhsLs _))) = match
+            let (L matchL (G.Match _ _ (G.GRHSs rhsLs _))) = match
 #else
             let (L matchL (G.Match _ _ (G.GRHSs rhsLs _))) = match
 #endif
             in return $ Just (SplitInfo (getPatternVarName varPat') matchL varT' (map G.getLoc rhsLs) )
           _ -> return Nothing
 
-isPatternVar :: LPat Id -> Bool
-isPatternVar (L _ (G.VarPat _)) = True
+isPatternVar :: G.LHsBind G.GhcTc -> Bool
+isPatternVar (L _ (G.FunBind{})) = True
+isPatternVar (L _ (G.VarBind{})) = True
 isPatternVar _                  = False
 
-getPatternVarName :: LPat Id -> G.Name
-#if __GLASGOW_HASKELL__ >= 800
-getPatternVarName (L _ (G.VarPat (L _ vName))) = G.getName vName
-#else
-getPatternVarName (L _ (G.VarPat vName)) = G.getName vName
-#endif
+getPatternVarName :: G.LHsBind G.GhcTc -> G.Name
+getPatternVarName (L _ (G.FunBind{fun_id = L _ vName})) = G.getName vName
 getPatternVarName _                      = error "This should never happened"
 
 -- TODO: Information for a type family case split
