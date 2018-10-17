@@ -39,6 +39,7 @@ import Control.Monad.Journal.Class (MonadJournal(..))
 import Control.Monad.Trans.Class (MonadTrans(..))
 import Control.Monad.Trans.Control
 import Control.Monad.Base (MonadBase(..), liftBase)
+import Control.Monad.Fail (MonadFail(..))
 
 import Data.IORef
 import Prelude
@@ -167,6 +168,9 @@ instance MonadTransControl GmT where
 
 instance MonadTrans GmT where
     lift = GmT . lift . lift . lift . lift
+
+instance Monad m => MonadFail (GmT m) where
+    fail = throwError . GMEString
 
 gmLiftInner :: Monad m => m a -> GmT m a
 gmLiftInner = GmT . lift . lift . lift . lift

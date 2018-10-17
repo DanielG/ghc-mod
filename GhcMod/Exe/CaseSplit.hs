@@ -97,16 +97,16 @@ getSrcSpanTypeForFnSplit modSum lineNo colNo = do
         varT <- Gap.getType tcm varPat'  -- Finally we get the type of the var
         case varT of
           Just varT' ->
-            let (L matchL (G.Match _ _ (G.GRHSs rhsLs _))) = match
+            let (L matchL (G.Match _ _ _ (G.GRHSs _ rhsLs _))) = match
             in return $ Just (SplitInfo (getPatternVarName varPat') matchL varT' (map G.getLoc rhsLs) )
           _ -> return Nothing
 
 isPatternVar :: LPat G.GhcTc -> Bool
-isPatternVar (L _ (G.VarPat _)) = True
+isPatternVar (L _ (G.VarPat{})) = True
 isPatternVar _                  = False
 
 getPatternVarName :: LPat G.GhcTc -> G.Name
-getPatternVarName (L _ (G.VarPat (L _ vName))) = G.getName vName
+getPatternVarName (L _ (G.VarPat _ (L _ vName))) = G.getName vName
 getPatternVarName _                      = error "This should never happened"
 
 -- TODO: Information for a type family case split

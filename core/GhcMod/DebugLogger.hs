@@ -133,6 +133,7 @@ gmPrintDoc_ mode pprCols putS doc
 #if __GLASGOW_HASKELL__ >= 708
     put (ZStr s) next = putS (zString s) >> next
 #endif
-    put (LStr s _l) next = putS (unpackLitString s) >> next
+    put (LStr s) next = putS (unpackLitString s) >> next
+    put (RStr _ s) next = putS [s] >> next
 
     done = return () -- hPutChar hdl '\n'

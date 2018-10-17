@@ -4,6 +4,7 @@ import GhcMod.GhcPkg
 import GhcMod.CabalHelper
 import GhcMod.CustomPackageDb
 import Test.Hspec
+import Data.Maybe
 import System.Process (system)
 
 import Dir
@@ -16,7 +17,7 @@ spec = do
             withDirectory_ "test/data/custom-cradle" $ do
                 _ <- system "cabal configure"
                 (s, s') <- runD $ do
-                    Just stack <- getCustomPkgDbStack
+                    stack <- fromJust <$> getCustomPkgDbStack
                     withCabal $ do
                         stack' <- getPackageDbStack
                         return (stack, stack')

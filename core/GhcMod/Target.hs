@@ -32,6 +32,7 @@ import SysTools
 import DynFlags
 import HscTypes
 import Pretty
+import Safe
 
 import GhcMod.DynFlags
 import GhcMod.Monad.Types
@@ -205,7 +206,7 @@ runGmlTWith' efnmns' mdf mUpdateHooks wrapper action = do
       (text "Initializing GHC session with following options")
       (intercalate " " $ map (("\""++) . (++"\"")) opts')
 
-    GhcModLog { gmLogLevel = Just level } <- gmlHistory
+    level <- fromJustNote "runGmlTWith: gmLogLevel" . gmLogLevel <$> gmlHistory
     putErr <- gmErrStrIO
     let setLogger | level >= GmDebug = setDebugLogger putErr
                   | otherwise = setEmptyLogger

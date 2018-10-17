@@ -40,8 +40,8 @@ import Prelude
 
 patchStackPrograms :: (IOish m, GmOut m) => Cradle -> Programs -> m Programs
 patchStackPrograms Cradle { cradleProject = (StackProject senv) } progs = do
-  Just ghc <- getStackGhcPath senv
-  Just ghcPkg <- getStackGhcPkgPath senv
+  ghc <- fromJustNote "patchStackPrograms:ghc" <$> getStackGhcPath senv
+  ghcPkg <- fromJustNote "patchStackPrograms:ghcPkg" <$> getStackGhcPkgPath senv
   return $ progs {
       ghcProgram = ghc
     , ghcPkgProgram = ghcPkg

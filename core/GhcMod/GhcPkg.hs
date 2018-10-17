@@ -16,6 +16,7 @@ import Data.Maybe
 import Exception (handleIO)
 import System.Directory (doesDirectoryExist, getAppUserDataDirectory)
 import System.FilePath ((</>))
+import Safe
 import Prelude
 
 import GhcMod.Types
@@ -68,7 +69,7 @@ getGhcPkgProgram = do
   progs <- optPrograms <$> options
   case cradleProject crdl of
     (StackProject senv) -> do
-        Just ghcPkg <- getStackGhcPkgPath senv
+        ghcPkg <- fromJustNote "getGhcPkgProgram" <$> getStackGhcPkgPath senv
         return ghcPkg
     _ ->
         return $ ghcPkgProgram progs
@@ -81,7 +82,7 @@ getPackageDbStack = do
     PlainProject ->
         return [GlobalDb, UserDb]
     SandboxProject -> do
-        Just db <- liftIO $ getSandboxDb crdl
+        db <- liftIO $ fromJustNote "getPackageDbStack" <$> getSandboxDb crdl
         return $ [GlobalDb, db]
     CabalProject ->
         getCabalPackageDbStack

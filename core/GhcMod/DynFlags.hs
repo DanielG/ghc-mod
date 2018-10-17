@@ -14,6 +14,8 @@ import GhcMod.Types
 import GhcMod.DebugLogger
 import GhcMod.DynFlagsTH
 import System.IO.Unsafe (unsafePerformIO)
+import qualified DynFlags
+import qualified Plugins
 import Prelude
 
 -- For orphans
@@ -115,6 +117,10 @@ deriving instance Eq OverridingBool
 deriving instance Eq PprColour.Scheme
 deriving instance Eq PprColour.PprColour
 #endif
+deriving instance Eq DynFlags.IncludeSpecs
+
+instance Eq Plugins.LoadedPlugin where
+  _ == _ = True
 
 deriveEqDynFlags [d|
   eqDynFlags :: DynFlags -> DynFlags -> [[(Bool, String)]]

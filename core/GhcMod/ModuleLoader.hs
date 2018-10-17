@@ -74,7 +74,11 @@ getTypecheckedModuleGhc :: GM.IOish m
 getTypecheckedModuleGhc wrapper targetFiles keepInfo saveModule = do
   mfs <- GM.getMMappedFiles
   let ips = map takeDirectory $ Map.keys mfs
-      setIncludePaths df = df { GHC.includePaths = ips ++ GHC.includePaths df }
+      setIncludePaths df = df { GHC.includePaths = GHC.IncludeSpecs {
+        includePathsQuote = ips ++ GHC.includePathsQuote ghc_ips
+      , includePathsGlobal = GHC.includePathsGlobal ghc_ips
+      }}
+        where ghc_ips = GHC.includePaths df
   GM.runGmlTWith' (map Left targetFiles)
                   (return . setIncludePaths)
                   (Just $ updateHooks keepInfo saveModule)
@@ -135,4 +139,3 @@ hscFrontend keepInfoFunc saveModule mod_summary = do
 #endif
 
 -- ---------------------------------------------------------------------
-

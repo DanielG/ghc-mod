@@ -9,13 +9,14 @@ import Prelude
 
 import Dir
 import TestUtils
+import Data.Maybe
 
 spec :: Spec
 spec = do
     describe "getCustomPkgDbStack" $ do
         it "works" $ do
             let tdir = "test/data/custom-cradle"
-            Just stack <- runD' tdir $ getCustomPkgDbStack
+            stack <- fromJust <$> (runD' tdir $ getCustomPkgDbStack)
             stack `shouldBe` [ GlobalDb
                              , UserDb
                              , PackageDb "package-db-a"
@@ -28,7 +29,7 @@ spec = do
             withDirectory_ "test/data/custom-cradle" $ do
                 _ <- system "cabal configure"
                 (s, s') <- runD $ do
-                    Just stack <- getCustomPkgDbStack
+                    stack <- fromJust <$> getCustomPkgDbStack
                     withCabal $ do
                         stack' <- getCabalPackageDbStack
                         return (stack, stack')

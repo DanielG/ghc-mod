@@ -25,6 +25,7 @@ import Paths_ghc_mod (version)
 
 import Config (cProjectVersion)
 import Pretty
+import Safe
 
 ----------------------------------------------------------------
 
@@ -34,12 +35,14 @@ debugInfo = do
     Options {..} <- options
     Cradle {..} <- cradle
 
-    [ghcPath, ghcPkgPath] <- liftIO $
+    (ghcPath, ghcPkgPath) <- liftIO $
         case cradleProject of
-          StackProject se ->
-              catMaybes <$> sequence [getStackGhcPath se, getStackGhcPkgPath se]
+          StackProject se -> do
+              ghc <- fromJustNote "debugInfo: ghc" <$> getStackGhcPath se
+              ghcPkg <- fromJustNote "debugInfo: ghcPkg" <$> getStackGhcPkgPath se
+              return (ghc, ghcPkg)
           _ ->
-              return ["ghc", "ghc-pkg"]
+              return ("ghc", "ghc-pkg")
 
     cabal <-
         case cradleProject of
@@ -67,7 +70,8 @@ debugInfo = do
 
 stackPaths :: IOish m => GhcModT m [String]
 stackPaths = do
-    Cradle { cradleProject = StackProject senv } <- cradle
+    scradle <- cradle
+    let Cradle { cradleProject = StackProject senv } = scradle
     ghc <- getStackGhcPath senv
     ghcPkg <- getStackGhcPkgPath senv
     return $

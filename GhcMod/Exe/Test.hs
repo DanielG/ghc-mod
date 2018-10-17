@@ -15,6 +15,7 @@ import GhcMod.DynFlags
 import GHC
 import GHC.Exception
 import OccName
+import Safe
 
 test :: IOish m
       => FilePath -> GhcModT m String
@@ -26,7 +27,7 @@ test f = runGmlT' [Left f] (fmap setHscInterpreted . deferErrors) $ do
         mdl = ms_mod ms
         mn = moduleName mdl
 
-    Just mi <- getModuleInfo mdl
+    mi <- fromJustNote "test: mi" <$> getModuleInfo mdl
     let exs = map (occNameString . getOccName) $ modInfoExports mi
         cqs = filter ("prop_" `isPrefixOf`) exs
 

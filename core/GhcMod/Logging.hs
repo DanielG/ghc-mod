@@ -36,17 +36,19 @@ import System.FilePath
 import Prelude
 
 import Pretty hiding (style, (<>))
+import Safe
 
 import GhcMod.Monad.Types
 import GhcMod.Types
 import GhcMod.Pretty
 import GhcMod.Output
+import Control.Monad.Fail
 
 gmSetLogLevel :: GmLog m => GmLogLevel -> m ()
 gmSetLogLevel level =
     gmlJournal $ GhcModLog (Just level) (Last Nothing) []
 
-gmGetLogLevel :: forall m. GmLog m => m GmLogLevel
+gmGetLogLevel :: forall m. (GmLog m, MonadFail m) => m GmLogLevel
 gmGetLogLevel = do
   GhcModLog { gmLogLevel = Just level } <-  gmlHistory
   return level
@@ -73,7 +75,7 @@ decreaseLogLevel l = pred l
 -- False
 gmLog :: (MonadIO m, GmLog m, GmOut m) => GmLogLevel -> String -> Doc -> m ()
 gmLog level loc' doc = do
-  GhcModLog { gmLogLevel = Just level' } <- gmlHistory
+  level' <- fromJustNote "gmLog: level'" . gmLogLevel <$> gmlHistory
 
   let loc | loc' == "" = empty
           | otherwise = text loc' <+>: empty
@@ -95,8 +97,7 @@ gmVomit :: (MonadIO m, GmLog m, GmOut m, GmEnv m) => String -> Doc -> String -> 
 gmVomit filename doc content = do
   gmLog GmVomit "" $ doc <+>: text content
 
-  GhcModLog { gmLogVomitDump = Last mdump }
-      <- gmlHistory
+  GhcModLog { gmLogVomitDump = Last mdump } <- gmlHistory
 
   dir <- cradleTempDir `liftM` cradle
   when (fromMaybe False mdump) $

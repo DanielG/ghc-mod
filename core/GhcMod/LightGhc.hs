@@ -38,7 +38,8 @@ newLightEnv mdf = do
      settings <- initSysTools (Just libdir)
 #if __GLASGOW_HASKELL__ >= 804
      let llvmTgtList = [] -- TODO: where should this come from?
-     initDynFlags $ defaultDynFlags settings llvmTgtList
+         llvmPhases = []
+     initDynFlags $ defaultDynFlags settings (llvmTgtList, llvmPhases)
 #else
      initDynFlags $ defaultDynFlags settings
 #endif
