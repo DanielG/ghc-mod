@@ -57,7 +57,7 @@ spec = do
             -- comment in cabal-helper
             opts <- map gmcGhcOpts . filter ((/= ChSetupHsName) . gmcName) <$> runD' tdir getComponents
 
-            bp <- buildPlatform readProcess
+            let bp = buildPlatform
             if ghcVersion < 706
               then forM_ opts (\o -> o `shouldContain` ["-no-user-package-conf","-package-conf", cwd </> "test/data/cabal-project/.cabal-sandbox/"++ghcSandboxPkgDbDir bp])
               else forM_ opts (\o -> o `shouldContain` ["-no-user-package-db","-package-db",cwd </> "test/data/cabal-project/.cabal-sandbox/"++ghcSandboxPkgDbDir bp])

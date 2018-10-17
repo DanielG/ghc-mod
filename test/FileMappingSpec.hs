@@ -123,13 +123,13 @@ spec = do
             res <- runD $ do
               loadMappedFile "File.hs" "File_Redir_Lint.hs"
               lint lintOpts "File.hs"
-            res `shouldBe` "File.hs:4:1: Warning: Eta reduce\NULFound:\NUL  func a b = (*) a b\NULWhy not:\NUL  func = (*)\n"
+            res `shouldBe` "File.hs:4:1: Warning: Eta reduce\NULFound:\NUL  func a b = (*) a b\NULPerhaps:\NUL  func = (*)\n"
         it "lints in-memory file if one is specified and outputs original filename" $ do
           withDirectory_ "test/data/file-mapping" $ do
             res <- runD $ do
               loadMappedFileSource "File.hs" "func a b = (++) a b\n"
               lint lintOpts "File.hs"
-            res `shouldBe` "File.hs:1:1: Warning: Eta reduce\NULFound:\NUL  func a b = (++) a b\NULWhy not:\NUL  func = (++)\n"
+            res `shouldBe` "File.hs:1:1: Warning: Eta reduce\NULFound:\NUL  func a b = (++) a b\NULPerhaps:\NUL  func = (++)\n"
         it "shows types of the expression for redirected files" $ do
             let tdir = "test/data/file-mapping"
             res <- runD' tdir $ do
@@ -190,14 +190,14 @@ spec = do
             res <- runD $ do
               loadMappedFile "File.hs" "File_Redir_Lint.hs"
               lint lintOpts "File.hs"
-            res `shouldBe` "File.hs:6:1: Warning: Eta reduce\NULFound:\NUL  func a b = (*) a b\NULWhy not:\NUL  func = (*)\n"
+            res `shouldBe` "File.hs:6:1: Warning: Eta reduce\NULFound:\NUL  func a b = (*) a b\NULPerhaps:\NUL  func = (*)\n"
         it "lints in-memory file if one is specified and outputs original filename" $ do
           withDirectory_ "test/data/file-mapping/preprocessor" $ do
             src <- readFile "File_Redir_Lint.hs"
             res <- runD $ do
               loadMappedFileSource "File.hs" src
               lint lintOpts "File.hs"
-            res `shouldBe` "File.hs:6:1: Warning: Eta reduce\NULFound:\NUL  func a b = (*) a b\NULWhy not:\NUL  func = (*)\n"
+            res `shouldBe` "File.hs:6:1: Warning: Eta reduce\NULFound:\NUL  func a b = (*) a b\NULPerhaps:\NUL  func = (*)\n"
       describe "literate haskell tests" $ do
         it "checks redirected file if one is specified and outputs original filename" $ do
           withDirectory_ "test/data/file-mapping/lhs" $ do
@@ -220,14 +220,14 @@ spec = do
         --     res <- runD $ do
         --       loadMappedFile "File.lhs" (RedirectedMapping "File_Redir_Lint.lhs")
         --       lint "File.lhs"
-        --     res `shouldBe` "File.lhs:6:1: Error: Eta reduce\NULFound:\NUL  func a b = (*) a b\NULWhy not:\NUL  func = (*)\n"
+        --     res `shouldBe` "File.lhs:6:1: Error: Eta reduce\NULFound:\NUL  func a b = (*) a b\NULPerhaps:\NUL  func = (*)\n"
         -- it "lints in-memory file if one is specified and outputs original filename" $ do
         --   withDirectory_ "test/data/file-mapping/lhs" $ do
         --     src <- readFile "File_Redir_Lint.lhs"
         --     res <- runD $ do
         --       loadMappedFile "File.lhs" (MemoryMapping $ Just src)
         --       lint "File.lhs"
-        --     res `shouldBe` "File.lhs:6:1: Error: Eta reduce\NULFound:\NUL  func a b = (*) a b\NULWhy not:\NUL  func = (*)\n"
+        --     res `shouldBe` "File.lhs:6:1: Error: Eta reduce\NULFound:\NUL  func a b = (*) a b\NULPerhaps:\NUL  func = (*)\n"
       describe "template haskell" $ do
         it "works with a redirected module using TemplateHaskell" $ do
           withSystemTempDirectory "ghc-mod-test" $ \tmpdir -> do
