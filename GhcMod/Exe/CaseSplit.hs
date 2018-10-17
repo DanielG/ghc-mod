@@ -30,6 +30,7 @@ import GhcMod.Types
 import GhcMod.Utils (withMappedFile)
 import GhcMod.FileMapping (fileModSummaryWithMapping)
 import Control.DeepSeq
+import qualified Outputable as G
 
 ----------------------------------------------------------------
 -- CASE SPLITTING
@@ -88,29 +89,24 @@ getSrcSpanTypeForFnSplit :: GhcMonad m => G.ModSummary -> Int -> Int -> m (Maybe
 getSrcSpanTypeForFnSplit modSum lineNo colNo = do
     p@ParsedModule{pm_parsed_source = _pms} <- G.parseModule modSum
     tcm@TypecheckedModule{tm_typechecked_source = tcs} <- G.typecheckModule p
-    let varPat = find isPatternVar $ listifySpans tcs (lineNo, colNo) :: Maybe (G.LHsBind G.GhcTc)
-        match  = last $ listifySpans tcs (lineNo, colNo) :: Gap.GLMatchI
+    let varPat = find isPatternVar $ listifySpans tcs (lineNo, colNo) :: Maybe (LPat G.GhcTc)
+        match  = last $ listifySpans tcs (lineNo, colNo) :: G.LMatch G.GhcTc (G.LHsExpr G.GhcTc)
     case varPat of
       Nothing  -> return Nothing
       Just varPat' -> do
         varT <- Gap.getType tcm varPat'  -- Finally we get the type of the var
         case varT of
           Just varT' ->
-#if __GLASGOW_HASKELL__ >= 710
             let (L matchL (G.Match _ _ (G.GRHSs rhsLs _))) = match
-#else
-            let (L matchL (G.Match _ _ (G.GRHSs rhsLs _))) = match
-#endif
             in return $ Just (SplitInfo (getPatternVarName varPat') matchL varT' (map G.getLoc rhsLs) )
           _ -> return Nothing
 
-isPatternVar :: G.LHsBind G.GhcTc -> Bool
-isPatternVar (L _ (G.FunBind{})) = True
-isPatternVar (L _ (G.VarBind{})) = True
+isPatternVar :: LPat G.GhcTc -> Bool
+isPatternVar (L _ (G.VarPat _)) = True
 isPatternVar _                  = False
 
-getPatternVarName :: G.LHsBind G.GhcTc -> G.Name
-getPatternVarName (L _ (G.FunBind{fun_id = L _ vName})) = G.getName vName
+getPatternVarName :: LPat G.GhcTc -> G.Name
+getPatternVarName (L _ (G.VarPat (L _ vName))) = G.getName vName
 getPatternVarName _                      = error "This should never happened"
 
 -- TODO: Information for a type family case split
