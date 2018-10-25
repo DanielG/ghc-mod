@@ -27,6 +27,10 @@ import System.FilePath
 import System.Environment
 import Prelude
 import Control.Monad.Trans.Journal (runJournalT)
+import Distribution.Helper (runQuery, mkQueryEnv, compilerVersion, distDir)
+-- import Distribution.System (buildPlatform)
+import Data.List (intercalate)
+import Data.Version (Version(..))
 
 ----------------------------------------------------------------
 
@@ -74,6 +78,16 @@ fillTempDir crdl = do
   tmpDir <- liftIO $ newTempDir (cradleRootDir crdl)
   return crdl { cradleTempDir = tmpDir }
 
+-- run :: Monad m => QueryEnv -> Maybe SomeLocalBuildInfo -> Query m a -> m a
+-- run e s action = flip runReaderT e (flip evalStateT s (unQuery action))
+
+-- -- | @runQuery env query@. Run a 'Query' under a given 'QueryEnv'.
+-- runQuery :: Monad m
+--           => QueryEnv
+--           -> Query m a
+--           -> m a
+-- runQuery qe action = run qe Nothing action
+
 cabalCradle ::
     (IOish m, GmLog m, GmOut m) => FilePath -> FilePath -> MaybeT m Cradle
 cabalCradle cabalProg wdir = do
@@ -92,6 +106,9 @@ cabalCradle cabalProg wdir = do
     --       Or default to is for cabal >= 2.0 ?, unless flag saying old style
     if isDistNewstyle
       then do
+        let bp = "x86_64-osx"
+        dd <- liftIO $ runQuery (mkQueryEnv "." "dist-newstyle") distDir
+
         gmLog GmInfo "" $ text "Using Cabal new-build project at" <+>: text cabalDir
         return Cradle {
             cradleProject    = CabalNewProject
@@ -99,7 +116,7 @@ cabalCradle cabalProg wdir = do
           , cradleRootDir    = cabalDir
           , cradleTempDir    = error "tmpDir"
           , cradleCabalFile  = Just cabalFile
-          , cradleDistDir    = "dist-newstyle"
+          , cradleDistDir    = dd
           }
       else do
         gmLog GmInfo "" $ text "Using Cabal project at" <+>: text cabalDir

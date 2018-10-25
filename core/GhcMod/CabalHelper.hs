@@ -22,6 +22,9 @@ module GhcMod.CabalHelper
   , prepareCabalHelper
   , withAutogen
   , withCabal
+
+  , runCHQuery
+  , packageId
   ) where
 
 import Control.Applicative
