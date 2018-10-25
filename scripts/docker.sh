@@ -3,7 +3,7 @@
 # Usage: ./docker.sh [GHC_VER]
 # Example: ./docker.sh 8.2.2
 # Faster Example:
-#     $ echo 8.4.3 8.2.2 8.0.2 7.10.3 7.8.4 | xargs -P4 -n1 -- ./docker.sh
+#     $ echo 8.6.1 8.4.4 8.2.2 8.0.2 7.10.3 7.8.4 | xargs -P4 -n1 -- ./docker.sh
 
 
 namespace="registry.gitlab.com/dxld/ghc-mod"
@@ -72,7 +72,8 @@ EOF
 
     docker build -t "${namespace}:ghc${ghc}-cabal-install${cabal}" "$tmpdir"
 done <<EOF
-8.4.3  8.4.3  x86_64-deb8-linux         xz  2.2.0.0   0 debian:jessie
+8.6.1  8.6.1  x86_64-deb8-linux         xz  2.4.0.0   0 debian:jessie
+8.4.4  8.4.4  x86_64-deb8-linux         xz  2.2.0.0   0 debian:jessie
 8.2.2  8.2.2  x86_64-deb8-linux         xz  2.0.0.0   0 debian:jessie
 8.0.2  8.0.2  x86_64-deb8-linux         xz  2.0.0.0   0 debian:jessie
 7.10.3 7.10.3 x86_64-deb8-linux         xz  2.0.0.0   0 debian:jessie
