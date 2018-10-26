@@ -107,7 +107,7 @@ cabalCradle cabalProg wdir = do
     if isDistNewstyle
       then do
         let bp = "x86_64-osx"
-        dd <- liftIO $ runQuery (mkQueryEnv "." "dist-newstyle") distDir
+        dd <- liftIO $ runQuery (mkQueryEnv wdir "dist-newstyle") distDir
 
         gmLog GmInfo "" $ text "Using Cabal new-build project at" <+>: text cabalDir
         return Cradle {
