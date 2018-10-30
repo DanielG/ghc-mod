@@ -42,6 +42,29 @@ instance HasType (LPat Id) where
 
 ----------------------------------------------------------------
 
+-- | Like `mkQ`, but matches on 2-parameter polymorphic type instead of a
+--   monomorphic one.
+--
+--   Idea shamelessly stolen from SPJ's talk on generic function extension
+--   from Oxford's Workshop on Datatype-Generic programming (2004)
+--   http://www.cs.ox.ac.uk/research/pdt/ap/dgp/workshop2004/
+mkQ2 :: (Data a, Typeable t) => r -> (forall b c. (Data b, Data c) => t b c -> r) -> a -> r
+mkQ2 gen spec x = maybe gen (($ x) . unQ) $ dataCast2 (Q spec)
+newtype Q r a = Q { unQ :: a -> r }
+
+findSpanName :: G.HsGroup G.Name -> (Int, Int) -> [(SrcSpan, [G.Name])]
+findSpanName tcm lc =
+  everythingStaged Renamer (++) [] ([] `mkQ2` locateName) tcm
+  where
+    locateName :: (Data a, Data b) => GenLocated a b -> [(SrcSpan, [G.Name])]
+    locateName (L spn' x)
+      | Just spn <- cast spn'
+      , G.isGoodSrcSpan spn && spn `G.spans` lc
+      , names <- listifyStaged Renamer (const True) x
+      , not (null names)
+      = [(spn, names)]
+      | otherwise = []
+
 -- | Stores mapping from monomorphic to polymorphic types
 type CstGenQS = M.Map Var Type
 -- | Generic type to simplify SYB definition

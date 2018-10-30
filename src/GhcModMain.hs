@@ -17,6 +17,7 @@ import Prelude
 
 import GhcMod
 import GhcMod.Exe.Find
+import GhcMod.Exe.ImportedFrom
 import GhcMod.Exe.Options
 import GhcMod.Exe.Internal hiding (MonadIO,liftIO)
 import GhcMod.Monad
@@ -147,6 +148,7 @@ ghcCommands (CmdLint opts file) = lint opts file
 ghcCommands (CmdBrowse opts ms) = concat <$> browse opts `mapM` ms
 ghcCommands (CmdCheck files) = checkSyntax files
 ghcCommands (CmdExpand files) = expandTemplate files
+ghcCommands (CmdImportedFrom file (line, col) symb) = importedFrom file line col $ fmap Expression symb
 ghcCommands (CmdInfo file symb) = info file $ Expression symb
 ghcCommands (CmdType wCon file (line, col)) = types wCon file line col
 ghcCommands (CmdSplit file (line, col)) = splits file line col

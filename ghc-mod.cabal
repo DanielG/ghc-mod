@@ -7,7 +7,11 @@ Author:                 Kazu Yamamoto <kazu@iij.ad.jp>,
 Maintainer:             Daniel Gröber <dxld@darkboxed.org>
 License:                AGPL-3
 License-File:           LICENSE
-License-Files:          COPYING.BSD3 COPYING.AGPL3
+License-Files:          COPYING.BSD3
+                        COPYING.BSD3.ghc
+                        COPYING.BSD3.base
+                        COPYING.BSD3.haddock-api
+                        COPYING.AGPL3
 Homepage:               https://github.com/DanielG/ghc-mod
 Synopsis:               Happy Haskell Hacking
 Description:
@@ -78,6 +82,7 @@ Extra-Source-Files:     ChangeLog
                         test/data/file-mapping/*.hs
                         test/data/file-mapping/preprocessor/*.hs
                         test/data/file-mapping/lhs/*.lhs
+                        test/data/imported-from/*.hs
                         test/data/nice-qualification/*.hs
                         test/data/stack-project/stack.yaml.in
                         test/data/stack-project/new-template.cabal
@@ -96,7 +101,7 @@ Custom-Setup
 
 Library
   Default-Language:     Haskell2010
-  GHC-Options:          -Wall -fno-warn-deprecations
+  GHC-Options:          -Wall
   Default-Extensions:   ScopedTypeVariables, RecordWildCards, NamedFieldPuns,
                         ConstraintKinds, FlexibleContexts,
                         DataKinds, KindSignatures, TypeOperators, ViewPatterns
@@ -112,6 +117,7 @@ Library
                         GhcMod.Exe.Find
                         GhcMod.Exe.Flag
                         GhcMod.Exe.Info
+                        GhcMod.Exe.ImportedFrom
                         GhcMod.Exe.Internal
                         GhcMod.Exe.Lang
                         GhcMod.Exe.Lint
@@ -161,6 +167,15 @@ Library
 
   if impl(ghc >= 8.0)
     Build-Depends:      ghc-boot
+
+  if impl(ghc >= 8.0)
+    Build-Depends:      haddock-api       < 2.18
+  if impl(ghc >= 7.10 && < 8.0)
+    Build-Depends:      haddock-api       < 2.17
+  if impl(ghc >= 7.8 && < 7.10)
+    Build-Depends:      haddock-api       < 2.16
+  if impl(ghc < 7.8)
+    Build-Depends:      haddock           < 2.15.0
 
 Executable ghc-mod
   Default-Language:     Haskell2010

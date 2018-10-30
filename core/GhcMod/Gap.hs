@@ -49,6 +49,10 @@ module GhcMod.Gap (
   , mkErrStyle'
   , everythingStagedWithContext
   , withCleanupSession
+  , moduleUnitId'
+  , sl_fs'
+  , packageNameVesrion
+  , lookupPackage'
   ) where
 
 import Control.Applicative hiding (empty)
@@ -123,6 +127,8 @@ import RdrName (rdrNameOcc)
 #if __GLASGOW_HASKELL__ < 710
 import UniqFM (eltsUFM)
 import Module
+import Data.Generics.Schemes (gfindtype)
+import Safe
 #endif
 
 #if __GLASGOW_HASKELL__ >= 704
@@ -132,6 +138,10 @@ import qualified Data.IntSet as I (IntSet, empty)
 #if __GLASGOW_HASKELL__ < 706
 import Control.DeepSeq (NFData(rnf))
 import Data.ByteString.Lazy.Internal (ByteString(..))
+#endif
+
+#if __GLASGOW_HASKELL__ >= 800
+import BasicTypes (sl_fs, StringLiteral)
 #endif
 
 import Bag
@@ -736,4 +746,52 @@ withCleanupSession ghc = ghc `gfinally` cleanup
 withCleanupSession action = do
   df <- getSessionDynFlags
   GHC.defaultCleanupHandler df action
+#endif
+
+-- | Things for Language.Haskell.GhcMod.ImportedFrom
+
+#if __GLASGOW_HASKELL__ >= 800
+moduleUnitId' :: Module -> UnitId
+moduleUnitId' = GHC.moduleUnitId
+#elif __GLASGOW_HASKELL__ >= 710
+moduleUnitId' :: Module -> PackageKey
+moduleUnitId' = GHC.modulePackageKey
+#else
+moduleUnitId' :: Module -> PackageId
+moduleUnitId' = GHC.modulePackageId
+#endif
+
+#if __GLASGOW_HASKELL__ >= 800
+sl_fs' :: StringLiteral -> FastString
+sl_fs' = sl_fs
+#else
+sl_fs' :: FastString -> FastString
+sl_fs' = id
+#endif
+
+
+#if __GLASGOW_HASKELL__ >= 710
+packageNameVesrion :: PackageConfig -> (String, Version)
+packageNameVesrion
+  InstalledPackageInfo{packageName=PackageName pn, packageVersion=pv}
+  = (unpackFS pn, pv)
+#else
+packageNameVesrion :: PackageConfig -> (String, Version)
+packageNameVesrion
+  InstalledPackageInfo{sourcePackageId=PackageIdentifier{pkgName=pn, pkgVersion=pv}}
+  -- here, pkgName is `Distribution.Package.PackageName String` from Cabal
+  -- using gfindtype to avoid dependence on Cabal-1.18.1.5
+  = (fromJustNote "Gap,packageNameVersion" (gfindtype pn), pv)
+#endif
+
+#if __GLASGOW_HASKELL__ >= 710
+#if __GLASGOW_HASKELL__ >= 800
+lookupPackage' :: DynFlags -> UnitId -> Maybe PackageConfig
+#else
+lookupPackage' :: DynFlags -> PackageKey -> Maybe PackageConfig
+#endif
+lookupPackage' = lookupPackage
+#else
+lookupPackage' :: DynFlags -> PackageId -> Maybe PackageConfig
+lookupPackage' = lookupPackage . pkgIdMap . pkgState
 #endif
