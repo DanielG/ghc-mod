@@ -89,6 +89,8 @@ getPackageDbStack = do
           _ -> error "pattern match fail"
     CabalProject ->
         getCabalPackageDbStack
+    CabalNewProject ->
+        getCabalPackageDbStack
     (StackProject StackEnv {..}) ->
         return $ [GlobalDb, PackageDb seSnapshotPkgDb, PackageDb seLocalPkgDb]
   return $ fromMaybe stack mCusPkgStack

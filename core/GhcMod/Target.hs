@@ -203,6 +203,11 @@ runGmlTWith' efnmns' mdf mUpdateHooks wrapper action = do
 
     gmVomit
       "session-ghc-options"
+      (text "Using the following mapped files")
+      (intercalate " " $ map (("\""++) . (++"\"")) mappedStrs)
+
+    gmVomit
+      "session-ghc-options"
       (text "Initializing GHC session with following options")
       (intercalate " " $ map (("\""++) . (++"\"")) opts')
 
