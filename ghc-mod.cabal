@@ -227,7 +227,7 @@ Test-Suite doctest
   Default-Extensions:   ConstraintKinds, FlexibleContexts
   Main-Is:              doctests.hs
   Build-Depends:        base                 < 4.14 && >= 4.6.0.1
-                      , doctest              < 0.16 && >= 0.11.3
+                      , doctest              < 0.17 && >= 0.11.3
 
 Test-Suite spec
   Default-Language:     Haskell2010

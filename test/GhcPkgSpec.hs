@@ -16,7 +16,10 @@ spec = do
             withDirectory_ "test/data/custom-cradle" $ do
                 _ <- system "cabal configure"
                 (s, s') <- runD $ do
-                    Just stack <- getCustomPkgDbStack
+                    mstack <- getCustomPkgDbStack
+                    stack <- case mstack of
+                      Just stack -> return stack
+                      _ -> error "match failed"
                     withCabal $ do
                         stack' <- getPackageDbStack
                         return (stack, stack')

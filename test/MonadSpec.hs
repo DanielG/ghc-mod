@@ -1,3 +1,4 @@
+{-# LANGUAGe CPP #-}
 module MonadSpec where
 
 import Test.Hspec
@@ -13,8 +14,14 @@ spec = do
              (a, _h)
                  <- runGmOutDef $ runGhcModT defaultOptions $
                        do
+#if __GLASGOW_HASKELL__ >= 806
+                         mj <- return Nothing
+                         case mj of
+                           Just _ -> return "hello"
+                           Nothing -> fail "oh noes"
+#else
                          Just _ <- return Nothing
-                         return "hello"
+#endif
                      `catchError` (const $ fail "oh noes")
              a `shouldBe` (Left $ GMEString "oh noes")
 
