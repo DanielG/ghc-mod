@@ -22,7 +22,4 @@
 -- 'CoreMonad.MonadIO' and 'Control.Monad.IO.Class.MonadIO' are different
 -- classes before ghc 7.8
 #define DIFFERENT_MONADIO 1
-
--- RWST doen't have a MonadIO instance before ghc 7.8
-#define MONADIO_INSTANCES 1
 #endif
