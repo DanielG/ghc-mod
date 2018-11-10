@@ -81,6 +81,7 @@ Library
                         Data.Binary.Generic
                         System.Directory.ModTime
   Other-Modules:        Paths_ghc_mod_core
+  build-tool-depends:   cabal-helper:cabal-helper-wrapper
   Build-Depends:
                       -- See Note [GHC Boot libraries]
                         binary
