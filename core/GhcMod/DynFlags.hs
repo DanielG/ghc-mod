@@ -57,7 +57,13 @@ setHscInterpreted df = df {
 -- | Parse command line ghc options and add them to the 'DynFlags' passed
 addCmdOpts :: GhcMonad m => [GHCOption] -> DynFlags -> m DynFlags
 addCmdOpts cmdOpts df =
-    fst3 <$> G.parseDynamicFlags df (map G.noLoc cmdOpts)
+    --
+    -- Passes "-hide-all-packages" to the GHC API to prevent parsing of
+    -- package environment files. However this only works if there is no
+    -- invocation of `setSessionDynFlags` before calling `initDynFlagsPure`.
+    -- See ghc tickets #15513, #15541.
+    --    Thanks @lspitzner
+    fst3 <$> G.parseDynamicFlags df (map G.noLoc ("-hide-all-packages":cmdOpts))
   where
     fst3 (a,_,_) = a
 
