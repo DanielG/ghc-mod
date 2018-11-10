@@ -61,13 +61,13 @@ withLightHscEnv'
     :: IOish m => (DynFlags -> LightGhc DynFlags) -> (HscEnv -> m a) -> m a
 withLightHscEnv' mdf action = gbracket (newLightEnv mdf) teardownLightEnv action
 
-withLightHscEnv :: IOish m => [GHCOption] -> (HscEnv -> m a) -> m a
-withLightHscEnv opts = withLightHscEnv' (f <=< liftIO . newHscEnv)
+withLightHscEnv :: IOish m => Bool -> [GHCOption] -> (HscEnv -> m a) -> m a
+withLightHscEnv hideAllPackages opts = withLightHscEnv' (f <=< liftIO . newHscEnv)
  where
    f env = runLightGhc env $ do
          -- HomeModuleGraph and probably all other clients get into all sorts of
          -- trouble if the package state isn't initialized here
-         _ <- setSessionDynFlags =<< addCmdOpts opts =<< getSessionDynFlags
+         _ <- setSessionDynFlags =<< addCmdOpts hideAllPackages opts =<< getSessionDynFlags
          getSessionDynFlags
 
 runLightGhc :: MonadIO m => HscEnv -> LightGhc a -> m a

@@ -5,6 +5,7 @@ module GhcMod.Cradle
   , findCradleNoLog
   , findSpecCradle
   , cleanupCradle
+  , shouldHideAllPackages
 
   -- * for @spec@
   , plainCradle
@@ -214,3 +215,11 @@ plainCradle wdir = do
       , cradleCabalFile  = Nothing
       , cradleDistDir    = "dist"
       }
+
+-- | Cabal produces .ghc.environment files which are loaded by GHC if
+-- they exist. For all bar a plain style project this is incorrect
+-- behaviour for ghc-mod, as ghc-mod works out which packages should
+-- be loaded.
+-- Identify whether this should be inhibited or not
+shouldHideAllPackages :: Cradle -> Bool
+shouldHideAllPackages crdl = not (cradleProject crdl == PlainProject)

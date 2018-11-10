@@ -55,15 +55,19 @@ setHscInterpreted df = df {
   }
 
 -- | Parse command line ghc options and add them to the 'DynFlags' passed
-addCmdOpts :: GhcMonad m => [GHCOption] -> DynFlags -> m DynFlags
-addCmdOpts cmdOpts df =
-    --
-    -- Passes "-hide-all-packages" to the GHC API to prevent parsing of
-    -- package environment files. However this only works if there is no
-    -- invocation of `setSessionDynFlags` before calling `initDynFlagsPure`.
-    -- See ghc tickets #15513, #15541.
-    --    Thanks @lspitzner
-    fst3 <$> G.parseDynamicFlags df (map G.noLoc ("-hide-all-packages":cmdOpts))
+addCmdOpts :: GhcMonad m => Bool -> [GHCOption] -> DynFlags -> m DynFlags
+addCmdOpts hideAllPackages cmdOpts df =
+    if not hideAllPackages
+      then fst3 <$> G.parseDynamicFlags df (map G.noLoc cmdOpts)
+      else
+        --
+        -- Passes "-hide-all-packages" to the GHC API to prevent parsing of
+        -- package environment files. However this only works if there is no
+        -- invocation of `setSessionDynFlags` before calling `initDynFlagsPure`.
+        -- See ghc tickets #15513, #15541.
+        --    Thanks @lspitzner
+        fst3 <$> G.parseDynamicFlags df (map G.noLoc ("-hide-all-packages":cmdOpts))
+        -- fst3 <$> G.parseDynamicFlags df (map G.noLoc cmdOpts)
   where
     fst3 (a,_,_) = a
 
@@ -81,12 +85,12 @@ withDynFlags setFlags body = G.gbracket setup teardown (\_ -> body)
         return dflags
     teardown = void . G.setSessionDynFlags
 
-withCmdFlags :: GhcMonad m => [GHCOption] -> m a -> m a
-withCmdFlags flags body = G.gbracket setup teardown (\_ -> body)
+withCmdFlags :: GhcMonad m => Bool -> [GHCOption] -> m a -> m a
+withCmdFlags hideAllPackages flags body = G.gbracket setup teardown (\_ -> body)
   where
     setup = do
         dflags <- G.getSessionDynFlags
-        void $ G.setSessionDynFlags =<< addCmdOpts flags dflags
+        void $ G.setSessionDynFlags =<< addCmdOpts hideAllPackages flags dflags
         return dflags
     teardown = void . G.setSessionDynFlags
 
@@ -104,7 +108,7 @@ allWarningFlags :: Gap.WarnFlags
 allWarningFlags = unsafePerformIO $
     G.runGhc (Just libdir) $ do
         df <- G.getSessionDynFlags
-        df' <- addCmdOpts ["-Wall"] df
+        df' <- addCmdOpts False ["-Wall"] df
         return $ G.warningFlags df'
 
 ----------------------------------------------------------------
