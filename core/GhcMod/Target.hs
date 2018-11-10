@@ -72,9 +72,9 @@ import System.FilePath
 runGmPkgGhc :: (IOish m, Gm m) => LightGhc a -> m a
 runGmPkgGhc action = do
     crdl <- cradle
-    let hideAllPackages = shouldHideAllPackages crdl
+    let loadGhcEnv = shouldLoadGhcEnvironment crdl
     pkgOpts <- packageGhcOptions
-    withLightHscEnv hideAllPackages pkgOpts $ \env -> liftIO $ runLightGhc env action
+    withLightHscEnv loadGhcEnv pkgOpts $ \env -> liftIO $ runLightGhc env action
 
 initSession :: IOish m
             => [GHCOption]
@@ -108,9 +108,7 @@ initSession opts mdf = do
               gmLog GmDebug "initSession" $ text "Session already initialized"
  where
    initDF c@Cradle { cradleTempDir, cradleProject } df =
-       if shouldHideAllPackages c
-         then setTmpDir cradleTempDir <$> (mdf =<< addCmdOpts False opts df)
-         else setTmpDir cradleTempDir <$> (mdf =<< addCmdOpts True  opts df)
+       setTmpDir cradleTempDir <$> (mdf =<< addCmdOpts (shouldLoadGhcEnvironment c) opts df)
 
    teardownSession hsc_env_ref = do
      hsc_env <- liftIO $ readIORef hsc_env_ref
@@ -204,7 +202,7 @@ runGmlTWith' efnmns' mdf mUpdateHooks wrapper action = do
     gmVomit
       "session-ghc-options"
       (text "hide all packages(ignore .ghc.environment):")
-      (show $ shouldHideAllPackages crdl)
+      (show $ shouldLoadGhcEnvironment crdl)
 
     gmVomit
       "session-ghc-options"
@@ -399,9 +397,9 @@ resolveGmComponent :: (IOish m, Gm m)
 resolveGmComponent mums c@GmComponent {..} = do
   distDir <- cradleDistDir <$> cradle
   crdl <- cradle
-  let hideAllPackages = shouldHideAllPackages crdl
+  let loadGhcEnv = shouldLoadGhcEnvironment crdl
   gmLog GmDebug "resolveGmComponent" $ text $ show $ ghcOpts distDir
-  withLightHscEnv hideAllPackages (ghcOpts distDir) $ \env -> do
+  withLightHscEnv loadGhcEnv (ghcOpts distDir) $ \env -> do
     let srcDirs = if null gmcSourceDirs then [""] else gmcSourceDirs
     let mg = gmcHomeModuleGraph
     let simp = gmcEntrypoints
@@ -427,7 +425,7 @@ resolveEntrypoint :: (IOish m, Gm m)
     -> m (GmComponent 'GMCRaw (Set ModulePath))
 resolveEntrypoint crdl@Cradle {..} c@GmComponent {..} = do
     gmLog GmDebug "resolveEntrypoint" $ text $ show $ gmcGhcSrcOpts
-    withLightHscEnv (shouldHideAllPackages crdl) gmcGhcSrcOpts $ \env -> do
+    withLightHscEnv (shouldLoadGhcEnvironment crdl) gmcGhcSrcOpts $ \env -> do
       let srcDirs = if null gmcSourceDirs then [""] else gmcSourceDirs
       eps <- liftIO $ resolveChEntrypoints cradleRootDir gmcEntrypoints
       rms <- resolveModule env srcDirs `mapM` eps
@@ -521,9 +519,9 @@ resolveGmComponents mcache cs = do
 loadTargets :: IOish m => [GHCOption] -> [FilePath] -> Maybe (GHC.Hooks -> GHC.Hooks) -> GmlT m ()
 loadTargets opts targetStrs mUpdateHooks = do
     crdl <- cradle
-    let hideAllPackages = shouldHideAllPackages crdl
+    let loadGhcEnv = shouldLoadGhcEnvironment crdl
     targets' <-
-        withLightHscEnv hideAllPackages opts $ \env ->
+        withLightHscEnv loadGhcEnv opts $ \env ->
                 liftM (nubBy ((==) `on` targetId))
                   (mapM ((`guessTarget` Nothing) >=> mapFile env) targetStrs)
               >>= mapM relativize

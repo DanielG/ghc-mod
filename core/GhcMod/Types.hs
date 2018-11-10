@@ -167,6 +167,10 @@ data Cradle = Cradle {
   , cradleDistDir    :: FilePath
   } deriving (Eq, Show, Ord)
 
+data LoadGhcEnvironment = LoadGhcEnvironment
+                        | DontLoadGhcEnvironment
+                        deriving (Show,Eq)
+
 data GmStream = GmOutStream | GmErrStream
                 deriving (Show)
 

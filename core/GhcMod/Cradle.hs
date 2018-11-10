@@ -5,7 +5,7 @@ module GhcMod.Cradle
   , findCradleNoLog
   , findSpecCradle
   , cleanupCradle
-  , shouldHideAllPackages
+  , shouldLoadGhcEnvironment
 
   -- * for @spec@
   , plainCradle
@@ -221,5 +221,8 @@ plainCradle wdir = do
 -- behaviour for ghc-mod, as ghc-mod works out which packages should
 -- be loaded.
 -- Identify whether this should be inhibited or not
-shouldHideAllPackages :: Cradle -> Bool
-shouldHideAllPackages crdl = not (cradleProject crdl == PlainProject)
+shouldLoadGhcEnvironment :: Cradle -> LoadGhcEnvironment
+shouldLoadGhcEnvironment crdl =
+  if cradleProject crdl == PlainProject
+    then LoadGhcEnvironment
+    else DontLoadGhcEnvironment
