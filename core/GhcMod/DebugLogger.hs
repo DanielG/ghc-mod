@@ -134,7 +134,8 @@ gmPrintDoc_ mode pprCols putS doc
     put (ZStr s) next = putS (zString s) >> next
 #endif
 #if __GLASGOW_HASKELL__ >= 806
-    put (LStr s) next = putS (unpackLitString s) >> next
+    put (LStr s) next   = putS (unpackLitString s) >> next
+    put (RStr n c) next = putS (replicate n c) >> next
 #else
     put (LStr s _l) next = putS (unpackLitString s) >> next
 #endif
