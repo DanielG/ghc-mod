@@ -53,10 +53,3 @@ job-ghc710:
   <<: *common_before_script
   <<: *common_script
   <<: *common_artifacts
-
-job-ghc708:
-  image: registry.gitlab.com/dxld/ghc-mod:ghc7.8.4-cabal-install2.0.0.1
-  stage: build
-  <<: *common_before_script
-  <<: *common_script
-  <<: *common_artifacts
