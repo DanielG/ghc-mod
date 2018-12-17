@@ -81,15 +81,13 @@ nil            do not display errors/warnings.
     (if ghc-check-command
 	(let ((opts (ghc-haskell-list-of-string ghc-hlint-options)))
 	  (if opts
-	      (format "lint %s %s\n" opts file)
+	      (format "ascii-escape lint %s %s\n\n" opts file)
 	    (format "lint %s\n" file)))
       (format "check %s\n" file))))
 
 (defun ghc-haskell-list-of-string (los)
   (when los
-    (concat "["
-	    (mapconcat (lambda (x) (concat "\"" x "\"")) los ", ")
-	    "]")))
+    (mapconcat (lambda (x) (concat "-h\x02" x "\x03")) los " ")))
 
 (defun ghc-check-callback (status)
   (cond
