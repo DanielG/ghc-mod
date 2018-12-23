@@ -56,9 +56,12 @@ tweakModSummaryDynFlags ms =
 getModulesGhc' :: GM.IOish m
   => (GM.GmlT m () -> GM.GmlT m a) -> FilePath -> GM.GhcModT m (a, Maybe TypecheckedModule, Maybe ParsedModule)
 getModulesGhc' wrapper targetFile = do
+  liftIO $ putStrLn $ "getModulesGhc':targetFile=" ++ targetFile -- AZ
   cfileName <- liftIO $ canonicalizePath targetFile
   mfs <- GM.getMMappedFiles
+  liftIO $ putStrLn $ "getModulesGhc':got mapped files" -- AZ
   mFileName <- liftIO . canonicalizePath $ getMappedFileName cfileName mfs
+  liftIO $ putStrLn $ "getModulesGhc':got mFileName" -- AZ
   refTypechecked <- liftIO $ newIORef Nothing
   refParsed <- liftIO $ newIORef Nothing
   let keepInfo = pure . (mFileName ==)
@@ -90,6 +93,7 @@ getModulesGhc wrapper targetFiles keepInfo saveTypechecked saveParsed = do
   let ips = map takeDirectory $ Map.keys mfs
       setIncludePaths df = df { GHC.includePaths = ips ++ GHC.includePaths df }
 #endif
+  liftIO $ putStrLn $ "getModulesGhc:calling runGmlTWith'" -- AZ
   GM.runGmlTWith' (map Left targetFiles)
                   (return . setIncludePaths)
                   (Just $ updateHooks keepInfo saveTypechecked saveParsed)

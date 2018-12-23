@@ -83,11 +83,11 @@ getSandboxDb :: Cradle -> IO (Maybe GhcPkgDb)
 getSandboxDb crdl = do
   mConf <- traverse readFile =<< mightExist (sandboxConfigFile crdl)
 
--- #if MIN_VERSION_cabal_helper(1,0,0)
---   bp <- return buildPlatform
--- #else
+#if MIN_VERSION_cabal_helper(1,0,0)
+  bp <- return buildPlatform
+#else
   bp <- buildPlatform readProcess
--- #endif
+#endif
   return $ PackageDb . fixPkgDbVer bp <$> (extractSandboxDbDir =<< mConf)
 
  where

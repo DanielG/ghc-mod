@@ -1,4 +1,12 @@
 {-# LANGUAGE CPP #-}
+{-# LANGUAGE TupleSections #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE DataKinds #-}
+{-# LANGUAGE ImplicitParams #-}
+
+
 module GhcMod.Cradle
   ( findCradle
   , findCradle'
@@ -28,7 +36,8 @@ import System.FilePath
 import System.Environment
 import Prelude
 import Control.Monad.Trans.Journal (runJournalT)
-import Distribution.Helper (runQuery, mkQueryEnv, compilerVersion, distDir)
+-- import Distribution.Helper (runQuery, mkQueryEnv, compilerVersion, distDir)
+import Distribution.Helper (runQuery, mkQueryEnv, compilerVersion, DistDir(..), ProjType(..), ProjLoc(..), callProcessStderr )
 -- import Distribution.System (buildPlatform)
 import Data.List (intercalate)
 import Data.Version (Version(..))
@@ -42,7 +51,7 @@ import Data.Version (Version(..))
 findCradle :: (GmLog m, IOish m, GmOut m) => Programs -> m Cradle
 findCradle progs = findCradle' progs =<< liftIO getCurrentDirectory
 
-findCradleNoLog  :: forall m. (IOish m, GmOut m) => Programs -> m Cradle
+findCradleNoLog  :: forall m pt. (IOish m, GmOut m) => Programs -> m Cradle
 findCradleNoLog progs =
     fst <$> (runJournalT (findCradle progs) :: m (Cradle, GhcModLog))
 
@@ -107,7 +116,11 @@ cabalCradle cabalProg wdir = do
     --       Or default to is for cabal >= 2.0 ?, unless flag saying old style
     if isDistNewstyle
       then do
-        dd <- liftIO $ runQuery (mkQueryEnv cabalDir "dist-newstyle") distDir
+        -- dd <- liftIO $ runQuery (mkQueryEnv cabalDir "dist-newstyle") distDir
+
+        -- runQuery :: Query pt a -> QueryEnv pt -> IO a
+        -- dd <- liftIO $ runQuery (mkQueryEnv cabalDir "dist-newstyle") distDir
+        let dd = "dist-newstyle"
 
         gmLog GmInfo "" $ text "Using Cabal new-build project at" <+>: text cabalDir
         return Cradle {
@@ -226,3 +239,47 @@ shouldLoadGhcEnvironment crdl =
   if cradleProject crdl == PlainProject
     then LoadGhcEnvironment
     else DontLoadGhcEnvironment
+
+-- ---------------------------------------------------------------------
+-- The following is moved here from cabal-helper test/GhcSession.hs
+
+data ProjSetup pt =
+  ProjSetup
+    { psDistDir   :: FilePath -> DistDir pt
+    , psProjDir   :: FilePath -> ProjLoc pt
+    , psConfigure :: FilePath -> IO ()
+    , psBuild     :: FilePath -> IO ()
+    , psSdist     :: FilePath -> FilePath -> IO ()
+    }
+
+oldBuild :: ProjSetup 'V1
+oldBuild = ProjSetup
+    { psDistDir   = \dir -> DistDirV1 (dir </> "dist")
+    , psProjDir   = \cabal_file -> ProjLocCabalFile cabal_file
+    , psConfigure = \dir ->
+        runWithCwd dir "cabal" [ "configure" ]
+    , psBuild     = \dir ->
+        runWithCwd dir "cabal" [ "build" ]
+    , psSdist     = \srcdir destdir ->
+        runWithCwd srcdir "cabal" [ "sdist", "-v0", "--output-dir", destdir ]
+    }
+
+newBuild :: ProjSetup 'V2
+newBuild = ProjSetup
+    { psDistDir   = \dir  -> DistDirV2 (dir </> "dist-newstyle")
+    , psProjDir   = \cabal_file -> ProjLocV2Dir (takeDirectory cabal_file)
+    , psConfigure = \dir ->
+        runWithCwd dir "cabal" [ "new-configure" ]
+    , psBuild     = \dir ->
+        runWithCwd dir "cabal" [ "new-build" ]
+    , psSdist     = \srcdir destdir ->
+        runWithCwd srcdir "cabal" [ "sdist", "-v0", "--output-dir", destdir ]
+    }
+
+runWithCwd :: FilePath -> String -> [String] -> IO ()
+runWithCwd cwd x xs = do
+  let ?verbose = True
+  callProcessStderr (Just cwd) x xs
+
+
+-- ---------------------------------------------------------------------

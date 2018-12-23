@@ -30,6 +30,7 @@ import Data.IORef
 import Data.Label.Derive
 import Distribution.Helper hiding (Programs(..))
 import qualified Distribution.Helper as CabalHelper
+-- CabalHelper.Shared.InterfaceTypes
 import Exception (ExceptionMonad)
 #if __GLASGOW_HASKELL__ < 708
 import qualified MonadUtils as GHC (MonadIO(..))
@@ -154,18 +155,18 @@ data StackEnv = StackEnv {
 
 -- | The environment where this library is used.
 data Cradle = Cradle {
-    cradleProject    :: Project
+    cradleProject    :: !Project
   -- | The directory where this library is executed.
-  , cradleCurrentDir :: FilePath
+  , cradleCurrentDir :: !FilePath
   -- | The project root directory.
-  , cradleRootDir    :: FilePath
+  , cradleRootDir    :: !FilePath
   -- | Per-Project temporary directory
-  , cradleTempDir    :: FilePath
+  , cradleTempDir    :: !FilePath
   -- | The file name of the found cabal file.
-  , cradleCabalFile  :: Maybe FilePath
+  , cradleCabalFile  :: !(Maybe FilePath)
   -- | The build info directory.
-  , cradleDistDir    :: FilePath
-  } deriving (Eq, Show, Ord)
+  , cradleDistDir    :: !FilePath
+  } deriving (Eq, Ord, Show)
 
 data LoadGhcEnvironment = LoadGhcEnvironment
                         | DontLoadGhcEnvironment
@@ -299,15 +300,16 @@ instance Monoid GmModuleGraph where
 data GmComponentType = GMCRaw
                      | GMCResolved
 data GmComponent (t :: GmComponentType) eps = GmComponent {
-    gmcHomeModuleGraph :: GmModuleGraph
-  , gmcGhcOpts         :: [GHCOption]
-  , gmcGhcPkgOpts      :: [GHCOption]
-  , gmcGhcSrcOpts      :: [GHCOption]
-  , gmcGhcLangOpts     :: [GHCOption]
-  , gmcRawEntrypoints  :: ChEntrypoint
-  , gmcEntrypoints     :: eps
-  , gmcSourceDirs      :: [FilePath]
-  , gmcName            :: ChComponentName
+    gmcHomeModuleGraph  :: GmModuleGraph
+  , gmcGhcOpts          :: [GHCOption]
+  , gmcGhcPkgOpts       :: [GHCOption]
+  , gmcGhcSrcOpts       :: [GHCOption]
+  , gmcGhcLangOpts      :: [GHCOption]
+  , gmcRawEntrypoints   :: ChEntrypoint
+  , gmcEntrypoints      :: eps
+  , gmcSourceDirs       :: [FilePath]
+  , gmcName             :: ChComponentName
+  , gmcNeedsBuildOutput :: NeedsBuildOutput
   } deriving (Eq, Ord, Show, Read, Generic, Functor)
 
 instance Binary eps => Binary (GmComponent t eps) where
@@ -386,6 +388,12 @@ instance Binary ChComponentName where
     put = ggput . from
     get = to `fmap` ggget
 instance Binary ChEntrypoint where
+    put = ggput . from
+    get = to `fmap` ggget
+instance Binary ChLibraryName where
+    put = ggput . from
+    get = to `fmap` ggget
+instance Binary NeedsBuildOutput where
     put = ggput . from
     get = to `fmap` ggget
 

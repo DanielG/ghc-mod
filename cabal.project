@@ -1,11 +1,10 @@
 packages: .
           ./core
-          -- ../cabal-helper
-          -- ../polyparse
+          ../cabal-helper
 
 
-source-repository-package
-    type: git
-    location: https://github.com/alanz/cabal-helper
-    tag: 3d13936af2f8fa565e0a64431c6ed309b91b2695
+-- source-repository-package
+--     type: git
+--     location: https://github.com/alanz/cabal-helper
+--     tag: 3d13936af2f8fa565e0a64431c6ed309b91b2695
 

@@ -15,6 +15,9 @@
 -- along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 {-# LANGUAGE CPP #-}
+{-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeFamilies #-}
 module GhcMod.CabalHelper
   ( getComponents
   , getGhcMergedPkgOptions
@@ -24,12 +27,14 @@ module GhcMod.CabalHelper
   , withCabal
 
   , runCHQuery
-  , packageId
+  -- , packageId
   ) where
 
 import Control.Applicative
 import Control.Monad
 import Control.Category ((.))
+import Data.List.NonEmpty ( NonEmpty(..))
+import qualified Data.Map as Map
 import Data.Maybe
 import Data.Monoid
 import Data.Version
@@ -57,24 +62,26 @@ import Paths_ghc_mod_core as GhcMod
 -- access home modules
 getGhcMergedPkgOptions :: (Applicative m, IOish m, Gm m)
   => m [GHCOption]
-getGhcMergedPkgOptions = chCached $ \distdir -> Cached {
-  cacheLens = Just (lGmcMergedPkgOptions . lGmCaches),
-  cacheFile = mergedPkgOptsCacheFile distdir,
-  cachedAction = \_tcf (_progs, _projdir, _ver) _ma -> do
-    opts <- runCHQuery ghcMergedPkgOptions
-    return ([setupConfigPath distdir], opts)
- }
+getGhcMergedPkgOptions = undefined
+-- getGhcMergedPkgOptions = chCached $ \distdir -> Cached {
+--   cacheLens = Just (lGmcMergedPkgOptions . lGmCaches),
+--   cacheFile = mergedPkgOptsCacheFile distdir,
+--   cachedAction = \_tcf (_progs, _projdir, _ver) _ma -> do
+--     opts <- runCHQuery ghcMergedPkgOptions
+--     return ([setupConfigPath distdir], opts)
+--  }
 
 getCabalPackageDbStack :: (IOish m, Gm m) => m [GhcPkgDb]
-getCabalPackageDbStack = chCached $ \distdir -> Cached {
-  cacheLens = Just (lGmcPackageDbStack . lGmCaches),
-  cacheFile = pkgDbStackCacheFile distdir,
-  cachedAction = \_tcf (_progs, _projdir, _ver) _ma -> do
-    crdl <- cradle
-    dbs <- map chPkgToGhcPkg <$>
-             runCHQuery packageDbStack
-    return ([setupConfigFile crdl, sandboxConfigFile crdl], dbs)
- }
+getCabalPackageDbStack = undefined
+-- getCabalPackageDbStack = chCached $ \distdir -> Cached {
+--   cacheLens = Just (lGmcPackageDbStack . lGmCaches),
+--   cacheFile = pkgDbStackCacheFile distdir,
+--   cachedAction = \_tcf (_progs, _projdir, _ver) _ma -> do
+--     crdl <- cradle
+--     dbs <- map chPkgToGhcPkg <$>
+--              runCHQuery packageDbStack
+--     return ([setupConfigFile crdl, sandboxConfigFile crdl], dbs)
+--  }
 
 chPkgToGhcPkg :: ChPkgDb -> GhcPkgDb
 chPkgToGhcPkg ChPkgGlobal = GlobalDb
@@ -88,54 +95,173 @@ chPkgToGhcPkg (ChPkgSpecific f) = PackageDb f
 -- 'resolveGmComponents'.
 getComponents :: (Applicative m, IOish m, Gm m)
               => m [GmComponent 'GMCRaw ChEntrypoint]
-getComponents = chCached $ \distdir -> Cached {
-    cacheLens = Just (lGmcComponents . lGmCaches),
-    cacheFile = cabalHelperCacheFile distdir,
-    cachedAction = \ _tcf (_progs, _projdir, _ver) _ma -> do
-      cs <- runCHQuery $ components $
-             GmComponent mempty
-               CH.<$> ghcOptions
-               CH.<.> ghcPkgOptions
-               CH.<.> ghcSrcOptions
-               CH.<.> ghcLangOptions
-               CH.<.> entrypoints
-               CH.<.> entrypoints
-               CH.<.> sourceDirs
-      return ([setupConfigPath distdir], cs)
-  }
+getComponents = do
+  liftIO $ putStrLn $ "CabalHelper.getComponents entered" -- AZ
+  unit :| _ <- runCHQuery projectUnits
+  ui <- runCHQuery $ unitInfo unit
+  liftIO $ putStrLn $ "CabalHelper.getComponents got ui" -- AZ
+  cs <- runCHQuery $ do
+    let
+      doComp :: (ChComponentName, ChComponentInfo) -> GmComponent 'GMCRaw ChEntrypoint
+      doComp (cn,ci) =
+        GmComponent
+         { gmcHomeModuleGraph = mempty
+         , gmcGhcOpts         = ciGhcOptions     ci
+         , gmcGhcPkgOpts      = ciGhcPkgOptions  ci
+         , gmcGhcSrcOpts      = ciGhcSrcOptions  ci
+         , gmcGhcLangOpts     = ciGhcLangOptions ci
+         , gmcRawEntrypoints  = ciEntrypoints    ci
+         , gmcEntrypoints     = ciEntrypoints    ci
+         , gmcSourceDirs      = ciSourceDirs     ci
+         , gmcName            = ciComponentName  ci
+         , gmcNeedsBuildOutput = ciNeedsBuildOutput ci
+         }
 
-getQueryEnv :: (IOish m, GmOut m, GmEnv m) => m QueryEnv
+    return ( map doComp $ Map.toList $ uiComponents ui)
+  liftIO $ putStrLn $ "CabalHelper.getComponents got cs" -- AZ
+  return cs
+
+-- getComponents = chCached $ \distdir -> Cached {
+--     cacheLens = Just (lGmcComponents . lGmCaches),
+--     cacheFile = cabalHelperCacheFile distdir,
+--     cachedAction = \ _tcf (_progs, _projdir, _ver) _ma -> do
+--       cs <- runCHQuery $ components $
+--              GmComponent mempty
+--                CH.<$> ghcOptions
+--                CH.<.> ghcPkgOptions
+--                CH.<.> ghcSrcOptions
+--                CH.<.> ghcLangOptions
+--                CH.<.> entrypoints
+--                CH.<.> entrypoints
+--                CH.<.> sourceDirs
+--       return ([setupConfigPath distdir], cs)
+--   }
+
+-- getQueryEnv :: forall m pt. (IOish m, GmOut m, GmEnv m) => m (Maybe ( QueryEnv pt))
+getQueryEnv :: (IOish m, GmOut m, GmEnv m) => m (QueryEnv pt)
+getQueryEnv = undefined
+  {-
 getQueryEnv = do
   crdl <- cradle
   progs <- patchStackPrograms crdl =<< (optPrograms <$> options)
   readProc <- gmReadProcess
-  let projdir = cradleRootDir crdl
-      distdir = projdir </> cradleDistDir crdl
-  return (mkQueryEnv projdir distdir) {
-                  qeReadProcess = readProc
-                , qePrograms = helperProgs progs
-                }
+  case cradleCabalFile crdl of
+    Nothing -> return Nothing
+    Just cabalFile -> do
+      let
+        distdirCradle = cradleDistDir crdl
+        (projdir,distdir) = case cradleProject crdl of
+          CabalProject     -> (ProjLocCabalFile cabalFile,DistDirV1 distdirCradle)
+          CabalNewProject  -> (ProjLocCabalFile cabalFile,DistDirV2 distdirCradle)
+          SandboxProject   -> (ProjLocCabalFile cabalFile,DistDirV1 distdirCradle)
+          PlainProject     -> (ProjLocCabalFile cabalFile,DistDirV1 distdirCradle)
+          StackProject env -> (ProjLocCabalFile cabalFile,DistDirStack distdirCradle)
+      qe <- liftIO $ mkQueryEnv projdir distdir
+      return (Just qe)
+  -- let
+  --   (projdir,distdir) = case cradleProject crdl of
+  --     CabalProject     -> (ProjLocCabalFile cabalFile,DisDirV1 distdir)
+  --     CabalNewProject  -> (ProjLocCabalFile cabalFile,DisDirV1 distdir)
+  --     SandboxProject   -> (ProjLocCabalFile cabalFile,DisDirV1 distdir)
+  --     PlainProject     -> (ProjLocCabalFile cabalFile,DisDirV1 distdir)
+  --     StackProject env -> (ProjLocCabalFile cabalFile,DisDirV1 distdir)
+  -- return (mkQueryEnv projdir distdir) {
+  --                 qeReadProcess = readProc
+  --               , qePrograms = helperProgs progs
+  --               }
+  {-
+    let projdir = takeDirectory cabal_file
+    qe <- mkQueryEnv
+            (psProjDir cabal_file)
+            (psDistDir projdir)
 
-runCHQuery :: (IOish m, GmOut m, GmEnv m) => Query m b -> m b
+-}
+-- getQueryEnv = do
+--   crdl <- cradle
+--   progs <- patchStackPrograms crdl =<< (optPrograms <$> options)
+--   readProc <- gmReadProcess
+--   let projdir = cradleRootDir crdl
+--       distdir = projdir </> cradleDistDir crdl
+--   return (mkQueryEnv projdir distdir) {
+--                   qeReadProcess = readProc
+--                 , qePrograms = helperProgs progs
+--                 }
+-}
+
+runCHQuery :: (IOish m, GmOut m, GmEnv m) => Query pt b -> m b
 runCHQuery a = do
   qe <- getQueryEnv
-  runQuery qe a
+  liftIO $ runQuery a qe
+-- runQuery :: Query pt a -> QueryEnv pt -> IO a
 
+withQueryEnv :: (IOish m, GmOut m, GmEnv m) => (forall pt.QueryEnv pt -> IO a) -> m (Maybe a)
+withQueryEnv f = do
+  crdl <- cradle
+  progs <- patchStackPrograms crdl =<< (optPrograms <$> options)
+  readProc <- gmReadProcess
+  case cradleCabalFile crdl of
+    Nothing -> return Nothing
+    Just cabalFile ->
+      case cradleProject crdl of
+        CabalProject      -> Just <$> runProjSetup oldBuild   cabalFile f
+        CabalNewProject   -> Just <$> runProjSetup newBuild   cabalFile f
+        SandboxProject    -> Just <$> runProjSetup oldBuild   cabalFile f
+        StackProject _env -> Just <$> runProjSetup stackBuild cabalFile f
+        PlainProject      -> return Nothing
+
+runProjSetup :: (IOish m, GmOut m, GmEnv m) => ProjSetup pt -> FilePath -> (QueryEnv pt -> IO a) -> m a
+runProjSetup ps cabalFile f = do
+  let projdir = takeDirectory cabalFile
+  qe <- liftIO $ mkQueryEnv
+          (psProjDir ps $ cabalFile)
+          (psDistDir ps $ projdir)
+  liftIO $ f qe
+
+data ProjSetup pt =
+  ProjSetup
+    { psDistDir   :: FilePath -> DistDir pt
+    , psProjDir   :: FilePath -> ProjLoc pt
+    }
+
+oldBuild :: ProjSetup 'V1
+oldBuild = ProjSetup
+    { psDistDir   = \dir        -> DistDirV1 (dir </> "dist")
+    , psProjDir   = \cabal_file -> ProjLocCabalFile cabal_file
+    }
+
+newBuild :: ProjSetup 'V2
+newBuild = ProjSetup
+    { psDistDir   = \dir  -> DistDirV2 (dir </> "dist-newstyle")
+    , psProjDir   = \cabal_file -> ProjLocV2Dir (takeDirectory cabal_file)
+    }
+
+stackBuild :: ProjSetup 'Stack
+stackBuild = ProjSetup
+    { psDistDir   = \_dir  -> DistDirStack Nothing
+    , psProjDir   = \cabal_file -> ProjLocStackDir (takeDirectory cabal_file)
+    }
+
+-- ---------------------------------------------------------------------
 
 prepareCabalHelper :: (IOish m, GmEnv m, GmOut m, GmLog m) => m ()
 prepareCabalHelper = do
+  liftIO $ putStrLn $ "CabalHelper.prepareCabalHelper entered" -- AZ
   crdl <- cradle
-  when (isCabalHelperProject $ cradleProject crdl) $
-       withCabal $ prepare =<< getQueryEnv
+  when (isCabalHelperProject $ cradleProject crdl) $ do
+       -- withCabal $ prepare =<< getQueryEnv
+       qe <- getQueryEnv
+       withCabal $ liftIO (prepare qe)
 
 withAutogen :: (IOish m, GmEnv m, GmOut m, GmLog m) => m a -> m a
 withAutogen action = do
-    gmLog GmDebug "" $ strDoc $ "making sure autogen files exist"
+    gmLog GmDebug "" $ strDoc "making sure autogen files exist"
     crdl <- cradle
     let projdir = cradleRootDir crdl
         distdir = projdir </> cradleDistDir crdl
 
-    (pkgName', _) <- runCHQuery packageId
+    -- (pkgName', _) <- runCHQuery packageId
+    (pkgName', _) <- runCHQuery undefined
+    unit :| _ <- runCHQuery projectUnits
 
     mCabalFile          <- liftIO $ timeFile `traverse` cradleCabalFile crdl
     mCabalMacroHeader   <- liftIO $ timeMaybe (distdir </> macrosHeaderPath)
@@ -143,14 +269,14 @@ withAutogen action = do
 
     when (mCabalMacroHeader < mCabalFile || mCabalPathsModule < mCabalFile) $ do
       gmLog GmDebug "" $ strDoc $ "autogen files out of sync"
-      writeAutogen
+      writeAutogen unit
 
     action
 
  where
-   writeAutogen = do
-     gmLog GmDebug "" $ strDoc $ "writing Cabal autogen files"
-     writeAutogenFiles =<< getQueryEnv
+   writeAutogen unit = do
+     gmLog GmDebug "" $ strDoc "writing Cabal autogen files"
+     runCHQuery $ writeAutogenFiles unit
 
 
 withCabal :: (IOish m, GmEnv m, GmOut m, GmLog m) => m a -> m a
@@ -166,8 +292,12 @@ withCabal action = do
     (flgs, pkgDbStackOutOfSync) <- do
       if haveSetupConfig
         then runCHQuery $ do
-          flgs <- nonDefaultConfigFlags
-          pkgDb <- map chPkgToGhcPkg <$> packageDbStack
+          unit :| _ <- projectUnits
+          ui <- unitInfo unit
+          -- flgs <- nonDefaultConfigFlags
+          let flgs = uiNonDefaultConfigFlags ui
+          -- pkgDb <- map chPkgToGhcPkg <$> packageDbStack
+          let pkgDb = map chPkgToGhcPkg (uiPackageDbStack ui)
           return (flgs, fromMaybe False $ (pkgDb /=) <$> cusPkgDb)
         else return ([], False)
 
@@ -275,11 +405,12 @@ isSetupConfigOutOfDate worldCabalFile worldCabalConfig = do
   worldCabalConfig < worldCabalFile
 
 helperProgs :: Programs -> CH.Programs
-helperProgs progs = CH.Programs {
-    cabalProgram  = T.cabalProgram progs,
-    ghcProgram    = T.ghcProgram progs,
-    ghcPkgProgram = T.ghcPkgProgram progs
-  }
+helperProgs = undefined
+-- helperProgs progs = CH.Programs {
+--     cabalProgram  = T.cabalProgram progs,
+--     ghcProgram    = T.ghcProgram progs,
+--     ghcPkgProgram = T.ghcPkgProgram progs
+--   }
 
 chCached :: (Applicative m, IOish m, Gm m, Binary a)
   => (FilePath -> Cached m GhcModState ChCacheData a) -> m a
