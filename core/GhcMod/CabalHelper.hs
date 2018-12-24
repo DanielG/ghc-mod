@@ -42,6 +42,7 @@ import Data.Binary (Binary)
 import Data.Traversable
 import Distribution.Helper hiding (Programs(..))
 import qualified Distribution.Helper as CH
+import GhcMod.Cradle
 import qualified GhcMod.Types as T
 import GhcMod.Types
 import GhcMod.Monad.Types
@@ -188,13 +189,29 @@ getQueryEnv = do
 --                 }
 -}
 
-runCHQuery :: (IOish m, GmOut m, GmEnv m) => Query pt b -> m b
+runCHQuery :: forall m pt b.(IOish m, GmOut m, GmEnv m) => Query (pt :: ProjType) b -> m b
 runCHQuery a = do
-  qe <- getQueryEnv
-  liftIO $ runQuery a qe
--- runQuery :: Query pt a -> QueryEnv pt -> IO a
+  crdl <- cradle
+  progs <- patchStackPrograms crdl =<< (optPrograms <$> options)
+  readProc <- gmReadProcess
+  case cradleCabalFile crdl of
+    Nothing -> error "runCHQuery 1"
+    Just cabalFile ->
+      case cradleProject crdl of
+        CabalProject      -> runProjSetup oldBuild   cabalFile (\qe -> runQuery a qe)
+        CabalNewProject   -> runProjSetup newBuild   cabalFile (\qe -> runQuery a qe)
+        SandboxProject    -> runProjSetup oldBuild   cabalFile (\qe -> runQuery a qe)
+        StackProject _env -> runProjSetup stackBuild cabalFile (\qe -> runQuery a qe)
+        PlainProject      -> error "runCHQuery 2"
+{-
+runCHQuery a = do
+--   qe <- getQueryEnv
+--   liftIO $ runQuery a qe
+-- -- runQuery :: Query pt a -> QueryEnv pt -> IO a
+-}
 
-withQueryEnv :: (IOish m, GmOut m, GmEnv m) => (forall pt.QueryEnv pt -> IO a) -> m (Maybe a)
+-- withQueryEnv :: (IOish m, GmOut m, GmEnv m) => (forall pt . QueryEnv (pt :: ProjType) -> IO a) -> m (Maybe a)
+withQueryEnv :: (IOish m, GmOut m, GmEnv m) => (forall pt . QueryEnv (pt :: ProjType) -> IO a) -> m (Maybe a)
 withQueryEnv f = do
   crdl <- cradle
   progs <- patchStackPrograms crdl =<< (optPrograms <$> options)
@@ -209,7 +226,8 @@ withQueryEnv f = do
         StackProject _env -> Just <$> runProjSetup stackBuild cabalFile f
         PlainProject      -> return Nothing
 
-runProjSetup :: (IOish m, GmOut m, GmEnv m) => ProjSetup pt -> FilePath -> (QueryEnv pt -> IO a) -> m a
+runProjSetup :: (IOish m, GmOut m, GmEnv m)
+             => ProjSetup (pt :: ProjType) -> FilePath -> (QueryEnv (pt :: ProjType) -> IO a) -> m a
 runProjSetup ps cabalFile f = do
   let projdir = takeDirectory cabalFile
   qe <- liftIO $ mkQueryEnv
@@ -217,29 +235,6 @@ runProjSetup ps cabalFile f = do
           (psDistDir ps $ projdir)
   liftIO $ f qe
 
-data ProjSetup pt =
-  ProjSetup
-    { psDistDir   :: FilePath -> DistDir pt
-    , psProjDir   :: FilePath -> ProjLoc pt
-    }
-
-oldBuild :: ProjSetup 'V1
-oldBuild = ProjSetup
-    { psDistDir   = \dir        -> DistDirV1 (dir </> "dist")
-    , psProjDir   = \cabal_file -> ProjLocCabalFile cabal_file
-    }
-
-newBuild :: ProjSetup 'V2
-newBuild = ProjSetup
-    { psDistDir   = \dir  -> DistDirV2 (dir </> "dist-newstyle")
-    , psProjDir   = \cabal_file -> ProjLocV2Dir (takeDirectory cabal_file)
-    }
-
-stackBuild :: ProjSetup 'Stack
-stackBuild = ProjSetup
-    { psDistDir   = \_dir  -> DistDirStack Nothing
-    , psProjDir   = \cabal_file -> ProjLocStackDir (takeDirectory cabal_file)
-    }
 
 -- ---------------------------------------------------------------------
 

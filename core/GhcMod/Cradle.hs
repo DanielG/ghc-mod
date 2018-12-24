@@ -15,6 +15,9 @@ module GhcMod.Cradle
   , cleanupCradle
   , shouldLoadGhcEnvironment
 
+  , oldBuild
+  , newBuild
+  , stackBuild
   -- * for @spec@
   , plainCradle
   ) where
@@ -243,37 +246,22 @@ shouldLoadGhcEnvironment crdl =
 -- ---------------------------------------------------------------------
 -- The following is moved here from cabal-helper test/GhcSession.hs
 
-data ProjSetup pt =
-  ProjSetup
-    { psDistDir   :: FilePath -> DistDir pt
-    , psProjDir   :: FilePath -> ProjLoc pt
-    , psConfigure :: FilePath -> IO ()
-    , psBuild     :: FilePath -> IO ()
-    , psSdist     :: FilePath -> FilePath -> IO ()
-    }
-
 oldBuild :: ProjSetup 'V1
 oldBuild = ProjSetup
-    { psDistDir   = \dir -> DistDirV1 (dir </> "dist")
+    { psDistDir   = \dir        -> DistDirV1 (dir </> "dist")
     , psProjDir   = \cabal_file -> ProjLocCabalFile cabal_file
-    , psConfigure = \dir ->
-        runWithCwd dir "cabal" [ "configure" ]
-    , psBuild     = \dir ->
-        runWithCwd dir "cabal" [ "build" ]
-    , psSdist     = \srcdir destdir ->
-        runWithCwd srcdir "cabal" [ "sdist", "-v0", "--output-dir", destdir ]
     }
 
 newBuild :: ProjSetup 'V2
 newBuild = ProjSetup
     { psDistDir   = \dir  -> DistDirV2 (dir </> "dist-newstyle")
     , psProjDir   = \cabal_file -> ProjLocV2Dir (takeDirectory cabal_file)
-    , psConfigure = \dir ->
-        runWithCwd dir "cabal" [ "new-configure" ]
-    , psBuild     = \dir ->
-        runWithCwd dir "cabal" [ "new-build" ]
-    , psSdist     = \srcdir destdir ->
-        runWithCwd srcdir "cabal" [ "sdist", "-v0", "--output-dir", destdir ]
+    }
+
+stackBuild :: ProjSetup 'Stack
+stackBuild = ProjSetup
+    { psDistDir   = \_dir  -> DistDirStack Nothing
+    , psProjDir   = \cabal_file -> ProjLocStackDir (takeDirectory cabal_file)
     }
 
 runWithCwd :: FilePath -> String -> [String] -> IO ()

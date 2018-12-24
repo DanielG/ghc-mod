@@ -155,18 +155,24 @@ data StackEnv = StackEnv {
 
 -- | The environment where this library is used.
 data Cradle = Cradle {
-    cradleProject    :: !Project
+    cradleProject    :: Project
   -- | The directory where this library is executed.
-  , cradleCurrentDir :: !FilePath
+  , cradleCurrentDir :: FilePath
   -- | The project root directory.
-  , cradleRootDir    :: !FilePath
+  , cradleRootDir    :: FilePath
   -- | Per-Project temporary directory
-  , cradleTempDir    :: !FilePath
+  , cradleTempDir    :: FilePath
   -- | The file name of the found cabal file.
-  , cradleCabalFile  :: !(Maybe FilePath)
+  , cradleCabalFile  :: Maybe FilePath
   -- | The build info directory.
-  , cradleDistDir    :: !FilePath
+  , cradleDistDir    :: FilePath
   } deriving (Eq, Ord, Show)
+
+data ProjSetup (pt :: ProjType) =
+  ProjSetup
+    { psDistDir   :: FilePath -> DistDir pt
+    , psProjDir   :: FilePath -> ProjLoc pt
+    }
 
 data LoadGhcEnvironment = LoadGhcEnvironment
                         | DontLoadGhcEnvironment
