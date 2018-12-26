@@ -34,7 +34,7 @@ module GhcMod.CabalHelper
 import Control.Applicative
 import Control.Monad
 import Control.Category ((.))
-import Data.List.NonEmpty ( NonEmpty(..))
+import Data.List.NonEmpty ( NonEmpty(..), toList)
 import qualified Data.Map as Map
 import Data.Maybe
 import Data.Monoid
@@ -98,26 +98,26 @@ chPkgToGhcPkg (ChPkgSpecific f) = PackageDb f
 getComponents :: (Applicative m, IOish m, Gm m)
               => ProjSetup pt -> m [GmComponent 'GMCRaw ChEntrypoint]
 getComponents ps = do
-  unit :| _ <- runCHQuery ps projectUnits
-  ui <- runCHQuery ps $ unitInfo unit
-  cs <- runCHQuery ps $ do
-    let
-      doComp :: (ChComponentName, ChComponentInfo) -> GmComponent 'GMCRaw ChEntrypoint
-      doComp (cn,ci) =
-        GmComponent
-         { gmcHomeModuleGraph = mempty
-         , gmcGhcOpts         = ciGhcOptions     ci
-         , gmcGhcPkgOpts      = ciGhcPkgOptions  ci
-         , gmcGhcSrcOpts      = ciGhcSrcOptions  ci
-         , gmcGhcLangOpts     = ciGhcLangOptions ci
-         , gmcRawEntrypoints  = ciEntrypoints    ci
-         , gmcEntrypoints     = ciEntrypoints    ci
-         , gmcSourceDirs      = ciSourceDirs     ci
-         , gmcName            = ciComponentName  ci
-         , gmcNeedsBuildOutput = ciNeedsBuildOutput ci
-         }
+  let
+    doComp :: (ChComponentName, ChComponentInfo) -> GmComponent 'GMCRaw ChEntrypoint
+    doComp (cn,ci) =
+      GmComponent
+       { gmcHomeModuleGraph = mempty
+       , gmcGhcOpts         = ciGhcOptions     ci
+       , gmcGhcPkgOpts      = ciGhcPkgOptions  ci
+       , gmcGhcSrcOpts      = ciGhcSrcOptions  ci
+       , gmcGhcLangOpts     = ciGhcLangOptions ci
+       , gmcRawEntrypoints  = ciEntrypoints    ci
+       , gmcEntrypoints     = ciEntrypoints    ci
+       , gmcSourceDirs      = ciSourceDirs     ci
+       , gmcName            = ciComponentName  ci
+       , gmcNeedsBuildOutput = ciNeedsBuildOutput ci
+       }
+    foo :: UnitInfo -> [GmComponent 'GMCRaw ChEntrypoint]
+    foo ui = map doComp $ Map.toList $ uiComponents ui
 
-    return ( map doComp $ Map.toList $ uiComponents ui)
+  ff <- runCHQuery ps $ allUnits foo
+  let cs = concat $ toList ff
   return cs
 
 -- getComponents = chCached $ \distdir -> Cached {
@@ -226,6 +226,7 @@ withProjSetup f = do
   case cradleCabalFile crdl of
     Nothing -> return Nothing
     Just cabalFile -> do
+      -- liftIO $ putStrLn $ "withProjSetup:project=" ++ show (cradleProject crdl)
       case cradleProject crdl of
         CabalProject      -> Just <$> f oldBuild
         CabalNewProject   -> Just <$> f newBuild

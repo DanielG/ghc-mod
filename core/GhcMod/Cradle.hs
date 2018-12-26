@@ -60,8 +60,8 @@ findCradleNoLog progs =
 
 findCradle' :: (GmLog m, IOish m, GmOut m) => Programs -> FilePath -> m Cradle
 findCradle' Programs { stackProgram, cabalProgram } dir = run $
-    msum [ stackCradle stackProgram dir
-         , cabalCradle cabalProgram dir
+    msum [ cabalCradle cabalProgram dir
+         , stackCradle stackProgram dir
          , sandboxCradle dir
          , plainCradle dir
          ]
