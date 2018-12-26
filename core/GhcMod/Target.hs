@@ -188,18 +188,14 @@ runGmlTWith' :: IOish m
                  -> GmlT m a
                  -> GhcModT m b
 runGmlTWith' efnmns' mdf mUpdateHooks wrapper action = do
-    liftIO $ putStrLn $ "runGmlTWith' entered" -- AZ
     crdl <- cradle
-    liftIO $ putStrLn $ "runGmlTWith' got cradle" -- AZ
     Options { optGhcUserOptions } <- options
 
     let (fns, mns) = partitionEithers efnmns'
         ccfns = map (cradleCurrentDir crdl </>) fns
     cfns <- mapM getCanonicalFileNameSafe ccfns
     let serfnmn = Set.fromList $ map Right mns ++ map Left cfns
-    liftIO $ putStrLn $ "runGmlTWith' calling targetGhcOptions" -- AZ
     (opts, mappedStrs) <- targetGhcOptions crdl serfnmn
-    liftIO $ putStrLn $ "runGmlTWith' got targetGhcOptions" -- AZ
 
     let opts' = opts ++ ["-O0", "-fno-warn-missing-home-modules"] ++ optGhcUserOptions
 
@@ -252,8 +248,6 @@ targetGhcOptions :: forall m. IOish m
 targetGhcOptions crdl sefnmn = do
     when (Set.null sefnmn) $ error "targetGhcOptions: no targets given"
 
-    liftIO $ putStrLn $ "targetGhcOptions:cradleProject=" ++ show (cradleProject crdl) -- AZ
-    liftIO $ putStrLn $ "targetGhcOptions: isCabalHelperProject=" ++ show (isCabalHelperProject $ cradleProject crdl) -- AZ
     case cradleProject crdl of
       proj
           | isCabalHelperProject proj -> cabalOpts crdl
@@ -266,9 +260,7 @@ targetGhcOptions crdl sefnmn = do
 
    cabalOpts :: Cradle -> GhcModT m ([GHCOption],[FilePath])
    cabalOpts Cradle{..} = do
-       liftIO $ putStrLn $ "targetGhcOptions.cabalOpts:calling cabalResolvedComponents" --AZ
        mcs <- cabalResolvedComponents
-       liftIO $ putStrLn $ "targetGhcOptions.cabalOpts:after cabalResolvedComponents" --AZ
        mappedStrs <- getMMappedFilePaths
        let mappedComps = zipMap (moduleComponents mcs . Left) mappedStrs
        let mdlcs = moduleComponents mcs `zipMap` Set.toList sefnmn
@@ -645,6 +637,10 @@ cabalResolvedComponents :: (IOish m) =>
    GhcModT m (Map ChComponentName (GmComponent 'GMCResolved (Set ModulePath)))
 cabalResolvedComponents = do
     crdl@(Cradle{..}) <- cradle
-    comps <- mapM (resolveEntrypoint crdl) =<< getComponents
-    withAutogen $
-      cached cradleRootDir (resolvedComponentsCache cradleDistDir) comps
+    r <- withProjSetup $ \ps -> do
+      comps <- mapM (resolveEntrypoint crdl) =<< (getComponents ps)
+      withAutogen ps $
+        cached cradleRootDir (resolvedComponentsCache cradleDistDir) comps
+    case r of
+      Just foo -> return foo
+      Nothing -> error "cabalResolvedComponents"
