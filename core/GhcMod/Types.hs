@@ -19,6 +19,7 @@ import Control.Monad
 import Control.DeepSeq
 import Data.Binary
 import Data.Binary.Generic
+import Data.Dynamic (toDyn, fromDynamic, Dynamic)
 import Data.Map (Map)
 import qualified Data.Map as Map
 import Data.Set (Set)
@@ -166,7 +167,9 @@ data Cradle = Cradle {
   , cradleCabalFile  :: Maybe FilePath
   -- | The build info directory.
   , cradleDistDir    :: FilePath
-  } deriving (Eq, Ord, Show)
+  , cradleQueryEnv   :: !(Maybe Dynamic) -- QueryEnv pt
+  }
+  -- } deriving (Eq, Ord, Show)
 
 data ProjSetup (pt :: ProjType) =
   ProjSetup
@@ -224,6 +227,7 @@ data GhcModState = GhcModState {
       gmGhcSession   :: !(Maybe GmGhcSession)
     , gmCaches       :: !GhcModCaches
     , gmMMappedFiles :: !FileMappingMap
+    -- , gmQueryEnvs    :: !
     }
 
 defaultGhcModState :: GhcModState

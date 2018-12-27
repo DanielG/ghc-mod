@@ -34,10 +34,12 @@ module GhcMod.CabalHelper
 import Control.Applicative
 import Control.Monad
 import Control.Category ((.))
+import Data.Dynamic (toDyn, fromDynamic, Dynamic)
 import Data.List.NonEmpty ( NonEmpty(..), toList)
 import qualified Data.Map as Map
 import Data.Maybe
 import Data.Monoid
+import Data.Typeable (Typeable)
 import Data.Version
 import Data.Binary (Binary)
 import Data.Traversable
@@ -95,7 +97,7 @@ chPkgToGhcPkg (ChPkgSpecific f) = PackageDb f
 --
 -- The Component\'s 'gmcHomeModuleGraph' will be empty and has to be resolved by
 -- 'resolveGmComponents'.
-getComponents :: (Applicative m, IOish m, Gm m)
+getComponents :: (Applicative m, IOish m, Gm m, Typeable pt)
               => ProjSetup pt -> m [GmComponent 'GMCRaw ChEntrypoint]
 getComponents ps = do
   let
@@ -187,7 +189,7 @@ getQueryEnv = do
 --                 }
 -}
 
-runCHQuery :: (IOish m, GmOut m, GmEnv m)
+runCHQuery :: (IOish m, GmOut m, GmEnv m, Typeable pt)
            => ProjSetup (pt :: ProjType) -> Query (pt :: ProjType) b -> m b
 runCHQuery ps a = do
   crdl <- cradle
@@ -199,26 +201,45 @@ runCHQuery ps a = do
 
 -- ---------------------------------------------------------------------
 
-runProjSetup :: (IOish m, GmOut m, GmEnv m)
+runProjSetup :: (IOish m, GmOut m, GmEnv m, Typeable pt)
              => ProjSetup (pt :: ProjType) -> FilePath -> (QueryEnv (pt :: ProjType) -> IO a) -> m a
 runProjSetup ps cabalFile f = do
   let projdir = takeDirectory cabalFile
   crdl <- cradle
-  progs <- patchStackPrograms crdl =<< (optPrograms <$> options)
-  readProc <- gmReadProcess
-  qeBare <- liftIO $ mkQueryEnv
-              (psProjDir ps $ cabalFile)
-              (psDistDir ps $ projdir)
-  let qe = qeBare
-             -- { qeReadProcess = \_ -> readProc
-             -- , qePrograms = helperProgs progs
-             -- }
-  r <- liftIO $ f qe
+  -- progs <- patchStackPrograms crdl =<< (optPrograms <$> options)
+  -- readProc <- gmReadProcess
+  -- qeBare <- liftIO $ mkQueryEnv
+  --             (psProjDir ps $ cabalFile)
+  --             (psDistDir ps $ projdir)
+  -- let qe = qeBare
+  --            -- { qeReadProcess = \_ -> readProc
+  --            -- , qePrograms = helperProgs progs
+  --            -- }
+  -- r <- liftIO $ f qe
+  -- return r
+  r <- case cradleCabalFile crdl of
+    Nothing -> error "runProjSetup:Nothing"
+    Just cabalFile -> do
+      runF ps (cradleQueryEnv crdl) f
+      -- case cradleProject crdl of
+      --   CabalProject      -> runF ps (cradleQueryEnv crdl) f
+      --   CabalNewProject   -> liftIO $ f (fromJust $ cradleQueryEnvV2 crdl)
+      --   SandboxProject    -> liftIO $ f (fromJust $ cradleQueryEnvV1 crdl)
+      --   StackProject _env -> liftIO $ f (fromJust $ cradleQueryEnvSt crdl)
+      --   PlainProject      -> error $ "runProjSetup:PlainProject"
   return r
+
+runF :: (MonadIO m, Typeable pt) => ProjSetup (pt :: ProjType) -> (Maybe Dynamic) -> (QueryEnv (pt :: ProjType) -> IO a) -> m a
+runF _ Nothing _   = error "CabalHelper.runF"
+runF _ (Just dqe) f = liftIO $ f qe
+  where
+    qe = case fromDynamic dqe of
+      Nothing -> error "CabalHelper.runF 2"
+      Just qe -> qe
 
 -- ---------------------------------------------------------------------
 
-withProjSetup :: (IOish m, GmOut m, GmEnv m) => (forall pt . ProjSetup pt -> m a) -> m (Maybe a)
+withProjSetup :: (IOish m, GmOut m, GmEnv m) => (forall pt . Typeable pt => ProjSetup pt -> m a) -> m (Maybe a)
 withProjSetup f = do
   crdl <- cradle
   progs <- patchStackPrograms crdl =<< (optPrograms <$> options)
@@ -236,14 +257,14 @@ withProjSetup f = do
 
 -- ---------------------------------------------------------------------
 
-prepareCabalHelper :: (IOish m, GmEnv m, GmOut m, GmLog m) => ProjSetup pt -> m ()
+prepareCabalHelper :: (IOish m, GmEnv m, GmOut m, GmLog m, Typeable pt) => ProjSetup (pt :: ProjType) -> m ()
 prepareCabalHelper ps = do
   crdl <- cradle
   when (isCabalHelperProject $ cradleProject crdl) $ do
        qe <- getQueryEnv
        withCabal ps $ liftIO (prepare qe)
 
-withAutogen :: (IOish m, GmEnv m, GmOut m, GmLog m) => ProjSetup pt -> m a -> m a
+withAutogen :: (IOish m, GmEnv m, GmOut m, GmLog m, Typeable pt) => ProjSetup pt -> m a -> m a
 withAutogen ps action = do
     gmLog GmDebug "" $ strDoc "making sure autogen files exist"
     crdl <- cradle
@@ -271,7 +292,7 @@ withAutogen ps action = do
 
 -- ---------------------------------------------------------------------
 
-withCabal :: (IOish m, GmEnv m, GmOut m, GmLog m) => ProjSetup pt -> m a -> m a
+withCabal :: (IOish m, GmEnv m, GmOut m, GmLog m, Typeable pt) => ProjSetup (pt :: ProjType) -> m a -> m a
 withCabal ps action = do
     crdl <- cradle
     mCabalFile          <- liftIO $ timeFile `traverse` cradleCabalFile crdl
@@ -404,7 +425,7 @@ helperProgs = undefined
 --     ghcPkgProgram = T.ghcPkgProgram progs
 --   }
 
-chCached :: (Applicative m, IOish m, Gm m, Binary a)
+chCached :: (Applicative m, IOish m, Gm m, Binary a, Typeable pt)
   => ProjSetup pt -> (FilePath -> Cached m GhcModState ChCacheData a) -> m a
 chCached ps c = do
   projdir <- cradleRootDir <$> cradle

@@ -33,6 +33,7 @@ import GhcMod.Error
 import Safe
 import Control.Applicative
 import Control.Monad.Trans.Maybe
+import Data.Dynamic (toDyn, fromDynamic, Dynamic)
 import Data.Maybe
 import System.Directory
 import System.FilePath
@@ -40,7 +41,7 @@ import System.Environment
 import Prelude
 import Control.Monad.Trans.Journal (runJournalT)
 -- import Distribution.Helper (runQuery, mkQueryEnv, compilerVersion, distDir)
-import Distribution.Helper (runQuery, mkQueryEnv, compilerVersion, DistDir(..), ProjType(..), ProjLoc(..), callProcessStderr )
+import Distribution.Helper (runQuery, mkQueryEnv, compilerVersion, DistDir(..), ProjType(..), ProjLoc(..), callProcessStderr, QueryEnv )
 -- import Distribution.System (buildPlatform)
 import Data.List (intercalate)
 import Data.Version (Version(..))
@@ -124,6 +125,7 @@ cabalCradle cabalProg wdir = do
         -- runQuery :: Query pt a -> QueryEnv pt -> IO a
         -- dd <- liftIO $ runQuery (mkQueryEnv cabalDir "dist-newstyle") distDir
         let dd = "dist-newstyle"
+        qe <- MaybeT $ Just <$> makeQueryEnv newBuild cabalFile
 
         gmLog GmInfo "" $ text "Using Cabal new-build project at" <+>: text cabalDir
         return Cradle {
@@ -133,8 +135,10 @@ cabalCradle cabalProg wdir = do
           , cradleTempDir    = error "tmpDir"
           , cradleCabalFile  = Just cabalFile
           , cradleDistDir    = dd
+          , cradleQueryEnv   = Just $ toDyn qe
           }
       else do
+        qe <- MaybeT $ Just <$> makeQueryEnv oldBuild cabalFile
         gmLog GmInfo "" $ text "Using Cabal project at" <+>: text cabalDir
         return Cradle {
             cradleProject    = CabalProject
@@ -143,6 +147,7 @@ cabalCradle cabalProg wdir = do
           , cradleTempDir    = error "tmpDir"
           , cradleCabalFile  = Just cabalFile
           , cradleDistDir    = "dist"
+          , cradleQueryEnv   = Just $ toDyn qe
           }
 
 stackCradle ::
@@ -184,6 +189,7 @@ stackCradle stackProg wdir = do
     senv <- MaybeT $ getStackEnv cabalDir stackProg
 
     gmLog GmInfo "" $ text "Using Stack project at" <+>: text cabalDir
+    qe <- MaybeT $ Just <$> makeQueryEnv stackBuild cabalFile
     return Cradle {
         cradleProject    = StackProject senv
       , cradleCurrentDir = wdir
@@ -191,6 +197,7 @@ stackCradle stackProg wdir = do
       , cradleTempDir    = error "tmpDir"
       , cradleCabalFile  = Just cabalFile
       , cradleDistDir    = seDistDir senv
+      , cradleQueryEnv   = Just $ toDyn qe
       }
 
 stackCradleSpec ::
@@ -218,6 +225,7 @@ sandboxCradle wdir = do
       , cradleTempDir    = error "tmpDir"
       , cradleCabalFile  = Nothing
       , cradleDistDir    = "dist"
+      , cradleQueryEnv   = Nothing
       }
 
 plainCradle :: (IOish m, GmLog m, GmOut m) => FilePath -> MaybeT m Cradle
@@ -230,6 +238,7 @@ plainCradle wdir = do
       , cradleTempDir    = error "tmpDir"
       , cradleCabalFile  = Nothing
       , cradleDistDir    = "dist"
+      , cradleQueryEnv   = Nothing
       }
 
 -- | Cabal produces .ghc.environment files which are loaded by GHC if
@@ -269,5 +278,22 @@ runWithCwd cwd x xs = do
   let ?verbose = True
   callProcessStderr (Just cwd) x xs
 
+-- ---------------------------------------------------------------------
+
+makeQueryEnv :: (IOish m, GmOut m)
+             => forall pt. ProjSetup (pt :: ProjType) -> FilePath -> m (QueryEnv (pt :: ProjType))
+makeQueryEnv ps cabalFile = do
+  let projdir = takeDirectory cabalFile
+  -- crdl <- cradle
+  -- progs <- patchStackPrograms crdl =<< (optPrograms <$> options)
+  -- readProc <- gmReadProcess
+  qeBare <- liftIO $ mkQueryEnv
+              (psProjDir ps $ cabalFile)
+              (psDistDir ps $ projdir)
+  let qe = qeBare
+             -- { qeReadProcess = \_ -> readProc
+             -- , qePrograms = helperProgs progs
+             -- }
+  return qe
 
 -- ---------------------------------------------------------------------
