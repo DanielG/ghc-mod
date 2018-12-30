@@ -61,8 +61,8 @@ findCradleNoLog progs =
 
 findCradle' :: (GmLog m, IOish m, GmOut m) => Programs -> FilePath -> m Cradle
 findCradle' Programs { stackProgram, cabalProgram } dir = run $
-    msum [ cabalCradle cabalProgram dir
-         , stackCradle stackProgram dir
+    msum [ stackCradle stackProgram dir
+         , cabalCradle cabalProgram dir
          , sandboxCradle dir
          , plainCradle dir
          ]
@@ -189,6 +189,7 @@ stackCradle stackProg wdir = do
     senv <- MaybeT $ getStackEnv cabalDir stackProg
 
     gmLog GmInfo "" $ text "Using Stack project at" <+>: text cabalDir
+    gmLog GmInfo "" $ text "Using Stack dist dir at" <+>: text (seDistDir senv) -- AZ
     qe <- MaybeT $ Just <$> makeQueryEnv stackBuild cabalFile
     return Cradle {
         cradleProject    = StackProject senv
