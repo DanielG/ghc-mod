@@ -48,11 +48,12 @@ progMain (globalOptions, commands) = runGmOutT globalOptions $
 
 -- ghc-modi
 legacyInteractive :: IOish m => GhcModT m ()
-legacyInteractive = do
-    prepareCabalHelper
-    asyncSymbolDb <- newAsyncSymbolDb
-    world <- getCurrentWorld
-    legacyInteractiveLoop asyncSymbolDb world
+legacyInteractive = undefined
+-- legacyInteractive = do
+--     prepareCabalHelper
+--     asyncSymbolDb <- newAsyncSymbolDb
+--     world <- getCurrentWorld
+--     legacyInteractiveLoop asyncSymbolDb world
 
 legacyInteractiveLoop :: IOish m => AsyncSymbolDb -> World -> GhcModT m ()
 legacyInteractiveLoop asyncSymbolDb world = do
