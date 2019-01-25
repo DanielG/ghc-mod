@@ -1,82 +1,27 @@
 # ghc-mod: Happy Haskell Hacking
 [![build status](https://gitlab.com/dxld/ghc-mod/badges/master/build.svg)](https://gitlab.com/dxld/ghc-mod/commits/master)
 
-ghc-mod provides editors/IDEs with support for Haskell compiler features. It
-supports both Cabal and Stack based projects and integrations exist for Emacs,
-Vim, Atom, IntelliJ and VSCode.
+## Legacy
 
-- for [all Haskell developers (Using ghc-mod in your development environment)](#using-ghc-mod-in-your-development-environment)
-- for [people developing Haskell IDEs (Using ghc-mod as an IDE backend program)](#using-ghc-mod-as-an-ide-backend-program)
-- for [developing Haskell tooling (Using ghc-mod as a library)](#using-ghc-mod-as-a-library)
+Please note that using ghc-mod as a user facing tool for IDE/Editor integration
+is no longer supported or maintained. We are in the process of refocusing our
+efforts around
+[haskell-ide-engine](https://github.com/haskell/haskell-ide-engine) as the main
+user/IDE facing program.
 
-*Note: GHC 8.2 is not currently supported, See [#900](https://github.com/DanielG/ghc-mod/issues/900)*
+Currently haskell-ide-engine still uses ghc-mod as a library for GHC session
+setup, so this part will still be maintained. However moving forward we're
+hoping to move most of the functionality which remains in ghc-mod (the library)
+into GHC upstream rendering ghc-mod unceccesary. Meanwhile ghc-mod (the library)
+will remain.
 
-## Overview
+If someone feels like taking over maintainership of ghc-mod as a standalone
+development tool feel free to contact the maintainer. However I must warn you: a
+mountain of legacy baggage and scattered Editor/IDE plugins awaits. Your time is
+probably better spent improving haskell-ide-engine.
 
-### Using ghc-mod in your Development Environment
-
-To use `ghc-mod` in your development environment of choice you need two things:
-
-  - The `ghc-mod` program included in the package of the same name, see [Installing](https://github.com/DanielG/ghc-mod/wiki/Installing)
-  - A ghc-mod frontend to integrate it into your development environment, see [Frontend](https://github.com/DanielG/ghc-mod/wiki/Frontend)
-
-### Using ghc-mod as an IDE Backend Program
-
-We provide two modes of operation for frontends: interactive and single shot
-mode. The former is accessed by calling `$ ghc-mod legacy-interactive`. This will
-sit and wait for you to type a command, exiting when an empty line is
-entered. Interactive mode is pretty much always faster than single shot mode,
-since it gives ghc-mod the ability to cache the compiler session between
-commands. On the other hand, it needs more memory because it keeps these things
-cached. 
-
-Single shot mode is pretty much only there for (backwards) compatibility with
-Vim, since it only recently got the ability to talk to background processes
-without installing some external plugin. You can use single shot mode by simply
-calling the sub-commands of the `ghc-mod` program. Since recompiling large
-projects can be really, really slow, you really should prefer interactive mode.
-
-As a rule of thumb, all commands available in single shot mode are available in
-interactive mode. A list of the former can be obtained by running 
-`$ ghc-mod --help`.
-
-If you're developing a new ghc-mod frontend, we'd love to hear from you! Please
-open an issue or e-mail the maintainer. Also, we invite you to add installation
-and configuration instructions to
-[Frontend](https://github.com/DanielG/ghc-mod/wiki/Frontend).
-
-### Using ghc-mod as a Library
-
-Internally, ghc-mod uses the Glasgow Haskell Compiler's API to implement most of
-its functionality.
-
-In order to provide a hassle-free experience to users, ghc-mod tries hard to
-automatically, and correctly, detect and, if necessary, tweak the environment GHC
-needs. It also handles some of the more cumbersome parts of getting a working
-compiler session up and running.
-
-This functionality can be very useful to all kinds of Haskell development tools.
-Therefore, we want to expose all the useful abstractions ghc-mod provides.
-
-Right now the ghc-mod API is pretty messy; a result of major internal rewrite
-and reorganization coupled with too little time for cleanups over the course of
-almost 100 releases! We would like to make a cut during v6.0 or so and
-completely redo the API, but we need more input from downstream tool writers to
-do that properly, see [Library API Redesign](Library-API-Redesign.md).
-
-For example, [The Haskell Refactorer (HaRe)](https://github.com/alanz/HaRe) uses
-the build environment abstraction ghc-mod provides so it can concentrate on its
-core functionality instead of worrying about build environments and compiler
-session setup.
-
-Recently the
-[`haskell-ide-engine`](https://github.com/haskell/haskell-ide-engine) project
-has sprung up, and if you're planning to write any kind of tool that needs editor
-integration eventually you should definitely look into that. `haskell-ide-engine`
-uses `ghc-mod` at its core, so you'll want to be familliar with it either way.
-
-API "documentation" is here:
-[Hackage docs](https://hackage.haskell.org/package/ghc-mod#modules).
+For more information on what ghc-mod used to be have a look at the
+[old README](README_old.md).
 
 ## Reporting Bugs
 
