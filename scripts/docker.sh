@@ -3,7 +3,7 @@
 # Usage: ./docker.sh [GHC_VER]
 # Example: ./docker.sh 8.2.2
 # Faster Example:
-#     $ echo 8.6.2 8.4.4 8.2.2 8.0.2 7.10.3 | xargs -P4 -n1 -- ./docker.sh
+#     $ echo 8.6.3 8.4.4 8.2.2 8.0.2 7.10.3 | xargs -P4 -n1 -- ./docker.sh
 
 
 namespace="registry.gitlab.com/dxld/ghc-mod"
@@ -39,7 +39,7 @@ while read -r ghc_rel ghc ghc_arch ghc_ext cabal cabal_rev image; do
             ADDITIONAL_COMMANDS="${ADDITIONAL_COMMANDS}COPY $cabal_bin_file /root/
 "
             ADDITIONAL_BOOTSTRAP_SETUP='tar -C /root -xf /root/'"$cabal_bin_file"' cabal && /root/cabal update && /root/cabal install --only-dependencies'
-            ADDITIONAL_BOOTSTRAP_TEARDOWN='rm /root/cabal '"$cabal_bin_file"
+            ADDITIONAL_BOOTSTRAP_TEARDOWN='rm /root/cabal '"/root/$cabal_bin_file"
     fi
 
     mkdir -p "$dldir"
@@ -68,7 +68,7 @@ $ADDITIONAL_COMMANDS
 
 RUN apt-get update && apt-get upgrade -y && \
     apt-get install -y --no-install-recommends \
-      alex happy wget git xz-utils gpgv ca-certificates build-essential libgmp3-dev libtinfo-dev zlib1g-dev $ADDITIONAL_PACKAGES && \
+      alex happy wget git xz-utils gpgv ca-certificates build-essential libgmp3-dev libtinfo-dev zlib1g-dev netbase pkg-config $ADDITIONAL_PACKAGES && \
     apt-get clean
 RUN tar -xf ghc-*.tar.* && \
     cd ghc-* && ./configure --prefix=/usr/local && make install && cd .. && \
@@ -88,11 +88,11 @@ EOF
 
     docker build -t "${namespace}:ghc${ghc}-cabal-install${cabal}" "$tmpdir"
 done <<EOF
-8.6.2  8.6.2  x86_64-deb8-linux         xz  2.4.0.0   0 debian:jessie
-8.4.4  8.4.4  x86_64-deb8-linux         xz  2.4.0.0   0 debian:jessie
-8.2.2  8.2.2  x86_64-deb8-linux         xz  2.4.0.0   0 debian:jessie
-8.0.2  8.0.2  x86_64-deb8-linux         xz  2.4.0.0   0 debian:jessie
-7.10.3 7.10.3 x86_64-deb8-linux         xz  2.4.0.0   0 debian:jessie
+8.6.3  8.6.3  x86_64-deb8-linux         xz  2.4.1.0   0 debian:jessie
+8.4.4  8.4.4  x86_64-deb8-linux         xz  2.4.1.0   0 debian:jessie
+8.2.2  8.2.2  x86_64-deb8-linux         xz  2.4.1.0   0 debian:jessie
+8.0.2  8.0.2  x86_64-deb8-linux         xz  2.4.1.0   0 debian:jessie
+7.10.3 7.10.3 x86_64-deb8-linux         xz  2.4.1.0   0 debian:jessie
 EOF
 
 # 7.8.4  7.8.4  x86_64-unknown-linux-deb7 xz  2.2.0.0   0 debian:jessie
