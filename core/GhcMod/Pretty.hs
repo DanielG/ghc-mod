@@ -38,6 +38,7 @@ import GHC
 import Outputable (SDoc, withPprStyleDoc)
 
 import GhcMod.Types
+import Distribution.Helper
 import GhcMod.Doc
 import GhcMod.Gap (renderGm)
 import Prelude hiding ( (<>))

@@ -41,7 +41,7 @@ import System.Environment
 import Prelude
 import Control.Monad.Trans.Journal (runJournalT)
 -- import Distribution.Helper (runQuery, mkQueryEnv, compilerVersion, distDir)
-import Distribution.Helper (runQuery, mkQueryEnv, compilerVersion, DistDir(..), ProjType(..), ProjLoc(..), callProcessStderr, QueryEnv )
+import Distribution.Helper (runQuery, mkQueryEnv, compilerVersion, DistDir(..), ProjType(..), ProjLoc(..), QueryEnv )
 -- import Distribution.System (buildPlatform)
 import Data.List (intercalate)
 import Data.Version (Version(..))
@@ -271,13 +271,8 @@ newBuild = ProjSetup
 stackBuild :: ProjSetup 'Stack
 stackBuild = ProjSetup
     { psDistDir   = \_dir  -> DistDirStack Nothing
-    , psProjDir   = \cabal_file -> ProjLocStackDir (takeDirectory cabal_file)
+    , psProjDir   = \cabal_file -> ProjLocStackYaml ((takeDirectory cabal_file) </> "stack.yaml")
     }
-
-runWithCwd :: FilePath -> String -> [String] -> IO ()
-runWithCwd cwd x xs = do
-  let ?verbose = True
-  callProcessStderr (Just cwd) x xs
 
 -- ---------------------------------------------------------------------
 

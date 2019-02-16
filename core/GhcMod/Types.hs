@@ -19,7 +19,7 @@ import Control.Monad
 import Control.DeepSeq
 import Data.Binary
 import Data.Binary.Generic
-import Data.Dynamic (toDyn, fromDynamic, Dynamic)
+import Data.Dynamic (Dynamic)
 import Data.Map (Map)
 import qualified Data.Map as Map
 import Data.Set (Set)
@@ -322,9 +322,9 @@ data GmComponent (t :: GmComponentType) eps = GmComponent {
   , gmcNeedsBuildOutput :: NeedsBuildOutput
   } deriving (Eq, Ord, Show, Read, Generic, Functor)
 
-instance Binary eps => Binary (GmComponent t eps) where
-    put = ggput . from
-    get = to `fmap` ggget
+-- instance Binary eps => Binary (GmComponent t eps) where
+--     put = ggput . from
+--     get = to `fmap` ggget
 
 data ModulePath = ModulePath { mpModule :: ModuleName, mpPath :: FilePath }
   deriving (Eq, Ord, Show, Read, Generic, Typeable)
@@ -400,10 +400,16 @@ instance Binary ChComponentName where
 instance Binary ChEntrypoint where
     put = ggput . from
     get = to `fmap` ggget
-instance Binary ChLibraryName where
+instance Binary CabalHelper.ChLibraryName where
     put = ggput . from
     get = to `fmap` ggget
 instance Binary NeedsBuildOutput where
+    put = ggput . from
+    get = to `fmap` ggget
+instance Binary (GmComponent 'GMCResolved (Set ModulePath)) where
+    put = ggput . from
+    get = to `fmap` ggget
+instance Binary (GmComponent 'GMCRaw (Set ModulePath)) where
     put = ggput . from
     get = to `fmap` ggget
 

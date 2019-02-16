@@ -99,7 +99,7 @@ Library
                       , extra                < 1.7  && >= 1.4
                       , fclabels             < 2.1  && >= 2.0
                       , ghc-paths            < 0.2  && >= 0.1.0.9
-                      , haskell-src-exts     < 1.21 && >= 1.18
+                      , haskell-src-exts     < 1.22 && >= 1.18
                       , monad-control        < 1.1  && >= 1
                       , monad-journal        < 0.9  && >= 0.4
                       , optparse-applicative < 0.15 && >= 0.13.0.0

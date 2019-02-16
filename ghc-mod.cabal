@@ -141,7 +141,7 @@ Library
                       , fclabels             < 2.1  && >= 2.0
                       , ghc-paths            < 0.2  && >= 0.1.0.9
                       , ghc-mod-core         == 5.9.0.0
-                      , haskell-src-exts     < 1.21 && >= 1.18
+                      , haskell-src-exts     < 1.22 && >= 1.18
                       , hlint                < 2.2  && >= 2.0.8
                       , monad-control        < 1.1  && >= 1
                       , monad-journal        < 0.9  && >= 0.4
