@@ -76,6 +76,13 @@ module GhcModCore (
   , LightGhc(..)
   , OutputOpts(..)
   , collectAllSpansTypes
+  , gmlGetSession
+  , gmlSetSession
+  , cabalResolvedComponents
+  , ModulePath(..)
+  , GmComponent(..)
+  , GmComponentType(..)
+  , GmModuleGraph(..)
   ) where
 
 import GhcMod.Cradle
