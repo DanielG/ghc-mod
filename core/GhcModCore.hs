@@ -12,7 +12,7 @@ module GhcModCore (
   , FileMapping(..)
   , defaultOptions
   -- * Logging
-  , GmLogLevel
+  , GmLogLevel(..)
   , increaseLogLevel
   , decreaseLogLevel
   , gmSetLogLevel
@@ -27,6 +27,7 @@ module GhcModCore (
   -- * Monad Types
   , GhcModT
   , IOish
+  , MonadIO(..)
   -- * Monad utilities
   , runGhcModT
   , withOptions
@@ -43,6 +44,38 @@ module GhcModCore (
   -- * HIE integration utilities
   , getModulesGhc
   , getModulesGhc'
+  -- * Manage GHC AST index vars for older GHCs
+  , GhcPs,GhcRn,GhcTc
+  -- Temporary home, see what there is, before strippint out
+  , findCradle'
+  , GmEnv
+  , gmeLocal
+  , gmCradle
+  , mkRevRedirMapFunc
+  , cradle
+  , GmOut(..)
+  , options
+  , GmLog(..)
+  , makeAbsolute'
+  , withMappedFile
+  , listVisibleModuleNames
+  , runLightGhc
+  , GHandler(..)
+  , gcatches
+  , GmlT(..)
+  , defaultLintOpts
+  , pretty
+  , gmsGet
+  , gmGhcSession
+  , gmgsSession
+  , getMMappedFiles
+  , withDynFlags
+  , ghcExceptionDoc
+  , mkErrStyle'
+  , renderGm
+  , LightGhc(..)
+  , OutputOpts(..)
+  , collectAllSpansTypes
   ) where
 
 import GhcMod.Cradle
@@ -53,3 +86,10 @@ import GhcMod.ModuleLoader
 import GhcMod.Output
 import GhcMod.Target
 import GhcMod.Types
+
+import GhcMod.Gap (GhcPs,GhcRn,GhcTc,listVisibleModuleNames,mkErrStyle')
+import GhcMod.Utils (mkRevRedirMapFunc,makeAbsolute',withMappedFile)
+import GhcMod.LightGhc (runLightGhc)
+import GhcMod.Error (GHandler(..),gcatches,ghcExceptionDoc)
+import GhcMod.SrcUtils (pretty,collectAllSpansTypes)
+import GhcMod.DynFlags (withDynFlags)
