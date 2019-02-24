@@ -67,6 +67,9 @@ module GhcMod (
   , loadMappedFile
   , loadMappedFileSource
   , unloadMappedFile
+  -- * API moving around stuff, temporary for now
+  , pretty
+  , collectAllSpansTypes
   ) where
 
 import GhcMod.Exe.Boot
@@ -90,3 +93,6 @@ import GhcMod.Monad
 import GhcMod.Output
 import GhcMod.Target
 import GhcMod.Types
+
+
+import GhcMod.SrcUtils (pretty,collectAllSpansTypes)

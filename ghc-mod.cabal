@@ -119,6 +119,7 @@ Library
                         GhcMod.Exe.Modules
                         GhcMod.Exe.PkgDoc
                         GhcMod.Exe.Test
+                        GhcMod.SrcUtils
   Other-Modules:        Paths_ghc_mod
   Build-Depends:
                       -- See Note [GHC Boot libraries]

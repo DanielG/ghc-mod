@@ -27,7 +27,7 @@ import Bag
 import SrcLoc
 import FastString
 
-import GhcMod.Convert
+import GhcMod.Convert (convert)
 import GhcMod.Doc (showPage)
 import GhcMod.DynFlags (withDynFlags)
 import GhcMod.Monad.Types

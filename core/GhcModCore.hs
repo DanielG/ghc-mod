@@ -64,7 +64,6 @@ module GhcModCore (
   , gcatches
   , GmlT(..)
   , defaultLintOpts
-  , pretty
   , gmsGet
   , gmGhcSession
   , gmgsSession
@@ -75,7 +74,6 @@ module GhcModCore (
   , renderGm
   , LightGhc(..)
   , OutputOpts(..)
-  , collectAllSpansTypes
   , gmlGetSession
   , gmlSetSession
   , cabalResolvedComponents
@@ -83,6 +81,9 @@ module GhcModCore (
   , GmComponent(..)
   , GmComponentType(..)
   , GmModuleGraph(..)
+
+  -- * Used in ghc-mod
+  , convert
   ) where
 
 import GhcMod.Cradle
@@ -98,5 +99,6 @@ import GhcMod.Gap (GhcPs,GhcRn,GhcTc,listVisibleModuleNames,mkErrStyle')
 import GhcMod.Utils (mkRevRedirMapFunc,makeAbsolute',withMappedFile)
 import GhcMod.LightGhc (runLightGhc)
 import GhcMod.Error (GHandler(..),gcatches,ghcExceptionDoc)
-import GhcMod.SrcUtils (pretty,collectAllSpansTypes)
+-- import GhcMod.SrcUtils (pretty,collectAllSpansTypes)
 import GhcMod.DynFlags (withDynFlags)
+import GhcMod.Convert ( convert )
