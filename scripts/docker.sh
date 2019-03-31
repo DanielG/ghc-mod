@@ -88,6 +88,7 @@ EOF
 
     docker build -t "${namespace}:ghc${ghc}-cabal-install${cabal}" "$tmpdir"
 done <<EOF
+8.6.4  8.6.4  x86_64-deb8-linux         xz  2.4.1.0   0 debian:jessie
 8.6.3  8.6.3  x86_64-deb8-linux         xz  2.4.1.0   0 debian:jessie
 8.4.4  8.4.4  x86_64-deb8-linux         xz  2.4.1.0   0 debian:jessie
 8.2.2  8.2.2  x86_64-deb8-linux         xz  2.4.1.0   0 debian:jessie
